@@ -33,7 +33,7 @@ export function ChatMessage({
       {/* Avatar */}
       <div
         className={cn(
-          "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold",
+          "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold",
           isUser ? "bg-blue-600 text-white" : "bg-purple-100 text-purple-700"
         )}
       >

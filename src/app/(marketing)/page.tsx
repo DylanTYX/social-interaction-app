@@ -78,7 +78,7 @@ export default function LandingPage() {
                 <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl leading-[1.1]">
                   Master Cross-Cultural
                   <br />
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     Communication
                   </span>
                 </h1>
@@ -307,7 +307,7 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section
         id="demo"
-        className="py-24 bg-gradient-to-br from-blue-600 to-purple-600"
+        className="py-24 bg-linear-to-br from-blue-600 to-purple-600"
       >
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-3xl font-bold text-white sm:text-4xl md:text-5xl mb-6 leading-tight">
