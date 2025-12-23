@@ -27,7 +27,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card className="w-full max-w-md border shadow-xl bg-white">
+    <Card className="w-full max-w-md border border-gray-200/80 shadow-soft-lg bg-white">
       <CardHeader className="space-y-2">
         <CardTitle className="text-2xl font-bold">Create account</CardTitle>
         <CardDescription className="text-base">
@@ -46,7 +46,7 @@ export default function RegisterPage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="h-11"
+                className="h-11 focus-ring"
               />
             </div>
             <div className="space-y-2">
@@ -58,7 +58,7 @@ export default function RegisterPage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="h-11"
+                className="h-11 focus-ring"
               />
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-11"
+              className="h-11 focus-ring"
             />
           </div>
 
@@ -85,7 +85,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-11"
+              className="h-11 focus-ring"
             />
             <p className="text-xs text-gray-500">
               Must be at least 8 characters
@@ -106,21 +106,25 @@ export default function RegisterPage() {
               I agree to the{" "}
               <Link
                 href="#"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-150"
               >
                 Terms of Service
               </Link>{" "}
               and{" "}
               <Link
                 href="#"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-150"
               >
                 Privacy Policy
               </Link>
             </label>
           </div>
 
-          <Button type="submit" className="w-full h-11" size="lg">
+          <Button
+            type="submit"
+            className="w-full h-11 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+            size="lg"
+          >
             Create Account
           </Button>
         </form>
@@ -137,7 +141,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" type="button" className="h-11">
+          <Button
+            variant="outline"
+            type="button"
+            className="h-11 hover:bg-gray-50 transition-colors duration-150"
+          >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

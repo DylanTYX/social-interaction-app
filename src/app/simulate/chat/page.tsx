@@ -66,9 +66,13 @@ export default function ChatSimulatePage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="h-16 bg-white border-b flex items-center px-6 gap-4">
+      <div className="h-16 bg-white border-b border-gray-200/80 flex items-center px-6 gap-4 shadow-soft">
         <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-gray-100 transition-colors duration-150"
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
@@ -78,13 +82,18 @@ export default function ChatSimulatePage() {
             Quarterly Business Review • Sarah Chen
           </p>
         </div>
-        <Button variant="destructive">End Session</Button>
+        <Button
+          variant="destructive"
+          className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+        >
+          End Session
+        </Button>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Configuration */}
-        <div className="w-80 bg-white border-r p-6 space-y-6 overflow-y-auto">
+        <div className="w-80 bg-white border-r border-gray-200/80 p-6 space-y-6 overflow-y-auto shadow-soft">
           <div>
             <h2 className="text-lg font-semibold mb-4">Session Setup</h2>
           </div>
@@ -145,7 +154,9 @@ export default function ChatSimulatePage() {
             </Select>
           </div>
 
-          <Button className="w-full">Apply Changes</Button>
+          <Button className="w-full shadow-soft-md hover:shadow-soft-lg transition-all duration-200">
+            Apply Changes
+          </Button>
         </div>
 
         {/* Center Panel - Chat */}
@@ -167,12 +178,12 @@ export default function ChatSimulatePage() {
         </div>
 
         {/* Right Panel - Feedback */}
-        <div className="w-96 bg-white border-l p-6 space-y-6 overflow-y-auto">
+        <div className="w-96 bg-white border-l border-gray-200/80 p-6 space-y-6 overflow-y-auto shadow-soft">
           <div>
             <h2 className="text-lg font-semibold mb-4">Live Feedback</h2>
           </div>
 
-          <Card>
+          <Card className="border border-gray-200/80 shadow-soft">
             <CardHeader>
               <CardTitle className="text-sm">Communication Score</CardTitle>
             </CardHeader>
@@ -201,7 +212,7 @@ export default function ChatSimulatePage() {
             </div>
           </div>
 
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-blue-50 border-blue-200 shadow-soft">
             <CardHeader>
               <CardTitle className="text-sm text-blue-900">💡 Tip</CardTitle>
             </CardHeader>

@@ -7,146 +7,279 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, Mic, TrendingUp, Clock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  MessageSquare,
+  Mic,
+  TrendingUp,
+  Clock,
+  Target,
+  Flame,
+  Users,
+  BookOpen,
+  ChevronRight,
+} from "lucide-react";
+
+// Demo data for recent sessions
+const RECENT_SESSIONS = [
+  {
+    id: 1,
+    scenario: "Quarterly Business Review",
+    persona: "Sarah Chen",
+    avatar: "SC",
+    date: "2 hours ago",
+    score: 92,
+  },
+  {
+    id: 2,
+    scenario: "Conflict Resolution",
+    persona: "Marcus Johnson",
+    avatar: "MJ",
+    date: "Yesterday",
+    score: 85,
+  },
+  {
+    id: 3,
+    scenario: "Team Feedback Session",
+    persona: "Yuki Tanaka",
+    avatar: "YT",
+    date: "2 days ago",
+    score: 88,
+  },
+];
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8 bg-gradient-to-br from-gray-50 via-white to-gray-50/50">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900">
           Welcome back, John! 👋
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-500 mt-1">
           Ready to continue your communication training?
         </p>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Cleaner design with single clear CTA */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="border-2 hover:border-blue-300 transition-colors cursor-pointer">
-          <CardHeader>
-            <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
-              <MessageSquare className="h-6 w-6 text-blue-600" />
-            </div>
-            <CardTitle className="text-xl">Start Chat Practice</CardTitle>
-            <CardDescription>
-              Practice written communication with AI personas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/simulate/chat">
-              <Button className="w-full">Start Session</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <Link href="/simulate/chat" className="block">
+          <Card className="group h-full border border-blue-200/60 hover:border-blue-300 hover:shadow-soft-md transition-all duration-200 cursor-pointer hover-lift bg-gradient-to-br from-blue-50 to-cyan-50/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <MessageSquare className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg group-hover:text-blue-700 transition-colors">
+                    Chat Practice
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Text-based scenarios
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Practice real-time conversations through text. Perfect for email
+                responses, chat communication, and written dialogue skills.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-700 text-sm font-medium group-hover:bg-blue-500/20 transition-colors">
+                <span>Start practicing</span>
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="border-2 hover:border-purple-300 transition-colors cursor-pointer">
-          <CardHeader>
-            <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
-              <Mic className="h-6 w-6 text-purple-600" />
-            </div>
-            <CardTitle className="text-xl">Start Voice Practice</CardTitle>
-            <CardDescription>
-              Practice verbal communication with voice scenarios
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/simulate/voice">
-              <Button className="w-full" variant="outline">
-                Start Session
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <Link href="/simulate/voice" className="block">
+          <Card className="group h-full border border-purple-200/60 hover:border-purple-300 hover:shadow-soft-md transition-all duration-200 cursor-pointer hover-lift bg-gradient-to-br from-purple-50 to-violet-50/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-purple-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Mic className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg group-hover:text-purple-700 transition-colors">
+                    Voice Practice
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Spoken conversations
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Engage in voice-based dialogue with AI personas. Build
+                confidence in presentations, meetings, and verbal communication.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-700 text-sm font-medium group-hover:bg-purple-500/20 transition-colors">
+                <span>Start practicing</span>
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card>
+      {/* Stats Grid - Balanced color approach */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border border-gray-200/80 shadow-soft bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Sessions
             </CardTitle>
-            <MessageSquare className="h-4 w-4 text-gray-500" />
+            <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-gray-500 mt-1">+3 from last week</p>
+            <div className="text-3xl font-bold">47</div>
+            <p className="text-xs text-green-600 mt-1">+12% from last month</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-gray-200/80 shadow-soft bg-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
+            <TrendingUp className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-indigo-600">78%</div>
+            <p className="text-xs text-gray-500 mt-1">Keep improving!</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-gray-200/80 shadow-soft bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Practice Time</CardTitle>
-            <Clock className="h-4 w-4 text-gray-500" />
+            <Clock className="h-4 w-4 text-teal-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12.5 hrs</div>
-            <p className="text-xs text-gray-500 mt-1">+2.5 hrs this week</p>
+            <div className="text-3xl font-bold">12.5h</div>
+            <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border border-orange-200/60 shadow-soft bg-gradient-to-br from-orange-50 to-amber-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Improvement Score
+              Current Streak
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-gray-500" />
+            <Flame className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">87%</div>
-            <p className="text-xs text-green-600 mt-1">+12% from last month</p>
+            <div className="text-3xl font-bold">7 days 🔥</div>
+            <p className="text-xs text-orange-600 mt-1">Keep it up!</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Sessions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Sessions</CardTitle>
-          <CardDescription>Your latest practice conversations</CardDescription>
+      {/* Recent Sessions - Better background contrast */}
+      <Card className="border border-gray-200/80 shadow-soft bg-white">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Recent Sessions</CardTitle>
+              <CardDescription>
+                Your latest practice conversations
+              </CardDescription>
+            </div>
+            <Link href="/dashboard/analytics">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[
-              {
-                title: "Quarterly Business Review",
-                persona: "Sarah Chen",
-                date: "2 hours ago",
-                score: 92,
-              },
-              {
-                title: "Conflict Resolution",
-                persona: "Marcus Johnson",
-                date: "Yesterday",
-                score: 85,
-              },
-              {
-                title: "Team Feedback Session",
-                persona: "Yuki Tanaka",
-                date: "2 days ago",
-                score: 88,
-              },
-            ].map((session, i) => (
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            {RECENT_SESSIONS.map((session) => (
               <div
-                key={i}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                key={session.id}
+                className="flex items-center gap-4 p-4 rounded-lg bg-gray-50/80 hover:bg-gray-100 transition-colors duration-150 cursor-pointer group"
               >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{session.title}</p>
+                {/* Avatar */}
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                  {session.avatar}
+                </div>
+
+                {/* Session Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                    {session.scenario}
+                  </p>
                   <p className="text-sm text-gray-500">
-                    with {session.persona} • {session.date}
+                    {session.persona} · {session.date}
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">
+
+                {/* Score with label */}
+                <div className="text-right shrink-0">
+                  <div className="text-lg font-bold text-blue-600">
                     {session.score}%
                   </div>
-                  <p className="text-xs text-gray-500">Score</p>
+                  <p className="text-xs text-gray-400">score</p>
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recommended Next Steps - Matching draft design */}
+      <Card className="border border-gray-200/80 shadow-soft bg-white">
+        <CardHeader>
+          <CardTitle>Recommended Next Steps</CardTitle>
+          <CardDescription>Continue your learning journey</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3 p-4 border border-gray-200/60 rounded-lg hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-soft transition-all duration-200 group cursor-pointer">
+              <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                <BookOpen className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">
+                  Try Advanced Scenarios
+                </h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Challenge yourself with complex negotiations
+                </p>
+                <Link href="/dashboard/scenarios">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="px-0 h-auto text-blue-600 hover:text-blue-700"
+                  >
+                    Browse scenarios →
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 border border-gray-200/60 rounded-lg hover:border-purple-200 hover:bg-purple-50/30 hover:shadow-soft transition-all duration-200 group cursor-pointer">
+              <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-200 transition-colors">
+                <Users className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-gray-900 mb-1 group-hover:text-purple-700 transition-colors">
+                  Practice with New Personas
+                </h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  Expand your cultural understanding
+                </p>
+                <Link href="/dashboard/personas">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="px-0 h-auto text-purple-600 hover:text-purple-700"
+                  >
+                    View personas →
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

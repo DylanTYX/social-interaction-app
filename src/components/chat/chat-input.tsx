@@ -35,14 +35,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         onKeyDown={handleKeyDown}
         placeholder="Type your message... (Press Enter to send)"
         disabled={disabled}
-        className="min-h-[60px] max-h-32 resize-none"
+        className="min-h-[60px] max-h-32 resize-none focus-ring"
         rows={2}
       />
       <Button
         onClick={handleSend}
         disabled={disabled || !message.trim()}
         size="icon"
-        className="h-[60px] w-[60px] flex-shrink-0"
+        className="h-[60px] w-[60px] flex-shrink-0 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
       >
         <Send className="h-5 w-5" />
       </Button>

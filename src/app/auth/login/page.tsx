@@ -25,7 +25,7 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="w-full max-w-md border shadow-xl bg-white">
+    <Card className="w-full max-w-md border border-gray-200/80 shadow-soft-lg bg-white">
       <CardHeader className="space-y-2">
         <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
         <CardDescription className="text-base">
@@ -43,7 +43,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-11"
+              className="h-11 focus-ring"
             />
           </div>
 
@@ -52,7 +52,7 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Link
                 href="#"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors duration-150"
               >
                 Forgot password?
               </Link>
@@ -64,11 +64,15 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="h-11"
+              className="h-11 focus-ring"
             />
           </div>
 
-          <Button type="submit" className="w-full h-11" size="lg">
+          <Button
+            type="submit"
+            className="w-full h-11 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+            size="lg"
+          >
             Sign In
           </Button>
         </form>
@@ -85,7 +89,11 @@ export default function LoginPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" type="button" className="h-11">
+          <Button
+            variant="outline"
+            type="button"
+            className="h-11 hover:bg-gray-50 transition-colors duration-150"
+          >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

@@ -14,10 +14,6 @@ interface SearchInputProps
   containerClassName?: string;
 }
 
-const isMac =
-  typeof window !== "undefined" &&
-  navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-
 export function SearchInput({
   className,
   containerClassName,
@@ -30,6 +26,12 @@ export function SearchInput({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [internalValue, setInternalValue] = React.useState("");
   const [isFocused, setIsFocused] = React.useState(false);
+  const [isMac, setIsMac] = React.useState(false);
+
+  // Detect platform after mount to avoid hydration mismatch
+  React.useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf("MAC") >= 0);
+  }, []);
 
   // Support both controlled and uncontrolled usage
   const isControlled = value !== undefined;
@@ -110,12 +112,12 @@ export function SearchInput({
           "pl-10",
           hasValue ? "pr-9" : showShortcut ? "pr-16" : "pr-3",
           // Border and ring
-          "border-gray-200 ring-offset-background",
-          "focus:bg-white focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0",
+          "border-gray-200/80 ring-offset-background",
+          "focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0",
           // Placeholder
           "placeholder:text-gray-400",
           // Transitions
-          "transition-all duration-150",
+          "transition-all duration-200",
           // Hide native clear button
           "[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
           // Disabled

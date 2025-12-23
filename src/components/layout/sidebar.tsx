@@ -91,11 +91,11 @@ function CollapseToggle({
             // Size and shape
             "h-6 w-6 rounded-full",
             // Visual style
-            "bg-white border border-gray-200 shadow-sm",
+            "bg-white border border-gray-200 shadow-soft",
             // Flexbox centering
             "flex items-center justify-center",
             // Hover and active states
-            "hover:bg-gray-50 hover:border-gray-300 hover:shadow-md",
+            "hover:bg-gray-50 hover:border-gray-300 hover:shadow-soft-md",
             "active:scale-95 active:bg-gray-100",
             // Focus states (accessibility)
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
@@ -151,7 +151,7 @@ function NavItem({
         // Active state
         isActive && [
           "bg-blue-50 text-blue-700",
-          "shadow-sm shadow-blue-100/50",
+          "shadow-soft border border-blue-100",
         ],
         // Inactive state with hover
         !isActive && ["text-gray-600", "hover:bg-gray-50 hover:text-gray-900"],
@@ -196,7 +196,7 @@ export function Sidebar() {
           // Layout
           "relative flex h-full flex-col",
           // Visual style
-          "bg-white border-r border-gray-200",
+          "bg-white border-r border-gray-200/80 shadow-soft",
           // Width with smooth transition
           isCollapsed ? "w-16" : "w-64",
           // Transition (applies to width change)

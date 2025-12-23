@@ -23,7 +23,7 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 border-b border-gray-200/60 bg-white/90 backdrop-blur-xl shadow-soft">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
@@ -35,19 +35,19 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <Link
               href="#features"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
             >
               Features
             </Link>
             <Link
               href="#how-it-works"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
             >
               How It Works
             </Link>
             <Link
               href="#demo"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
             >
               Demo
             </Link>
@@ -69,20 +69,18 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 w-full">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold shadow-soft border border-blue-100/50">
                 <Sparkles className="h-4 w-4" />
                 <span>AI-Powered Communication Training</span>
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl leading-[1.1]">
+                <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl leading-[1.15]">
                   Master Cross-Cultural
                   <br />
-                  <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Communication
-                  </span>
+                  <span className="gradient-text">Communication</span>
                 </h1>
-                <p className="text-lg text-gray-600 leading-relaxed">
+                <p className="text-lg text-gray-600 leading-relaxed max-w-xl">
                   Practice realistic conversations with AI personas from diverse
                   cultures. Build confidence, refine your skills, and excel in
                   global business settings.
@@ -90,13 +88,22 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" asChild>
+                <Button
+                  size="lg"
+                  asChild
+                  className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+                >
                   <Link href="/auth/register">
                     Start Training Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
                   <Link href="#demo">Watch Demo</Link>
                 </Button>
               </div>
@@ -124,7 +131,7 @@ export default function LandingPage() {
             </div>
 
             {/* Demo Chat Preview */}
-            <Card className="shadow-xl">
+            <Card className="shadow-soft-lg border-gray-200/80 hover-lift">
               <CardHeader>
                 <CardTitle>Live Conversation Preview</CardTitle>
                 <CardDescription>
@@ -163,7 +170,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            <Card className="border-2 hover:border-blue-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-blue-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
                   <Users className="h-6 w-6 text-blue-600" />
@@ -176,7 +183,7 @@ export default function LandingPage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-2 hover:border-purple-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-purple-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4">
                   <MessageSquare className="h-6 w-6 text-purple-600" />
@@ -191,7 +198,7 @@ export default function LandingPage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-2 hover:border-green-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-green-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center mb-4">
                   <Globe className="h-6 w-6 text-green-600" />
@@ -204,7 +211,7 @@ export default function LandingPage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-2 hover:border-orange-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-orange-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center mb-4">
                   <BarChart3 className="h-6 w-6 text-orange-600" />
@@ -219,7 +226,7 @@ export default function LandingPage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-2 hover:border-pink-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-pink-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-pink-100 flex items-center justify-center mb-4">
                   <Zap className="h-6 w-6 text-pink-600" />
@@ -232,7 +239,7 @@ export default function LandingPage() {
               </CardHeader>
             </Card>
 
-            <Card className="border-2 hover:border-indigo-200 transition-colors">
+            <Card className="border border-gray-200/60 hover:border-indigo-200 hover:shadow-soft-md transition-all duration-200 hover-lift">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
                   <Sparkles className="h-6 w-6 text-indigo-600" />
@@ -346,17 +353,26 @@ export default function LandingPage() {
               <h3 className="font-semibold text-gray-900 mb-4">Product</h3>
               <ul className="space-y-3 text-sm text-gray-600">
                 <li>
-                  <Link href="#features" className="hover:text-gray-900">
+                  <Link
+                    href="#features"
+                    className="hover:text-gray-900 transition-colors duration-150"
+                  >
                     Features
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
+                  <Link
+                    href="#"
+                    className="hover:text-gray-900 transition-colors duration-150"
+                  >
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
+                  <Link
+                    href="#"
+                    className="hover:text-gray-900 transition-colors duration-150"
+                  >
                     FAQ
                   </Link>
                 </li>

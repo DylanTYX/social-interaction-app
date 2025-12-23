@@ -58,10 +58,10 @@ export function ChatMessage({
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 shadow-sm",
+            "rounded-2xl px-4 py-2.5 shadow-soft",
             isUser
               ? "bg-blue-600 text-white rounded-tr-sm"
-              : "bg-white text-gray-900 border border-gray-200 rounded-tl-sm"
+              : "bg-white text-gray-900 border border-gray-200/80 rounded-tl-sm"
           )}
         >
           <p className="text-sm leading-relaxed">{content}</p>

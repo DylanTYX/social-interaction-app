@@ -18,7 +18,7 @@ interface NavbarProps {
 
 export function Navbar({ title }: NavbarProps) {
   return (
-    <div className="h-16 border-b bg-white/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-10">
+    <div className="h-16 border-b border-gray-200/60 bg-white/90 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-10 shadow-soft">
       <div>
         {title && (
           <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
@@ -39,7 +39,7 @@ export function Navbar({ title }: NavbarProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="relative h-9 w-9 rounded-xl hover:bg-gray-100"
+              className="relative h-9 w-9 rounded-xl hover:bg-gray-100 transition-colors-smooth"
             >
               <Bell className="h-4 w-4 text-gray-600" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
@@ -76,7 +76,7 @@ export function Navbar({ title }: NavbarProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-9 gap-2 px-2 rounded-xl hover:bg-gray-100"
+              className="h-9 gap-2 px-2 rounded-xl hover:bg-gray-100 transition-colors-smooth"
             >
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold shadow-lg shadow-purple-500/20">
                 JD
