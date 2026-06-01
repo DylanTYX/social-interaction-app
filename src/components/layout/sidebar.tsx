@@ -7,11 +7,10 @@ import { useSidebar } from "./sidebar-context";
 import {
   MessageSquare,
   LayoutDashboard,
-  Users,
   BookOpen,
   BarChart3,
   Settings,
-  Mic,
+  Sparkles,
   PanelLeftClose,
   PanelLeft,
   LogOut,
@@ -30,19 +29,9 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Chat Practice",
-    href: "/simulate/chat",
-    icon: MessageSquare,
-  },
-  {
-    name: "Voice Practice",
-    href: "/simulate/voice",
-    icon: Mic,
-  },
-  {
-    name: "Personas",
-    href: "/dashboard/personas",
-    icon: Users,
+    name: "Interview Practice",
+    href: "/simulate/setup",
+    icon: Sparkles,
   },
   {
     name: "Scenarios",
@@ -100,14 +89,14 @@ function CollapseToggle({
             // Focus states (accessibility)
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
             // Transitions
-            "transition-all duration-200 ease-out"
+            "transition-all duration-200 ease-out",
           )}
         >
           <Icon
             className={cn(
               "h-3.5 w-3.5 text-gray-500",
               "transition-colors duration-150",
-              "group-hover:text-gray-700"
+              "group-hover:text-gray-700",
             )}
             strokeWidth={2}
           />
@@ -156,14 +145,14 @@ function NavItem({
         // Inactive state with hover
         !isActive && ["text-gray-600", "hover:bg-gray-50 hover:text-gray-900"],
         // Transition
-        "transition-all duration-150"
+        "transition-all duration-150",
       )}
     >
       <Icon
         className={cn(
-          "h-5 w-5 flex-shrink-0",
+          "h-5 w-5 shrink-0",
           "transition-colors duration-150",
-          isActive ? "text-blue-600" : "text-gray-500"
+          isActive ? "text-blue-600" : "text-gray-500",
         )}
         strokeWidth={isActive ? 2.25 : 1.75}
       />
@@ -189,6 +178,14 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar } = useSidebar();
 
+  const isNavItemActive = (href: string) => {
+    if (pathname === href) {
+      return true;
+    }
+
+    return pathname.startsWith(`${href}/`);
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -200,7 +197,7 @@ export function Sidebar() {
           // Width with smooth transition
           isCollapsed ? "w-16" : "w-64",
           // Transition (applies to width change)
-          "transition-[width] duration-300 ease-out"
+          "transition-[width] duration-300 ease-out",
         )}
         aria-label="Main navigation"
       >
@@ -212,15 +209,15 @@ export function Sidebar() {
           className={cn(
             "flex h-16 items-center border-b border-gray-100",
             "transition-all duration-300",
-            isCollapsed ? "justify-center px-2" : "gap-3 px-4"
+            isCollapsed ? "justify-center px-2" : "gap-3 px-4",
           )}
         >
           <div
             className={cn(
-              "flex items-center justify-center flex-shrink-0",
+              "flex items-center justify-center shrink-0",
               "h-9 w-9 rounded-xl",
-              "bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600",
-              "shadow-lg shadow-blue-600/25"
+              "bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600",
+              "shadow-lg shadow-blue-600/25",
             )}
           >
             <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
@@ -241,7 +238,7 @@ export function Sidebar() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={pathname === item.href}
+              isActive={isNavItemActive(item.href)}
               isCollapsed={isCollapsed}
             />
           ))}
@@ -253,7 +250,7 @@ export function Sidebar() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={pathname === item.href}
+              isActive={isNavItemActive(item.href)}
               isCollapsed={isCollapsed}
             />
           ))}
@@ -266,16 +263,16 @@ export function Sidebar() {
               "flex items-center gap-3 rounded-lg p-2",
               "hover:bg-gray-50 cursor-pointer",
               "transition-colors duration-150",
-              isCollapsed && "justify-center"
+              isCollapsed && "justify-center",
             )}
           >
             <div
               className={cn(
-                "flex items-center justify-center flex-shrink-0",
+                "flex items-center justify-center shrink-0",
                 "h-8 w-8 rounded-lg",
-                "bg-gradient-to-br from-purple-500 to-indigo-600",
+                "bg-linear-to-br from-purple-500 to-indigo-600",
                 "text-white text-xs font-semibold",
-                "shadow-md shadow-purple-500/25"
+                "shadow-md shadow-purple-500/25",
               )}
             >
               JD
@@ -295,7 +292,7 @@ export function Sidebar() {
                         "p-1.5 rounded-md",
                         "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
                         "transition-colors duration-150",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                       )}
                       aria-label="Sign out"
                     >
