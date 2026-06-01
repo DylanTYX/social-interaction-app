@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   Card,
   CardContent,
@@ -7,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, Users } from "lucide-react";
+import { Clock, Users } from "lucide-react";
 
 const scenarios = [
   {
@@ -71,6 +73,23 @@ const scenarios = [
   },
 ];
 
+function getScenarioSlug(title: string) {
+  switch (title) {
+    case "Quarterly Business Review":
+      return "qbr";
+    case "Conflict Resolution":
+      return "conflict";
+    case "Client Negotiation":
+      return "client-negotiation";
+    case "Team Feedback Session":
+      return "feedback";
+    case "Product Presentation":
+      return "presentation";
+    default:
+      return "salary-negotiation";
+  }
+}
+
 export default function ScenariosPage() {
   return (
     <div className="p-8 space-y-6">
@@ -92,8 +111,8 @@ export default function ScenariosPage() {
                     scenario.difficulty === "Beginner"
                       ? "default"
                       : scenario.difficulty === "Intermediate"
-                      ? "secondary"
-                      : "destructive"
+                        ? "secondary"
+                        : "destructive"
                   }
                 >
                   {scenario.difficulty}
@@ -115,7 +134,14 @@ export default function ScenariosPage() {
                   <span>{scenario.participants}</span>
                 </div>
               </div>
-              <Button className="w-full">Start Scenario</Button>
+              <Link
+                href={`/simulate/chat?scenario=${getScenarioSlug(
+                  scenario.title,
+                )}&persona=sarah`}
+                className="block"
+              >
+                <Button className="w-full">Start Scenario</Button>
+              </Link>
             </CardContent>
           </Card>
         ))}

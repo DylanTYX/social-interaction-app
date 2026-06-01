@@ -7,10 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
-  MessageSquare,
-  Mic,
   TrendingUp,
   Clock,
   Target,
@@ -18,6 +15,7 @@ import {
   Users,
   BookOpen,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 // Demo data for recent sessions
@@ -50,7 +48,7 @@ const RECENT_SESSIONS = [
 
 export default function DashboardPage() {
   return (
-    <div className="p-8 space-y-8 bg-gradient-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
       {/* Welcome Section */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
@@ -62,61 +60,32 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions - Cleaner design with single clear CTA */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <Link href="/simulate/chat" className="block">
-          <Card className="group h-full border border-blue-200/60 hover:border-blue-300 hover:shadow-soft-md transition-all duration-200 cursor-pointer hover-lift bg-gradient-to-br from-blue-50 to-cyan-50/50">
+      <div className="grid md:grid-cols-1 gap-6 max-w-3xl">
+        <Link href="/simulate/setup" className="block">
+          <Card className="group h-full border border-blue-200/60 hover:border-blue-300 hover:shadow-soft-md transition-all duration-200 cursor-pointer hover-lift bg-linear-to-br from-blue-50 via-white to-cyan-50/50">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <MessageSquare className="h-6 w-6 text-white" />
+                  <Sparkles className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <CardTitle className="text-lg group-hover:text-blue-700 transition-colors">
-                    Chat Practice
+                    Interview Practice
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    Text-based scenarios
+                    Text or voice, guided through setup
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600 leading-relaxed">
-                Practice real-time conversations through text. Perfect for email
-                responses, chat communication, and written dialogue skills.
+                Start with scenario selection, persona tuning, and mode choice.
+                Then launch into a timed text interview or a voice session with
+                mic and speech settings prepared first.
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-700 text-sm font-medium group-hover:bg-blue-500/20 transition-colors">
-                <span>Start practicing</span>
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/simulate/voice" className="block">
-          <Card className="group h-full border border-purple-200/60 hover:border-purple-300 hover:shadow-soft-md transition-all duration-200 cursor-pointer hover-lift bg-gradient-to-br from-purple-50 to-violet-50/50">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-xl bg-purple-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Mic className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg group-hover:text-purple-700 transition-colors">
-                    Voice Practice
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Spoken conversations
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Engage in voice-based dialogue with AI personas. Build
-                confidence in presentations, meetings, and verbal communication.
-              </p>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-700 text-sm font-medium group-hover:bg-purple-500/20 transition-colors">
-                <span>Start practicing</span>
+                <span>Start setup</span>
                 <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </CardContent>
@@ -161,7 +130,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border border-orange-200/60 shadow-soft bg-gradient-to-br from-orange-50 to-amber-50">
+        <Card className="border border-orange-200/60 shadow-soft bg-linear-to-br from-orange-50 to-amber-50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Current Streak
@@ -200,7 +169,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-4 p-4 rounded-lg bg-gray-50/80 hover:bg-gray-100 transition-colors duration-150 cursor-pointer group"
               >
                 {/* Avatar */}
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                <div className="h-10 w-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
                   {session.avatar}
                 </div>
 

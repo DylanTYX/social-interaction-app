@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   Card,
   CardContent,
@@ -5,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Globe, Briefcase } from "lucide-react";
 
@@ -66,6 +67,23 @@ const personas = [
   },
 ];
 
+function getPersonaSlug(name: string) {
+  switch (name) {
+    case "Sarah Chen":
+      return "sarah";
+    case "Marcus Johnson":
+      return "marcus";
+    case "Yuki Tanaka":
+      return "yuki";
+    case "Priya Sharma":
+      return "priya";
+    case "Lars Petersen":
+      return "lars";
+    default:
+      return "isabella";
+  }
+}
+
 export default function PersonasPage() {
   return (
     <div className="p-8 space-y-6">
@@ -109,9 +127,16 @@ export default function PersonasPage() {
                   </span>
                 </div>
               </div>
-              <Button className="w-full" variant="outline">
-                Practice with {persona.name.split(" ")[0]}
-              </Button>
+              <Link
+                href={`/simulate/chat?persona=${getPersonaSlug(
+                  persona.name,
+                )}&scenario=qbr`}
+                className="block"
+              >
+                <Button className="w-full" variant="outline">
+                  Practice with {persona.name.split(" ")[0]}
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         ))}
