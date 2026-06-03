@@ -120,7 +120,7 @@ export function AnalyticsDashboard({
   return (
     <Card className="border-slate-200/80 bg-white/90 shadow-soft dark:border-slate-800 dark:bg-slate-950/60">
       <CardHeader>
-        <CardTitle className="text-sm">Interview Analytics</CardTitle>
+        <CardTitle className="text-sm">Interview analytics</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-2 sm:grid-cols-3">

@@ -9,13 +9,31 @@ interface ChatMessageProps {
   content: string;
   timestamp?: string;
   personaName?: string;
+  feedbackHint?: string | null;
+  feedbackTone?: "positive" | "constructive" | "neutral";
+  feedbackLoading?: boolean;
+  /** Voice delivery summary (pace, fillers, pauses) shown under user turns. */
+  deliveryNote?: string | null;
 }
+
+const FEEDBACK_TONE_CLASS: Record<
+  NonNullable<ChatMessageProps["feedbackTone"]>,
+  string
+> = {
+  positive: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  constructive: "border-amber-200 bg-amber-50 text-amber-900",
+  neutral: "border-slate-200 bg-slate-50 text-slate-700",
+};
 
 export function ChatMessage({
   role,
   content,
   timestamp,
   personaName = "AI Assistant",
+  feedbackHint,
+  feedbackTone = "neutral",
+  feedbackLoading = false,
+  deliveryNote,
 }: ChatMessageProps) {
   const isUser = role === "user";
   const markdownComponents = {
@@ -170,6 +188,25 @@ export function ChatMessage({
             </div>
           )}
         </div>
+
+        {isUser && (feedbackLoading || feedbackHint) && (
+          <p
+            className={`mt-1.5 max-w-full rounded-lg border px-3 py-1.5 text-xs leading-relaxed ${
+              feedbackLoading
+                ? "border-slate-200 bg-slate-50 text-slate-500 animate-pulse"
+                : FEEDBACK_TONE_CLASS[feedbackTone ?? "neutral"]
+            }`}
+          >
+            {feedbackLoading ? "Coach is reviewing your answer…" : feedbackHint}
+          </p>
+        )}
+
+        {isUser && deliveryNote && (
+          <p className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800">
+            <span aria-hidden="true">🎙️</span>
+            {deliveryNote}
+          </p>
+        )}
       </div>
     </div>
   );
