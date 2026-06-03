@@ -27,6 +27,7 @@ import {
   type DrillCategory,
   type DrillQuestion,
 } from "@/lib/question-bank";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 interface ModelAnswerResult {
   modelAnswer: string;
@@ -122,19 +123,13 @@ export default function DrillsPage() {
 
   return (
     <div className="space-y-6 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
-      <div>
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-          <Dumbbell className="h-3.5 w-3.5" />
-          Quick drills
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-          One question. Instant feedback.
-        </h1>
-        <p className="mt-1 max-w-2xl text-gray-600">
-          No setup, no full session — answer a single question and get a model
-          answer, a tightened rewrite, and targeted tips in seconds.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Quick drills"
+        title="One question. Instant feedback."
+        description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
+        icon={<Dumbbell className="h-6 w-6" />}
+        iconColor="orange"
+      />
 
       {/* Category filter */}
       <div className="flex flex-wrap gap-2">
