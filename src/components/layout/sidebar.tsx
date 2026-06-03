@@ -1,19 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
+import { useCurrentUser, getDisplayName, getInitials } from "@/hooks/use-current-user";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   MessageSquare,
   LayoutDashboard,
-  BookOpen,
   BarChart3,
+  FileText,
+  Users,
   Settings,
   Sparkles,
   PanelLeftClose,
   PanelLeft,
   LogOut,
+  History,
+  Dumbbell,
+  Search,
+  BookOpen,
+  FileUser,
 } from "lucide-react";
 import {
   Tooltip,
@@ -21,6 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const navigation = [
   {
@@ -29,14 +38,34 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Interview Practice",
+    name: "Interview practice",
     href: "/simulate/setup",
     icon: Sparkles,
   },
   {
-    name: "Scenarios",
-    href: "/dashboard/scenarios",
-    icon: BookOpen,
+    name: "Quick drills",
+    href: "/dashboard/drills",
+    icon: Dumbbell,
+  },
+  {
+    name: "Sessions",
+    href: "/dashboard/sessions",
+    icon: History,
+  },
+  {
+    name: "Personas",
+    href: "/dashboard/personas",
+    icon: Users,
+  },
+  {
+    name: "Job descriptions",
+    href: "/dashboard/job-descriptions",
+    icon: FileText,
+  },
+  {
+    name: "Resumes",
+    href: "/dashboard/resumes",
+    icon: FileUser,
   },
   {
     name: "Analytics",
@@ -46,6 +75,11 @@ const navigation = [
 ];
 
 const bottomNavigation = [
+  {
+    name: "Tips & guides",
+    href: "/dashboard/help",
+    icon: BookOpen,
+  },
   {
     name: "Settings",
     href: "/dashboard/settings",
@@ -176,7 +210,20 @@ function NavItem({
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { user } = useCurrentUser();
+
+  const handleSignOut = async () => {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.replace("/auth/login");
+    router.refresh();
+  };
+
+  const initials = getInitials(user);
+  const displayName = getDisplayName(user);
+  const subline = user?.email ?? "Signed in";
 
   const isNavItemActive = (href: string) => {
     if (pathname === href) {
@@ -190,8 +237,8 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          // Layout
-          "relative flex h-full flex-col",
+          // Layout — hidden on phones; use MobileNav instead
+          "relative hidden lg:flex h-full flex-col",
           // Visual style
           "bg-white border-r border-gray-200/80 shadow-soft",
           // Width with smooth transition
@@ -229,10 +276,38 @@ export function Sidebar() {
           )}
         </div>
 
+        {/* Command palette trigger */}
+        <div className="p-2 pb-0">
+          <button
+            type="button"
+            data-tour="search"
+            onClick={() =>
+              window.dispatchEvent(new Event("open-command-palette"))
+            }
+            className={cn(
+              "flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-500",
+              "hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150",
+              isCollapsed && "justify-center px-2",
+            )}
+            aria-label="Open command palette"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">Search…</span>
+                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+                  ⌘K
+                </kbd>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* Main Navigation */}
         <nav
           className="flex-1 p-2 space-y-1 overflow-y-auto"
           aria-label="Primary"
+          data-tour="nav"
         >
           {navigation.map((item) => (
             <NavItem
@@ -254,6 +329,12 @@ export function Sidebar() {
               isCollapsed={isCollapsed}
             />
           ))}
+          <div className={cn(isCollapsed && "flex justify-center")}>
+            <ThemeToggle
+              showLabel={!isCollapsed}
+              className={cn(!isCollapsed && "w-full")}
+            />
+          </div>
         </div>
 
         {/* User Section */}
@@ -261,33 +342,40 @@ export function Sidebar() {
           <div
             className={cn(
               "flex items-center gap-3 rounded-lg p-2",
-              "hover:bg-gray-50 cursor-pointer",
               "transition-colors duration-150",
               isCollapsed && "justify-center",
             )}
           >
-            <div
+            <Link
+              href="/dashboard/settings"
               className={cn(
                 "flex items-center justify-center shrink-0",
                 "h-8 w-8 rounded-lg",
-                "bg-linear-to-br from-purple-500 to-indigo-600",
+                "bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600",
                 "text-white text-xs font-semibold",
-                "shadow-md shadow-purple-500/25",
+                "shadow-md shadow-indigo-600/25",
+                "hover:opacity-90 transition-opacity",
               )}
+              aria-label="Account settings"
             >
-              JD
-            </div>
+              {initials}
+            </Link>
             {!isCollapsed && (
               <>
-                <div className="flex-1 min-w-0">
+                <Link
+                  href="/dashboard/settings"
+                  className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                >
                   <p className="text-sm font-medium text-gray-900 truncate">
-                    John Doe
+                    {displayName}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">Pro Plan</p>
-                </div>
+                  <p className="text-xs text-gray-500 truncate">{subline}</p>
+                </Link>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      type="button"
+                      onClick={() => void handleSignOut()}
                       className={cn(
                         "p-1.5 rounded-md",
                         "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
