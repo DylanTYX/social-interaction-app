@@ -86,6 +86,18 @@ export function buildInterviewMetrics(
     (analysis) => analysis.confidenceIndicators.assertivenessScore,
   );
   const starScores = analyses.map((analysis) => {
+    if (analysis.technicalScores) {
+      const scores = analysis.technicalScores;
+      return (
+        scores.problemFraming +
+        scores.approach +
+        scores.correctness +
+        scores.complexity +
+        scores.communication +
+        scores.edgeCases +
+        scores.codeQuality
+      ) / 7;
+    }
     const { situation, task, action, result } = analysis.starAnalysis;
     return (
       (situation.quality + task.quality + action.quality + result.quality) / 4

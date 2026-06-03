@@ -11,33 +11,35 @@ export interface InterviewReportSnapshot {
   scenarioDescription: string;
   personaName: string;
   generatedAt: string;
+  /**
+   * Optional reference to the job description that grounded this interview.
+   * Stored as a lightweight summary so the report can render a chip without
+   * re-fetching the full record.
+   */
+  jobDescription?: {
+    id: string;
+    title: string;
+    roleTitle: string | null;
+  } | null;
 }
 
-const REPORT_STORAGE_KEY = "social-interaction-app.interviewReport";
-
-export function saveInterviewReportSnapshot(
+/**
+ * Compute an overall numeric score from the metrics or analyses. Used when
+ * patching the Supabase session row at the end of an interview. The full
+ * report page now reads its data straight from Supabase, so the previous
+ * sessionStorage-based snapshot helpers were removed.
+ */
+export function computeAverageScore(
   snapshot: InterviewReportSnapshot,
-): void {
-  if (typeof window === "undefined") {
-    return;
+): number | null {
+  const overall = snapshot.metrics?.averageOverallScore;
+  if (typeof overall === "number" && Number.isFinite(overall)) {
+    return Math.round(overall);
   }
-
-  window.sessionStorage.setItem(REPORT_STORAGE_KEY, JSON.stringify(snapshot));
-}
-
-export function loadInterviewReportSnapshot(): InterviewReportSnapshot | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = window.sessionStorage.getItem(REPORT_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as InterviewReportSnapshot;
-  } catch {
-    return null;
-  }
+  if (snapshot.analyses.length === 0) return null;
+  const total = snapshot.analyses.reduce(
+    (sum, item) => sum + (item.overallScore ?? 0),
+    0,
+  );
+  return Math.round(total / snapshot.analyses.length);
 }
