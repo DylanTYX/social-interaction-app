@@ -5,7 +5,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Globe, Briefcase } from "lucide-react";
 
 interface PersonaCardProps {
