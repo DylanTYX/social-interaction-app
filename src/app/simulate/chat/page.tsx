@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Settings2,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -30,8 +32,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { saveInterviewReportSnapshot } from "@/lib/interview-report";
-import { SCENARIOS } from "@/lib/constants";
+import {
+  computeAverageScore,
+  type InterviewReportSnapshot,
+} from "@/lib/interview-report";
+import { getScenarioByValue } from "@/lib/scenarios";
+import {
+  appendDimensionSnapshot,
+  buildLaunchMetaFromSetup,
+  buildLoopProgress,
+} from "@/lib/session-launch-meta";
+import {
+  scenarioFromBootstrap,
+  useInterviewSessionBootstrap,
+} from "@/hooks/use-interview-session-bootstrap";
+import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {
   createInterviewSessionState,
   isInterviewComplete,
@@ -49,38 +64,31 @@ import {
 } from "@/lib/responseAnalyzer";
 import {
   createDefaultInterviewSetup,
-  loadInterviewLaunch,
   saveInterviewSetup,
 } from "@/lib/interview-setup";
-
-type ChatRole = "user" | "assistant";
-
-type ApiConversationMessage = {
-  role: ChatRole;
-  content: string;
-};
+import { consumeChatStream } from "@/lib/chat-stream";
 
 type DisplayMessage = {
   id: string;
   role: "user" | "ai";
   content: string;
   timestamp: string;
+  feedbackHint?: string | null;
+  feedbackTone?: MicroFeedbackTone;
+  feedbackLoading?: boolean;
 };
 
 type ChatApiResponse = {
   aiMessage: string;
-  updatedConversation: ApiConversationMessage[];
-  error?: string;
-  details?: string;
-};
-
-type AnalyzeApiResponse = {
-  analysis: AnalysisResult;
-  strategy: InterviewStrategy;
-  decisionReason: string;
-  confidence: number;
-  followupPrompt: string;
-  followupSummary: string;
+  turnCount: number;
+  summary: string | null;
+  // The chat route now analyzes the user's answer inline and returns the
+  // verdict here, so the client no longer makes a separate /api/analyze call.
+  analysis: AnalysisResult | null;
+  strategy: InterviewStrategy | null;
+  decisionReason: string | null;
+  confidence: number | null;
+  followupSummary: string | null;
   error?: string;
   details?: string;
 };
@@ -90,45 +98,6 @@ type ScenarioOption = {
   title: string;
   description: string;
 };
-
-type StreamEventPayload = {
-  chunk?: string;
-  error?: string;
-  details?: string;
-};
-
-const SCENARIO_OPTIONS: ScenarioOption[] = [
-  {
-    value: "qbr",
-    title: SCENARIOS[0].title,
-    description: SCENARIOS[0].description,
-  },
-  {
-    value: "conflict",
-    title: SCENARIOS[1].title,
-    description: SCENARIOS[1].description,
-  },
-  {
-    value: "client-negotiation",
-    title: SCENARIOS[2].title,
-    description: SCENARIOS[2].description,
-  },
-  {
-    value: "feedback",
-    title: SCENARIOS[3].title,
-    description: SCENARIOS[3].description,
-  },
-  {
-    value: "presentation",
-    title: SCENARIOS[4].title,
-    description: SCENARIOS[4].description,
-  },
-  {
-    value: "salary-negotiation",
-    title: SCENARIOS[5].title,
-    description: SCENARIOS[5].description,
-  },
-];
 
 const DEFAULT_SETUP = createDefaultInterviewSetup();
 const RESPONSE_TIME_LIMIT_SECONDS = 35;
@@ -154,13 +123,6 @@ function createMessageId() {
   return `msg-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 10)}`;
-}
-
-function getScenarioByValue(value: string) {
-  return (
-    SCENARIO_OPTIONS.find((option) => option.value === value) ??
-    SCENARIO_OPTIONS[0]
-  );
 }
 
 function buildWelcomeMessage(
@@ -252,96 +214,50 @@ function getMetricTone(metrics: InterviewMetrics | null): string {
   return "The response quality is holding steady.";
 }
 
-async function consumeChatStream(
-  response: Response,
-  onDelta: (chunk: string) => void,
-): Promise<ChatApiResponse> {
-  if (!response.body) {
-    throw new Error("Streaming response did not include a body.");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let currentEvent = "";
-  let currentData = "";
-  let finalResult: ChatApiResponse | null = null;
-
-  const flushEvent = () => {
-    const payload = currentData.trim();
-
-    if (!currentEvent || !payload) {
-      currentEvent = "";
-      currentData = "";
-      return;
-    }
-
-    if (currentEvent === "delta") {
-      const parsed = JSON.parse(payload) as StreamEventPayload;
-      if (parsed.chunk) {
-        onDelta(parsed.chunk);
-      }
-    } else if (currentEvent === "done") {
-      finalResult = JSON.parse(payload) as ChatApiResponse;
-    } else if (currentEvent === "error") {
-      const parsed = JSON.parse(payload) as StreamEventPayload;
-      throw new Error(parsed.error ?? parsed.details ?? "Streaming failed.");
-    }
-
-    currentEvent = "";
-    currentData = "";
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) {
-      break;
-    }
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-
-    for (const rawLine of lines) {
-      const line = rawLine.trimEnd();
-
-      if (line.startsWith("event:")) {
-        flushEvent();
-        currentEvent = line.slice(6).trim();
-        continue;
-      }
-
-      if (line.startsWith("data:")) {
-        currentData += line.slice(5).trim();
-        continue;
-      }
-
-      if (line === "") {
-        flushEvent();
-      }
-    }
-  }
-
-  flushEvent();
-
-  if (!finalResult) {
-    throw new Error(
-      "Streaming response ended before the final payload arrived.",
-    );
-  }
-
-  return finalResult;
+export default function ChatSimulatePage() {
+  return (
+    <Suspense fallback={<ChatLoadingFallback />}>
+      <ChatSimulateInner />
+    </Suspense>
+  );
 }
 
-export default function ChatSimulatePage() {
+function ChatLoadingFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="flex items-center gap-3 text-sm text-gray-500">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+        Preparing chat session...
+      </div>
+    </div>
+  );
+}
+
+function ChatSimulateInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activePersonaConfig, setActivePersonaConfig] = useState(
-    () => DEFAULT_SETUP.personaConfig,
-  );
+  const bootstrap = useInterviewSessionBootstrap(searchParams, "text");
+
+  const activePersonaConfig = bootstrap.personaConfig;
+  const activeScenarioValue = bootstrap.scenarioValue;
+  const streamResponses = bootstrap.streamResponses;
+  const liveCoachingEnabled = bootstrap.liveCoachingEnabled;
+  const [liveCoachingOn, setLiveCoachingOn] = useState(liveCoachingEnabled);
+  const initialState = bootstrap;
+
   const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
-    createInterviewSessionState(createSessionId(), activePersonaConfig.name),
+    createInterviewSessionState(
+      bootstrap.sessionId ?? createSessionId(),
+      bootstrap.personaConfig.name,
+    ),
   );
+
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [messagesHydrated, setMessagesHydrated] = useState(false);
+  const [dimensionSnapshots, setDimensionSnapshots] = useState<
+    import("@/lib/session-launch-meta").DimensionSnapshot[]
+  >([]);
+
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([]);
   const [strategyHistory, setStrategyHistory] = useState<InterviewStrategy[]>(
     [],
@@ -357,24 +273,85 @@ export default function ChatSimulatePage() {
   const [lastDecisionConfidence, setLastDecisionConfidence] = useState<
     number | null
   >(null);
-
-  const [activeScenarioValue, setActiveScenarioValue] = useState(
-    () => searchParams.get("scenario") ?? DEFAULT_SETUP.scenarioValue,
-  );
-  const [streamResponses, setStreamResponses] = useState(
-    () => searchParams.get("stream") === "1" || DEFAULT_SETUP.streamResponses,
-  );
-  const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [conversationHistory, setConversationHistory] = useState<
-    ApiConversationMessage[]
-  >([]);
   const [isSending, setIsSending] = useState(false);
   const [userTurnKey, setUserTurnKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [showLiveCoaching, setShowLiveCoaching] = useState(true);
-  const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
+  const [showLiveCoaching, setShowLiveCoaching] = useState(
+    liveCoachingEnabled,
+  );
 
-  const activeScenario = getScenarioByValue(activeScenarioValue);
+  useEffect(() => {
+    setLiveCoachingOn(liveCoachingEnabled);
+    setShowLiveCoaching(liveCoachingEnabled);
+  }, [liveCoachingEnabled]);
+  const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
+  const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
+
+  const handleEndSession = async () => {
+    if (isEnding) return;
+    setIsEnding(true);
+    const sessionId = bootstrap.sessionId ?? initialState.sessionId;
+    if (sessionId) {
+      const finalMetrics = buildInterviewMetrics({
+        analyses: analysisHistory,
+        state: sessionState,
+      });
+      const startedAtMs = Date.parse(sessionState.createdAt);
+      const durationMinutes = Number.isFinite(startedAtMs)
+        ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
+        : null;
+      const completedSnapshot: InterviewReportSnapshot = {
+        sessionState: markInterviewComplete(sessionState),
+        metrics: finalMetrics,
+        analyses: analysisHistory,
+        strategyHistory,
+        scenarioTitle: activeScenario.title,
+        scenarioDescription: activeScenario.description,
+        personaName: activePersonaConfig.name,
+        generatedAt: new Date().toISOString(),
+        jobDescription: initialState.jobDescriptionRef,
+      };
+      const averageScore = computeAverageScore(completedSnapshot);
+      try {
+        const launchMeta = buildLaunchMetaFromSetup({
+          scenarioValue: activeScenarioValue,
+          customScenarioBrief: bootstrap.customScenarioBrief,
+          streamResponses,
+          liveCoachingEnabled,
+          personaConfig: activePersonaConfig,
+          practiceMode: "text",
+          interviewLoop: bootstrap.interviewLoop,
+          voiceConfig: DEFAULT_SETUP.voiceConfig,
+          jobDescription: DEFAULT_SETUP.jobDescription,
+          resume: DEFAULT_SETUP.resume,
+        });
+        const loop = buildLoopProgress(launchMeta, sessionId);
+        await fetch(`/api/sessions/${sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            averageScore,
+            durationMinutes,
+            metrics: {
+              ...finalMetrics,
+              launch: launchMeta,
+              loop,
+            },
+            endedAt: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // best-effort; the user still gets routed to the report page
+      }
+      router.push(`/simulate/report/${sessionId}`);
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
+  const activeScenario = scenarioFromBootstrap(bootstrap);
   const stageLabel = getStageLabel(sessionState.currentStage);
   const stageGuidance = getStageGuidance(
     sessionState.currentStage,
@@ -383,69 +360,115 @@ export default function ChatSimulatePage() {
   );
   const metricTone = getMetricTone(liveMetrics);
 
+  // Handle redirects without doing setState here — the lazy initializers
+  // above already populated all state slots from the launch payload, so this
+  // effect only ever performs side effects.
   useEffect(() => {
-    const storedSetup = loadInterviewLaunch();
-
-    if (!storedSetup) {
+    if (bootstrap.status === "redirect-setup") {
       router.replace("/simulate/setup?mode=text");
-      return;
-    }
-
-    if (storedSetup.practiceMode !== "text") {
+    } else if (bootstrap.status === "redirect-voice") {
       router.replace("/simulate/voice?mode=voice");
-      return;
     }
-
-    const nextScenarioValue =
-      searchParams.get("scenario") ?? storedSetup.scenarioValue;
-    const nextStreamResponses =
-      searchParams.get("stream") === null
-        ? storedSetup.streamResponses
-        : searchParams.get("stream") === "1";
-
-    setActivePersonaConfig(storedSetup.personaConfig);
-    setActiveScenarioValue(nextScenarioValue);
-    setStreamResponses(nextStreamResponses);
-    const scenario = getScenarioByValue(nextScenarioValue);
-    const welcomeMessage = buildWelcomeMessage(
-      scenario,
-      storedSetup.personaConfig.name,
-    );
-
-    setMessages([welcomeMessage]);
-    setConversationHistory([
-      { role: "assistant", content: welcomeMessage.content },
-    ]);
-    setSessionState(
-      createInterviewSessionState(
-        createSessionId(),
-        storedSetup.personaConfig.name,
-      ),
-    );
-    setAnalysisHistory([]);
-    setStrategyHistory([]);
-    setLiveMetrics(null);
-    setLastFollowupPrompt(null);
-    setLastDecisionReason(null);
-    setLastStrategy(null);
-    setLastDecisionConfidence(null);
-    setError(null);
-    setIsSending(false);
-    setUserTurnKey(0);
-  }, [router, searchParams]);
+  }, [bootstrap.status, router]);
 
   useEffect(() => {
+    if (bootstrap.status !== "ready" || messagesHydrated) return;
+
+    const resumeId = searchParams.get("session");
+    if (resumeId && bootstrap.sessionId) {
+      let cancelled = false;
+      const hydrate = async () => {
+        try {
+          const response = await fetch(
+            `/api/sessions/${encodeURIComponent(resumeId)}/resume`,
+            { cache: "no-store" },
+          );
+          if (!response.ok) throw new Error("Failed to load messages.");
+          const { messages: rows } = (await response.json()) as {
+            messages: Array<{
+              id: string;
+              role: string;
+              content: string;
+              createdAt: string;
+            }>;
+          };
+          if (cancelled) return;
+          const restored: DisplayMessage[] = rows.map((row) => ({
+            id: row.id,
+            role: row.role === "user" ? "user" : "ai",
+            content: row.content,
+            timestamp: new Date(row.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          }));
+          setMessages(
+            restored.length > 0
+              ? restored
+              : [
+                  buildWelcomeMessage(
+                    activeScenario,
+                    bootstrap.personaConfig.name,
+                  ),
+                ],
+          );
+        } catch {
+          if (!cancelled) {
+            setMessages([
+              buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name),
+            ]);
+          }
+        } finally {
+          if (!cancelled) setMessagesHydrated(true);
+        }
+      };
+      queueMicrotask(() => void hydrate());
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setMessages([
+      buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name),
+    ]);
+    setMessagesHydrated(true);
+  }, [
+    bootstrap.status,
+    bootstrap.sessionId,
+    bootstrap.personaConfig.name,
+    activeScenario,
+    messagesHydrated,
+    searchParams,
+  ]);
+
+  useEffect(() => {
+    if (bootstrap.status !== "ready") return;
     saveInterviewSetup({
       scenarioValue: activeScenarioValue,
       streamResponses,
+      liveCoachingEnabled,
       personaConfig: activePersonaConfig,
       practiceMode: "text",
+      interviewLoop: bootstrap.interviewLoop,
       voiceConfig: DEFAULT_SETUP.voiceConfig,
+      jobDescription: DEFAULT_SETUP.jobDescription,
+      resume: DEFAULT_SETUP.resume,
     });
-  }, [activePersonaConfig, activeScenarioValue, streamResponses]);
+  }, [
+    bootstrap.status,
+    activePersonaConfig,
+    activeScenarioValue,
+    streamResponses,
+    liveCoachingEnabled,
+    bootstrap.interviewLoop,
+  ]);
 
   useEffect(() => {
-    saveInterviewReportSnapshot({
+    // Mirror progress to the Supabase session row so the dashboard stays in
+    // sync. Fire-and-forget; failures are silent.
+    if (!bootstrap.sessionId || analysisHistory.length === 0) return;
+
+    const snapshot: InterviewReportSnapshot = {
       sessionState,
       metrics: liveMetrics,
       analyses: analysisHistory,
@@ -454,8 +477,23 @@ export default function ChatSimulatePage() {
       scenarioDescription: activeScenario.description,
       personaName: activePersonaConfig.name,
       generatedAt: new Date().toISOString(),
+      jobDescription: initialState.jobDescriptionRef,
+    };
+
+    const averageScore = computeAverageScore(snapshot);
+    void fetch(`/api/sessions/${bootstrap.sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        averageScore,
+        metrics: liveMetrics,
+      }),
+    }).catch(() => {
+      // ignore; the report page reads from Supabase directly
     });
   }, [
+    initialState.sessionId,
+    initialState.jobDescriptionRef,
     sessionState,
     liveMetrics,
     analysisHistory,
@@ -471,21 +509,24 @@ export default function ChatSimulatePage() {
       return;
     }
 
+    if (!initialState.sessionId) {
+      setError(
+        "This session is not connected to the database. Please start a new interview from the setup page.",
+      );
+      return;
+    }
+
     const userMessage: DisplayMessage = {
       id: createMessageId(),
       role: "user",
       content: trimmedMessage,
       timestamp: getCurrentTimestamp(),
+      feedbackLoading: liveCoachingOn,
     };
 
     const nextMessages = [...messages, userMessage];
-    const nextConversationHistory = [
-      ...conversationHistory,
-      { role: "user" as const, content: trimmedMessage },
-    ];
 
     setMessages(nextMessages);
-    setConversationHistory(nextConversationHistory);
     setIsSending(true);
     setError(null);
 
@@ -493,12 +534,8 @@ export default function ChatSimulatePage() {
       const assistantMessageId = createMessageId();
 
       const payload = {
+        sessionId: initialState.sessionId,
         userMessage: trimmedMessage,
-        personaName: activePersonaConfig.name,
-        personaConfig: activePersonaConfig,
-        conversationHistory: nextConversationHistory,
-        scenarioName: activeScenario.title,
-        scenarioDescription: activeScenario.description,
         streamResponse: streamResponses,
       };
 
@@ -531,7 +568,7 @@ export default function ChatSimulatePage() {
 
       if (streamResponses) {
         try {
-          data = await consumeChatStream(response, (chunk) => {
+          data = await consumeChatStream<ChatApiResponse>(response, (chunk) => {
             setMessages((currentMessages) =>
               currentMessages.map((item) =>
                 item.id === assistantMessageId
@@ -585,7 +622,6 @@ export default function ChatSimulatePage() {
         setMessages((currentMessages) => [...currentMessages, aiMessage]);
       }
 
-      setConversationHistory(data.updatedConversation);
       setUserTurnKey((currentKey) => currentKey + 1);
 
       if (trimmedMessage.length < 10) {
@@ -600,45 +636,82 @@ export default function ChatSimulatePage() {
         return;
       }
 
-      const analysisResponse = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          candidateResponse: trimmedMessage,
-          question: data.aiMessage,
-          personaName: activePersonaConfig.name,
-        }),
-      });
+      if (liveCoachingOn) {
+        void fetch("/api/analyze/micro", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateResponse: trimmedMessage,
+            question: data.aiMessage,
+          }),
+        })
+          .then(async (microResponse) => {
+            if (!microResponse.ok) return null;
+            return (await microResponse.json()) as {
+              hint: string;
+              tone: MicroFeedbackTone;
+            };
+          })
+          .then((micro) => {
+            if (!micro) {
+              setMessages((current) =>
+                current.map((item) =>
+                  item.id === userMessage.id
+                    ? { ...item, feedbackLoading: false }
+                    : item,
+                ),
+              );
+              return;
+            }
+            setMessages((current) =>
+              current.map((item) =>
+                item.id === userMessage.id
+                  ? {
+                      ...item,
+                      feedbackHint: micro.hint,
+                      feedbackTone: micro.tone,
+                      feedbackLoading: false,
+                    }
+                  : item,
+              ),
+            );
+          })
+          .catch(() => {
+            setMessages((current) =>
+              current.map((item) =>
+                item.id === userMessage.id
+                  ? { ...item, feedbackLoading: false }
+                  : item,
+              ),
+            );
+          });
+      }
 
-      const analysisData =
-        (await analysisResponse.json()) as AnalyzeApiResponse;
-
-      if (!analysisResponse.ok) {
-        setError(
-          analysisData.details ??
-            analysisData.error ??
-            "We could not analyze that response yet.",
-        );
+      // The interviewer already scored this answer inline. Trivial answers
+      // ("yes", "ready") come back with analysis null — skip the scored-turn
+      // bookkeeping for those.
+      if (!data.analysis || !data.strategy) {
         return;
       }
 
+      const analysisResult = data.analysis;
+      const turnStrategy = data.strategy;
+      const turnConfidence = data.confidence ?? 50;
+
       const decision = {
-        strategy: analysisData.strategy as InterviewStrategy,
-        reason: analysisData.decisionReason,
-        confidence: analysisData.confidence,
-        shouldEscalate: analysisData.confidence < 50,
-        shouldSlowDown: analysisData.confidence > 80,
-        nextFocus:
-          analysisData.analysis.followupTopics[0] ?? "specific examples",
+        strategy: turnStrategy,
+        reason: data.decisionReason ?? "",
+        confidence: turnConfidence,
+        shouldEscalate: turnConfidence < 50,
+        shouldSlowDown: turnConfidence > 80,
+        nextFocus: analysisResult.followupTopics[0] ?? "specific examples",
       };
 
       const updatedSessionState = recordInterviewTurn(sessionState, {
         userMessage: trimmedMessage,
         aiMessage: data.aiMessage,
         question: data.aiMessage,
-        analysis: analysisData.analysis,
+        analysis: analysisResult,
         decision,
       }).state;
 
@@ -646,22 +719,76 @@ export default function ChatSimulatePage() {
         ? markInterviewComplete(updatedSessionState)
         : updatedSessionState;
 
-      const nextAnalysisHistory = [...analysisHistory, analysisData.analysis];
-      const nextStrategyHistory = [...strategyHistory, analysisData.strategy];
+      const nextAnalysisHistory = [...analysisHistory, analysisResult];
+      const nextStrategyHistory = [...strategyHistory, turnStrategy];
 
       setSessionState(finalSessionState);
       setAnalysisHistory(nextAnalysisHistory);
       setStrategyHistory(nextStrategyHistory);
-      setLiveMetrics(
-        buildInterviewMetrics({
+      const nextMetrics = buildInterviewMetrics({
+        analyses: nextAnalysisHistory,
+        state: finalSessionState,
+      });
+      setLiveMetrics(nextMetrics);
+
+      if (bootstrap.sessionId) {
+        const metricsPayload = appendDimensionSnapshot(
+          { dimensionSnapshots },
+          analysisResult,
+        );
+        const nextSnapshots = metricsPayload.dimensionSnapshots ?? [];
+        setDimensionSnapshots(nextSnapshots);
+        void fetch(`/api/sessions/${bootstrap.sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            averageScore: analysisResult.overallScore,
+            metrics: { ...nextMetrics, ...metricsPayload },
+          }),
+        }).catch(() => {
+          // ignore
+        });
+      }
+      setLastFollowupPrompt(data.followupSummary);
+      setLastDecisionReason(data.decisionReason);
+      setLastStrategy(turnStrategy);
+      setLastDecisionConfidence(turnConfidence);
+
+      if (initialState.sessionId && isInterviewComplete(finalSessionState)) {
+        const finalMetrics = buildInterviewMetrics({
           analyses: nextAnalysisHistory,
           state: finalSessionState,
-        }),
-      );
-      setLastFollowupPrompt(analysisData.followupPrompt);
-      setLastDecisionReason(analysisData.decisionReason);
-      setLastStrategy(analysisData.strategy);
-      setLastDecisionConfidence(analysisData.confidence);
+        });
+        const completedSnapshot: InterviewReportSnapshot = {
+          sessionState: finalSessionState,
+          metrics: finalMetrics,
+          analyses: nextAnalysisHistory,
+          strategyHistory: nextStrategyHistory,
+          scenarioTitle: activeScenario.title,
+          scenarioDescription: activeScenario.description,
+          personaName: activePersonaConfig.name,
+          generatedAt: new Date().toISOString(),
+          jobDescription: initialState.jobDescriptionRef,
+        };
+        const averageScore = computeAverageScore(completedSnapshot);
+        const startedAtMs = Date.parse(finalSessionState.createdAt);
+        const durationMinutes = Number.isFinite(startedAtMs)
+          ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
+          : null;
+        void fetch(`/api/sessions/${bootstrap.sessionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "completed",
+            averageScore,
+            durationMinutes,
+            metrics: finalMetrics,
+            endedAt: new Date().toISOString(),
+          }),
+        }).catch(() => {
+          // ignore; local snapshot drives the report page
+        });
+      }
     } catch (requestError) {
       const messageText =
         requestError instanceof Error
@@ -675,6 +802,28 @@ export default function ChatSimulatePage() {
 
   const editSetupHref = `/simulate/setup?scenario=${activeScenarioValue}&stream=${streamResponses ? "1" : "0"}`;
 
+  if (bootstrap.status === "loading" || !messagesHydrated) {
+    return <ChatLoadingFallback />;
+  }
+
+  if (bootstrap.status === "error") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 px-6">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle>Could not open session</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">{bootstrap.error}</p>
+            <Link href="/dashboard/sessions">
+              <Button>Back to sessions</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="h-16 bg-white border-b border-gray-200/80 flex items-center px-6 gap-4 shadow-soft">
@@ -687,14 +836,25 @@ export default function ChatSimulatePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold">Chat Practice</h1>
-          <p className="text-sm text-gray-500">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-semibold">Chat practice</h1>
+          <p className="text-sm text-gray-500 truncate">
             {activeScenario.title} • {activePersonaConfig.name} •{" "}
             {streamResponses ? "Streaming enabled" : "Standard mode"}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {initialState.jobDescriptionTitle && (
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+              title={initialState.jobDescriptionTitle}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="max-w-[160px] truncate">
+                {initialState.jobDescriptionTitle}
+              </span>
+            </span>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="shadow-soft-sm">
@@ -706,21 +866,77 @@ export default function ChatSimulatePage() {
               <DropdownMenuItem onSelect={() => router.push(editSetupHref)}>
                 Edit setup
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  const next = !liveCoachingOn;
+                  setLiveCoachingOn(next);
+                  setShowLiveCoaching(next);
+                  saveInterviewSetup({
+                    ...DEFAULT_SETUP,
+                    scenarioValue: activeScenarioValue,
+                    streamResponses,
+                    liveCoachingEnabled: next,
+                    personaConfig: activePersonaConfig,
+                    practiceMode: "text",
+                    interviewLoop: bootstrap.interviewLoop,
+                    voiceConfig: DEFAULT_SETUP.voiceConfig,
+                    jobDescription: DEFAULT_SETUP.jobDescription,
+                  });
+                }}
+              >
+                {liveCoachingOn
+                  ? "Turn off live coaching"
+                  : "Turn on live coaching"}
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setIsAdvancedStateOpen(true)}>
                 Advanced system state
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Link href="/simulate/report">
-            <Button
-              variant="destructive"
-              className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-            >
-              End Session
-            </Button>
-          </Link>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setIsEndDialogOpen(true)}
+            className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+          >
+            End session
+          </Button>
         </div>
       </div>
+
+      <Dialog
+        open={isEndDialogOpen}
+        onOpenChange={(open) => {
+          if (!isEnding) setIsEndDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>End this session?</DialogTitle>
+            <DialogDescription>
+              We&apos;ll generate the feedback report from the conversation so
+              far. Once a session is ended you can&apos;t resume it — start a
+              fresh practice when you&apos;re ready.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEndDialogOpen(false)}
+              disabled={isEnding}
+            >
+              Keep practicing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleEndSession()}
+              disabled={isEnding}
+            >
+              {isEnding ? "Ending..." : "End and view report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-sky-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -754,6 +970,9 @@ export default function ChatSimulatePage() {
                   content={msg.content}
                   timestamp={msg.timestamp}
                   personaName={activePersonaConfig.name}
+                  feedbackHint={msg.feedbackHint}
+                  feedbackTone={msg.feedbackTone}
+                  feedbackLoading={msg.feedbackLoading}
                 />
               ))}
 
