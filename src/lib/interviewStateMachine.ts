@@ -151,41 +151,6 @@ export function recordInterviewTurn(
   };
 }
 
-export function advanceInterviewStage(
-  state: InterviewSessionState,
-  reason?: string,
-): InterviewSessionState {
-  const nextStage =
-    state.currentStage === "intro"
-      ? "questioning"
-      : state.currentStage === "questioning"
-        ? "analysis"
-        : state.currentStage === "analysis"
-          ? "strategy"
-          : state.currentStage === "strategy"
-            ? "followup"
-            : state.currentStage === "followup"
-              ? "questioning"
-              : state.currentStage;
-
-  return {
-    ...state,
-    currentStage: nextStage,
-    updatedAt: createTimestamp(),
-    turns: reason
-      ? [
-          ...state.turns,
-          {
-            id: `${state.sessionId}-${state.turns.length + 1}`,
-            stage: state.currentStage,
-            userMessage: reason,
-            timestamp: createTimestamp(),
-          },
-        ]
-      : state.turns,
-  };
-}
-
 export function buildStateSummary(
   state: InterviewSessionState,
   decision?: DecisionOutcome,

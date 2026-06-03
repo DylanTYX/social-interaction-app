@@ -43,12 +43,6 @@ export interface PersonaConfig {
 
 export const PERSONA_DIAL_DEFAULT = 5 as const;
 
-export interface PersonaDescription {
-  key: string;
-  description: string;
-  config: PersonaConfig;
-}
-
 /**
  * Build communication style description based on strictness/warmth
  */
@@ -355,27 +349,4 @@ export function getPersonaConfig(nameOrAlias: string): PersonaConfig | null {
   }
 
   return null;
-}
-
-/**
- * Get all available persona names
- */
-export function getAvailablePersonas(): string[] {
-  return Object.keys(PRESET_PERSONAS);
-}
-
-/**
- * Create a custom persona from partial config (merges with defaults)
- */
-export function createCustomPersona(
-  basePersonaName: string,
-  overrides: Partial<PersonaConfig>,
-): PersonaConfig | null {
-  const baseConfig = getPersonaConfig(basePersonaName);
-  if (!baseConfig) return null;
-
-  return {
-    ...baseConfig,
-    ...overrides,
-  };
 }

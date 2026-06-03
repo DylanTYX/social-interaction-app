@@ -386,13 +386,3 @@ export function loadInterviewLaunch(): InterviewLaunchPayload | null {
     return null;
   }
 }
-
-export function clearInterviewLaunch(): void {
-  const session = getSession();
-  if (!isStorageAvailable(session)) return;
-  try {
-    session.removeItem(LAUNCH_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}

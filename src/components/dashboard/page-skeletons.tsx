@@ -74,15 +74,3 @@ export function JobDescriptionRowSkeleton() {
     </div>
   );
 }
-
-export function DashboardStatSkeleton() {
-  return (
-    <Card className="border border-gray-200/80">
-      <CardContent className="space-y-2 py-6">
-        <Pulse className="h-3 w-20" />
-        <Pulse className="h-8 w-16" />
-        <Pulse className="h-3 w-28" />
-      </CardContent>
-    </Card>
-  );
-}

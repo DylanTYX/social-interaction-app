@@ -29,25 +29,6 @@ export function markOnboardingComplete(goal?: OnboardingGoal): void {
   }
 }
 
-export function getOnboardingGoal(): OnboardingGoal | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(ONBOARDING_GOAL_KEY);
-    if (
-      raw === "job-interview" ||
-      raw === "feedback" ||
-      raw === "negotiation" ||
-      raw === "presentation" ||
-      raw === "custom"
-    ) {
-      return raw;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export interface OnboardingDefaults {
   scenarioValue: string;
   customScenarioBrief?: string;

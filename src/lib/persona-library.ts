@@ -1,5 +1,4 @@
 import {
-  PRESET_PERSONAS,
   type CommunicationStyle,
   type PersonaConfig,
 } from "./personaEngine";
@@ -364,12 +363,4 @@ export function findEntryMatchingConfig(
         (entry.config.pushback ?? 5) === (config.pushback ?? 5),
     ) ?? null
   );
-}
-
-/**
- * The built-in seed personas, exposed for any read-only context (e.g.
- * marketing pages or fallback rendering before the library has loaded).
- */
-export function getSeedPersonaConfigs(): PersonaConfig[] {
-  return Object.values(PRESET_PERSONAS);
 }

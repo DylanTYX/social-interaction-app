@@ -36,7 +36,6 @@ import {
   computeAverageScore,
   type InterviewReportSnapshot,
 } from "@/lib/interview-report";
-import { getScenarioByValue } from "@/lib/scenarios";
 import {
   appendDimensionSnapshot,
   buildLaunchMetaFromSetup,
@@ -938,15 +937,15 @@ function ChatSimulateInner() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-sky-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-sky-50/60">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-blue-50/50 px-6 py-4 dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-blue-50/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
                   Interview room
                 </div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                <h2 className="text-xl font-semibold text-slate-900">
                   Adaptive session in progress
                 </h2>
               </div>
@@ -977,14 +976,14 @@ function ChatSimulateInner() {
               ))}
 
               {error && (
-                <Card className="border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30">
+                <Card className="border-amber-200 bg-amber-50/80">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-amber-900 dark:text-amber-200">
+                    <CardTitle className="text-sm text-amber-900">
                       Coaching note
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                    <p className="text-sm text-amber-800">
                       {error}
                     </p>
                   </CardContent>
@@ -992,7 +991,7 @@ function ChatSimulateInner() {
               )}
 
               {isSending && (
-                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
                   Generating interviewer response...
                 </div>
@@ -1000,7 +999,7 @@ function ChatSimulateInner() {
             </div>
           </div>
 
-          <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
+          <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
             <ChatInput
               key={userTurnKey}
               onSend={handleSend}
@@ -1013,11 +1012,11 @@ function ChatSimulateInner() {
 
         <div className="hidden xl:flex">
           {showLiveCoaching ? (
-            <div className="relative h-full border-l border-slate-200/80 p-4 dark:border-slate-800">
+            <div className="relative h-full border-l border-slate-200/80 p-4">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="absolute -left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950"
+                className="absolute -left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft"
                 onClick={() => setShowLiveCoaching(false)}
                 aria-label="Collapse live coaching"
               >
@@ -1030,11 +1029,11 @@ function ChatSimulateInner() {
               />
             </div>
           ) : (
-            <div className="flex h-full w-12 items-center justify-center border-l border-slate-200/80 bg-white/80 shadow-soft backdrop-blur dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="flex h-full w-12 items-center justify-center border-l border-slate-200/80 bg-white/80 shadow-soft backdrop-blur">
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="rounded-full border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950"
+                className="rounded-full border border-slate-200 bg-white shadow-soft"
                 onClick={() => setShowLiveCoaching(true)}
                 aria-label="Expand live coaching"
               >
@@ -1046,7 +1045,7 @@ function ChatSimulateInner() {
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>
-        <DialogContent className="max-w-3xl border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+        <DialogContent className="max-w-3xl border-slate-200 bg-white/95 backdrop-blur">
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>

@@ -303,7 +303,7 @@ export default function LandingPage() {
       </section>
 
       {/* Try one question */}
-      <section className="bg-gray-50 py-24">
+      <section id="demo" className="scroll-mt-20 bg-gray-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-12 space-y-4 text-center">
             <h2 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
@@ -321,10 +321,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section
-        id="demo"
-        className="bg-linear-to-br from-blue-600 to-purple-600 py-24"
-      >
+      <section className="bg-linear-to-br from-blue-600 to-purple-600 py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <Reveal>
             <h2 className="mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl">

@@ -5,7 +5,6 @@ import {
   Briefcase,
   Dice5,
   Globe,
-  Plus,
   RotateCcw,
   Pencil,
   Trash2,

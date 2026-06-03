@@ -212,30 +212,30 @@ function buildMetricChips(
 
 function toneStyles(tone: MetricChip["tone"]): string {
   if (tone === "emerald") {
-    return "from-emerald-500/20 to-emerald-400/5 border-emerald-200/50 text-emerald-800 dark:text-emerald-300";
+    return "from-emerald-500/20 to-emerald-400/5 border-emerald-200/50 text-emerald-800";
   }
 
   if (tone === "amber") {
-    return "from-amber-500/20 to-amber-400/5 border-amber-200/50 text-amber-800 dark:text-amber-300";
+    return "from-amber-500/20 to-amber-400/5 border-amber-200/50 text-amber-800";
   }
 
   if (tone === "violet") {
-    return "from-violet-500/20 to-violet-400/5 border-violet-200/50 text-violet-800 dark:text-violet-300";
+    return "from-violet-500/20 to-violet-400/5 border-violet-200/50 text-violet-800";
   }
 
-  return "from-blue-500/20 to-sky-400/5 border-blue-200/50 text-blue-800 dark:text-blue-300";
+  return "from-blue-500/20 to-sky-400/5 border-blue-200/50 text-blue-800";
 }
 
 function coachingToneStyle(tone: CoachingItem["tone"]): string {
   if (tone === "warn") {
-    return "border-amber-200/60 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30";
+    return "border-amber-200/60 bg-amber-50/70";
   }
 
   if (tone === "good") {
-    return "border-emerald-200/60 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/30";
+    return "border-emerald-200/60 bg-emerald-50/70";
   }
 
-  return "border-sky-200/60 bg-sky-50/70 dark:border-sky-900/60 dark:bg-sky-950/30";
+  return "border-sky-200/60 bg-sky-50/70";
 }
 
 export function LiveFeedbackSidebar({
@@ -247,13 +247,13 @@ export function LiveFeedbackSidebar({
   const coachingItems = getCoachingItems(analyses, followupPrompt);
 
   return (
-    <aside className="flex max-h-full w-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-slate-200/70 bg-white/65 p-4 shadow-soft-md backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/50 xl:w-104">
+    <aside className="flex max-h-full w-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-slate-200/70 bg-white/65 p-4 shadow-soft-md backdrop-blur-xl xl:w-104">
       <div className="mb-4 flex shrink-0 items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="text-base font-semibold text-slate-900">
             Live Coaching
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500">
             Real-time nudges during the interview
           </p>
         </div>
@@ -286,7 +286,7 @@ export function LiveFeedbackSidebar({
                   </span>
                 </div>
                 {metric.value === null ? (
-                  <div className="flex h-7 items-center justify-center rounded-md border border-dashed border-slate-200/70 text-[10px] text-slate-400 dark:border-slate-800">
+                  <div className="flex h-7 items-center justify-center rounded-md border border-dashed border-slate-200/70 text-[10px] text-slate-400">
                     No samples yet
                   </div>
                 ) : (
@@ -343,12 +343,12 @@ export function LiveFeedbackSidebar({
             style={{ animationDelay: `${index * 80}ms` }}
           >
             <CardHeader className="pb-1.5">
-              <CardTitle className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <CardTitle className="text-sm font-semibold text-slate-900">
                 {item.title}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+              <p className="text-xs leading-5 text-slate-600">
                 {item.body}
               </p>
             </CardContent>

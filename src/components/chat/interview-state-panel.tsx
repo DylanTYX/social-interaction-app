@@ -52,10 +52,10 @@ export function InterviewStatePanel({
     : 0;
 
   return (
-    <Card className="border border-slate-200/80 bg-white/80 shadow-soft backdrop-blur-sm dark:border-slate-800/70 dark:bg-slate-950/60">
+    <Card className="border border-slate-200/80 bg-white/80 shadow-soft backdrop-blur-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm font-semibold tracking-wide text-slate-900 dark:text-slate-100">
+          <CardTitle className="text-sm font-semibold tracking-wide text-slate-900">
             Interview State Engine
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
@@ -67,14 +67,14 @@ export function InterviewStatePanel({
         <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70 dark:border-slate-700"
+            className="gap-1 border-slate-300/80 bg-white/70"
           >
             <Layers3 className="h-3.5 w-3.5" />
             Stage {state.currentStage}
           </Badge>
           <Badge
             variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70 dark:border-slate-700"
+            className="gap-1 border-slate-300/80 bg-white/70"
           >
             <Brain className="h-3.5 w-3.5" />
             {lastStrategy
@@ -83,20 +83,20 @@ export function InterviewStatePanel({
           </Badge>
           <Badge
             variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70 dark:border-slate-700"
+            className="gap-1 border-slate-300/80 bg-white/70"
           >
             <Radar className="h-3.5 w-3.5" />
             {state.followupCount} adaptive follow-ups
           </Badge>
         </div>
 
-        <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+        <p className="text-xs leading-5 text-slate-600">
           {stageGuidance}
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="mb-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
               <span className="inline-flex items-center gap-1">
                 <Gauge className="h-3.5 w-3.5" />
                 Decision confidence
@@ -110,8 +110,8 @@ export function InterviewStatePanel({
             />
           </div>
 
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="mb-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
               <span>Communication signal</span>
               <span>{Math.round(communication)}%</span>
             </div>
@@ -124,7 +124,7 @@ export function InterviewStatePanel({
         </div>
 
         {decisionReason && (
-          <div className="rounded-lg border border-slate-200/70 bg-white/70 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+          <div className="rounded-lg border border-slate-200/70 bg-white/70 px-3 py-2 text-xs text-slate-600">
             {decisionReason}
           </div>
         )}

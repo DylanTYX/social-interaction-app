@@ -118,10 +118,3 @@ export function buildInterviewMetrics(
     lastUpdated: state.updatedAt,
   };
 }
-
-export function mergeMetricsIntoState(
-  state: InterviewSessionState,
-  analyses: AnalysisResult[],
-): InterviewMetrics {
-  return buildInterviewMetrics({ analyses, state });
-}

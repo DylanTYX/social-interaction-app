@@ -29,8 +29,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-
 const navigation = [
   {
     name: "Dashboard",
@@ -329,12 +327,6 @@ export function Sidebar() {
               isCollapsed={isCollapsed}
             />
           ))}
-          <div className={cn(isCollapsed && "flex justify-center")}>
-            <ThemeToggle
-              showLabel={!isCollapsed}
-              className={cn(!isCollapsed && "w-full")}
-            />
-          </div>
         </div>
 
         {/* User Section */}

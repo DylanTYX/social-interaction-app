@@ -38,32 +38,32 @@ export function ChatMessage({
   const isUser = role === "user";
   const markdownComponents = {
     h1: ({ children }: { children?: React.ReactNode }) => (
-      <h1 className="mb-4 text-xl font-semibold tracking-tight text-slate-950 last:mb-0 dark:text-slate-50">
+      <h1 className="mb-4 text-xl font-semibold tracking-tight text-slate-950 last:mb-0">
         {children}
       </h1>
     ),
     h2: ({ children }: { children?: React.ReactNode }) => (
-      <h2 className="mb-3.5 text-lg font-semibold tracking-tight text-slate-950 last:mb-0 dark:text-slate-50">
+      <h2 className="mb-3.5 text-lg font-semibold tracking-tight text-slate-950 last:mb-0">
         {children}
       </h2>
     ),
     h3: ({ children }: { children?: React.ReactNode }) => (
-      <h3 className="mb-3 text-base font-semibold text-slate-950 last:mb-0 dark:text-slate-50">
+      <h3 className="mb-3 text-base font-semibold text-slate-950 last:mb-0">
         {children}
       </h3>
     ),
     h4: ({ children }: { children?: React.ReactNode }) => (
-      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700 last:mb-0 dark:text-slate-200">
+      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700 last:mb-0">
         {children}
       </h4>
     ),
     h5: ({ children }: { children?: React.ReactNode }) => (
-      <h5 className="mb-2 text-sm font-semibold text-slate-800 last:mb-0 dark:text-slate-200">
+      <h5 className="mb-2 text-sm font-semibold text-slate-800 last:mb-0">
         {children}
       </h5>
     ),
     h6: ({ children }: { children?: React.ReactNode }) => (
-      <h6 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 last:mb-0 dark:text-slate-300">
+      <h6 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 last:mb-0">
         {children}
       </h6>
     ),
@@ -80,7 +80,7 @@ export function ChatMessage({
       <li className="leading-relaxed">{children}</li>
     ),
     blockquote: ({ children }: { children?: React.ReactNode }) => (
-      <blockquote className="mb-4 border-l-2 border-slate-300 pl-3 italic text-slate-600 last:mb-0 dark:border-slate-700 dark:text-slate-300">
+      <blockquote className="mb-4 border-l-2 border-slate-300 pl-3 italic text-slate-600 last:mb-0">
         {children}
       </blockquote>
     ),
@@ -105,7 +105,7 @@ export function ChatMessage({
 
       if (isInline) {
         return (
-          <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-900 dark:bg-slate-800 dark:text-slate-100">
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-900">
             {children}
           </code>
         );
@@ -178,7 +178,7 @@ export function ChatMessage({
               {content}
             </p>
           ) : (
-            <div className="space-y-4 text-sm leading-relaxed [&_hr]:my-5 [&_hr]:border-slate-200 dark:[&_hr]:border-slate-800 [&_h1]:mt-2 [&_h2]:mt-2 [&_h3]:mt-1.5 [&_h4]:mt-1.5 [&_h5]:mt-1 [&_h6]:mt-1">
+            <div className="space-y-4 text-sm leading-relaxed [&_hr]:my-5 [&_hr]:border-slate-200 [&_h1]:mt-2 [&_h2]:mt-2 [&_h3]:mt-1.5 [&_h4]:mt-1.5 [&_h5]:mt-1 [&_h6]:mt-1">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkBreaks]}
                 components={markdownComponents}
