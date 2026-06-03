@@ -11,6 +11,8 @@ export type CommunicationStyle =
   | "analytical";
 export type Strictness = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Warmth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type Pace = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type Pushback = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export interface PersonaConfig {
   name: string;
@@ -20,11 +22,26 @@ export interface PersonaConfig {
   communicationStyle: CommunicationStyle;
   strictness: Strictness; // 1-10, where 10 = very demanding
   warmth: Warmth; // 1-10, where 10 = very warm
+  /**
+   * Conversational pace: 1 = patient, single questions, lots of room. 10 =
+   * fast, fires multiple follow-ups, expects quick answers.
+   * Optional for backwards compatibility with personas saved before this
+   * field existed; treated as 5 (balanced) when missing.
+   */
+  pace?: Pace;
+  /**
+   * Pushback / skepticism: 1 = takes answers at face value. 10 = challenges
+   * claims, asks "how do you know?", probes weak spots.
+   * Optional for backwards compatibility; treated as 5 when missing.
+   */
+  pushback?: Pushback;
   yearsExperience: number;
   personalityTraits: string[]; // e.g., ["analytical", "impatient", "collaborative"]
   boundaries: string[]; // Topics/approaches they won't tolerate
   interestAreas: string[]; // What they like to dive deep on
 }
+
+export const PERSONA_DIAL_DEFAULT = 5 as const;
 
 export interface PersonaDescription {
   key: string;
@@ -89,6 +106,44 @@ function buildInterestAreas(areas: string[]): string {
 }
 
 /**
+ * Conversational pace — how quickly the interviewer fires questions and how
+ * much breathing room they leave between turns.
+ */
+function buildPaceProfile(pace: Pace): string {
+  if (pace >= 8) {
+    return "Pace: fast and assertive. You fire crisp follow-ups quickly, sometimes stacking a clarifying probe in the same turn, and you expect the candidate to keep up.";
+  }
+  if (pace >= 6) {
+    return "Pace: brisk. You move through topics efficiently and rarely dwell, but you still ask one question at a time.";
+  }
+  if (pace >= 4) {
+    return "Pace: balanced. You ask one question at a time and let the candidate finish their thought before moving on.";
+  }
+  return "Pace: deliberate and patient. You give the candidate space to think, never rush, and you're comfortable with short silences.";
+}
+
+/**
+ * Pushback / skepticism — how willing the interviewer is to challenge claims,
+ * ask follow-up "how do you know?" probes, or surface gaps.
+ */
+function buildPushbackProfile(pushback: Pushback): string {
+  if (pushback >= 8) {
+    return "Pushback: high. You frequently challenge claims, ask 'how do you know that?' or 'what's the evidence?', and probe for the weakest point in any answer. Stay respectful but persistent.";
+  }
+  if (pushback >= 6) {
+    return "Pushback: moderate. You push back when a claim is vague or unsupported, and you'll ask one follow-up to test the candidate's reasoning before moving on.";
+  }
+  if (pushback >= 4) {
+    return "Pushback: light. You generally take answers at face value but will gently probe if something sounds inconsistent.";
+  }
+  return "Pushback: minimal. You accept answers as given, encourage the candidate, and don't dwell on inconsistencies unless they're glaring.";
+}
+
+function clampDial<T extends number>(value: T | undefined): T {
+  return (value ?? PERSONA_DIAL_DEFAULT) as T;
+}
+
+/**
  * Generate a full system prompt from persona config
  */
 export function generatePersonaPrompt(config: PersonaConfig): string {
@@ -103,14 +158,20 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
   );
   const boundariesExpression = buildBoundaries(config.boundaries);
   const interestExpression = buildInterestAreas(config.interestAreas);
+  const paceExpression = buildPaceProfile(clampDial<Pace>(config.pace));
+  const pushbackExpression = buildPushbackProfile(
+    clampDial<Pushback>(config.pushback),
+  );
 
   const parts = [
     `You are ${config.name}, a ${config.seniority} from ${config.nationality} working in ${config.industry}. You have ${config.yearsExperience} years of experience in this field.`,
     communicationProfile,
+    paceExpression,
+    pushbackExpression,
     personalityExpression,
     boundariesExpression,
     interestExpression,
-    "\nYour goal in this conversation is to interview the candidate thoughtfully. Ask probing questions to understand their experience, approach, and thinking. When you feel the candidate hasn't explained something clearly or thoroughly enough given their seniority level, push back respectfully but firmly.",
+    "\nYour goal in this conversation is to interview the candidate thoughtfully. Ask probing questions to understand their experience, approach, and thinking. When you feel the candidate hasn't explained something clearly or thoroughly enough given their seniority level, push back respectfully but firmly — but stay within the pace and pushback levels described above.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -130,6 +191,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "direct",
     strictness: 8,
     warmth: 6,
+    pace: 8,
+    pushback: 8,
     yearsExperience: 12,
     personalityTraits: ["analytical", "ambitious", "impatient with vagueness"],
     boundaries: [
@@ -152,6 +215,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "diplomatic",
     strictness: 7,
     warmth: 7,
+    pace: 5,
+    pushback: 6,
     yearsExperience: 18,
     personalityTraits: [
       "strategic thinker",
@@ -178,6 +243,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "analytical",
     strictness: 9,
     warmth: 4,
+    pace: 4,
+    pushback: 9,
     yearsExperience: 20,
     personalityTraits: ["perfectionistic", "detail-oriented", "methodical"],
     boundaries: [
@@ -196,6 +263,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "collaborative",
     strictness: 7,
     warmth: 8,
+    pace: 4,
+    pushback: 5,
     yearsExperience: 16,
     personalityTraits: ["mentor-oriented", "empathetic", "growth-focused"],
     boundaries: [
@@ -218,6 +287,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "direct",
     strictness: 8,
     warmth: 5,
+    pace: 7,
+    pushback: 8,
     yearsExperience: 14,
     personalityTraits: ["systems-thinking", "candid", "no-nonsense"],
     boundaries: [
@@ -240,6 +311,8 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     communicationStyle: "diplomatic",
     strictness: 6,
     warmth: 9,
+    pace: 6,
+    pushback: 4,
     yearsExperience: 13,
     personalityTraits: ["creative", "persuasive", "people-focused"],
     boundaries: [
