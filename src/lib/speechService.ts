@@ -1,22 +1,216 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
 export interface SpeechServiceConfig {
-  subscriptionKey: string;
+  /** Azure-issued authorization token (preferred). */
+  authorizationToken: string;
   region: string;
+  /**
+   * When the current token expires (ms since epoch). When the wall clock
+   * crosses this value we ask the caller to refresh it before opening a new
+   * recognizer/synthesizer.
+   */
+  expiresAt: number;
 }
 
 export interface TranscriptResult {
   interim: string;
   final: string;
   isFinal: boolean;
+  /** Start of the recognized phrase, in seconds from session start. */
+  offsetSeconds?: number;
+  /** Spoken duration of the recognized phrase, in seconds. */
+  durationSeconds?: number;
 }
 
+export interface StartListeningOptions {
+  /**
+   * Domain words/phrases to bias recognition toward (names, acronyms,
+   * role-specific jargon). Improves accuracy on interview terminology.
+   */
+  phraseList?: string[];
+}
+
+/** Azure reports offset/duration in 100-nanosecond ticks. */
+const TICKS_PER_SECOND = 10_000_000;
+
+export interface ProsodyOptions {
+  /** Speaking rate delta as a percentage, e.g. +15 for 15% faster. */
+  ratePercent?: number;
+  /** Pitch delta as a percentage. */
+  pitchPercent?: number;
+}
+
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function signedPercent(value: number): string {
+  const rounded = Math.round(value);
+  return rounded >= 0 ? `+${rounded}%` : `${rounded}%`;
+}
+
+/**
+ * Wrap text in SSML so the interviewer's voice can match the persona: a
+ * fast-paced persona speaks a little quicker, a patient one a little slower.
+ */
+function buildProsodySsml(
+  text: string,
+  voiceName: string,
+  prosody: ProsodyOptions,
+): string {
+  const rate = signedPercent(prosody.ratePercent ?? 0);
+  const pitch = signedPercent(prosody.pitchPercent ?? 0);
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><voice name="${voiceName}"><prosody rate="${rate}" pitch="${pitch}">${escapeXml(
+    text,
+  )}</prosody></voice></speak>`;
+}
+
+/** Map a persona pace dial (1=patient … 10=fast) to an SSML rate delta. */
+export function paceToRatePercent(pace: number | undefined): number {
+  const safe = Number.isFinite(pace) ? (pace as number) : 5;
+  // pace 1 → -20%, pace 5 → 0%, pace 10 → +25%
+  return Math.round((safe - 5) * 5);
+}
+
+/**
+ * Incrementally split a growing text buffer into complete, speakable sentences
+ * for streaming TTS. Returns the finished sentences plus the leftover partial
+ * tail to carry into the next call. A short minimum length avoids handing the
+ * synthesizer tiny fragments (e.g. "Hi.") that sound choppy; pass
+ * `flush: true` at end-of-stream to emit whatever remains.
+ */
+export function extractSpeakableSentences(
+  buffer: string,
+  options?: { flush?: boolean; minChars?: number },
+): { sentences: string[]; rest: string } {
+  const minChars = options?.minChars ?? 24;
+  const sentences: string[] = [];
+  let working = buffer;
+
+  // Match up to and including sentence-ending punctuation (or a newline).
+  const boundary = /^[\s\S]*?[.!?…](?=\s|$)|^[\s\S]*?\n/;
+  while (true) {
+    const match = working.match(boundary);
+    if (!match) break;
+    const chunk = match[0];
+    const remainder = working.slice(chunk.length);
+    // If the sentence is very short, keep accumulating unless we're flushing.
+    if (chunk.trim().length < minChars && remainder.trim().length > 0) {
+      // Pull in the next boundary by extending: treat current chunk as part of
+      // the tail and re-run on the combined remainder.
+      const nextMatch = remainder.match(boundary);
+      if (nextMatch) {
+        sentences.push((chunk + nextMatch[0]).trim());
+        working = remainder.slice(nextMatch[0].length);
+        continue;
+      }
+      break;
+    }
+    sentences.push(chunk.trim());
+    working = remainder;
+  }
+
+  if (options?.flush) {
+    const tail = working.trim();
+    if (tail.length > 0) {
+      sentences.push(tail);
+      working = "";
+    }
+  }
+
+  return { sentences: sentences.filter(Boolean), rest: working };
+}
+
+/**
+ * Append `addition` to `existing` while removing any text that already
+ * appeared at the tail of `existing`. The Azure SDK occasionally emits the
+ * same words once as part of an interim phrase and again as part of the next
+ * final phrase, particularly across pauses; this helper de-duplicates that
+ * overlap so callers get a clean, monotonically-growing transcript.
+ *
+ * Examples:
+ *   appendUniqueTranscript("hello world", "world today") → "hello world today"
+ *   appendUniqueTranscript("hello world", "hello world") → "hello world"
+ *   appendUniqueTranscript("",            "hello")       → "hello"
+ */
+export function appendUniqueTranscript(
+  existing: string,
+  addition: string,
+): string {
+  const trimmedAddition = addition.trim();
+  if (!trimmedAddition) return existing;
+
+  const trimmedExisting = existing.trim();
+  if (!trimmedExisting) return trimmedAddition;
+
+  const normalizedExisting = trimmedExisting.toLowerCase();
+  const normalizedAddition = trimmedAddition.toLowerCase();
+
+  // Exact tail match: addition is already at the end.
+  if (normalizedExisting.endsWith(normalizedAddition)) {
+    return trimmedExisting;
+  }
+
+  // Find the largest overlap where the suffix of existing equals the prefix
+  // of the addition. This handles cases like
+  //   existing = "I led the launch"
+  //   addition = "led the launch and saw a 12% lift"
+  // → "I led the launch and saw a 12% lift"
+  const maxOverlap = Math.min(
+    normalizedExisting.length,
+    normalizedAddition.length,
+  );
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    if (
+      normalizedExisting.slice(-overlap) ===
+      normalizedAddition.slice(0, overlap)
+    ) {
+      return `${trimmedExisting}${trimmedAddition.slice(overlap)}`;
+    }
+  }
+
+  return `${trimmedExisting} ${trimmedAddition}`;
+}
+
+/**
+ * SpeechService wraps Azure Cognitive Services Speech SDK to provide:
+ *   - Continuous speech-to-text with interim + final results
+ *   - Text-to-speech that can be interrupted mid-playback
+ *
+ * Why this is more than a thin wrapper:
+ *   The Azure SDK's `SpeechSynthesizer.close()` shuts down the network/SDK
+ *   pipe but does NOT stop audio that has already been buffered to the system
+ *   speaker via `AudioConfig.fromDefaultSpeakerOutput()`. To make the voice
+ *   actually stop when the user navigates away, we drive playback through a
+ *   `SpeakerAudioDestination` we control, so we can pause it, close it, and
+ *   silence the underlying <audio> element on demand.
+ *
+ *   Authentication runs through a server-issued token (`/api/speech-token`)
+ *   so the raw subscription key never reaches the browser.
+ */
 export class SpeechService {
   private static instance: SpeechService | null = null;
   private config: SpeechServiceConfig | null = null;
   private recognizer: SpeechSDK.SpeechRecognizer | null = null;
+  private recognizerAudioConfig: SpeechSDK.AudioConfig | null = null;
   private synthesizer: SpeechSDK.SpeechSynthesizer | null = null;
-  private audioConfig: SpeechSDK.AudioConfig | null = null;
+  private speakerDestination: SpeechSDK.SpeakerAudioDestination | null = null;
+  private synthesisAudioConfig: SpeechSDK.AudioConfig | null = null;
+  private isSpeakingFlag = false;
+
+  // Sequential playback queue for streaming TTS. Sentences are enqueued as the
+  // LLM produces them and played strictly in order. `speechGeneration` is a
+  // cancellation token: `stopSpeaking()` bumps it so any not-yet-started
+  // queued item is skipped (barge-in), and `pendingSpeakCount` keeps
+  // `isSpeaking()` truthy across the brief gaps between queued sentences.
+  private speechQueue: Promise<void> = Promise.resolve();
+  private speechGeneration = 0;
+  private pendingSpeakCount = 0;
 
   private constructor() {}
 
@@ -27,24 +221,52 @@ export class SpeechService {
     return SpeechService.instance;
   }
 
+  /**
+   * Provide an Azure-issued authorization token + region. Tokens last ~10
+   * minutes; the caller is responsible for refreshing before that.
+   */
   initialize(config: SpeechServiceConfig): void {
     this.config = config;
   }
 
   isInitialized(): boolean {
-    return (
-      this.config !== null &&
-      this.config.subscriptionKey !== "" &&
-      this.config.region !== ""
+    if (!this.config) return false;
+    if (!this.config.authorizationToken) return false;
+    if (!this.config.region) return false;
+    if (Number.isFinite(this.config.expiresAt) && Date.now() > this.config.expiresAt) {
+      return false;
+    }
+    return true;
+  }
+
+  isSpeaking(): boolean {
+    return this.isSpeakingFlag || this.pendingSpeakCount > 0;
+  }
+
+  /**
+   * Build a fresh `SpeechConfig` using the cached auth token. Throws if the
+   * service has not been initialized; the caller should catch and re-fetch a
+   * token if `isInitialized()` returned false.
+   */
+  private buildSpeechConfig(): SpeechSDK.SpeechConfig {
+    if (!this.config) {
+      throw new Error(
+        "Speech service not initialized. Call initialize() with a fresh token.",
+      );
+    }
+
+    return SpeechSDK.SpeechConfig.fromAuthorizationToken(
+      this.config.authorizationToken,
+      this.config.region,
     );
   }
 
   /**
-   * Request microphone access and validate permissions
+   * Prompt the browser for microphone access. Returns true on success.
    */
   async requestMicrophoneAccess(): Promise<boolean> {
     try {
-      if (!navigator || !navigator.mediaDevices) {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices) {
         console.error(
           "mediaDevices is not supported. Check: HTTPS required, browser support, or OS permissions.",
         );
@@ -88,18 +310,20 @@ export class SpeechService {
   }
 
   /**
-   * Start listening with real-time partial results
+   * Start continuous speech recognition with real-time interim results.
    */
   async startListening(
     onTranscript: (result: TranscriptResult) => void,
     onError: (error: string) => void,
+    options?: StartListeningOptions,
   ): Promise<void> {
     if (!this.isInitialized()) {
-      onError("Speech service not initialized. Missing Azure credentials.");
+      onError(
+        "Speech service not initialized or token expired. Refresh the token and try again.",
+      );
       return;
     }
 
-    // Verify browser environment
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       onError("Speech recognition requires browser environment.");
       return;
@@ -107,32 +331,46 @@ export class SpeechService {
 
     if (!navigator.mediaDevices) {
       onError(
-        "Microphone not available. Ensure: HTTPS is enabled, browser supports mediaDevices, OS permissions granted.",
+        "Microphone not available. Ensure HTTPS is enabled, the browser supports mediaDevices, and OS permissions are granted.",
       );
       return;
     }
 
+    // If a recognizer was left over from a prior session, tear it down before
+    // creating a new one so we do not leak websocket connections.
+    await this.disposeRecognizer();
+
     try {
-      this.audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+      this.recognizerAudioConfig =
+        SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
 
-      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-        this.config!.subscriptionKey,
-        this.config!.region,
-      );
-
+      const speechConfig = this.buildSpeechConfig();
       speechConfig.speechRecognitionLanguage = "en-US";
+      // Word-level timestamps + detailed output give us per-phrase timing,
+      // which powers the delivery metrics (WPM, pauses) on the client.
+      speechConfig.requestWordLevelTimestamps();
+      speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;
 
       this.recognizer = new SpeechSDK.SpeechRecognizer(
         speechConfig,
-        this.audioConfig,
+        this.recognizerAudioConfig,
       );
 
-      let interimTranscript = "";
+      // Bias recognition toward interview-specific vocabulary when supplied.
+      const phraseList = options?.phraseList?.filter(Boolean) ?? [];
+      if (phraseList.length > 0) {
+        try {
+          const phraseListGrammar =
+            SpeechSDK.PhraseListGrammar.fromRecognizer(this.recognizer);
+          phraseList.forEach((phrase) => phraseListGrammar.addPhrase(phrase));
+        } catch (error) {
+          console.warn("Failed to apply phrase list:", error);
+        }
+      }
 
       this.recognizer.recognizing = (_sender, event) => {
-        interimTranscript = event.result.text;
         onTranscript({
-          interim: interimTranscript,
+          interim: event.result.text,
           final: "",
           isFinal: false,
         });
@@ -140,20 +378,33 @@ export class SpeechService {
 
       this.recognizer.recognized = (_sender, event) => {
         if (event.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-          const finalTranscript = event.result.text;
           onTranscript({
             interim: "",
-            final: finalTranscript,
+            final: event.result.text,
             isFinal: true,
+            offsetSeconds: event.result.offset / TICKS_PER_SECOND,
+            durationSeconds: event.result.duration / TICKS_PER_SECOND,
           });
         } else if (event.result.reason === SpeechSDK.ResultReason.NoMatch) {
-          onError("Speech not recognized. Please try again.");
+          // NoMatch is common between phrases (e.g. when the user pauses);
+          // surfacing it as an error every time would be noisy. We only emit
+          // an error when the canceled reason indicates a real failure.
         } else if (event.result.reason === SpeechSDK.ResultReason.Canceled) {
           const cancellation = SpeechSDK.CancellationDetails.fromResult(
             event.result,
           );
+          if (cancellation.reason === SpeechSDK.CancellationReason.Error) {
+            onError(
+              `Speech recognition error: ${cancellation.errorDetails || "unknown"}`,
+            );
+          }
+        }
+      };
+
+      this.recognizer.canceled = (_sender, event) => {
+        if (event.reason === SpeechSDK.CancellationReason.Error) {
           onError(
-            `Error: ${cancellation.reason}. ${cancellation.errorDetails}`,
+            `Speech recognition error: ${event.errorDetails || "unknown"}`,
           );
         }
       };
@@ -161,7 +412,6 @@ export class SpeechService {
       this.recognizer.startContinuousRecognitionAsync(
         () => {},
         (error) => {
-          // Parse Azure SDK error for more specific feedback
           let userFriendlyError = `Failed to start listening: ${error}`;
 
           if (error?.includes("NotAllowedError")) {
@@ -201,117 +451,406 @@ export class SpeechService {
   }
 
   /**
-   * Stop listening
+   * Stop continuous recognition. Safe to call multiple times.
    */
   async stopListening(): Promise<void> {
-    if (this.recognizer) {
-      await new Promise<void>((resolve) => {
-        this.recognizer!.stopContinuousRecognitionAsync(
-          () => {
-            resolve();
-          },
+    if (!this.recognizer) {
+      return;
+    }
+
+    const recognizer = this.recognizer;
+
+    await new Promise<void>((resolve) => {
+      try {
+        recognizer.stopContinuousRecognitionAsync(
+          () => resolve(),
           (error) => {
             console.error("Error stopping recognition:", error);
             resolve();
           },
         );
-      });
-    }
+      } catch (error) {
+        console.error("Error invoking stopContinuousRecognitionAsync:", error);
+        resolve();
+      }
+    });
   }
 
   /**
-   * Clean up speech resources
+   * Synthesize text to speech as a single utterance. Cancels anything already
+   * playing/queued first. Resolves once playback has finished or was
+   * interrupted by `stopSpeaking()` / `cleanup()`.
    */
-  cleanup(): void {
-    if (this.recognizer) {
-      this.recognizer.close();
-      this.recognizer = null;
-    }
-
-    if (this.audioConfig) {
-      this.audioConfig.close();
-      this.audioConfig = null;
-    }
-
-    if (this.synthesizer) {
-      this.synthesizer.close();
-      this.synthesizer = null;
-    }
-  }
-
-  /**
-   * Synthesize text to speech
-   */
-  async speak(text: string, voiceUri?: string): Promise<void> {
+  async speak(
+    text: string,
+    voiceUri?: string,
+    prosody?: ProsodyOptions,
+  ): Promise<void> {
     if (!this.isInitialized()) {
       throw new Error(
-        "Speech service not initialized. Missing Azure credentials.",
+        "Speech service not initialized or token expired. Refresh the token and try again.",
       );
     }
 
+    if (!text || !text.trim()) {
+      return;
+    }
+
+    // If something is already speaking, stop it first so the new utterance
+    // does not overlap with stale audio.
+    await this.stopSpeaking();
+
+    return this.runSynthesis(text, voiceUri, prosody);
+  }
+
+  /**
+   * Enqueue an utterance for sequential playback. Used for streaming TTS: as
+   * the LLM emits complete sentences, each is enqueued here and spoken strictly
+   * in order without overlap. A `stopSpeaking()` (barge-in) cancels every item
+   * that has not started yet. Resolves when *this* utterance finishes.
+   */
+  speakQueued(
+    text: string,
+    voiceUri?: string,
+    prosody?: ProsodyOptions,
+  ): Promise<void> {
+    if (!this.isInitialized()) {
+      return Promise.resolve();
+    }
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return Promise.resolve();
+    }
+
+    const generation = this.speechGeneration;
+    this.pendingSpeakCount += 1;
+
+    const next = this.speechQueue
+      .catch(() => {})
+      .then(async () => {
+        // A barge-in between enqueue and execution invalidates this item.
+        if (generation !== this.speechGeneration) return;
+        await this.runSynthesis(trimmed, voiceUri, prosody);
+      })
+      .finally(() => {
+        this.pendingSpeakCount = Math.max(0, this.pendingSpeakCount - 1);
+      });
+
+    this.speechQueue = next;
+    return next;
+  }
+
+  /**
+   * Core synthesis routine shared by `speak` and `speakQueued`. Does NOT cancel
+   * prior playback, so the queue can chain utterances back-to-back.
+   */
+  private async runSynthesis(
+    text: string,
+    voiceUri?: string,
+    prosody?: ProsodyOptions,
+  ): Promise<void> {
+    const voiceName = voiceUri || "en-US-AriaNeural";
+    const speechConfig = this.buildSpeechConfig();
+    speechConfig.speechSynthesisVoiceName = voiceName;
+
+    // Use SSML only when a non-trivial prosody adjustment is requested; plain
+    // text playback is slightly cheaper to set up otherwise.
+    const useSsml =
+      Boolean(prosody) &&
+      ((prosody?.ratePercent ?? 0) !== 0 || (prosody?.pitchPercent ?? 0) !== 0);
+    const ssml = useSsml
+      ? buildProsodySsml(text, voiceName, prosody as ProsodyOptions)
+      : null;
+
+    const speakerDestination = new SpeechSDK.SpeakerAudioDestination();
+    const audioConfig =
+      SpeechSDK.AudioConfig.fromSpeakerOutput(speakerDestination);
+    const synthesizer = new SpeechSDK.SpeechSynthesizer(
+      speechConfig,
+      audioConfig,
+    );
+
+    this.speakerDestination = speakerDestination;
+    this.synthesisAudioConfig = audioConfig;
+    this.synthesizer = synthesizer;
+    this.isSpeakingFlag = true;
+
     try {
-      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
-        this.config!.subscriptionKey,
-        this.config!.region,
-      );
+      await new Promise<void>((resolve, reject) => {
+        // If `stopSpeaking` is called while we are still buffering, we want
+        // the promise to resolve cleanly rather than throw.
+        let settled = false;
 
-      if (voiceUri) {
-        speechConfig.speechSynthesisVoiceName = voiceUri;
-      } else {
-        speechConfig.speechSynthesisVoiceName = "en-US-AriaNeural";
-      }
+        speakerDestination.onAudioEnd = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
 
-      const audioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput();
-      this.synthesizer = new SpeechSDK.SpeechSynthesizer(
-        speechConfig,
-        audioConfig,
-      );
+        const onResult = (result: SpeechSDK.SpeechSynthesisResult) => {
+            if (settled) return;
 
-      return new Promise((resolve, reject) => {
-        this.synthesizer!.speakTextAsync(
-          text,
-          (result) => {
             if (
               result.reason ===
               SpeechSDK.ResultReason.SynthesizingAudioCompleted
             ) {
-              resolve();
+              // Playback may still be going; defer to onAudioEnd. As a
+              // safety net, resolve here too in case onAudioEnd never fires.
+              setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                resolve();
+              }, 250);
             } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
               const cancellation =
                 SpeechSDK.CancellationDetails.fromResult(result);
-              reject(
-                new Error(
-                  `Speech synthesis failed: ${cancellation.errorDetails}`,
-                ),
-              );
+              if (
+                cancellation.reason === SpeechSDK.CancellationReason.Error
+              ) {
+                settled = true;
+                reject(
+                  new Error(
+                    `Speech synthesis failed: ${cancellation.errorDetails || "unknown"}`,
+                  ),
+                );
+              } else {
+                settled = true;
+                resolve();
+              }
             }
-          },
-          (error) => {
-            reject(new Error(`Speech synthesis error: ${error}`));
-          },
-        );
+        };
+
+        const onError = (error: string) => {
+          if (settled) return;
+          settled = true;
+          reject(new Error(`Speech synthesis error: ${error}`));
+        };
+
+        if (ssml) {
+          synthesizer.speakSsmlAsync(ssml, onResult, onError);
+        } else {
+          synthesizer.speakTextAsync(text, onResult, onError);
+        }
       });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      throw new Error(`Speech service error: ${errorMessage}`);
+    } finally {
+      this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
+      // Only clear refs if the active synthesizer is still ours; another call
+      // to speak() may have replaced it.
+      if (this.synthesizer === synthesizer) {
+        this.synthesizer = null;
+      }
+      if (this.synthesisAudioConfig === audioConfig) {
+        this.synthesisAudioConfig = null;
+      }
+      if (this.speakerDestination === speakerDestination) {
+        this.speakerDestination = null;
+      }
+      this.isSpeakingFlag = false;
     }
   }
 
   /**
-   * Get available voices
+   * Hard-stop any in-flight TTS playback. Safe to call when nothing is
+   * playing.
+   */
+  async stopSpeaking(): Promise<void> {
+    // Cancel any queued (not-yet-started) utterances for barge-in.
+    this.speechGeneration += 1;
+    this.pendingSpeakCount = 0;
+    this.speechQueue = Promise.resolve();
+
+    const synthesizer = this.synthesizer;
+    const audioConfig = this.synthesisAudioConfig;
+    const speakerDestination = this.speakerDestination;
+
+    if (!synthesizer && !speakerDestination) {
+      this.isSpeakingFlag = false;
+      return;
+    }
+
+    this.synthesizer = null;
+    this.synthesisAudioConfig = null;
+    this.speakerDestination = null;
+    this.isSpeakingFlag = false;
+
+    this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
+  }
+
+  /**
+   * Dispose the recognizer and release the microphone audio config.
+   */
+  private async disposeRecognizer(): Promise<void> {
+    const recognizer = this.recognizer;
+    const audioConfig = this.recognizerAudioConfig;
+    this.recognizer = null;
+    this.recognizerAudioConfig = null;
+
+    if (recognizer) {
+      try {
+        await new Promise<void>((resolve) => {
+          try {
+            recognizer.stopContinuousRecognitionAsync(
+              () => resolve(),
+              () => resolve(),
+            );
+          } catch {
+            resolve();
+          }
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        recognizer.close();
+      } catch (error) {
+        console.warn("Error closing recognizer:", error);
+      }
+    }
+
+    if (audioConfig) {
+      try {
+        audioConfig.close();
+      } catch (error) {
+        console.warn("Error closing recognizer audio config:", error);
+      }
+    }
+  }
+
+  /**
+   * Dispose a synthesizer + speaker destination, including stopping any
+   * audio that has already been buffered to the speaker.
+   */
+  private disposeSynthesizer(
+    synthesizer: SpeechSDK.SpeechSynthesizer | null,
+    audioConfig: SpeechSDK.AudioConfig | null,
+    speakerDestination: SpeechSDK.SpeakerAudioDestination | null,
+  ): void {
+    if (speakerDestination) {
+      try {
+        speakerDestination.pause();
+      } catch {
+        // pause() may throw if the underlying <audio> element is in an
+        // unexpected state; we ignore because close() comes next.
+      }
+
+      try {
+        // Forcefully silence the underlying HTMLAudioElement; this is the
+        // step that actually stops audio that has already been buffered.
+        const internal = speakerDestination.internalAudio;
+        if (internal) {
+          internal.muted = true;
+          internal.pause();
+          try {
+            internal.currentTime = 0;
+          } catch {
+            // currentTime can throw if the element is not ready; ignore.
+          }
+          internal.src = "";
+          try {
+            internal.load();
+          } catch {
+            // ignore
+          }
+        }
+      } catch (error) {
+        console.warn("Error silencing synthesizer audio element:", error);
+      }
+
+      try {
+        speakerDestination.close();
+      } catch (error) {
+        console.warn("Error closing speaker destination:", error);
+      }
+    }
+
+    if (synthesizer) {
+      try {
+        synthesizer.close();
+      } catch (error) {
+        console.warn("Error closing synthesizer:", error);
+      }
+    }
+
+    if (audioConfig) {
+      try {
+        audioConfig.close();
+      } catch (error) {
+        console.warn("Error closing synthesizer audio config:", error);
+      }
+    }
+  }
+
+  /**
+   * Tear down everything: recognizer, synthesizer, and any in-flight audio.
+   * Call this from React unmount cleanup and `beforeunload` handlers.
+   */
+  cleanup(): void {
+    void this.disposeRecognizer();
+
+    this.speechGeneration += 1;
+    this.pendingSpeakCount = 0;
+    this.speechQueue = Promise.resolve();
+
+    const synthesizer = this.synthesizer;
+    const audioConfig = this.synthesisAudioConfig;
+    const speakerDestination = this.speakerDestination;
+    this.synthesizer = null;
+    this.synthesisAudioConfig = null;
+    this.speakerDestination = null;
+    this.isSpeakingFlag = false;
+
+    this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
+  }
+
+  /**
+   * Curated set of voice options to surface in the setup wizard. These names
+   * are valid `speechSynthesisVoiceName` values for Azure Neural TTS.
    */
   getAvailableVoices(): { name: string; uri: string }[] {
     return [
-      { name: "Aria (US Female)", uri: "en-US-AriaNeural" },
-      { name: "Guy (US Male)", uri: "en-US-GuyNeural" },
-      { name: "Zira (US Female)", uri: "en-US-ZiraNeural" },
-      { name: "Davis (US Male)", uri: "en-US-DavisNeural" },
-      { name: "Jenny (US Female)", uri: "en-US-JennyNeural" },
+      { name: "Aria — US Female (warm)", uri: "en-US-AriaNeural" },
+      { name: "Jenny — US Female (friendly)", uri: "en-US-JennyNeural" },
+      { name: "Guy — US Male (confident)", uri: "en-US-GuyNeural" },
+      { name: "Davis — US Male (calm)", uri: "en-US-DavisNeural" },
+      { name: "Sonia — UK Female (clear)", uri: "en-GB-SoniaNeural" },
+      { name: "Ryan — UK Male (steady)", uri: "en-GB-RyanNeural" },
     ];
   }
 }
 
 export function getSpeechService(): SpeechService {
   return SpeechService.getInstance();
+}
+
+export interface SpeechTokenResponse {
+  token: string;
+  region: string;
+  expiresInSeconds: number;
+}
+
+/**
+ * Fetch a fresh Azure auth token from the server. Use this from the client
+ * before calling `speechService.initialize(...)`. The caller decides when to
+ * refresh — typically before each new session and whenever isInitialized()
+ * starts returning false.
+ */
+export async function fetchSpeechToken(): Promise<SpeechTokenResponse> {
+  const response = await fetch("/api/speech-token", { cache: "no-store" });
+  if (!response.ok) {
+    const detail = (await response
+      .json()
+      .catch(() => null)) as { error?: string; details?: string } | null;
+    throw new Error(
+      detail?.details ||
+        detail?.error ||
+        `Failed to fetch speech token (HTTP ${response.status}).`,
+    );
+  }
+
+  const data = (await response.json()) as SpeechTokenResponse;
+  if (!data.token || !data.region) {
+    throw new Error("Speech token response missing required fields.");
+  }
+  return data;
 }
