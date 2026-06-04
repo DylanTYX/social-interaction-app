@@ -762,12 +762,12 @@ function VoiceSimulateInner() {
       };
       let ttsBuffer = "";
       let startedSpeaking = false;
-      let lastSpeak: Promise<void> = Promise.resolve();
 
       const enqueueSentences = (flush: boolean) => {
         if (!ttsEnabled) return;
         const { sentences, rest } = extractSpeakableSentences(ttsBuffer, {
           flush,
+          minChars: 48,
         });
         ttsBuffer = rest;
         for (const sentence of sentences) {
@@ -775,7 +775,7 @@ function VoiceSimulateInner() {
             startedSpeaking = true;
             setIsSpeakingTts(true);
           }
-          lastSpeak = speechService.speakQueued(
+          void speechService.speakQueued(
             sentence,
             voiceConfigRef.current?.selectedVoiceUri,
             prosody,
@@ -856,10 +856,10 @@ function VoiceSimulateInner() {
         );
       }
 
-      // Clear the speaking indicator once the queued audio finishes.
+      // Clear the speaking indicator once all queued audio has finished playing.
       if (startedSpeaking) {
-        void lastSpeak.finally(() => {
-          if (isMountedRef.current && !speechService.isSpeaking()) {
+        void speechService.waitForQueuedPlayback().finally(() => {
+          if (isMountedRef.current) {
             setIsSpeakingTts(false);
           }
         });

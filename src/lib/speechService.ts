@@ -92,8 +92,10 @@ export function extractSpeakableSentences(
   const sentences: string[] = [];
   let working = buffer;
 
-  // Match up to and including sentence-ending punctuation (or a newline).
-  const boundary = /^[\s\S]*?[.!?…](?=\s|$)|^[\s\S]*?\n/;
+  // Match up to sentence-ending punctuation, or a paragraph break (double
+  // newline). Single newlines are common inside streamed LLM replies and must
+  // NOT split TTS — that produced one-word utterances per line.
+  const boundary = /^[\s\S]*?[.!?…](?=\s|$)|^[\s\S]*?\n\n/;
   while (true) {
     const match = working.match(boundary);
     if (!match) break;
@@ -203,14 +205,27 @@ export class SpeechService {
   private synthesisAudioConfig: SpeechSDK.AudioConfig | null = null;
   private isSpeakingFlag = false;
 
-  // Sequential playback queue for streaming TTS. Sentences are enqueued as the
-  // LLM produces them and played strictly in order. `speechGeneration` is a
-  // cancellation token: `stopSpeaking()` bumps it so any not-yet-started
-  // queued item is skipped (barge-in), and `pendingSpeakCount` keeps
-  // `isSpeaking()` truthy across the brief gaps between queued sentences.
-  private speechQueue: Promise<void> = Promise.resolve();
+  // Streaming TTS queue: utterances are fed to one persistent synthesizer as
+  // soon as each is synthesized (Azure queues speaker playback). We only wait
+  // for onAudioEnd once per burst, not between every sentence.
   private speechGeneration = 0;
   private pendingSpeakCount = 0;
+  private pendingUtterances: Array<{
+    text: string;
+    voiceUri?: string;
+    prosody?: ProsodyOptions;
+    generation: number;
+    resolve: () => void;
+    reject: (error: Error) => void;
+  }> = [];
+  private queueWorkerRunning = false;
+  private queuePlaybackSettled: Promise<void> = Promise.resolve();
+  private queuePlayback: {
+    synthesizer: SpeechSDK.SpeechSynthesizer;
+    speakerDestination: SpeechSDK.SpeakerAudioDestination;
+    audioConfig: SpeechSDK.AudioConfig;
+    voiceName: string;
+  } | null = null;
 
   private constructor() {}
 
@@ -240,7 +255,16 @@ export class SpeechService {
   }
 
   isSpeaking(): boolean {
-    return this.isSpeakingFlag || this.pendingSpeakCount > 0;
+    return (
+      this.isSpeakingFlag ||
+      this.pendingSpeakCount > 0 ||
+      this.queueWorkerRunning
+    );
+  }
+
+  /** Resolves when all queued streaming utterances have finished playing. */
+  waitForQueuedPlayback(): Promise<void> {
+    return this.queuePlaybackSettled;
   }
 
   /**
@@ -505,9 +529,10 @@ export class SpeechService {
 
   /**
    * Enqueue an utterance for sequential playback. Used for streaming TTS: as
-   * the LLM emits complete sentences, each is enqueued here and spoken strictly
-   * in order without overlap. A `stopSpeaking()` (barge-in) cancels every item
-   * that has not started yet. Resolves when *this* utterance finishes.
+   * the LLM emits complete sentences, each is fed to a shared synthesizer so
+   * Azure can queue playback with minimal gaps. Resolves once synthesis for
+   * this utterance is queued to the speaker (not after playback ends).
+   * Call `waitForQueuedPlayback()` to know when audio has fully finished.
    */
   speakQueued(
     text: string,
@@ -525,24 +550,228 @@ export class SpeechService {
     const generation = this.speechGeneration;
     this.pendingSpeakCount += 1;
 
-    const next = this.speechQueue
-      .catch(() => {})
-      .then(async () => {
-        // A barge-in between enqueue and execution invalidates this item.
-        if (generation !== this.speechGeneration) return;
-        await this.runSynthesis(trimmed, voiceUri, prosody);
-      })
-      .finally(() => {
-        this.pendingSpeakCount = Math.max(0, this.pendingSpeakCount - 1);
+    return new Promise<void>((resolve, reject) => {
+      this.pendingUtterances.push({
+        text: trimmed,
+        voiceUri,
+        prosody,
+        generation,
+        resolve,
+        reject,
       });
+      this.kickQueueWorker();
+    }).finally(() => {
+      this.pendingSpeakCount = Math.max(0, this.pendingSpeakCount - 1);
+    });
+  }
 
-    this.speechQueue = next;
-    return next;
+  private kickQueueWorker(): void {
+    if (this.queueWorkerRunning) return;
+    this.queueWorkerRunning = true;
+    this.isSpeakingFlag = true;
+
+    let resolveSettled!: () => void;
+    this.queuePlaybackSettled = new Promise<void>((resolve) => {
+      resolveSettled = resolve;
+    });
+
+    void (async () => {
+      try {
+        while (true) {
+          const fed = await this.feedPendingUtterances();
+          if (!fed) break;
+          await this.waitForQueuePlaybackEnd();
+          if (this.pendingUtterances.length === 0) break;
+        }
+      } finally {
+        this.disposeQueuePlayback();
+        this.queueWorkerRunning = false;
+        this.isSpeakingFlag = false;
+        resolveSettled();
+        if (this.pendingUtterances.length > 0) {
+          this.kickQueueWorker();
+        }
+      }
+    })();
+  }
+
+  private async feedPendingUtterances(): Promise<boolean> {
+    let fed = false;
+
+    while (this.pendingUtterances.length > 0) {
+      const item = this.pendingUtterances[0];
+      if (item.generation !== this.speechGeneration) {
+        this.pendingUtterances.shift();
+        item.resolve();
+        continue;
+      }
+
+      this.pendingUtterances.shift();
+      try {
+        await this.feedQueuedUtterance(item);
+        item.resolve();
+        fed = true;
+      } catch (error) {
+        item.reject(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
+    }
+
+    return fed;
+  }
+
+  private ensureQueuePlayback(
+    voiceUri: string | undefined,
+    prosody: ProsodyOptions | undefined,
+  ): NonNullable<typeof this.queuePlayback> {
+    const voiceName = voiceUri || "en-US-AriaNeural";
+
+    if (this.queuePlayback && this.queuePlayback.voiceName === voiceName) {
+      return this.queuePlayback;
+    }
+
+    this.disposeQueuePlayback();
+
+    const speechConfig = this.buildSpeechConfig();
+    speechConfig.speechSynthesisVoiceName = voiceName;
+    const speakerDestination = new SpeechSDK.SpeakerAudioDestination();
+    const audioConfig =
+      SpeechSDK.AudioConfig.fromSpeakerOutput(speakerDestination);
+    const synthesizer = new SpeechSDK.SpeechSynthesizer(
+      speechConfig,
+      audioConfig,
+    );
+
+    this.queuePlayback = {
+      synthesizer,
+      speakerDestination,
+      audioConfig,
+      voiceName,
+    };
+
+    this.synthesizer = synthesizer;
+    this.speakerDestination = speakerDestination;
+    this.synthesisAudioConfig = audioConfig;
+
+    return this.queuePlayback;
   }
 
   /**
-   * Core synthesis routine shared by `speak` and `speakQueued`. Does NOT cancel
-   * prior playback, so the queue can chain utterances back-to-back.
+   * Push one utterance into the persistent queue synthesizer. Resolves when
+   * Azure has synthesized and queued it for speaker playback (not when playback
+   * ends), so the next sentence can be prepared while the current one plays.
+   */
+  private feedQueuedUtterance(item: {
+    text: string;
+    voiceUri?: string;
+    prosody?: ProsodyOptions;
+  }): Promise<void> {
+    const playback = this.ensureQueuePlayback(item.voiceUri, item.prosody);
+    const trimmed = item.text.trim();
+    const voiceName = playback.voiceName;
+
+    const useSsml =
+      Boolean(item.prosody) &&
+      ((item.prosody?.ratePercent ?? 0) !== 0 ||
+        (item.prosody?.pitchPercent ?? 0) !== 0);
+    const ssml = useSsml
+      ? buildProsodySsml(trimmed, voiceName, item.prosody as ProsodyOptions)
+      : null;
+
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const finish = (action: () => void) => {
+        if (settled) return;
+        settled = true;
+        action();
+      };
+
+      const onResult = (result: SpeechSDK.SpeechSynthesisResult) => {
+        if (settled) return;
+
+        if (
+          result.reason ===
+          SpeechSDK.ResultReason.SynthesizingAudioCompleted
+        ) {
+          finish(resolve);
+          return;
+        }
+
+        if (result.reason === SpeechSDK.ResultReason.Canceled) {
+          const cancellation =
+            SpeechSDK.CancellationDetails.fromResult(result);
+          if (
+            cancellation.reason === SpeechSDK.CancellationReason.Error
+          ) {
+            finish(() =>
+              reject(
+                new Error(
+                  `Speech synthesis failed: ${cancellation.errorDetails || "unknown"}`,
+                ),
+              ),
+            );
+          } else {
+            finish(resolve);
+          }
+        }
+      };
+
+      const onError = (error: string) => {
+        finish(() => reject(new Error(`Speech synthesis error: ${error}`)));
+      };
+
+      if (ssml) {
+        playback.synthesizer.speakSsmlAsync(ssml, onResult, onError);
+      } else {
+        playback.synthesizer.speakTextAsync(trimmed, onResult, onError);
+      }
+    });
+  }
+
+  private waitForQueuePlaybackEnd(): Promise<void> {
+    const destination = this.queuePlayback?.speakerDestination;
+    if (!destination) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (safetyTimeout) clearTimeout(safetyTimeout);
+        resolve();
+      };
+
+      destination.onAudioEnd = finish;
+      safetyTimeout = setTimeout(finish, 120_000);
+    });
+  }
+
+  private disposeQueuePlayback(): void {
+    if (!this.queuePlayback) return;
+
+    const { synthesizer, audioConfig, speakerDestination } = this.queuePlayback;
+    this.queuePlayback = null;
+
+    if (this.synthesizer === synthesizer) {
+      this.synthesizer = null;
+    }
+    if (this.synthesisAudioConfig === audioConfig) {
+      this.synthesisAudioConfig = null;
+    }
+    if (this.speakerDestination === speakerDestination) {
+      this.speakerDestination = null;
+    }
+
+    this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
+  }
+
+  /**
+   * Core synthesis for one-shot `speak()` (opening greeting, mic check).
    */
   private async runSynthesis(
     text: string,
@@ -575,61 +804,72 @@ export class SpeechService {
     this.synthesizer = synthesizer;
     this.isSpeakingFlag = true;
 
+    const trimmed = text.trim();
+
     try {
       await new Promise<void>((resolve, reject) => {
-        // If `stopSpeaking` is called while we are still buffering, we want
-        // the promise to resolve cleanly rather than throw.
         let settled = false;
+        let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
 
-        speakerDestination.onAudioEnd = () => {
+        const finish = (action: () => void) => {
           if (settled) return;
           settled = true;
-          resolve();
+          if (safetyTimeout) clearTimeout(safetyTimeout);
+          action();
         };
 
-        const onResult = (result: SpeechSDK.SpeechSynthesisResult) => {
-            if (settled) return;
+        // Wait for speaker playback to finish. Resolving on
+        // SynthesizingAudioCompleted alone disposed audio too early, so only the
+        // first syllable of each queued sentence was audible.
+        speakerDestination.onAudioEnd = () => {
+          finish(resolve);
+        };
 
+        const safetyMs = Math.min(
+          120_000,
+          Math.max(8_000, trimmed.length * 90 + 2_000),
+        );
+        safetyTimeout = setTimeout(() => {
+          finish(resolve);
+        }, safetyMs);
+
+        const onResult = (result: SpeechSDK.SpeechSynthesisResult) => {
+          if (settled) return;
+
+          if (
+            result.reason ===
+            SpeechSDK.ResultReason.SynthesizingAudioCompleted
+          ) {
+            return;
+          }
+
+          if (result.reason === SpeechSDK.ResultReason.Canceled) {
+            const cancellation =
+              SpeechSDK.CancellationDetails.fromResult(result);
             if (
-              result.reason ===
-              SpeechSDK.ResultReason.SynthesizingAudioCompleted
+              cancellation.reason === SpeechSDK.CancellationReason.Error
             ) {
-              // Playback may still be going; defer to onAudioEnd. As a
-              // safety net, resolve here too in case onAudioEnd never fires.
-              setTimeout(() => {
-                if (settled) return;
-                settled = true;
-                resolve();
-              }, 250);
-            } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
-              const cancellation =
-                SpeechSDK.CancellationDetails.fromResult(result);
-              if (
-                cancellation.reason === SpeechSDK.CancellationReason.Error
-              ) {
-                settled = true;
+              finish(() =>
                 reject(
                   new Error(
                     `Speech synthesis failed: ${cancellation.errorDetails || "unknown"}`,
                   ),
-                );
-              } else {
-                settled = true;
-                resolve();
-              }
+                ),
+              );
+            } else {
+              finish(resolve);
             }
+          }
         };
 
         const onError = (error: string) => {
-          if (settled) return;
-          settled = true;
-          reject(new Error(`Speech synthesis error: ${error}`));
+          finish(() => reject(new Error(`Speech synthesis error: ${error}`)));
         };
 
         if (ssml) {
           synthesizer.speakSsmlAsync(ssml, onResult, onError);
         } else {
-          synthesizer.speakTextAsync(text, onResult, onError);
+          synthesizer.speakTextAsync(trimmed, onResult, onError);
         }
       });
     } finally {
@@ -657,7 +897,12 @@ export class SpeechService {
     // Cancel any queued (not-yet-started) utterances for barge-in.
     this.speechGeneration += 1;
     this.pendingSpeakCount = 0;
-    this.speechQueue = Promise.resolve();
+
+    for (const item of this.pendingUtterances) {
+      item.resolve();
+    }
+    this.pendingUtterances = [];
+    this.disposeQueuePlayback();
 
     const synthesizer = this.synthesizer;
     const audioConfig = this.synthesisAudioConfig;
@@ -790,7 +1035,12 @@ export class SpeechService {
 
     this.speechGeneration += 1;
     this.pendingSpeakCount = 0;
-    this.speechQueue = Promise.resolve();
+
+    for (const item of this.pendingUtterances) {
+      item.resolve();
+    }
+    this.pendingUtterances = [];
+    this.disposeQueuePlayback();
 
     const synthesizer = this.synthesizer;
     const audioConfig = this.synthesisAudioConfig;
