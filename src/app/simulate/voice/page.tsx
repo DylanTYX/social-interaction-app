@@ -79,7 +79,7 @@ import {
   type PhraseTiming,
 } from "@/lib/speech-metrics";
 
-const RESPONSE_TIME_LIMIT_SECONDS = 35;
+const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
 
 type DisplayMessage = {
   id: string;
@@ -243,6 +243,7 @@ function VoiceSimulateInner() {
   const isMountedRef = useRef(true);
   const voiceConfigRef = useRef(voiceConfig);
   const isRecordingRef = useRef(false);
+  const sessionCompleteRef = useRef(false);
 
   useEffect(() => {
     voiceConfigRef.current = voiceConfig;
@@ -251,6 +252,10 @@ function VoiceSimulateInner() {
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+
+  useEffect(() => {
+    sessionCompleteRef.current = isInterviewComplete(sessionState);
+  }, [sessionState]);
 
   const [showLiveCoaching, setShowLiveCoaching] = useState(true);
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
@@ -538,6 +543,10 @@ function VoiceSimulateInner() {
         setMessages([openingMessage]);
 
         await speakAiMessage(data.aiMessage);
+
+        if (isMountedRef.current && !sessionCompleteRef.current) {
+          await tryAutoStartRecording();
+        }
       } catch (err) {
         console.warn("Error generating opening greeting:", err);
       }
@@ -547,8 +556,23 @@ function VoiceSimulateInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, setupError, activePersonaConfig, activeScenarioValue]);
 
+  const tryAutoStartRecording = async () => {
+    if (!isMountedRef.current) return;
+    if (isRecordingRef.current || isStoppingRef.current) return;
+    if (sessionCompleteRef.current) return;
+
+    const speechService = speechServiceRef.current;
+    if (!speechService.isInitialized()) return;
+
+    await handleStartRecording();
+  };
+
   const handleStartRecording = async () => {
     const speechService = speechServiceRef.current;
+
+    if (isRecordingRef.current) {
+      return;
+    }
 
     if (!speechService.isInitialized()) {
       setRecordingError("Speech service not initialized.");
@@ -856,13 +880,18 @@ function VoiceSimulateInner() {
         );
       }
 
-      // Clear the speaking indicator once all queued audio has finished playing.
+      // Clear the speaking indicator once all queued audio has finished playing,
+      // then start the response timer / microphone automatically.
       if (startedSpeaking) {
-        void speechService.waitForQueuedPlayback().finally(() => {
-          if (isMountedRef.current) {
-            setIsSpeakingTts(false);
+        void speechService.waitForQueuedPlayback().finally(async () => {
+          if (!isMountedRef.current) return;
+          setIsSpeakingTts(false);
+          if (!sessionCompleteRef.current) {
+            await tryAutoStartRecording();
           }
         });
+      } else if (!sessionCompleteRef.current) {
+        void tryAutoStartRecording();
       }
 
       if (!isMountedRef.current) {
@@ -917,6 +946,7 @@ function VoiceSimulateInner() {
       setLastDecisionConfidence(turnConfidence);
 
       if (isInterviewComplete(finalSessionState)) {
+        sessionCompleteRef.current = true;
         const finalMetrics = buildInterviewMetrics({
           analyses: nextAnalysisHistory,
           state: finalSessionState,
@@ -1309,6 +1339,7 @@ function VoiceSimulateInner() {
               finalTranscript={finalTranscript}
               recordingError={recordingError}
               timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+              autoStartRecording
               onStart={() => void handleStartRecording()}
               onStop={() => void handleStopRecording()}
               onStopTts={stopTts}

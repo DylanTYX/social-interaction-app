@@ -23,7 +23,7 @@ function formatRemainingTime(seconds: number) {
 export function ChatInput({
   onSend,
   disabled,
-  timeLimitSeconds = 35,
+  timeLimitSeconds = 300,
   timeoutFallbackMessage = "[No response submitted before time expired.]",
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
@@ -136,7 +136,8 @@ export function ChatInput({
 
   const showTimer = true;
   const timerText = formatRemainingTime(remainingSeconds);
-  const timerWarning = remainingSeconds <= 8;
+  const timerWarning =
+    remainingSeconds <= Math.min(60, timeLimitSeconds * 0.15);
 
   return (
     <div className="space-y-2">

@@ -99,7 +99,7 @@ type ScenarioOption = {
 };
 
 const DEFAULT_SETUP = createDefaultInterviewSetup();
-const RESPONSE_TIME_LIMIT_SECONDS = 35;
+const RESPONSE_TIME_LIMIT_SECONDS = 300; // 5 minutes per answer
 
 function getCurrentTimestamp() {
   return new Date().toLocaleTimeString([], {

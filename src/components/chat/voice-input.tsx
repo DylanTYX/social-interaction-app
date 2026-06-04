@@ -13,6 +13,8 @@ interface VoiceInputProps {
   finalTranscript: string;
   recordingError: string | null;
   timeLimitSeconds: number;
+  /** When true, recording is started by the page after the interviewer speaks. */
+  autoStartRecording?: boolean;
   onStart: () => void;
   onStop: () => void;
   onStopTts?: () => void;
@@ -46,6 +48,7 @@ export function VoiceInput({
   finalTranscript,
   recordingError,
   timeLimitSeconds,
+  autoStartRecording = false,
   onStart,
   onStop,
   onStopTts,
@@ -70,7 +73,8 @@ export function VoiceInput({
   const remainingSeconds = isRecording
     ? Math.max(0, timeLimitSeconds - elapsedSeconds)
     : timeLimitSeconds;
-  const timerWarning = isRecording && remainingSeconds <= 8;
+  const timerWarning =
+    isRecording && remainingSeconds <= Math.min(60, timeLimitSeconds * 0.15);
   const livePreview = [finalTranscript, interimTranscript]
     .filter(Boolean)
     .join(" ")
@@ -84,7 +88,16 @@ export function VoiceInput({
             timerWarning ? "text-red-600" : "text-slate-500"
           }`}
         >
-          Response timer: {formatRemainingTime(remainingSeconds)}
+          {isRecording ? (
+            <>Response timer: {formatRemainingTime(remainingSeconds)}</>
+          ) : autoStartRecording && !isProcessing && !isSpeakingTts ? (
+            <>
+              Response timer: {formatRemainingTime(timeLimitSeconds)} · starts
+              when the interviewer finishes
+            </>
+          ) : (
+            <>Response timer: {formatRemainingTime(remainingSeconds)}</>
+          )}
         </div>
         {isSpeakingTts && onStopTts && (
           <Button
@@ -129,7 +142,11 @@ export function VoiceInput({
             className="h-[60px] flex-1 gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
           >
             <Mic className="h-5 w-5" />
-            {isProcessing ? "Processing your last answer..." : "Start recording"}
+            {isProcessing
+              ? "Processing your last answer..."
+              : autoStartRecording
+                ? "Start recording early"
+                : "Start recording"}
           </Button>
         ) : (
           <Button
