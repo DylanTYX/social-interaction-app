@@ -19,6 +19,11 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 2. `supabase/migrations/0002_job_descriptions.sql`
 3. `supabase/migrations/0003_table_privileges.sql`
 4. `supabase/migrations/0004_resumes.sql`
+5. `supabase/migrations/0005_atomic_turns_and_preset_uniqueness.sql`
+
+> **`0005` is not optional.** It creates the `append_interview_turn` RPC that
+> `src/lib/db/sessions.ts` calls on every interview turn. Skip it and the app
+> deploys cleanly but fails the moment anyone sends a message.
 
 (Or use Supabase CLI: `supabase db push` if you have the project linked.)
 
@@ -134,6 +139,8 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | AI never responds | `OPENAI_API_KEY` missing or invalid; check function logs |
 | Voice broken | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` |
 | PDF upload fails | Migrations `0002`/`0004` not applied on production DB |
+| Sending a message 500s | Migration `0005` not applied — `append_interview_turn` RPC is missing |
+| New account has every preset persona twice | Migration `0005` not applied — the unique index is missing |
 | API timeout (~10s) on Hobby | Rare for streaming chat; if analyze route times out, retry or upgrade plan |
 
 ---
@@ -165,7 +172,7 @@ CLI is optional; the GitHub dashboard flow above is enough.
 
 ## Checklist (printable)
 
-- [ ] Migrations `0001`–`0004` applied on Supabase
+- [ ] Migrations `0001`–`0005` applied on Supabase
 - [ ] Vercel project imported from GitHub
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set
 - [ ] `OPENAI_API_KEY` set

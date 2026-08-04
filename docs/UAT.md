@@ -13,7 +13,7 @@
 | Item | What to do |
 |------|------------|
 | App URL | Use your deployed URL **or** `http://localhost:3000` if testing locally |
-| Backend | Supabase project running; migrations applied (`0001`–`0004` including resumes) |
+| Backend | Supabase project running; migrations applied (`0001`–`0005`, including resumes and the atomic-turn RPC) |
 | AI | OpenAI (or configured provider) API keys set in server env |
 | Voice (optional) | Azure Speech credentials if testing voice interviews |
 | Test accounts | Create **2–3 separate accounts** (e.g. `tester1@…`, `tester2@…`) so testers don’t overwrite each other’s data |
