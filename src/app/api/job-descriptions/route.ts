@@ -4,18 +4,25 @@ import {
   createJobDescription,
   listJobDescriptions,
 } from "@/lib/db/job-descriptions";
-import { extractTextFromPdf } from "@/lib/pdf";
+import { parsePdfUpload } from "@/lib/api/uploads";
+import {
+  badRequest,
+  ClientVisibleError,
+  handleRouteError,
+  unauthorized,
+} from "@/lib/api/errors";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 
 const MAX_JOB_DESCRIPTION_CHARS = 30_000;
-const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
+const MIN_JOB_DESCRIPTION_CHARS = 80;
 
 export async function GET(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -28,12 +35,7 @@ export async function GET(request: Request) {
     const jobDescriptions = await listJobDescriptions(supabase, { limit });
     return NextResponse.json({ jobDescriptions });
   } catch (error) {
-    console.error("[GET /api/job-descriptions]", error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to list job descriptions.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleRouteError("GET /api/job-descriptions", error);
   }
 }
 
@@ -48,50 +50,13 @@ async function parsePayload(
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
-    const form = await request.formData();
-    const file = form.get("file");
-    const roleTitleRaw = form.get("roleTitle");
-    const roleTitle =
-      typeof roleTitleRaw === "string" && roleTitleRaw.trim()
-        ? roleTitleRaw.trim()
-        : null;
-
-    if (!(file instanceof Blob)) {
-      throw new Error("Missing PDF file in upload payload.");
-    }
-
-    if (file.size === 0) {
-      throw new Error("Uploaded file is empty.");
-    }
-
-    if (file.size > MAX_PDF_BYTES) {
-      throw new Error(
-        `PDF is too large. Keep uploads under ${MAX_PDF_BYTES / (1024 * 1024)} MB.`,
-      );
-    }
-
-    const fileType = file.type || "";
-    const fileName =
-      file instanceof File && typeof file.name === "string" ? file.name : "";
-
-    const isPdf =
-      fileType === "application/pdf" ||
-      /\.pdf$/i.test(fileName);
-
-    if (!isPdf) {
-      throw new Error("Only PDF uploads are supported in this version.");
-    }
-
-    const buffer = await file.arrayBuffer();
-    const rawText = await extractTextFromPdf(buffer);
-
-    if (rawText.trim().length < 80) {
-      throw new Error(
+    const { rawText, fields } = await parsePdfUpload(request, {
+      textFields: ["roleTitle"],
+      minChars: MIN_JOB_DESCRIPTION_CHARS,
+      tooLittleTextMessage:
         "Could not extract enough text from the PDF. The file may be image-only or scanned; paste the description as text instead.",
-      );
-    }
-
-    return { rawText, roleTitle };
+    });
+    return { rawText, roleTitle: fields.roleTitle ?? null };
   }
 
   const body = (await request.json()) as {
@@ -99,15 +64,14 @@ async function parsePayload(
     roleTitle?: unknown;
   };
 
-  const rawText =
-    typeof body.rawText === "string" ? body.rawText.trim() : "";
+  const rawText = typeof body.rawText === "string" ? body.rawText.trim() : "";
   const roleTitle =
     typeof body.roleTitle === "string" && body.roleTitle.trim()
       ? body.roleTitle.trim()
       : null;
 
   if (!rawText) {
-    throw new Error("Missing rawText.");
+    throw new ClientVisibleError("Missing rawText.");
   }
 
   return { rawText, roleTitle };
@@ -117,24 +81,26 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `jd-upload:${user.id}`,
+      RATE_LIMITS.documentUpload,
+    );
+    if (limited) return limited;
 
     const { rawText, roleTitle } = await parsePayload(request);
 
-    if (rawText.length < 80) {
-      return NextResponse.json(
-        { error: "Job description must contain at least 80 characters of text." },
-        { status: 400 },
+    if (rawText.length < MIN_JOB_DESCRIPTION_CHARS) {
+      return badRequest(
+        `Job description must contain at least ${MIN_JOB_DESCRIPTION_CHARS} characters of text.`,
       );
     }
 
     if (rawText.length > MAX_JOB_DESCRIPTION_CHARS) {
-      return NextResponse.json(
-        {
-          error: `Job description is too long. Keep it under ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()} characters for now.`,
-        },
-        { status: 400 },
+      return badRequest(
+        `Job description is too long. Keep it under ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()} characters for now.`,
       );
     }
 
@@ -147,10 +113,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ jobDescription }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to create job description.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleRouteError("POST /api/job-descriptions", error);
   }
 }

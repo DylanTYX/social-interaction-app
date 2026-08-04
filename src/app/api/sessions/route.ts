@@ -11,6 +11,7 @@ import {
   buildLoopProgress,
   type SessionLaunchMeta,
 } from "@/lib/session-launch-meta";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -45,10 +46,7 @@ export async function GET(request: Request) {
     const sessions = await listSessions(supabase, { limit });
     return NextResponse.json({ sessions });
   } catch (error) {
-    console.error("[GET /api/sessions]", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to list sessions.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/sessions", error);
   }
 }
 
@@ -56,7 +54,7 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const body = (await request.json()) as {
@@ -124,8 +122,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ session }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("POST /api/sessions", error);
   }
 }

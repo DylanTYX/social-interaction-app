@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { deletePersona, updatePersona } from "@/lib/db/personas";
 import type { PersonaConfig } from "@/lib/personaEngine";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
@@ -57,9 +58,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ persona });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update persona.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("PATCH /api/personas/[id]", error);
   }
 }
 
@@ -67,15 +66,13 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
     await deletePersona(supabase, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to delete persona.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("DELETE /api/personas/[id]", error);
   }
 }

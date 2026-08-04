@@ -10,10 +10,18 @@ import {
 } from "@/lib/db/sessions";
 import {
   RECENT_MESSAGES_KEPT,
+  SUMMARY_REFRESH_EVERY,
   selectRecentMessages,
   shouldRefreshSummary,
   updateRollingSummary,
 } from "@/lib/summary";
+import {
+  badRequest,
+  notFound,
+  serverError,
+  unauthorized,
+} from "@/lib/api/errors";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { generatePersonaPrompt } from "@/lib/personaEngine";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
@@ -54,6 +62,24 @@ const INTERVIEWER_MAX_TOKENS = 320;
 const MIN_ANALYZABLE_CHARS = 10;
 const TRIVIAL_ANSWER = /^(yes|no|ok|okay|sure|ready|i'?m ready|yep|yeah|nope)\.?$/i;
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+/**
+ * How many trailing messages to read per turn.
+ *
+ * This route used to load the entire transcript and then throw away all but
+ * the last few — growing linearly with session length and defeating the whole
+ * point of the rolling summary. Only the tail is actually needed:
+ *
+ *   - `selectRecentMessages` sends the last RECENT_MESSAGES_KEPT verbatim;
+ *   - `findPriorQuestion` needs the most recent assistant turn;
+ *   - the summary refresh folds in whatever aged out of the verbatim window
+ *     since the last refresh — at most SUMMARY_REFRESH_EVERY messages.
+ *
+ * The window covers all three, plus 2 for the pair appended this turn. The
+ * slack means the summariser sees a little overlap with what it already
+ * folded in, which is harmless; a gap would not be.
+ */
+const TRANSCRIPT_WINDOW = RECENT_MESSAGES_KEPT + SUMMARY_REFRESH_EVERY + 2;
 
 type ConversationMessage = { role: "user" | "assistant"; content: string };
 type OpenAIMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -385,16 +411,27 @@ function createStreamingResponse(
 
         controller.enqueue(encoder.encode(formatSseEvent("done", result)));
       } catch (error) {
-        controller.enqueue(
-          encoder.encode(
-            formatSseEvent("error", {
-              error:
-                error instanceof Error ? error.message : "Unexpected error.",
-            }),
-          ),
-        );
+        // The 200 and the `start` event are already on the wire, so failures
+        // have to be reported in-band. Log the detail server-side and send the
+        // client the same opaque message a JSON 500 would carry.
+        console.error("[POST /api/chat] stream failed:", error);
+        try {
+          controller.enqueue(
+            encoder.encode(
+              formatSseEvent("error", {
+                error: "Failed to generate response.",
+              }),
+            ),
+          );
+        } catch {
+          // The client disconnected mid-stream; nothing left to report to.
+        }
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Already closed by a client disconnect.
+        }
       }
     },
   });
@@ -412,8 +449,11 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
+
+    const limited = enforceRateLimit(`chat:${user.id}`, RATE_LIMITS.chat);
+    if (limited) return limited;
 
     const body = (await request.json()) as ChatRequestBody;
     const sessionId =
@@ -424,29 +464,23 @@ export async function POST(request: Request) {
     const isOpening = body.mode === "opening";
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: "Missing required field: sessionId." },
-        { status: 400 },
-      );
+      return badRequest("Missing required field: sessionId.");
     }
 
     if (!userMessage && !isOpening) {
-      return NextResponse.json(
-        { error: "Missing required field: userMessage." },
-        { status: 400 },
-      );
+      return badRequest("Missing required field: userMessage.");
     }
 
     const session = await getSession(supabase, sessionId);
     if (!session) {
-      return NextResponse.json(
-        { error: "Session not found." },
-        { status: 404 },
-      );
+      return notFound("Session not found.");
     }
 
-    const historicalMessages = await listMessages(supabase, sessionId);
-    const conversation = messagesToConversation(historicalMessages);
+    const recentRows = await listMessages(supabase, sessionId, {
+      limit: TRANSCRIPT_WINDOW,
+      ascending: false,
+    });
+    const conversation = messagesToConversation(recentRows.reverse());
     const recent = selectRecentMessages(conversation);
 
     const metrics = parseSessionMetrics(session.metrics);
@@ -601,30 +635,15 @@ export async function POST(request: Request) {
       let summary = session.summary;
 
       if (isOpening) {
-        // Persist only the assistant message as turn 1.
-        const nextTurn = session.turnCount + 1;
-        const { error } = await supabase.from("interview_messages").insert({
-          session_id: sessionId,
-          role: "assistant",
-          content: aiMessage,
-          turn_index: nextTurn,
-        });
-        if (error) throw error;
-
-        const { error: bumpError } = await supabase
-          .from("interview_sessions")
-          .update({ turn_count: nextTurn })
-          .eq("id", sessionId);
-        if (bumpError) throw bumpError;
-
-        turnCount = nextTurn;
+        // The interviewer speaks first; only an assistant row is written.
+        const result = await appendTurn(supabase, sessionId, null, aiMessage);
+        turnCount = result.turnCount;
       } else {
         const result = await appendTurn(
           supabase,
           sessionId,
           userMessage,
           aiMessage,
-          session.turnCount,
         );
         turnCount = result.turnCount;
 
@@ -635,9 +654,12 @@ export async function POST(request: Request) {
           { role: "assistant", content: aiMessage },
         ];
 
-        if (
-          shouldRefreshSummary(allConversation.length, Boolean(session.summary))
-        ) {
+        // `turnCount` is the authoritative total message count for the
+        // session. `allConversation` is only the tail we read this request, so
+        // it must not drive the refresh cadence — otherwise the modulo check
+        // would fire against a capped number and the summary would refresh at
+        // the wrong times (or never).
+        if (shouldRefreshSummary(turnCount, Boolean(session.summary))) {
           try {
             const summaryResult = await updateRollingSummary({
               previousSummary: session.summary,
@@ -675,13 +697,7 @@ export async function POST(request: Request) {
     const result = await buildResult();
     return NextResponse.json(result);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unexpected server error.";
-
-    return NextResponse.json(
-      { error: "Failed to generate response.", details: errorMessage },
-      { status: 500 },
-    );
+    return serverError("POST /api/chat", error);
   }
 }
 

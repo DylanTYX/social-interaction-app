@@ -4,6 +4,7 @@ import {
   deleteJobDescription,
   getJobDescription,
 } from "@/lib/db/job-descriptions";
+import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -15,22 +16,18 @@ export async function GET(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
     const jobDescription = await getJobDescription(supabase, id);
     if (!jobDescription) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return notFound();
     }
 
     return NextResponse.json({ jobDescription });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to load job description.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/job-descriptions/[id]", error);
   }
 }
 
@@ -38,17 +35,13 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
     await deleteJobDescription(supabase, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to delete job description.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("DELETE /api/job-descriptions/[id]", error);
   }
 }

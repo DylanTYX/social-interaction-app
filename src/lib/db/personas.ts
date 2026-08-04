@@ -48,14 +48,19 @@ function buildSeedRows(userId: string): {
   }));
 }
 
-/**
- * Returns the user's persona library, seeding the built-in presets the first
- * time we see them. The seeding happens inside this function so callers do
- * not need to think about it.
- */
-export async function listPersonas(
+/** Postgres unique-violation. Raised by `personas_user_preset_name_idx`. */
+const UNIQUE_VIOLATION = "23505";
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: string }).code === UNIQUE_VIOLATION
+  );
+}
+
+async function selectPersonas(
   supabase: SupabaseClient,
-  userId: string,
 ): Promise<PersonaRecord[]> {
   const { data, error } = await supabase
     .from("personas")
@@ -63,21 +68,43 @@ export async function listPersonas(
     .order("updated_at", { ascending: false });
 
   if (error) throw error;
+  return (data ?? []).map((row) => rowToRecord(row as PersonaRow));
+}
 
-  if (data && data.length > 0) {
-    return data.map((row) => rowToRecord(row as PersonaRow));
+/**
+ * Returns the user's persona library, seeding the built-in presets the first
+ * time we see them. The seeding happens inside this function so callers do
+ * not need to think about it.
+ *
+ * The read-then-insert is inherently racy — two concurrent first loads (two
+ * tabs, or the library and the setup wizard) both see an empty table. The
+ * partial unique index `personas_user_preset_name_idx` (migration 0005) makes
+ * the loser's insert fail instead of duplicating every preset; we treat that
+ * failure as "somebody else just seeded" and re-read.
+ *
+ * The index is partial (`where kind = 'preset'`) so users can still name their
+ * own personas freely, which also means it cannot serve as an `upsert`
+ * arbiter — hence catch-and-re-read rather than `onConflict`.
+ */
+export async function listPersonas(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<PersonaRecord[]> {
+  const existing = await selectPersonas(supabase);
+  if (existing.length > 0) {
+    return existing;
   }
 
   // First-time user: seed presets.
-  const seedRows = buildSeedRows(userId);
-  const { data: inserted, error: seedError } = await supabase
+  const { error: seedError } = await supabase
     .from("personas")
-    .insert(seedRows)
-    .select(PERSONA_COLUMNS);
+    .insert(buildSeedRows(userId));
 
-  if (seedError) throw seedError;
+  if (seedError && !isUniqueViolation(seedError)) throw seedError;
 
-  return (inserted ?? []).map((row) => rowToRecord(row as PersonaRow));
+  // Re-read either way: on success this picks up the inserted rows, and on a
+  // conflict it picks up whatever the concurrent writer committed.
+  return selectPersonas(supabase);
 }
 
 export async function createPersona(
@@ -139,11 +166,12 @@ export async function resetPersonaPresets(
     .eq("kind", "preset");
   if (delError) throw delError;
 
-  const seedRows = buildSeedRows(userId);
   const { error: seedError } = await supabase
     .from("personas")
-    .insert(seedRows);
-  if (seedError) throw seedError;
+    .insert(buildSeedRows(userId));
+  // A concurrent reset or first-load may have re-seeded between our delete and
+  // this insert; the unique index makes that a conflict rather than duplicates.
+  if (seedError && !isUniqueViolation(seedError)) throw seedError;
 
-  return listPersonas(supabase, userId);
+  return selectPersonas(supabase);
 }

@@ -200,6 +200,39 @@ export interface UpdateSessionInput {
   endedAt?: string | null;
 }
 
+/**
+ * `interview_sessions.metrics` is a single JSONB blob with three independent
+ * owners: `launch` (setup config, written once at launch), `loop` (multi-round
+ * progress, written by the server) and the live score metrics (written by the
+ * client on every scored turn).
+ *
+ * Assigning the column wholesale meant a client PATCH carrying only score
+ * fields silently deleted `launch` and `loop` — which broke round-type
+ * selection in `/api/chat`, the `next-round` handoff, and cross-device resume.
+ * We shallow-merge instead so each writer only touches its own keys.
+ *
+ * Shallow is the right depth here: every top-level key is replaced as a unit
+ * (`launch` is always written whole, `dimensionSnapshots` is always the full
+ * capped array), so a deep merge would only risk resurrecting stale nested
+ * values.
+ */
+async function mergeMetrics(
+  supabase: SupabaseClient,
+  id: string,
+  incoming: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select("metrics")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const existing = (data?.metrics ?? {}) as Record<string, unknown>;
+  return { ...existing, ...incoming };
+}
+
 export async function updateSession(
   supabase: SupabaseClient,
   id: string,
@@ -208,7 +241,13 @@ export async function updateSession(
   const patch: Record<string, unknown> = {};
   if (input.status !== undefined) patch.status = input.status;
   if (input.summary !== undefined) patch.summary = input.summary;
-  if (input.metrics !== undefined) patch.metrics = input.metrics;
+  if (input.metrics !== undefined) {
+    // `null` is an explicit reset; an object is merged over what is stored.
+    patch.metrics =
+      input.metrics === null
+        ? null
+        : await mergeMetrics(supabase, id, input.metrics);
+  }
   if (input.averageScore !== undefined)
     patch.average_score = input.averageScore;
   if (input.durationMinutes !== undefined)
@@ -248,53 +287,40 @@ export async function listMessages(
 }
 
 /**
- * Append a user/assistant pair atomically and bump the session's turn_count.
+ * Append one interview turn and bump `turn_count`, atomically.
+ *
+ * This delegates to the `append_interview_turn` RPC (migration 0005) rather
+ * than doing it client-side. The previous implementation derived `turn_index`
+ * from a `turn_count` read at the top of the request, then inserted and bumped
+ * in two separate statements — so two overlapping turns on one session wrote
+ * duplicate indices, and a failure between the two statements left the counter
+ * disagreeing with the rows. The RPC takes a row lock on the session, so
+ * concurrent turns serialize and the index is always derived from committed
+ * state.
+ *
+ * Pass `userMessage: null` for the opening turn, where the interviewer speaks
+ * first and there is no paired user message.
+ *
  * Returns the new turn_count.
  */
 export async function appendTurn(
   supabase: SupabaseClient,
   sessionId: string,
-  userMessage: string,
+  userMessage: string | null,
   assistantMessage: string,
-  previousTurnCount: number,
-): Promise<{ turnCount: number; userMessageId: string; assistantMessageId: string }> {
-  const userTurn = previousTurnCount + 1;
-  const assistantTurn = previousTurnCount + 2;
-
-  const { data, error } = await supabase
-    .from("interview_messages")
-    .insert([
-      {
-        session_id: sessionId,
-        role: "user",
-        content: userMessage,
-        turn_index: userTurn,
-      },
-      {
-        session_id: sessionId,
-        role: "assistant",
-        content: assistantMessage,
-        turn_index: assistantTurn,
-      },
-    ])
-    .select("id, role");
+): Promise<{ turnCount: number }> {
+  const { data, error } = await supabase.rpc("append_interview_turn", {
+    p_session_id: sessionId,
+    p_user_content: userMessage,
+    p_assistant_content: assistantMessage,
+  });
 
   if (error) throw error;
 
-  const inserted = (data ?? []) as Array<{ id: string; role: MessageRole }>;
-  const userRow = inserted.find((row) => row.role === "user");
-  const assistantRow = inserted.find((row) => row.role === "assistant");
+  const turnCount = typeof data === "number" ? data : Number(data);
+  if (!Number.isFinite(turnCount)) {
+    throw new Error("append_interview_turn returned an unexpected value.");
+  }
 
-  const { error: bumpError } = await supabase
-    .from("interview_sessions")
-    .update({ turn_count: assistantTurn })
-    .eq("id", sessionId);
-
-  if (bumpError) throw bumpError;
-
-  return {
-    turnCount: assistantTurn,
-    userMessageId: userRow?.id ?? "",
-    assistantMessageId: assistantRow?.id ?? "",
-  };
+  return { turnCount };
 }

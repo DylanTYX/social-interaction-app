@@ -73,7 +73,10 @@ import {
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
 import { ResumePicker } from "@/components/setup/resume-picker";
-import { getSpeechService } from "@/lib/speechService";
+import {
+  AZURE_VOICE_OPTIONS,
+  type SpeechVoiceOption,
+} from "@/lib/speech-voices";
 import {
   ROUND_RUBRIC_LABELS,
   ROUND_TYPE_LABELS,
@@ -268,18 +271,11 @@ function SetupWizard() {
     saveInterviewSetup(setup);
   }, [setup, hydrated]);
 
-  const speechService = useMemo(
-    () => (typeof window !== "undefined" ? getSpeechService() : null),
-    [],
-  );
-
-  const azureVoiceOptions = useMemo(
-    () =>
-      typeof window !== "undefined" && speechService
-        ? speechService.getAvailableVoices()
-        : [],
-    [speechService],
-  );
+  // A static catalogue, so no client-only guard and no memo are needed. It is
+  // deliberately imported from `speech-voices` rather than `speechService`:
+  // the latter pulls in the Azure SDK (and its Node-only cert-checking
+  // dependencies) which this page never uses.
+  const azureVoiceOptions = AZURE_VOICE_OPTIONS;
 
   const stepIndex = STEPS.findIndex((step) => step.id === currentStep);
   const totalSteps = STEPS.length;
@@ -1756,7 +1752,8 @@ function FinalizeStep({
   onMicCheck: () => void;
   microphoneStatus: "idle" | "checking" | "ready" | "failed";
   microphoneMessage: string | null;
-  voiceOptions: { name: string; uri: string }[];
+  // Read-only: the step only iterates and searches this catalogue.
+  voiceOptions: readonly SpeechVoiceOption[];
 }) {
   const activeScenario = getScenarioByValue(
     setup.scenarioValue,

@@ -6,6 +6,7 @@ import {
   type PersonaKind,
 } from "@/lib/db/personas";
 import type { PersonaConfig } from "@/lib/personaEngine";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -27,16 +28,13 @@ export async function GET() {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const personas = await listPersonas(supabase, user.id);
     return NextResponse.json({ personas });
   } catch (error) {
-    console.error("[GET /api/personas]", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to list personas.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/personas", error);
   }
 }
 
@@ -44,7 +42,7 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const body = (await request.json()) as {
@@ -78,8 +76,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ persona }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create persona.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("POST /api/personas", error);
   }
 }

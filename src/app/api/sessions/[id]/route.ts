@@ -5,6 +5,7 @@ import {
   updateSession,
   type SessionStatus,
 } from "@/lib/db/sessions";
+import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -12,24 +13,44 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Keys inside `metrics` that only server code may write. `launch` is the
+ * session's setup snapshot and `loop` is multi-round progress; both are
+ * written at launch / round handoff and read back by `/api/chat`,
+ * `next-round`, and the resume endpoint. Clients PATCH this column with score
+ * metrics on every scored turn, so whatever they send for these keys is
+ * dropped rather than trusted — `updateSession` then merges the rest over the
+ * stored value, leaving the server-owned keys intact.
+ */
+const SERVER_OWNED_METRIC_KEYS = ["launch", "loop"] as const;
+
+function stripServerOwnedMetrics(
+  metrics: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null | undefined {
+  if (!metrics || typeof metrics !== "object") return metrics;
+  const sanitized = { ...metrics };
+  for (const key of SERVER_OWNED_METRIC_KEYS) {
+    delete sanitized[key];
+  }
+  return sanitized;
+}
+
 export async function GET(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
     const session = await getSession(supabase, id);
     if (!session) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return notFound();
     }
 
     return NextResponse.json({ session });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/sessions/[id]", error);
   }
 }
 
@@ -37,7 +58,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
@@ -60,7 +81,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     const session = await updateSession(supabase, id, {
       status,
       summary: body.summary,
-      metrics: body.metrics,
+      metrics: stripServerOwnedMetrics(body.metrics),
       averageScore: body.averageScore,
       durationMinutes: body.durationMinutes,
       endedAt: body.endedAt,
@@ -68,8 +89,6 @@ export async function PATCH(request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ session });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("PATCH /api/sessions/[id]", error);
   }
 }

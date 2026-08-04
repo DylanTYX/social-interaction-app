@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getSession, listMessages } from "@/lib/db/sessions";
 import { getJobDescription } from "@/lib/db/job-descriptions";
+import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -18,13 +19,13 @@ export async function GET(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
     const session = await getSession(supabase, id);
     if (!session) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return notFound();
     }
 
     const messages = await listMessages(supabase, id);
@@ -50,8 +51,6 @@ export async function GET(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ session, messages, jobDescription });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to load session report.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/sessions/[id]/report", error);
   }
 }

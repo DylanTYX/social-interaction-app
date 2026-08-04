@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getSession, listMessages } from "@/lib/db/sessions";
 import { parseSessionMetrics } from "@/lib/session-launch-meta";
 import { getJobDescription } from "@/lib/db/job-descriptions";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,7 @@ export async function GET(
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await context.params;
@@ -53,8 +54,6 @@ export async function GET(
       jobDescription,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to resume session.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/sessions/[id]/resume", error);
   }
 }

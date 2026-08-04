@@ -1,5 +1,10 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
+import {
+  AZURE_VOICE_OPTIONS,
+  type SpeechVoiceOption,
+} from "@/lib/speech-voices";
+
 export interface SpeechServiceConfig {
   /** Azure-issued authorization token (preferred). */
   authorizationToken: string;
@@ -1054,18 +1059,15 @@ export class SpeechService {
   }
 
   /**
-   * Curated set of voice options to surface in the setup wizard. These names
-   * are valid `speechSynthesisVoiceName` values for Azure Neural TTS.
+   * Curated set of voice options to surface in the setup wizard.
+   *
+   * The list itself lives in `@/lib/speech-voices` so callers that only need
+   * the catalogue can read it without importing this module — and with it, the
+   * Azure SDK. Kept here as a convenience for code that already holds a
+   * service instance.
    */
-  getAvailableVoices(): { name: string; uri: string }[] {
-    return [
-      { name: "Aria — US Female (warm)", uri: "en-US-AriaNeural" },
-      { name: "Jenny — US Female (friendly)", uri: "en-US-JennyNeural" },
-      { name: "Guy — US Male (confident)", uri: "en-US-GuyNeural" },
-      { name: "Davis — US Male (calm)", uri: "en-US-DavisNeural" },
-      { name: "Sonia — UK Female (clear)", uri: "en-GB-SoniaNeural" },
-      { name: "Ryan — UK Male (steady)", uri: "en-GB-RyanNeural" },
-    ];
+  getAvailableVoices(): SpeechVoiceOption[] {
+    return [...AZURE_VOICE_OPTIONS];
   }
 }
 

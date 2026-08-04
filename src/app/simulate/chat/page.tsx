@@ -36,11 +36,7 @@ import {
   computeAverageScore,
   type InterviewReportSnapshot,
 } from "@/lib/interview-report";
-import {
-  appendDimensionSnapshot,
-  buildLaunchMetaFromSetup,
-  buildLoopProgress,
-} from "@/lib/session-launch-meta";
+import { appendDimensionSnapshot } from "@/lib/session-launch-meta";
 import {
   scenarioFromBootstrap,
   useInterviewSessionBootstrap,
@@ -313,19 +309,10 @@ function ChatSimulateInner() {
       };
       const averageScore = computeAverageScore(completedSnapshot);
       try {
-        const launchMeta = buildLaunchMetaFromSetup({
-          scenarioValue: activeScenarioValue,
-          customScenarioBrief: bootstrap.customScenarioBrief,
-          streamResponses,
-          liveCoachingEnabled,
-          personaConfig: activePersonaConfig,
-          practiceMode: "text",
-          interviewLoop: bootstrap.interviewLoop,
-          voiceConfig: DEFAULT_SETUP.voiceConfig,
-          jobDescription: DEFAULT_SETUP.jobDescription,
-          resume: DEFAULT_SETUP.resume,
-        });
-        const loop = buildLoopProgress(launchMeta, sessionId);
+        // Only the score metrics are sent. `launch` and `loop` belong to the
+        // server (it wrote them at launch and merges our keys over them), and
+        // rebuilding them here from client defaults used to overwrite the real
+        // JD/resume config with blanks.
         await fetch(`/api/sessions/${sessionId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -333,11 +320,7 @@ function ChatSimulateInner() {
             status: "completed",
             averageScore,
             durationMinutes,
-            metrics: {
-              ...finalMetrics,
-              launch: launchMeta,
-              loop,
-            },
+            metrics: finalMetrics,
             endedAt: new Date().toISOString(),
           }),
         });

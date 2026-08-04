@@ -51,7 +51,7 @@ import {
   type PracticeMode,
   type VoiceSetupConfig,
 } from "@/lib/interview-setup";
-import { getSpeechService } from "@/lib/speechService";
+import { AZURE_VOICE_OPTIONS } from "@/lib/speech-voices";
 import { toast } from "sonner";
 
 type SaveState =
@@ -88,7 +88,9 @@ export default function SettingsPage() {
   const [voiceConfig, setVoiceConfig] = useState<VoiceSetupConfig>(
     defaultSetup.voiceConfig,
   );
-  const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>([]);
+  // A static catalogue — no state, no effect, and no need to construct a
+  // SpeechService (which would drag the Azure SDK into this page's bundle).
+  const voiceOptions: readonly VoiceOption[] = AZURE_VOICE_OPTIONS;
   const [voiceState, setVoiceState] = useState<SaveState>({ kind: "idle" });
 
   const [resetState, setResetState] = useState<SaveState>({ kind: "idle" });
@@ -129,22 +131,6 @@ export default function SettingsPage() {
     };
   }, []);
 
-  // Curated voice list comes from the speech service (static).
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      try {
-        const speech = getSpeechService();
-        setVoiceOptions(speech.getAvailableVoices());
-      } catch {
-        // Browser without speechSynthesis — leave list empty.
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleSaveProfile = async (event: React.FormEvent) => {
     event.preventDefault();

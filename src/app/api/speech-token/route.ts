@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/supabase/server";
+import { serverError, unauthorized } from "@/lib/api/errors";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+
 export const runtime = "nodejs";
 
 /**
@@ -13,29 +17,39 @@ export const runtime = "nodejs";
  *   - AZURE_SPEECH_KEY
  *   - AZURE_SPEECH_REGION
  *
- * For backward compatibility, if those are missing we also accept the
- * legacy NEXT_PUBLIC_* variants (so existing deployments do not break the
- * moment they pull these changes). New deployments should configure the
- * server-only variables.
+ * The issued token is bearer-usable against Azure Speech directly, so this
+ * endpoint requires an authenticated session and is rate limited per user.
+ *
+ * There is deliberately no `NEXT_PUBLIC_*` fallback. Next inlines those into
+ * the client bundle, so accepting one here would let a misconfigured deploy
+ * ship the raw subscription key to every browser — the exact failure this
+ * endpoint exists to prevent. Missing server env is a loud 500 instead.
  */
 export async function GET() {
-  const subscriptionKey =
-    process.env.AZURE_SPEECH_KEY ?? process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
-  const region =
-    process.env.AZURE_SPEECH_REGION ??
-    process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION;
-
-  if (!subscriptionKey || !region) {
-    return NextResponse.json(
-      {
-        error:
-          "Speech credentials are not configured. Set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION in the server environment.",
-      },
-      { status: 500 },
-    );
-  }
-
   try {
+    const { user } = await getCurrentUser();
+    if (!user) {
+      return unauthorized();
+    }
+
+    const limited = enforceRateLimit(
+      `speech-token:${user.id}`,
+      RATE_LIMITS.speechToken,
+    );
+    if (limited) return limited;
+
+    const subscriptionKey = process.env.AZURE_SPEECH_KEY;
+    const region = process.env.AZURE_SPEECH_REGION;
+
+    if (!subscriptionKey || !region) {
+      return serverError(
+        "GET /api/speech-token",
+        new Error(
+          "AZURE_SPEECH_KEY and/or AZURE_SPEECH_REGION are not set in the server environment.",
+        ),
+      );
+    }
+
     const response = await fetch(
       `https://${region}.api.cognitive.microsoft.com/sts/v1.0/issuetoken`,
       {
@@ -45,18 +59,19 @@ export async function GET() {
           "Content-Length": "0",
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        // 10s upper bound — Azure issues tokens almost immediately.
         cache: "no-store",
       },
     );
 
     if (!response.ok) {
-      const detail = await response.text();
+      const detail = await response.text().catch(() => "");
+      console.error(
+        "[GET /api/speech-token] Azure rejected the token request:",
+        response.status,
+        detail,
+      );
       return NextResponse.json(
-        {
-          error: "Failed to mint Azure Speech token.",
-          details: detail || `HTTP ${response.status}`,
-        },
+        { error: "Speech service is unavailable right now." },
         { status: 502 },
       );
     }
@@ -77,11 +92,6 @@ export async function GET() {
       },
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected token error.";
-    return NextResponse.json(
-      { error: "Failed to mint Azure Speech token.", details: message },
-      { status: 500 },
-    );
+    return serverError("GET /api/speech-token", error);
   }
 }

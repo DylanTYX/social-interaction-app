@@ -6,6 +6,8 @@ import {
   ROUND_RUBRIC_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
+import { badRequest, serverError, unauthorized } from "@/lib/api/errors";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -16,8 +18,6 @@ interface ModelAnswerResult {
   modelAnswer: string;
   rewrite: string;
   tips: string[];
-  error?: string;
-  details?: string;
 }
 
 function rubricGuidance(roundType: InterviewRoundType | undefined): string {
@@ -31,15 +31,15 @@ function rubricGuidance(roundType: InterviewRoundType | undefined): string {
   }
 }
 
-export async function POST(request: Request): Promise<NextResponse<ModelAnswerResult>> {
+export async function POST(request: Request): Promise<NextResponse> {
   try {
     const { user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized" } as ModelAnswerResult,
-        { status: 401 },
-      );
+      return unauthorized();
     }
+
+    const limited = enforceRateLimit(`coach:${user.id}`, RATE_LIMITS.coach);
+    if (limited) return limited;
 
     const body = (await request.json()) as Record<string, unknown>;
     const question = typeof body.question === "string" ? body.question.trim() : "";
@@ -50,17 +50,14 @@ export async function POST(request: Request): Promise<NextResponse<ModelAnswerRe
         : undefined;
 
     if (!question || !answer) {
-      return NextResponse.json(
-        { error: "Missing required fields: question, answer." } as ModelAnswerResult,
-        { status: 400 },
-      );
+      return badRequest("Missing required fields: question, answer.");
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured." } as ModelAnswerResult,
-        { status: 500 },
+      return serverError(
+        "POST /api/coach/model-answer",
+        new Error("OPENAI_API_KEY is not configured."),
       );
     }
 
@@ -98,11 +95,13 @@ export async function POST(request: Request): Promise<NextResponse<ModelAnswerRe
 
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
+      console.error(
+        "[POST /api/coach/model-answer] OpenAI rejected the request:",
+        response.status,
+        detail.slice(0, 500),
+      );
       return NextResponse.json(
-        {
-          error: "Failed to generate coaching answer.",
-          details: detail.slice(0, 500),
-        } as ModelAnswerResult,
+        { error: "Failed to generate coaching answer." },
         { status: 502 },
       );
     }
@@ -123,18 +122,14 @@ export async function POST(request: Request): Promise<NextResponse<ModelAnswerRe
       ? parsed.tips.filter((t): t is string => typeof t === "string").slice(0, 4)
       : [];
 
-    return NextResponse.json({
-      modelAnswer: typeof parsed.modelAnswer === "string" ? parsed.modelAnswer : "",
+    const result: ModelAnswerResult = {
+      modelAnswer:
+        typeof parsed.modelAnswer === "string" ? parsed.modelAnswer : "",
       rewrite: typeof parsed.rewrite === "string" ? parsed.rewrite : "",
       tips,
-    });
+    };
+    return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Failed to generate coaching answer.",
-        details: error instanceof Error ? error.message : "Unexpected error.",
-      } as ModelAnswerResult,
-      { status: 500 },
-    );
+    return serverError("POST /api/coach/model-answer", error);
   }
 }

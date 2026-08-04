@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ export async function DELETE() {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { error } = await supabase
@@ -25,8 +26,6 @@ export async function DELETE() {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to delete sessions.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("DELETE /api/me/sessions", error);
   }
 }

@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { listSessions, listMessages } from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { listJobDescriptions } from "@/lib/db/job-descriptions";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -14,7 +15,7 @@ export async function GET() {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const [sessions, personas, jobDescriptions] = await Promise.all([
@@ -53,8 +54,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to export data.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("GET /api/me/export", error);
   }
 }

@@ -6,17 +6,17 @@ import {
   MAX_RESUME_CHARS,
   MIN_RESUME_CHARS,
 } from "@/lib/db/resumes";
-import { extractTextFromPdf } from "@/lib/pdf";
+import { parsePdfUpload } from "@/lib/api/uploads";
+import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
-
-const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function GET(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -29,10 +29,7 @@ export async function GET(request: Request) {
     const resumes = await listResumes(supabase, { limit });
     return NextResponse.json({ resumes });
   } catch (error) {
-    console.error("[GET /api/resumes]", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to list resumes.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleRouteError("GET /api/resumes", error);
   }
 }
 
@@ -45,40 +42,13 @@ async function parsePayload(request: Request): Promise<ParsedResumePayload> {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
-    const form = await request.formData();
-    const file = form.get("file");
-    const titleRaw = form.get("title");
-    const title =
-      typeof titleRaw === "string" && titleRaw.trim() ? titleRaw.trim() : null;
-
-    if (!(file instanceof Blob)) {
-      throw new Error("Missing PDF file in upload payload.");
-    }
-    if (file.size === 0) {
-      throw new Error("Uploaded file is empty.");
-    }
-    if (file.size > MAX_PDF_BYTES) {
-      throw new Error(
-        `PDF is too large. Keep uploads under ${MAX_PDF_BYTES / (1024 * 1024)} MB.`,
-      );
-    }
-
-    const fileType = file.type || "";
-    const fileName =
-      file instanceof File && typeof file.name === "string" ? file.name : "";
-    const isPdf = fileType === "application/pdf" || /\.pdf$/i.test(fileName);
-    if (!isPdf) {
-      throw new Error("Only PDF uploads are supported in this version.");
-    }
-
-    const buffer = await file.arrayBuffer();
-    const rawText = await extractTextFromPdf(buffer);
-    if (rawText.trim().length < MIN_RESUME_CHARS) {
-      throw new Error(
+    const { rawText, fields } = await parsePdfUpload(request, {
+      textFields: ["title"],
+      minChars: MIN_RESUME_CHARS,
+      tooLittleTextMessage:
         "Could not extract enough text from the PDF. The file may be image-only or scanned; paste your resume as text instead.",
-      );
-    }
-    return { rawText, title };
+    });
+    return { rawText, title: fields.title ?? null };
   }
 
   const body = (await request.json()) as {
@@ -94,25 +64,25 @@ export async function POST(request: Request) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `resume-upload:${user.id}`,
+      RATE_LIMITS.documentUpload,
+    );
+    if (limited) return limited;
 
     const { rawText, title } = await parsePayload(request);
 
     if (rawText.trim().length < MIN_RESUME_CHARS) {
-      return NextResponse.json(
-        {
-          error: `Resume must contain at least ${MIN_RESUME_CHARS} characters of text.`,
-        },
-        { status: 400 },
+      return badRequest(
+        `Resume must contain at least ${MIN_RESUME_CHARS} characters of text.`,
       );
     }
     if (rawText.length > MAX_RESUME_CHARS) {
-      return NextResponse.json(
-        {
-          error: `Resume is too long. Keep it under ${MAX_RESUME_CHARS.toLocaleString()} characters.`,
-        },
-        { status: 400 },
+      return badRequest(
+        `Resume is too long. Keep it under ${MAX_RESUME_CHARS.toLocaleString()} characters.`,
       );
     }
 
@@ -125,8 +95,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ resume }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create resume.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleRouteError("POST /api/resumes", error);
   }
 }

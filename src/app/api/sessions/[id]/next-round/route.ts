@@ -21,6 +21,7 @@ import {
   createDefaultResumeConfig,
   type InterviewSetupState,
 } from "@/lib/interview-setup";
+import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,7 @@ export async function POST(_request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { id } = await ctx.params;
@@ -127,8 +128,6 @@ export async function POST(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ session, launchMeta }, { status: 201 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to start next round.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("POST /api/sessions/[id]/next-round", error);
   }
 }
