@@ -55,6 +55,48 @@ function makeAnalysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
   };
 }
 
+/**
+ * A technical-round analysis. The analyzer deliberately emits a *zeroed* STAR
+ * block on these rounds (STAR is not the rubric in play) and fills
+ * `technicalScores` instead — so these fixtures reproduce the exact shape that
+ * used to send the decision engine down the behavioural path.
+ */
+function makeTechnicalAnalysis(
+  overrides: Partial<AnalysisResult> = {},
+): AnalysisResult {
+  return {
+    ...makeAnalysis(),
+    roundType: "system_design",
+    starAnalysis: {
+      situation: { present: false, quality: 0, context: "not primary rubric" },
+      task: { present: false, quality: 0, clarity: "not primary rubric" },
+      action: {
+        present: false,
+        quality: 0,
+        specificity: 0,
+        ownership: 0,
+        summary: "not primary rubric",
+      },
+      result: {
+        present: false,
+        quality: 0,
+        quantified: false,
+        impact: "not primary rubric",
+      },
+    },
+    technicalScores: {
+      problemFraming: 8,
+      approach: 8,
+      correctness: 8,
+      complexity: 8,
+      communication: 8,
+      edgeCases: 8,
+      codeQuality: 8,
+    },
+    ...overrides,
+  };
+}
+
 const base = { personaName: "Alex" };
 
 describe("decideInterviewAction — strategy selection", () => {
@@ -104,6 +146,88 @@ describe("decideInterviewAction — strategy selection", () => {
     expect(
       decideInterviewAction(makeAnalysis({ overallScore: 60 }), base).strategy,
     ).toBe("PROBE_ACTION");
+  });
+});
+
+describe("decideInterviewAction — technical rounds", () => {
+  it("does NOT fall back to CLARIFY_SITUATION on a zeroed STAR block", () => {
+    // Regression guard. `chooseStrategy` used to read only `starAnalysis`, so
+    // `situation.present === false` made every technical turn return
+    // CLARIFY_SITUATION and the interviewer opened each system-design question
+    // with "tell me about the situation and task".
+    const decision = decideInterviewAction(makeTechnicalAnalysis(), base);
+
+    expect(decision.strategy).not.toBe("CLARIFY_SITUATION");
+    expect(decision.strategy).toBe("ACKNOWLEDGE_STRENGTH");
+  });
+
+  it("pins down requirements when the problem is mis-framed", () => {
+    const analysis = makeTechnicalAnalysis();
+    analysis.technicalScores!.problemFraming = 2;
+
+    const decision = decideInterviewAction(analysis, base);
+    expect(decision.strategy).toBe("CLARIFY_SITUATION");
+    // ...but for the technical reason, not the STAR one.
+    expect(decision.reason).toContain("requirements and constraints");
+  });
+
+  it("asks for visible reasoning when the approach is unclear", () => {
+    const analysis = makeTechnicalAnalysis();
+    analysis.technicalScores!.approach = 3;
+
+    expect(decideInterviewAction(analysis, base).strategy).toBe(
+      "ASSESS_THINKING",
+    );
+  });
+
+  it("probes the implementation when the solution is wrong", () => {
+    const analysis = makeTechnicalAnalysis();
+    analysis.technicalScores!.correctness = 3;
+
+    expect(decideInterviewAction(analysis, base).strategy).toBe("PROBE_ACTION");
+  });
+
+  it("drills cost and failure modes when complexity or edge cases are weak", () => {
+    const complexity = makeTechnicalAnalysis();
+    complexity.technicalScores!.complexity = 2;
+    expect(decideInterviewAction(complexity, base).strategy).toBe(
+      "DRILL_SPECIFICITY",
+    );
+
+    const edges = makeTechnicalAnalysis();
+    edges.technicalScores!.edgeCases = 2;
+    expect(decideInterviewAction(edges, base).strategy).toBe(
+      "DRILL_SPECIFICITY",
+    );
+  });
+
+  it("does not apply the zeroed-STAR penalty to escalation", () => {
+    // The zeroed STAR block used to add a flat +5 to `vaguenessWeight`,
+    // pushing it past the escalation threshold on nearly every technical turn.
+    expect(decideInterviewAction(makeTechnicalAnalysis(), base).shouldEscalate)
+      .toBe(false);
+  });
+
+  it("uses the technical rubric when the round is technical but the block is missing", () => {
+    // Defensive: the analyzer's JSON is not schema-validated, so the technical
+    // block can be absent. Falling back to the zeroed STAR would resurrect the
+    // original bug.
+    const analysis = makeTechnicalAnalysis({ technicalScores: undefined });
+
+    expect(decideInterviewAction(analysis, base).strategy).not.toBe(
+      "CLARIFY_SITUATION",
+    );
+  });
+
+  it("gives a technical next-focus fallback when no topics are suggested", () => {
+    const analysis = makeTechnicalAnalysis({
+      followupTopics: [],
+      overallScore: 60,
+    });
+
+    expect(decideInterviewAction(analysis, base).nextFocus).toBe(
+      "the concrete approach and its tradeoffs",
+    );
   });
 });
 

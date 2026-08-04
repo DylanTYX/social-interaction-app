@@ -110,6 +110,18 @@ interface ChatResult {
   strategy: InterviewStrategy | null;
   decisionReason: string | null;
   confidence: number | null;
+  /**
+   * The server's own escalation verdict.
+   *
+   * These used to be re-derived on the client from `confidence < 50` /
+   * `confidence > 80`, which is different logic from `decideInterviewAction`
+   * (`overallScore < 45 || vaguenessWeight > 12 || repeatedStrategy`). The two
+   * disagreed regularly, so the coaching panel could say the interviewer was
+   * easing off while the interviewer had actually been told to push harder.
+   * Send the real values instead of approximating them twice.
+   */
+  shouldEscalate: boolean | null;
+  shouldSlowDown: boolean | null;
   followupSummary: string | null;
 }
 
@@ -484,11 +496,13 @@ export async function POST(request: Request) {
     const recent = selectRecentMessages(conversation);
 
     const metrics = parseSessionMetrics(session.metrics);
-    const roundType = metrics.launch?.interviewLoop.enabled
-      ? metrics.launch.interviewLoop.rounds[
-          metrics.launch.interviewLoop.currentRoundIndex
-        ]?.type
-      : undefined;
+    // `enabled` distinguishes a multi-round loop from a one-off session — it
+    // does NOT mean "a round type was configured". Gating on it meant a
+    // single-round "System design" practice reported no round type, so the
+    // analyzer fell back to `"behavioral"` and scored it on STAR. Read the
+    // active round regardless; a one-round loop still has rounds[0].
+    const loop = metrics.launch?.interviewLoop;
+    const roundType = loop?.rounds?.[loop.currentRoundIndex ?? 0]?.type;
 
     const personaDescription = generatePersonaPrompt(session.personaConfig);
     const scenarioContext = (() => {
@@ -536,6 +550,8 @@ export async function POST(request: Request) {
     let strategy: InterviewStrategy | null = null;
     let decisionReason: string | null = null;
     let confidence: number | null = null;
+    let shouldEscalate: boolean | null = null;
+    let shouldSlowDown: boolean | null = null;
     let followupSummary: string | null = null;
     let steeringContext: string | null = null;
 
@@ -560,6 +576,8 @@ export async function POST(request: Request) {
         strategy = decision.strategy;
         decisionReason = decision.reason;
         confidence = decision.confidence;
+        shouldEscalate = decision.shouldEscalate;
+        shouldSlowDown = decision.shouldSlowDown;
         followupSummary = summarizeFollowup(decision.strategy, analysis);
         steeringContext = buildSteeringBlock(
           analysis,
@@ -686,6 +704,8 @@ export async function POST(request: Request) {
         strategy,
         decisionReason,
         confidence,
+        shouldEscalate,
+        shouldSlowDown,
         followupSummary,
       };
     };

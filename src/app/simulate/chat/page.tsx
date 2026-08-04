@@ -83,6 +83,8 @@ type ChatApiResponse = {
   strategy: InterviewStrategy | null;
   decisionReason: string | null;
   confidence: number | null;
+  shouldEscalate: boolean | null;
+  shouldSlowDown: boolean | null;
   followupSummary: string | null;
   error?: string;
   details?: string;
@@ -680,13 +682,16 @@ function ChatSimulateInner() {
       const turnStrategy = data.strategy;
       const turnConfidence = data.confidence ?? 50;
 
+      // Escalation flags come from the server's own decision, not a guess
+      // re-derived from `confidence`. The two used different rules and
+      // disagreed regularly.
       const decision = {
         strategy: turnStrategy,
         reason: data.decisionReason ?? "",
         confidence: turnConfidence,
-        shouldEscalate: turnConfidence < 50,
-        shouldSlowDown: turnConfidence > 80,
-        nextFocus: analysisResult.followupTopics[0] ?? "specific examples",
+        shouldEscalate: data.shouldEscalate ?? false,
+        shouldSlowDown: data.shouldSlowDown ?? false,
+        nextFocus: analysisResult.followupTopics?.[0] ?? "specific examples",
       };
 
       const updatedSessionState = recordInterviewTurn(sessionState, {
