@@ -23,6 +23,7 @@ import {
   unauthorized,
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
 import { generatePersonaPrompt } from "@/lib/personaEngine";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
@@ -284,14 +285,32 @@ function toOpenAIMessages(
   ];
 }
 
-async function readSseContent(response: Response): Promise<string> {
+/**
+ * Read an OpenAI SSE stream, accumulating the reply text and the trailing
+ * usage frame.
+ *
+ * This used to exist twice, character for character, differing only in whether
+ * `onChunk` was called — which is why the two copies had already started to
+ * drift. One implementation, optional callback.
+ *
+ * Usage only arrives on a streamed completion if the request set
+ * `stream_options: { include_usage: true }`; OpenAI then sends a final frame
+ * whose `choices` array is empty and whose `usage` block covers the whole
+ * completion.
+ */
+async function readSseStream(
+  response: Response,
+  onChunk?: (chunk: string) => void,
+): Promise<{ text: string; usage: OpenAIUsage | null }> {
   if (!response.body) {
     throw new Error("OpenAI stream did not include a response body.");
   }
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let output = "";
+  let usage: OpenAIUsage | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -311,22 +330,29 @@ async function readSseContent(response: Response): Promise<string> {
       try {
         const parsed = JSON.parse(payload) as {
           choices?: Array<{ delta?: { content?: string } }>;
+          usage?: OpenAIUsage;
         };
+        if (parsed.usage) usage = parsed.usage;
+
         const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) output += delta;
+        if (delta) {
+          output += delta;
+          onChunk?.(delta);
+        }
       } catch {
         // Ignore non-JSON heartbeats.
       }
     }
   }
 
-  return output.trim();
+  return { text: output.trim(), usage };
 }
 
 async function requestOpenAI(
   messages: OpenAIMessage[],
   promptCacheKey: string,
   model: string,
+  usageCollector: UsageCollector,
   onChunk?: (chunk: string) => void,
 ): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -344,6 +370,8 @@ async function requestOpenAI(
       model,
       messages,
       stream: true,
+      // Without this a streamed completion reports no usage at all.
+      stream_options: { include_usage: true },
       temperature: 0.7,
       max_tokens: INTERVIEWER_MAX_TOKENS,
       prompt_cache_key: promptCacheKey,
@@ -355,50 +383,9 @@ async function requestOpenAI(
     throw new Error(`OpenAI request failed: ${response.status} ${errorText}`);
   }
 
-  if (!onChunk) {
-    return readSseContent(response);
-  }
-
-  if (!response.body) {
-    throw new Error("OpenAI stream did not include a response body.");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let output = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line.startsWith("data:")) continue;
-
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
-
-      try {
-        const parsed = JSON.parse(payload) as {
-          choices?: Array<{ delta?: { content?: string } }>;
-        };
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          output += delta;
-          onChunk(delta);
-        }
-      } catch {
-        // Ignore non-JSON heartbeats.
-      }
-    }
-  }
-
-  return output.trim();
+  const { text, usage } = await readSseStream(response, onChunk);
+  usageCollector.record("interviewer", model, usage);
+  return text;
 }
 
 function formatSseEvent(event: string, data: unknown): string {
@@ -468,6 +455,10 @@ export async function POST(request: Request) {
 
     const limited = enforceRateLimit(`chat:${user.id}`, RATE_LIMITS.chat);
     if (limited) return limited;
+
+    // One collector per request; the turn's 2-3 model calls record into it and
+    // it is flushed once at the end as a single insert.
+    const usage = new UsageCollector();
 
     const body = (await request.json()) as ChatRequestBody;
     const sessionId =
@@ -572,7 +563,7 @@ export async function POST(request: Request) {
           userMessage,
           priorQuestion,
           process.env.OPENAI_API_KEY as string,
-          { jobContext: jobDescriptionContext, roundType },
+          { jobContext: jobDescriptionContext, roundType, usage },
         );
         // Supplying `previousStrategy` is what activates the anti-repetition
         // path: `decideInterviewAction` escalates when it is about to pick the
@@ -661,6 +652,7 @@ export async function POST(request: Request) {
         promptMessages,
         promptCacheKey,
         interviewerModel,
+        usage,
         onChunk,
       );
 
@@ -710,6 +702,7 @@ export async function POST(request: Request) {
             const summaryResult = await updateRollingSummary({
               previousSummary: session.summary,
               allMessages: allConversation,
+              usage,
             });
             if (summaryResult) {
               summary = summaryResult.summary;
@@ -723,6 +716,11 @@ export async function POST(request: Request) {
           }
         }
       }
+
+      // Flush here rather than after `buildResult` returns, so the streaming
+      // path — which runs this inside the ReadableStream — is covered too.
+      // Best-effort by construction; it cannot throw.
+      await usage.flush(supabase, { userId: user.id, sessionId });
 
       return {
         aiMessage,

@@ -16,6 +16,8 @@
  * cheaper per turn than the main reply.
  */
 
+import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
+
 const SUMMARY_MODEL = "gpt-4o-mini";
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -31,6 +33,8 @@ export interface SummaryUpdateInput {
   previousSummary: string | null;
   /** All messages in order; we will summarize everything except the tail. */
   allMessages: ConversationMessage[];
+  /** Records this call's token usage when supplied. */
+  usage?: UsageCollector;
 }
 
 export interface SummaryUpdateResult {
@@ -132,7 +136,9 @@ export async function updateRollingSummary(
 
   const data = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: OpenAIUsage;
   };
+  input.usage?.record("summary", SUMMARY_MODEL, data.usage);
   const summary = data.choices?.[0]?.message?.content?.trim();
   if (!summary) {
     throw new Error("Summary generation returned an empty response.");

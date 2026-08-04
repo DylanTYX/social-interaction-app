@@ -9,6 +9,7 @@ import {
   ROUND_RUBRIC_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
+import type { UsageCollector } from "@/lib/api/token-usage";
 
 /**
  * Scoring should be near-deterministic so the same answer doesn't swing
@@ -140,6 +141,8 @@ export interface AnalyzeResponseOptions {
    */
   jobContext?: string | null;
   roundType?: InterviewRoundType;
+  /** Records this call's token usage when supplied. */
+  usage?: UsageCollector;
 }
 
 function buildAnalysisPrompt(
@@ -293,6 +296,7 @@ export async function analyzeResponse(
     }
 
     const result = await response.json();
+    options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
     const rawAnalysis = result.choices[0].message.content;
 
     // Parse the JSON response
