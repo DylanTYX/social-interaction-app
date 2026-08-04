@@ -329,11 +329,28 @@ export async function analyzeResponse(
  * Determine interview strategy based on analysis
  * Returns which follow-up approach to take
  */
-export type InterviewStrategy =
-  | "CLARIFY_SITUATION"
-  | "PROBE_ACTION"
-  | "CHALLENGE_OWNERSHIP"
-  | "EXPLORE_RESULT"
-  | "ACKNOWLEDGE_STRENGTH"
-  | "DRILL_SPECIFICITY"
-  | "ASSESS_THINKING";
+export const INTERVIEW_STRATEGIES = [
+  "CLARIFY_SITUATION",
+  "PROBE_ACTION",
+  "CHALLENGE_OWNERSHIP",
+  "EXPLORE_RESULT",
+  "ACKNOWLEDGE_STRENGTH",
+  "DRILL_SPECIFICITY",
+  "ASSESS_THINKING",
+] as const;
+
+export type InterviewStrategy = (typeof INTERVIEW_STRATEGIES)[number];
+
+/**
+ * Narrow a value read back from storage. Persisted strategies are plain `text`
+ * in Postgres and may predate any given revision of this union, so validate
+ * rather than cast.
+ */
+export function isInterviewStrategy(
+  value: unknown,
+): value is InterviewStrategy {
+  return (
+    typeof value === "string" &&
+    (INTERVIEW_STRATEGIES as readonly string[]).includes(value)
+  );
+}

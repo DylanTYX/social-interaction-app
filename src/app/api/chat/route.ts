@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   appendTurn,
+  getPreviousStrategy,
   getSession,
   listMessages,
   updateSession,
@@ -36,6 +37,7 @@ import { formatResumeForPrompt, getResume } from "@/lib/db/resumes";
 import { parseSessionMetrics } from "@/lib/session-launch-meta";
 import {
   analyzeResponse,
+  isInterviewStrategy,
   type AnalysisResult,
   type InterviewStrategy,
 } from "@/lib/responseAnalyzer";
@@ -512,27 +514,36 @@ export async function POST(request: Request) {
         parts.push(`Description: ${session.scenarioDescription}`);
       return parts.length > 0 ? parts.join("\n") : undefined;
     })();
-    const jobDescriptionContext = session.jobDescriptionId
-      ? formatRetrievedJobContext(
-          await retrieveJobDescriptionChunks({
-            supabase,
-            jobDescriptionId: session.jobDescriptionId,
-            query: isOpening
-              ? [
-                  session.scenarioTitle,
-                  session.scenarioDescription,
-                  "opening interview question role requirements responsibilities",
-                ]
-                  .filter(Boolean)
-                  .join("\n")
-              : userMessage,
-            matchCount: 4,
-          }),
-        )
-      : null;
+    // These three are independent of one another, so run them concurrently
+    // rather than stacking three round-trips ahead of the first token.
+    const [jobDescriptionContext, resumeRecord, previousStrategy] =
+      await Promise.all([
+        session.jobDescriptionId
+          ? retrieveJobDescriptionChunks({
+              supabase,
+              jobDescriptionId: session.jobDescriptionId,
+              query: isOpening
+                ? [
+                    session.scenarioTitle,
+                    session.scenarioDescription,
+                    "opening interview question role requirements responsibilities",
+                  ]
+                    .filter(Boolean)
+                    .join("\n")
+                : userMessage,
+              matchCount: 4,
+            }).then(formatRetrievedJobContext)
+          : Promise.resolve(null),
+        session.resumeId
+          ? getResume(supabase, session.resumeId)
+          : Promise.resolve(null),
+        isOpening
+          ? Promise.resolve(null)
+          : getPreviousStrategy(supabase, sessionId),
+      ]);
 
-    const resumeContext = session.resumeId
-      ? formatResumeForPrompt((await getResume(supabase, session.resumeId))?.rawText ?? "")
+    const resumeContext = resumeRecord
+      ? formatResumeForPrompt(resumeRecord.rawText)
       : null;
 
     // Closed loop: analyze the answer the user just gave BEFORE generating the
@@ -563,16 +574,20 @@ export async function POST(request: Request) {
           process.env.OPENAI_API_KEY as string,
           { jobContext: jobDescriptionContext, roundType },
         );
-        const decision = decideInterviewAction(analysis, {
+        // Supplying `previousStrategy` is what activates the anti-repetition
+        // path: `decideInterviewAction` escalates when it is about to pick the
+        // same strategy twice running. Nothing ever passed it before, so
+        // `repeatedStrategy` was permanently false.
+        const decisionContext = {
           personaName: session.personaName,
           strictness: session.personaConfig.strictness,
           warmth: session.personaConfig.warmth,
-        });
-        const difficulty = estimateFollowupDifficulty(analysis, {
-          personaName: session.personaName,
-          strictness: session.personaConfig.strictness,
-          warmth: session.personaConfig.warmth,
-        });
+          previousStrategy: isInterviewStrategy(previousStrategy)
+            ? previousStrategy
+            : undefined,
+        };
+        const decision = decideInterviewAction(analysis, decisionContext);
+        const difficulty = estimateFollowupDifficulty(analysis, decisionContext);
         strategy = decision.strategy;
         decisionReason = decision.reason;
         confidence = decision.confidence;
@@ -657,11 +672,24 @@ export async function POST(request: Request) {
         const result = await appendTurn(supabase, sessionId, null, aiMessage);
         turnCount = result.turnCount;
       } else {
+        // Persist the analysis alongside the messages, in one transaction. It
+        // was previously generated, used to steer this reply, returned to the
+        // client, and then dropped — so the report could only ever show
+        // aggregates and there was nothing to evaluate scoring against.
         const result = await appendTurn(
           supabase,
           sessionId,
           userMessage,
           aiMessage,
+          analysis
+            ? {
+                analysis: analysis as unknown as Record<string, unknown>,
+                roundType: analysis.roundType ?? roundType ?? null,
+                overallScore: analysis.overallScore,
+                strategy,
+                confidence,
+              }
+            : null,
         );
         turnCount = result.turnCount;
 

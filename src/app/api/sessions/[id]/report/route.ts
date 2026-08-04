@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { getSession, listMessages } from "@/lib/db/sessions";
+import {
+  getSession,
+  listMessages,
+  listTurnAnalyses,
+} from "@/lib/db/sessions";
 import { getJobDescription } from "@/lib/db/job-descriptions";
 import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
@@ -12,8 +16,9 @@ interface RouteParams {
 
 /**
  * Aggregates everything the report page needs for a past session in one
- * round trip: the session row, its full message transcript, and (if linked)
- * a lightweight summary of the attached job description.
+ * round trip: the session row, its full message transcript, the per-turn
+ * analyses, and (if linked) a lightweight summary of the attached job
+ * description.
  */
 export async function GET(_request: Request, ctx: RouteParams) {
   try {
@@ -28,7 +33,10 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return notFound();
     }
 
-    const messages = await listMessages(supabase, id);
+    const [messages, turnAnalyses] = await Promise.all([
+      listMessages(supabase, id),
+      listTurnAnalyses(supabase, id),
+    ]);
 
     let jobDescription: {
       id: string;
@@ -49,7 +57,14 @@ export async function GET(_request: Request, ctx: RouteParams) {
       }
     }
 
-    return NextResponse.json({ session, messages, jobDescription });
+    // `turnAnalyses` is empty for sessions recorded before migration 0006 —
+    // consumers must treat it as optional rather than assuming one per turn.
+    return NextResponse.json({
+      session,
+      messages,
+      turnAnalyses,
+      jobDescription,
+    });
   } catch (error) {
     return serverError("GET /api/sessions/[id]/report", error);
   }

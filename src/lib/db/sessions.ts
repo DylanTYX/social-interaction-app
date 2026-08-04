@@ -303,16 +303,39 @@ export async function listMessages(
  *
  * Returns the new turn_count.
  */
+export interface TurnAnalysisInput {
+  /** The full AnalysisResult, stored verbatim. */
+  analysis: Record<string, unknown>;
+  roundType?: string | null;
+  overallScore?: number | null;
+  strategy?: string | null;
+  confidence?: number | null;
+}
+
 export async function appendTurn(
   supabase: SupabaseClient,
   sessionId: string,
   userMessage: string | null,
   assistantMessage: string,
+  turnAnalysis?: TurnAnalysisInput | null,
 ): Promise<{ turnCount: number }> {
   const { data, error } = await supabase.rpc("append_interview_turn", {
     p_session_id: sessionId,
     p_user_content: userMessage,
     p_assistant_content: assistantMessage,
+    // Optional: trivial answers and analyzer failures still persist the
+    // messages, just without an analysis row.
+    p_analysis: turnAnalysis?.analysis ?? null,
+    p_round_type: turnAnalysis?.roundType ?? null,
+    p_overall_score:
+      typeof turnAnalysis?.overallScore === "number"
+        ? Math.round(turnAnalysis.overallScore)
+        : null,
+    p_strategy: turnAnalysis?.strategy ?? null,
+    p_confidence:
+      typeof turnAnalysis?.confidence === "number"
+        ? Math.round(turnAnalysis.confidence)
+        : null,
   });
 
   if (error) throw error;
@@ -323,4 +346,81 @@ export async function appendTurn(
   }
 
   return { turnCount };
+}
+
+export interface TurnAnalysisRecord {
+  id: string;
+  turnIndex: number;
+  roundType: string | null;
+  overallScore: number | null;
+  strategy: string | null;
+  confidence: number | null;
+  analysis: Record<string, unknown>;
+  createdAt: string;
+}
+
+const TURN_ANALYSIS_COLUMNS =
+  "id, turn_index, round_type, overall_score, strategy, confidence, analysis, created_at";
+
+interface TurnAnalysisRow {
+  id: string;
+  turn_index: number;
+  round_type: string | null;
+  overall_score: number | null;
+  strategy: string | null;
+  confidence: number | null;
+  analysis: Record<string, unknown>;
+  created_at: string;
+}
+
+function rowToTurnAnalysis(row: TurnAnalysisRow): TurnAnalysisRecord {
+  return {
+    id: row.id,
+    turnIndex: row.turn_index,
+    roundType: row.round_type,
+    overallScore: row.overall_score,
+    strategy: row.strategy,
+    confidence: row.confidence,
+    analysis: row.analysis,
+    createdAt: row.created_at,
+  };
+}
+
+/** Every scored turn for a session, oldest first. Powers the report. */
+export async function listTurnAnalyses(
+  supabase: SupabaseClient,
+  sessionId: string,
+): Promise<TurnAnalysisRecord[]> {
+  const { data, error } = await supabase
+    .from("interview_turn_analyses")
+    .select(TURN_ANALYSIS_COLUMNS)
+    .eq("session_id", sessionId)
+    .order("turn_index", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => rowToTurnAnalysis(row as TurnAnalysisRow));
+}
+
+/**
+ * The strategy used on the previous scored turn.
+ *
+ * `decideInterviewAction` takes `previousStrategy` and escalates when the same
+ * strategy would be chosen twice running — but nothing ever supplied it, so
+ * that path was dead in production. One indexed lookup on the turn we are
+ * about to score.
+ */
+export async function getPreviousStrategy(
+  supabase: SupabaseClient,
+  sessionId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("interview_turn_analyses")
+    .select("strategy")
+    .eq("session_id", sessionId)
+    .order("turn_index", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.strategy ?? null;
 }
