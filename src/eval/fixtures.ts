@@ -201,5 +201,40 @@ export const FIXTURES: EvalFixture[] = [
     rationale:
       "Restates the task as a plan. No structure, no hypotheses, no segmentation.",
   },
-];
 
+  // ------------------------------------------------------------------------ hr
+  // The newest round type, and the one the harness had no coverage for at all.
+  {
+    id: "hr-strong",
+    roundType: "hr",
+    band: "strong",
+    question:
+      "What are you looking for in your next role, and do you have any questions for us?",
+    answer:
+      "Three things, in order. Scope first — I've been the only person on my service for a year and I want to work somewhere reviews are a real conversation. Second, I want to stay hands-on; I've been asked twice about moving to management and it isn't what I want in the next two or three years. Third, compensation needs to be at least in line with my current band, which is 95 to 105 including bonus, though I'd weigh that against the first two.\n\nOn notice, I'm on a month and I'd want to finish the migration I'm leading, so realistically six weeks.\n\nMy question: you mentioned the team doubled last year. What changed about how decisions get made, and what would you have done differently?",
+    rationale:
+      "Prioritised rather than listed, concrete and honest on comp and notice, and asks a question that could not be asked of any other company.",
+  },
+  {
+    id: "hr-mediocre",
+    roundType: "hr",
+    band: "mediocre",
+    question:
+      "What are you looking for in your next role, and do you have any questions for us?",
+    answer:
+      "I'm looking for a role where I can keep growing technically and work on products that people actually use. Culture matters to me — I've been somewhere that talked about collaboration and didn't practise it, so I pay attention to that now. On salary I'm flexible and open to discussing what's fair for the level.\n\nI suppose my question would be what a typical week looks like on this team.",
+    rationale:
+      "Genuine and coherent, with one real signal from experience, but 'flexible' avoids the logistics question and the closing question is generic.",
+  },
+  {
+    id: "hr-weak",
+    roundType: "hr",
+    band: "weak",
+    question:
+      "What are you looking for in your next role, and do you have any questions for us?",
+    answer:
+      "I'm looking for a good opportunity where I can grow and contribute to a great team. Salary isn't the main thing for me, I just want somewhere I can do my best work. No questions from me, I think you covered everything.",
+    rationale:
+      "Says nothing that would distinguish one employer from another, dodges compensation entirely, and declines to ask anything.",
+  },
+];

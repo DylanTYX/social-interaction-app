@@ -127,7 +127,7 @@ npm run dev
 | `npm test` | Vitest unit tests — pure logic only, no network |
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
 
-`npm test` currently runs 138 tests.
+`npm test` currently runs 164 tests.
 
 ### The evaluation harness
 
@@ -231,6 +231,8 @@ before scaling out.
 - `docs/FEATURES.md` — **what the app does, written for the end user**
 - `docs/TOKEN-COST.md` — **token cost and prompt-caching design, and how to
   verify it**
+- `docs/EVALUATION.md` — **how the analyzer's scoring is validated, and the
+  limits of that validation**
 - `docs/DEPLOYMENT.md` — Vercel + Supabase deployment runbook
 - `docs/UAT.md` — user-acceptance test plan and exit criteria
 - `docs/UAT-tester-handout.md` — participant script

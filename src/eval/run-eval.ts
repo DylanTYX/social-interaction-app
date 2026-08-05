@@ -32,19 +32,42 @@ interface RunResult {
 
 const REQUIRED_FIELDS = [
   "overallScore",
-  "specificityMetrics",
-  "confidenceIndicators",
-  "responseQuality",
   "strengths",
   "gaps",
   "followupTopics",
 ] as const;
+
+/**
+ * Nested fields the *model* still owns.
+ *
+ * The three container objects used to be checked directly, which no longer
+ * measures anything: `analyzeResponse` merges code-computed counts into each of
+ * them, so they are always present even when the model returned nothing for
+ * them. Checking the leaves the model is actually responsible for keeps the
+ * completeness figure honest — and narrower than it was, since the fields that
+ * moved to `text-metrics.ts` can no longer be missing at all.
+ */
+const REQUIRED_NESTED: Array<[keyof AnalysisResult, string]> = [
+  ["specificityMetrics", "vaguenessScore"],
+  ["specificityMetrics", "concreteExamples"],
+  ["specificityMetrics", "hasStakeholders"],
+  ["confidenceIndicators", "assertivenessScore"],
+  ["confidenceIndicators", "clarity"],
+  ["responseQuality", "depthLevel"],
+  ["responseQuality", "isRelevant"],
+];
 
 function missingFrom(analysis: AnalysisResult): string[] {
   const missing: string[] = [];
   for (const field of REQUIRED_FIELDS) {
     const value = analysis[field as keyof AnalysisResult];
     if (value === undefined || value === null) missing.push(field);
+  }
+  for (const [parent, leaf] of REQUIRED_NESTED) {
+    const container = analysis[parent] as Record<string, unknown> | undefined;
+    if (!container || container[leaf] === undefined || container[leaf] === null) {
+      missing.push(`${String(parent)}.${leaf}`);
+    }
   }
   // Technical rounds must carry the technical block; without it the decision
   // engine falls back on overall score alone.
