@@ -20,6 +20,11 @@ gets pushed a level deeper. The decision engine picks a strategy from the rubric
 actually in play — STAR elements on behavioural rounds, problem framing /
 correctness / complexity on technical ones.
 
+**Six round types, one or many.** Screening, behavioural, technical SWE, system
+design, case, and HR — each with its own rubric, interviewer playbook and
+scoring path. Run a single targeted round, or compose a full loop. Round length
+is configurable and actually drives how long the interview runs.
+
 **Job-description grounding (RAG).** Upload or paste a job description and it is
 chunked, embedded with `text-embedding-3-small`, and stored in pgvector. The
 interviewer retrieves the parts relevant to what it is about to probe, so
@@ -32,8 +37,9 @@ profile the interviewer uses to ask about your actual background and
 pressure-test the claims on it.
 
 **Multi-round loops.** Compose a realistic loop — screening, then behavioural,
-then system design — and get a combined report showing how you tracked across
-rounds.
+then system design — with a *different interviewer per round*, and a handover
+brief so each interviewer knows what the previous one found. A combined report
+shows how you tracked across the day.
 
 **Competency coverage.** Questions are model-generated, so nothing guarantees a
 session explores a spread of topics. A 12-competency taxonomy is embedded and
@@ -96,6 +102,7 @@ In the Supabase dashboard → **SQL Editor**, run every file in
 | `0006_turn_analyses` | per-turn analysis persistence |
 | `0007_llm_usage` | token accounting |
 | `0008_resume_profile` | distilled resume profile |
+| `0009_session_columns` | server-owned session fields promoted out of JSONB |
 
 > `0005` and `0006` are **not optional** — `src/lib/db/sessions.ts` calls the
 > `append_interview_turn` RPC on every interview turn. Without them the app
@@ -118,6 +125,8 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit tests — pure logic only, no network |
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
+
+`npm test` currently runs 138 tests.
 
 ### The evaluation harness
 
@@ -156,10 +165,13 @@ src/
     db/             Supabase data access — the only place SQL shapes live
     api/            Cross-cutting route concerns: errors, rate limiting,
                     uploads, token accounting
-    responseAnalyzer.ts   Scores an answer against a round rubric
-    decisionEngine.ts     Turns a score into the next interview strategy
-    competencies.ts       Coverage taxonomy and matching
-    summary.ts            Rolling conversation summary
+    response-analyzer.ts    Scores an answer against a round rubric
+    decision-engine.ts      Turns a score into the next interview strategy
+    interview-rounds.ts     Round types, loops, rubrics
+    interview-progress.ts   How long a round runs, derived from its duration
+    competencies.ts         Coverage taxonomy and matching
+    loop-brief.ts           Handover note between rounds
+    summary.ts              Rolling conversation summary
   eval/             Scoring validation harness
 supabase/migrations/
 ```
@@ -168,6 +180,19 @@ supabase/migrations/
 analysed → the decision engine picks a strategy → that becomes a private
 steering block in the interviewer's prompt → the reply streams back while the
 messages and the analysis are written in one transaction.
+
+**Token cost** is instrumented rather than assumed. Every OpenAI call records
+its usage — including how much of the prompt came back from OpenAI's cache — to
+an `llm_usage` table, so the effect of a prompt change is measurable rather than
+argued. Query it directly in the Supabase SQL editor:
+
+```sql
+select call_site, avg(prompt_tokens), avg(cached_tokens), count(*)
+from llm_usage group by 1;
+```
+
+(The `llm_usage_summary` RPC filters on `auth.uid()`, which is null for the
+`postgres` role, so it returns nothing from the SQL editor. Query the table.)
 
 Two design decisions worth knowing:
 
@@ -202,6 +227,7 @@ before scaling out.
 
 ## Documentation
 
+- `docs/FEATURES.md` — **what the app does, written for the end user**
 - `docs/DEPLOYMENT.md` — Vercel + Supabase deployment runbook
 - `docs/UAT.md` — user-acceptance test plan and exit criteria
 - `docs/UAT-tester-handout.md` — participant script

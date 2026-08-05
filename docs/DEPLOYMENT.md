@@ -23,6 +23,7 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 6. `supabase/migrations/0006_turn_analyses.sql`
 7. `supabase/migrations/0007_llm_usage.sql`
 8. `supabase/migrations/0008_resume_profile.sql`
+9. `supabase/migrations/0009_session_columns.sql`
 
 > **`0005` and `0006` are not optional.** Together they create the
 > `append_interview_turn` RPC that `src/lib/db/sessions.ts` calls on every
@@ -178,7 +179,7 @@ CLI is optional; the GitHub dashboard flow above is enough.
 
 ## Checklist (printable)
 
-- [ ] Migrations `0001`–`0008` applied on Supabase
+- [ ] Migrations `0001`–`0009` applied on Supabase
 - [ ] Vercel project imported from GitHub
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set
 - [ ] `OPENAI_API_KEY` set
