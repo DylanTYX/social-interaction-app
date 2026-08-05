@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,13 +103,16 @@ export function LoopStep({
   const isLoop = rounds.length > 1;
   const canSuggest = jobDescriptionText.trim().length >= 80;
 
+  // A native `window.confirm` was the odd one out — every other destructive
+  // action in the app goes through this dialog, and the browser prompt cannot
+  // be styled, is announced differently, and is blocked outright in some
+  // embedded contexts.
+  const [pendingPreset, setPendingPreset] =
+    useState<InterviewLoopConfig | null>(null);
+
   const applyPreset = (next: InterviewLoopConfig) => {
-    if (
-      isCustomised(value) &&
-      !window.confirm(
-        "Starting from a preset replaces the rounds you have set up. Continue?",
-      )
-    ) {
+    if (isCustomised(value)) {
+      setPendingPreset(next);
       return;
     }
     onChange(next);
@@ -155,6 +160,20 @@ export function LoopStep({
           </Button>
         )}
       </div>
+
+      <ConfirmDeleteDialog
+        open={pendingPreset !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingPreset(null);
+        }}
+        title="Replace your rounds?"
+        description="Starting from a preset discards the rounds you have set up, including any per-round interviewer and break settings."
+        confirmLabel="Use preset"
+        onConfirm={() => {
+          if (pendingPreset) onChange(pendingPreset);
+          setPendingPreset(null);
+        }}
+      />
 
       <div className="space-y-3">
         {rounds.map((round, index) => (

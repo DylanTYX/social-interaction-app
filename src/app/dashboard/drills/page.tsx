@@ -183,6 +183,7 @@ export default function DrillsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Textarea
+              aria-label="Your answer"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               placeholder="Type your answer out loud, as if you were in the room…"

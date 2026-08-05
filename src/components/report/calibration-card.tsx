@@ -83,6 +83,8 @@ export function CalibrationCard({
             max={100}
             step={1}
             value={guess}
+            aria-label="Your predicted score"
+            aria-valuetext={`${guess} percent`}
             disabled={revealed}
             onChange={(event) => setGuess(Number(event.target.value))}
             className="mt-2 w-full accent-blue-600 disabled:opacity-60"

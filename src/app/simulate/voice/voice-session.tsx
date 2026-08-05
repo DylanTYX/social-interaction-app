@@ -930,15 +930,20 @@ function VoiceSimulateInner() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       <div className="h-16 bg-white border-b border-gray-200/80 flex items-center px-6 gap-4 shadow-soft">
-        <Link href="/dashboard" onClick={handleNavigateAway}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-gray-100 transition-colors duration-150"
+        <Button
+          variant="ghost"
+          size="icon"
+          asChild
+          className="hover:bg-gray-100 transition-colors duration-150"
+        >
+          <Link
+            href="/dashboard"
+            onClick={handleNavigateAway}
+            aria-label="Back to dashboard"
           >
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-semibold">Voice practice</h1>
           <p className="text-sm text-gray-500 truncate">

@@ -280,11 +280,11 @@ export default function SessionReportPage({
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/dashboard" aria-label="Back to dashboard">
                 <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
                 Session report

@@ -1222,6 +1222,7 @@ function PersonaStep({
                       size="icon"
                       className="h-7 w-7 text-gray-500 hover:text-blue-600"
                       title="Duplicate"
+                      aria-label={`Duplicate ${entry.config.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         onDuplicate(entry.id);
@@ -1235,6 +1236,7 @@ function PersonaStep({
                       size="icon"
                       className="h-7 w-7 text-gray-500 hover:text-blue-600"
                       title="Edit"
+                      aria-label={`Edit ${entry.config.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         handlePickEntry(entry);
@@ -1252,6 +1254,11 @@ function PersonaStep({
                           : "text-gray-500 hover:text-red-600"
                       }`}
                       title={isPendingDelete ? "Confirm delete" : "Delete"}
+                      aria-label={
+                        isPendingDelete
+                          ? `Confirm delete ${entry.config.name}`
+                          : `Delete ${entry.config.name}`
+                      }
                       onClick={(event) => {
                         event.stopPropagation();
                         if (isPendingDelete) {
@@ -1474,20 +1481,27 @@ function SliderField({
   helper: string;
   onChange: (next: number) => void;
 }) {
+  // A <Label> with no `htmlFor` next to an <input> with no `id` is decoration:
+  // it looks associated and is not. Wiring them means the four persona dials
+  // are actually reachable and announced.
+  const id = `dial-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <Label>{label}</Label>
+        <Label htmlFor={id}>{label}</Label>
         <Badge variant="secondary" className="text-xs px-2 py-0.5">
           {value}/10
         </Badge>
       </div>
       <input
+        id={id}
         type="range"
         min={1}
         max={10}
         step={1}
         value={value}
+        aria-valuetext={`${value} out of 10`}
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-full accent-blue-600"
       />
