@@ -329,8 +329,25 @@ export function loadInterviewSetup(): InterviewSetupState | null {
   }
 }
 
-export function getSetupHref(setup: Partial<InterviewSetupState>): string {
+/**
+ * Where to send the user for a configured interview.
+ *
+ * `sessionId` matters: without it the URL does not identify the interview, so a
+ * live session could not be linked, bookmarked, or reopened — and duplicating a
+ * tab (which copies sessionStorage) gave two tabs the same session, both
+ * writing one transcript. With it in the URL the interview screens load from
+ * `/api/sessions/[id]/resume`, which is server-authoritative, and sessionStorage
+ * becomes a cache rather than the source of truth.
+ */
+export function getSetupHref(
+  setup: Partial<InterviewSetupState>,
+  sessionId?: string,
+): string {
   const params = new URLSearchParams();
+
+  if (sessionId) {
+    params.set("session", sessionId);
+  }
 
   if (setup.practiceMode) {
     params.set("mode", setup.practiceMode);

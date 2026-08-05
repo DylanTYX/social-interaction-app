@@ -551,7 +551,7 @@ function SetupWizard() {
           savedTitle: resumeTitle,
         },
       });
-      router.push(getSetupHref(setup));
+      router.push(getSetupHref(setup, session.id));
     } catch (error) {
       setLaunchError(
         error instanceof Error
