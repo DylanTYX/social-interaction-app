@@ -26,6 +26,7 @@ export interface SessionLaunchMeta {
 export interface LoopProgress {
   loopId: string;
   loop: InterviewLoopConfig;
+  /** Rounds finished *before* this session. Empty on round 1. */
   completedSessionIds: string[];
 }
 
@@ -113,23 +114,23 @@ export function dimensionSnapshotFromAnalysis(
   };
 }
 
+/**
+ * Progress for the *first* round of a loop. Later rounds are built by
+ * `/api/sessions/[id]/next-round`, which carries the chain forward.
+ *
+ * This used to take a session id and an existing progress object, and the sole
+ * caller passed `""` and nothing — the id branch was unreachable, and it read
+ * `completedSessionIds` as "rounds including this one" where next-round reads
+ * it as "rounds finished before this one". Round 1 has completed nothing.
+ */
 export function buildLoopProgress(
   launch: SessionLaunchMeta,
-  sessionId: string,
-  existing?: LoopProgress | null,
 ): LoopProgress | null {
   if (!launch.interviewLoop.enabled) return null;
-  const loopId = existing?.loopId ?? crypto.randomUUID();
-  // Copy rather than push into the caller's array, and ignore an empty id — a
-  // brand-new session has completed nothing yet.
-  const completedSessionIds = [...(existing?.completedSessionIds ?? [])];
-  if (sessionId && !completedSessionIds.includes(sessionId)) {
-    completedSessionIds.push(sessionId);
-  }
   return {
-    loopId,
+    loopId: crypto.randomUUID(),
     loop: launch.interviewLoop,
-    completedSessionIds,
+    completedSessionIds: [],
   };
 }
 

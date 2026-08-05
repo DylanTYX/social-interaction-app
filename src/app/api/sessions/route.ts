@@ -73,11 +73,7 @@ export async function POST(request: Request) {
       body.launchMeta && typeof body.launchMeta === "object"
         ? (body.launchMeta as SessionLaunchMeta)
         : null;
-    // `buildLoopProgress` needs a session id, but it only uses it to seed the
-    // completed list — which is empty for a brand-new session.
-    const loopProgress = launchMeta
-      ? buildLoopProgress(launchMeta, "")
-      : null;
+    const loopProgress = launchMeta ? buildLoopProgress(launchMeta) : null;
 
     const session = await createSession(supabase, user.id, {
       practiceMode,
