@@ -10,6 +10,7 @@ import {
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
 import type { UsageCollector } from "@/lib/api/token-usage";
+import { parseCodeAnswer } from "@/lib/code-answer";
 
 /**
  * Scoring should be near-deterministic so the same answer doesn't swing
@@ -195,9 +196,18 @@ function buildAnalysisPrompt(
     "result": { "present": false, "quality": 0, "quantified": false, "impact": "not primary rubric" }
   },`;
 
+  // A code answer arrives fenced with its language. Naming it explicitly stops
+  // the analyzer treating source as prose and scoring it for "specificity".
+  const parsedCode = parseCodeAnswer(candidateResponse);
+  const codeBlock = parsedCode
+    ? `\n\nThe response contains ${parsedCode.language ?? "code"} source. Judge it as code: correctness against the stated problem, time and space complexity, edge-case handling, naming and structure. Do not penalise it for lacking narrative structure.${
+        parsedCode.note ? "" : " No accompanying explanation was given."
+      }`
+    : "";
+
   return `You are an expert interview analyst. Score the candidate response for a ${roundType} interview round.
 Primary rubric: ${rubric}.
-Do not use STAR as the primary rubric unless this is behavioral or screening.${jobContextBlock}
+Do not use STAR as the primary rubric unless this is behavioral or screening.${jobContextBlock}${codeBlock}
 
 QUESTION ASKED:
 ${question}

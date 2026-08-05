@@ -7,6 +7,16 @@ export type InterviewRoundType =
   | "case"
   | "screening";
 
+/**
+ * How the candidate composes an answer for a round.
+ *
+ * `technical_swe` rounds were scored on `codeQuality`, `correctness` and
+ * `complexity` while the candidate typed prose into a chat box — the rubric
+ * asked for something the interface could not accept. `code` swaps the input
+ * for a real editor and sends the source with its language.
+ */
+export type AnswerFormat = "prose" | "code";
+
 export interface InterviewRoundConfig {
   id: string;
   title: string;
@@ -14,6 +24,20 @@ export interface InterviewRoundConfig {
   durationMinutes: number;
   practiceMode: PracticeMode;
   focus: string;
+  /** Defaults to `code` for technical_swe, `prose` everywhere else. */
+  answerFormat?: AnswerFormat;
+}
+
+/**
+ * Voice rounds cannot use an editor, so the mode wins over the round type.
+ */
+export function resolveAnswerFormat(
+  round: Pick<InterviewRoundConfig, "type" | "practiceMode" | "answerFormat">
+    | undefined,
+): AnswerFormat {
+  if (!round || round.practiceMode === "voice") return "prose";
+  if (round.answerFormat) return round.answerFormat;
+  return round.type === "technical_swe" ? "code" : "prose";
 }
 
 export interface InterviewLoopConfig {

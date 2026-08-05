@@ -79,6 +79,7 @@ import {
 } from "@/lib/speech-voices";
 import {
   ROUND_RUBRIC_LABELS,
+  resolveAnswerFormat,
   ROUND_TYPE_LABELS,
   appendRoundToLoop,
   buildRoundScenarioDescription,
@@ -1241,6 +1242,23 @@ function LoopStep({
                   <p className="text-[11px] leading-4 text-gray-500">
                     {ROUND_RUBRIC_LABELS[round.type]}
                   </p>
+                  {round.practiceMode === "text" && (
+                    <label className="flex items-center gap-2 text-[11px] leading-4 text-gray-600">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-gray-300"
+                        checked={resolveAnswerFormat(round) === "code"}
+                        onChange={(event) =>
+                          updateRound(index, {
+                            answerFormat: event.target.checked
+                              ? "code"
+                              : "prose",
+                          })
+                        }
+                      />
+                      Answer in a code editor
+                    </label>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Input

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { ChatInput } from "@/components/chat/chat-input";
+import { CodeInput } from "@/components/chat/code-input";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
@@ -62,6 +63,7 @@ import {
   saveInterviewSetup,
 } from "@/lib/interview-setup";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { resolveAnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
   id: string;
@@ -337,6 +339,12 @@ function ChatSimulateInner() {
   };
 
   const activeScenario = scenarioFromBootstrap(bootstrap);
+  // Technical rounds get a real editor instead of a chat box. Scoring already
+  // asked for correctness, complexity and code quality; the interface just had
+  // no way to accept code.
+  const activeRound =
+    bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
+  const answerFormat = resolveAnswerFormat(activeRound);
   const stageLabel = getStageLabel(sessionState.currentStage);
   const stageGuidance = getStageGuidance(
     sessionState.currentStage,
@@ -959,13 +967,21 @@ function ChatSimulateInner() {
           </div>
 
           <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
-            <ChatInput
-              key={userTurnKey}
-              onSend={handleSend}
-              disabled={isSending}
-              timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-              timeoutFallbackMessage="[No response submitted before time expired.]"
-            />
+            {answerFormat === "code" ? (
+              <CodeInput
+                key={userTurnKey}
+                onSend={handleSend}
+                disabled={isSending}
+              />
+            ) : (
+              <ChatInput
+                key={userTurnKey}
+                onSend={handleSend}
+                disabled={isSending}
+                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+                timeoutFallbackMessage="[No response submitted before time expired.]"
+              />
+            )}
           </div>
         </div>
 
