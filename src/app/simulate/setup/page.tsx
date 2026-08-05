@@ -226,6 +226,9 @@ function SetupWizard() {
     const modeValue = searchParams.get("mode");
 
     if (stored) {
+      // Reading localStorage during render would make SSR and the first
+      // client render disagree; an effect is the supported way to do this.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSetup({
         ...stored,
         streamResponses:

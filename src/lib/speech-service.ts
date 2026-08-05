@@ -739,6 +739,9 @@ export class SpeechService {
 
     return new Promise<void>((resolve) => {
       let settled = false;
+      // `finish` closes over this and clears it, so it cannot be assigned at
+      // declaration — it is set on the line after `finish` exists.
+      // eslint-disable-next-line prefer-const
       let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
 
       const finish = () => {
@@ -811,6 +814,9 @@ export class SpeechService {
     try {
       await new Promise<void>((resolve, reject) => {
         let settled = false;
+        // `finish` closes over this and clears it, so it cannot be assigned at
+        // declaration — it is set on the line after `finish` exists.
+        // eslint-disable-next-line prefer-const
         let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
 
         const finish = (action: () => void) => {

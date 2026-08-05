@@ -117,7 +117,17 @@ function VoiceSimulateInner() {
 
   const activePersonaConfig = bootstrap.personaConfig;
   const activeScenarioValue = bootstrap.scenarioValue;
-  const [voiceConfig, setVoiceConfig] = useState(DEFAULT_SETUP.voiceConfig);
+  /**
+   * Purely derived. This was `useState` seeded with the default plus an effect
+   * copying `bootstrap.voiceConfig` in once it loaded — but nothing else ever
+   * called the setter, so the state was never independent of the prop. Two
+   * renders and a stale first paint to hold a value that was always a function
+   * of the bootstrap.
+   */
+  const voiceConfig =
+    bootstrap.status === "ready"
+      ? bootstrap.voiceConfig
+      : DEFAULT_SETUP.voiceConfig;
   const [messagesHydrated, setMessagesHydrated] = useState(false);
 
   const isLoading =
@@ -190,12 +200,6 @@ function VoiceSimulateInner() {
   }, [bootstrap.status, router]);
 
   useEffect(() => {
-    if (bootstrap.status === "ready") {
-      setVoiceConfig(bootstrap.voiceConfig);
-    }
-  }, [bootstrap.status, bootstrap.voiceConfig]);
-
-  useEffect(() => {
     if (bootstrap.status !== "ready") return;
     saveInterviewSetup({
       scenarioValue: activeScenarioValue,
@@ -228,6 +232,8 @@ function VoiceSimulateInner() {
     if (resumed.status === "loading") return;
 
     if (resumed.messages.length > 0) {
+      // One-time hydration from server data; guarded by `messagesHydrated`.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages(
         resumed.messages.map((row) => ({
           id: row.id,
@@ -247,6 +253,10 @@ function VoiceSimulateInner() {
       return;
     }
 
+    // Marks the start of an async side effect (minting a speech token).
+    // There is no render-time value to derive this from — the fetch has not
+    // happened yet.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTokenStatus("fetching");
     const speechService = speechServiceRef.current;
     let cancelled = false;
@@ -364,6 +374,23 @@ function VoiceSimulateInner() {
     setIsSpeakingTts(false);
   };
 
+  /**
+   * Declared above the effect that calls it. It used to sit below, which is
+   * safe at runtime — the effect body runs after the component body has
+   * evaluated the const — but read as a use-before-declaration, and lint
+   * flagged it as one. Ordering it properly costs nothing.
+   */
+  const tryAutoStartRecording = async () => {
+    if (!isMountedRef.current) return;
+    if (isRecordingRef.current || isStoppingRef.current) return;
+    if (sessionCompleteRef.current) return;
+
+    const speechService = speechServiceRef.current;
+    if (!speechService.isInitialized()) return;
+
+    await handleStartRecording();
+  };
+
   // Generate an opening greeting once setup is loaded.
   useEffect(() => {
     if (
@@ -429,18 +456,7 @@ function VoiceSimulateInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, setupError, activePersonaConfig, activeScenarioValue]);
 
-  const tryAutoStartRecording = async () => {
-    if (!isMountedRef.current) return;
-    if (isRecordingRef.current || isStoppingRef.current) return;
-    if (sessionCompleteRef.current) return;
-
-    const speechService = speechServiceRef.current;
-    if (!speechService.isInitialized()) return;
-
-    await handleStartRecording();
-  };
-
-  const handleStartRecording = async () => {
+  async function handleStartRecording() {
     const speechService = speechServiceRef.current;
 
     if (isRecordingRef.current) {
@@ -539,7 +555,7 @@ function VoiceSimulateInner() {
         recordingTimeoutRef.current = null;
       }
     }
-  };
+  }
 
   const handleStopRecording = async () => {
     const speechService = speechServiceRef.current;

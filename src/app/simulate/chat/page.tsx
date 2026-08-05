@@ -125,7 +125,20 @@ function ChatSimulateInner() {
   const activeScenarioValue = bootstrap.scenarioValue;
   const streamResponses = bootstrap.streamResponses;
   const liveCoachingEnabled = bootstrap.liveCoachingEnabled;
-  const [liveCoachingOn, setLiveCoachingOn] = useState(liveCoachingEnabled);
+  /**
+   * Coaching state is *derived* from the loaded setup, with a local override
+   * once the user touches it.
+   *
+   * It used to be two `useState`s seeded from `liveCoachingEnabled` plus an
+   * effect syncing them whenever it changed. That could not work as written:
+   * bootstrap resolves after the first render, so the initial `useState` always
+   * captured the default and the effect existed only to correct it — a
+   * guaranteed extra render, and a window where the UI showed the wrong toggle.
+   */
+  const [coachingOverride, setCoachingOverride] = useState<boolean | null>(null);
+  const [sidebarOverride, setSidebarOverride] = useState<boolean | null>(null);
+  const liveCoachingOn = coachingOverride ?? liveCoachingEnabled;
+  const showLiveCoaching = sidebarOverride ?? liveCoachingEnabled;
   const initialState = bootstrap;
 
   const resumed = useResumedSession(bootstrap);
@@ -143,14 +156,6 @@ function ChatSimulateInner() {
   const [isSending, setIsSending] = useState(false);
   const [userTurnKey, setUserTurnKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [showLiveCoaching, setShowLiveCoaching] = useState(
-    liveCoachingEnabled,
-  );
-
-  useEffect(() => {
-    setLiveCoachingOn(liveCoachingEnabled);
-    setShowLiveCoaching(liveCoachingEnabled);
-  }, [liveCoachingEnabled]);
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
@@ -202,6 +207,9 @@ function ChatSimulateInner() {
       timestamp: formatMessageTime(new Date(row.createdAt)),
     }));
 
+    // One-time hydration from server data that cannot exist at first render.
+    // The `messagesHydrated` guard above makes this fire exactly once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(
       restored.length > 0
         ? restored
@@ -502,8 +510,8 @@ function ChatSimulateInner() {
               <DropdownMenuItem
                 onSelect={() => {
                   const next = !liveCoachingOn;
-                  setLiveCoachingOn(next);
-                  setShowLiveCoaching(next);
+                  setCoachingOverride(next);
+                  setSidebarOverride(next);
                   saveInterviewSetup({
                     ...DEFAULT_SETUP,
                     scenarioValue: activeScenarioValue,
@@ -664,7 +672,7 @@ function ChatSimulateInner() {
                 variant="ghost"
                 size="icon-sm"
                 className="absolute -left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setShowLiveCoaching(false)}
+                onClick={() => setSidebarOverride(false)}
                 aria-label="Collapse live coaching"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -681,7 +689,7 @@ function ChatSimulateInner() {
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setShowLiveCoaching(true)}
+                onClick={() => setSidebarOverride(true)}
                 aria-label="Expand live coaching"
               >
                 <ChevronLeft className="h-4 w-4" />

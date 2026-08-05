@@ -1,0 +1,42 @@
+name: CI
+
+# Runs the three checks that gate every change: types, lint, tests.
+#
+# Deliberately does NOT run `npm run eval` — that harness makes live OpenAI
+# calls and costs money per run, so it is a decision, not a default. See
+# docs/EVALUATION.md.
+#
+# `next build` is also not run here. It needs the Supabase public env vars at
+# build time, and wiring repository secrets for a university project buys less
+# than it costs; `tsc --noEmit` already catches what a build would catch in this
+# codebase.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Next 16 requires >= 20.9.
+          node-version: "20.9"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
