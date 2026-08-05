@@ -32,7 +32,7 @@ A single text turn makes up to four model calls:
 |---|---|---|---|
 | Interviewer | `gpt-4o-mini` | Every turn | 320 output tokens |
 | Analyzer | `gpt-4o-mini` | Every scored turn | 900 output tokens |
-| Summary refresh | `gpt-4o-mini` | Every 4th message | — |
+| Summary refresh | `gpt-4o-mini` | Every 4th message | 400 output tokens |
 | JD embedding | `text-embedding-3-small` | Only on the retrieval path | — |
 
 Two of those are deliberately skipped rather than optimised:
@@ -165,6 +165,12 @@ section first.
 | **Rolling summary instead of full history** | The last 6 messages go verbatim; everything older is folded into a compact summary regenerated every 4 messages. Cost stops growing with session length. |
 | **Resume distilled once** | A CV is summarised into a compact profile (capped at 400 tokens) at upload, and the profile — not the raw document — goes into every prompt. Paid once, not per turn. |
 | **Similarity floor with a top-1 fallback** | Chunks below 0.3 cosine similarity aren't worth the tokens, but the floor could remove *everything*, silently dropping role context from both the prompt and that turn's scoring. One weak excerpt beats no context and no signal. |
+| **Summary capped at 400 tokens** | This was the last uncapped call, and the worst one to leave uncapped: the summary is regenerated *from itself* and injected into every later prompt, so a single long generation inflated the rest of the session rather than costing once. |
+| **Counting moved out of the LLM** | The analyzer asked the model for a word count, hesitation-marker count, qualifier count, revision count, metric count, and whether timeframes appear. Six pieces of arithmetic, billed in both the scaffold describing them and the response producing them, from a model with no reason to count accurately. Now `text-metrics.ts`; scaffold down from ~296 to ~245 tokens. |
+| **Coach answers cached** | Generated model answers lived in React state only, so reopening a report regenerated all of them at full price for identical input. Now persisted per `(session_id, turn_index)` — see migration `0010`. |
+| **Three call sites instrumented** | The coach route, the resume-profile distillation and the 12 competency probe embeddings recorded nothing, so every figure derived from `llm_usage` was an undercount. |
+| **Duplicate transcript fetch removed** | Both interview screens fetched `/api/sessions/[id]/resume` twice on every load — the bootstrap hook took the launch config from the response and discarded the transcript, and a second hook re-fetched it. |
+| **Stream-failure retry made safe** | On an SSE failure both screens re-POSTed the identical turn. The route persists *before* emitting `done`, so a transport failure re-ran all 2-4 model calls and duplicated the answer. It now asks the server what it stored first. |
 
 ---
 
@@ -208,7 +214,76 @@ it again. That is the entire point of the table existing.
 
 ---
 
+## Input caps, and why they reject rather than truncate
+
+Three different things get called "capping", and only one of them can silently
+lose data. Worth separating, because the risk is only in the first.
+
+**Output caps (`max_tokens`) can truncate.** That risk is real and was already
+being taken: the coach route capped at 700 for a 4-8 sentence model answer plus
+a full rewrite plus four tips — roughly 550-710 tokens — so it sat on the
+boundary, and with no `finish_reason` check a truncation surfaced as an
+unparseable-JSON error that named the wrong cause.
+
+The answer is not "don't cap" (uncapped is unbounded spend, and for the summary
+it compounds). It is cap, detect, and degrade in whatever way suits the call:
+
+| Call | Cap | On truncation |
+|---|---|---|
+| Summary | 400 | Keep the **previous** summary. Never persist half a sentence that will feed every later prompt. |
+| Analyzer | 900 | Retry once at 1,600. Losing a turn's score leaves an unexplained gap in the report. |
+| Coach | 1,000 | Clear error naming truncation. |
+| Interviewer | 320 | Log only — generous for the 2-5 sentences the prompt asks for. |
+
+Size these from **measured** `completion_tokens` p99 once there is live data,
+not from the arithmetic above.
+
+**Input caps do not truncate.** They reject with a 400 and a message naming the
+field and both lengths. Halving a candidate's answer would score them on
+something they did not say — a worse failure than an error. Limits live in
+`src/lib/api/input-limits.ts` and sit far above real use: 10,000 characters is
+roughly a twelve-minute monologue, so hitting one means a runaway client or an
+attempt to run up the bill.
+
+**Context bounding** — the 12-row transcript window and the rolling summary — is
+designed compression, not truncation, and carries no such risk.
+
+---
+
 ## Deliberately not done
+
+- **A vector database of role-specific interview questions, retrieved per turn.**
+  Suggested on the reasoning that RAG saves tokens. It does — when you would
+  otherwise stuff a large corpus into the prompt. That is exactly why it is used
+  for job descriptions, which are user-supplied and run to 30,000 characters.
+
+  It does not apply here, because **the interviewer prompt contains no question
+  corpus to slim down**. Questions are *generated* from persona, scenario, JD and
+  the candidate's last answer. Adding retrieval would not replace tokens, it
+  would add them: roughly +60-150 input tokens per turn for the retrieved
+  questions, plus an embedding call, against ~3,200 today.
+
+  The best case is worse than it sounds. Serving a retrieved question verbatim
+  and skipping generation entirely would save ~80 output tokens per turn —
+  about **$0.000048 a turn, or $0.0005 for a ten-question session** — and would
+  cost the adaptive questioning that is the whole contribution of the project.
+
+  Scale makes the same point: the existing 39-question bank in
+  `src/lib/question-bank.ts` is ~800 tokens in total. Retrieval earns its
+  complexity when the corpus vastly exceeds the context budget; here you could
+  inline the entire bank for less than one embedding call, and the drills page
+  already selects from it with a plain array filter at zero cost.
+
+  The *principle* underneath the suggestion — retrieve what you already
+  generated instead of generating it again — is sound, and it is applied where
+  it actually pays: coach answers (migration `0010`), the resume profile
+  (distilled once at upload) and JD embeddings (computed once).
+
+  There is a legitimate **quality** argument for a curated bank — consistency,
+  fewer off-role questions, and a measurable retrieval metric. It is just not a
+  cost argument. The defensible version would retrieve two or three questions as
+  *seed material* only when competency coverage is low, and measure whether
+  coverage improves.
 
 - **Caching the analyzer across users via a larger scaffold.** Padding a prompt
   to reach 1,024 tokens so it qualifies for a cache discount costs more than the
@@ -237,3 +312,6 @@ it again. That is the entire point of the table existing.
 | Rolling summary cadence | `src/lib/summary.ts` |
 | Similarity floor, small-JD inlining | `src/lib/db/job-descriptions.ts` |
 | Resume distillation | `src/lib/resume-profile.ts` |
+| Deterministic text counting | `src/lib/text-metrics.ts` |
+| Input length caps | `src/lib/api/input-limits.ts` |
+| Coach answer cache | `supabase/migrations/0010_coach_answers.sql` |

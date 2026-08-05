@@ -127,7 +127,9 @@ npm run dev
 | `npm test` | Vitest unit tests — pure logic only, no network |
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
 
-`npm test` currently runs 164 tests.
+`npm test` currently runs 186 tests, including route-handler tests that
+cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
+and tests on every push and pull request (`.github/workflows/ci.yml`).
 
 ### The evaluation harness
 
@@ -170,6 +172,7 @@ src/
     decision-engine.ts      Turns a score into the next interview strategy
     interview-rounds.ts     Round types, loops, rubrics
     interview-progress.ts   How long a round runs, derived from its duration
+    text-metrics.ts         Countable properties of an answer, computed in code
     competencies.ts         Coverage taxonomy and matching
     loop-brief.ts           Handover note between rounds
     summary.ts              Rolling conversation summary
