@@ -40,6 +40,8 @@ import {
 } from "@/lib/interview-rounds";
 import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
+import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
+import { parseCoverage } from "@/lib/competencies";
 
 interface MessageRecord {
   id: string;
@@ -198,6 +200,9 @@ export default function SessionReportPage({
   const nextLoop = loop?.enabled ? getNextRoundLoop(loop) : null;
   const nextRound = nextLoop ? getCurrentRound(nextLoop) : null;
   const currentRound = loop?.enabled ? getCurrentRound(loop) : null;
+  // Set once the loop has produced more than this single round.
+  const loopId = metricsPayload.loop?.loopId ?? null;
+  const coverage = parseCoverage(metricsPayload.competencyCoverage);
   const ModeIcon = session.practiceMode === "voice" ? Mic : MessageSquare;
   const overallScore = pickNumber(session.metrics, "averageOverallScore");
   const confidenceScore = pickNumber(
@@ -427,14 +432,34 @@ export default function SessionReportPage({
                 )}
               </CardContent>
             ) : (
-              <CardContent>
+              <CardContent className="space-y-3">
                 <p className="text-sm text-slate-700">
                   You finished the full loop. Nice work.
                 </p>
+                {loopId && (
+                  <Link href={`/simulate/loop/${loopId}`}>
+                    <Button variant="outline" className="gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      View combined loop report
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            )}
+            {nextRound && loopId && (
+              <CardContent className="pt-0">
+                <Link
+                  href={`/simulate/loop/${loopId}`}
+                  className="text-sm font-medium text-indigo-700 hover:underline"
+                >
+                  See how you are tracking across rounds so far →
+                </Link>
               </CardContent>
             )}
           </Card>
         )}
+
+        <CompetencyCoverageCard coverage={coverage} />
 
         {session.summary && (
           <Card className="border-slate-200/80 bg-white">

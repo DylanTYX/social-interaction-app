@@ -55,6 +55,12 @@ import {
   deriveMicroFeedback,
   type MicroFeedbackResult,
 } from "@/lib/micro-feedback";
+import {
+  formatCoverageSteer,
+  parseCoverage,
+  type CompetencyCoverage,
+} from "@/lib/competencies";
+import { updateCoverageForQuestion } from "@/lib/competency-matching";
 
 export const runtime = "nodejs";
 
@@ -579,6 +585,7 @@ export async function POST(request: Request) {
     // active round regardless; a one-round loop still has rounds[0].
     const loop = metrics.launch?.interviewLoop;
     const roundType = loop?.rounds?.[loop.currentRoundIndex ?? 0]?.type;
+    const coverage: CompetencyCoverage = parseCoverage(metrics.competencyCoverage);
 
     const personaDescription = generatePersonaPrompt(session.personaConfig);
     const scenarioContext = (() => {
@@ -700,7 +707,16 @@ export async function POST(request: Request) {
       userMessage: isOpening ? undefined : userMessage,
       max: steeringContext ? 1 : 2,
     });
-    const behaviorContext = [steeringContext, formatPlaybooksForPrompt(playbooks)]
+    // Nudge the interviewer toward competencies this session has not touched.
+    // Questions are model-improvised, so without this a session can circle the
+    // same two or three themes for twelve turns and the gap goes unrecorded.
+    const coverageSteer = formatCoverageSteer(coverage);
+
+    const behaviorContext = [
+      steeringContext,
+      coverageSteer,
+      formatPlaybooksForPrompt(playbooks),
+    ]
       .filter((part): part is string => Boolean(part && part.trim()))
       .join("\n\n");
 
@@ -808,6 +824,27 @@ export async function POST(request: Request) {
             console.warn("Rolling summary update failed:", error);
           }
         }
+      }
+
+      // Score the question just asked against the competency taxonomy and
+      // persist the running coverage. Done after the reply is on the wire so
+      // it adds nothing to time-to-first-token, and swallowed on failure —
+      // coverage is a reporting nicety, not something worth failing a turn for.
+      try {
+        const nextCoverage = await updateCoverageForQuestion(
+          coverage,
+          aiMessage,
+        );
+        if (
+          Object.keys(nextCoverage.covered).length >
+          Object.keys(coverage.covered).length
+        ) {
+          await updateSession(supabase, sessionId, {
+            metrics: { competencyCoverage: nextCoverage },
+          });
+        }
+      } catch (error) {
+        console.warn("Competency coverage update failed:", error);
       }
 
       // Flush here rather than after `buildResult` returns, so the streaming

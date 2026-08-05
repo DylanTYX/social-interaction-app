@@ -1,6 +1,7 @@
 import type { InterviewSetupState, VoiceSetupConfig } from "@/lib/interview-setup";
 import type { InterviewLoopConfig } from "@/lib/interview-rounds";
 import type { AnalysisResult, TechnicalScores } from "@/lib/responseAnalyzer";
+import type { CompetencyCoverage } from "@/lib/competencies";
 
 /**
  * Lightweight launch metadata stored on `interview_sessions.metrics` so a
@@ -26,6 +27,12 @@ export interface LoopProgress {
 export interface SessionMetricsPayload {
   launch?: SessionLaunchMeta;
   loop?: LoopProgress;
+  /**
+   * Which competencies this session has actually probed. Server-owned: written
+   * by /api/chat after each question is scored, and stripped from client
+   * PATCHes so the live-metrics write cannot wipe it.
+   */
+  competencyCoverage?: CompetencyCoverage;
   dimensionSnapshots?: DimensionSnapshot[];
   [key: string]: unknown;
 }

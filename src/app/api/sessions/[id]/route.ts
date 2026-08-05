@@ -15,14 +15,15 @@ interface RouteParams {
 
 /**
  * Keys inside `metrics` that only server code may write. `launch` is the
- * session's setup snapshot and `loop` is multi-round progress; both are
- * written at launch / round handoff and read back by `/api/chat`,
- * `next-round`, and the resume endpoint. Clients PATCH this column with score
+ * session's setup snapshot, `loop` is multi-round progress, and
+ * `competencyCoverage` records which competencies have been probed; all are
+ * written by the server and read back by `/api/chat`, `next-round`, the resume
+ * endpoint and the reports. Clients PATCH this column with score
  * metrics on every scored turn, so whatever they send for these keys is
  * dropped rather than trusted — `updateSession` then merges the rest over the
  * stored value, leaving the server-owned keys intact.
  */
-const SERVER_OWNED_METRIC_KEYS = ["launch", "loop"] as const;
+const SERVER_OWNED_METRIC_KEYS = ["launch", "loop", "competencyCoverage"] as const;
 
 function stripServerOwnedMetrics(
   metrics: Record<string, unknown> | null | undefined,
