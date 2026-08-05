@@ -40,7 +40,10 @@ import {
 } from "@/lib/db/job-descriptions";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatResumeForPrompt, getResume } from "@/lib/db/resumes";
-import { parseSessionMetrics } from "@/lib/session-launch-meta";
+import {
+  readCompetencyCoverage,
+  readLaunchMeta,
+} from "@/lib/session-launch-meta";
 import {
   analyzeResponse,
   isInterviewStrategy,
@@ -560,15 +563,15 @@ export async function POST(request: Request) {
     const conversation = messagesToConversation(recentRows.reverse());
     const recent = selectRecentMessages(conversation);
 
-    const metrics = parseSessionMetrics(session.metrics);
+    const launchMeta = readLaunchMeta(session);
     // `enabled` distinguishes a multi-round loop from a one-off session — it
     // does NOT mean "a round type was configured". Gating on it meant a
     // single-round "System design" practice reported no round type, so the
     // analyzer fell back to `"behavioral"` and scored it on STAR. Read the
     // active round regardless; a one-round loop still has rounds[0].
-    const loop = metrics.launch?.interviewLoop;
+    const loop = launchMeta?.interviewLoop;
     const roundType = loop?.rounds?.[loop.currentRoundIndex ?? 0]?.type;
-    const coverage: CompetencyCoverage = parseCoverage(metrics.competencyCoverage);
+    const coverage: CompetencyCoverage = parseCoverage(readCompetencyCoverage(session));
 
     const personaDescription = generatePersonaPrompt(session.personaConfig);
     const scenarioContext = (() => {
@@ -714,7 +717,7 @@ export async function POST(request: Request) {
       jobDescriptionContext: jobDescription.context,
       jobDescriptionIsStable: jobDescription.stable,
       roundGuidance: roundPlaybook?.content ?? null,
-      loopBrief: metrics.launch?.loopBrief ?? null,
+      loopBrief: launchMeta?.loopBrief ?? null,
       resumeContext,
       behaviorContext: behaviorContext || null,
     });
@@ -828,7 +831,7 @@ export async function POST(request: Request) {
           Object.keys(coverage.covered).length
         ) {
           await updateSession(supabase, sessionId, {
-            metrics: { competencyCoverage: nextCoverage },
+            competencyCoverage: nextCoverage,
           });
         }
       } catch (error) {

@@ -120,8 +120,10 @@ export function buildLoopProgress(
 ): LoopProgress | null {
   if (!launch.interviewLoop.enabled) return null;
   const loopId = existing?.loopId ?? crypto.randomUUID();
-  const completedSessionIds = existing?.completedSessionIds ?? [];
-  if (!completedSessionIds.includes(sessionId)) {
+  // Copy rather than push into the caller's array, and ignore an empty id — a
+  // brand-new session has completed nothing yet.
+  const completedSessionIds = [...(existing?.completedSessionIds ?? [])];
+  if (sessionId && !completedSessionIds.includes(sessionId)) {
     completedSessionIds.push(sessionId);
   }
   return {
@@ -141,4 +143,39 @@ export function appendDimensionSnapshot(
     ...metrics,
     dimensionSnapshots: [...existing, snapshot].slice(-30),
   };
+}
+
+/**
+ * Read the server-owned session fields.
+ *
+ * Migration 0009 promoted these out of the `metrics` blob into their own
+ * columns but deliberately left the old keys in place for one release, so a
+ * rollback loses nothing. These helpers prefer the column and fall back to the
+ * blob — delete the fallback (and these functions) once 0009 is proven and the
+ * legacy keys are dropped.
+ */
+interface SessionColumns {
+  metrics: Record<string, unknown> | null;
+  launchMeta?: SessionLaunchMeta | null;
+  loopProgress?: LoopProgress | null;
+  competencyCoverage?: CompetencyCoverage | null;
+}
+
+export function readLaunchMeta(
+  session: SessionColumns,
+): SessionLaunchMeta | undefined {
+  return session.launchMeta ?? parseSessionMetrics(session.metrics).launch;
+}
+
+export function readLoopProgress(
+  session: SessionColumns,
+): LoopProgress | undefined {
+  return session.loopProgress ?? parseSessionMetrics(session.metrics).loop;
+}
+
+export function readCompetencyCoverage(session: SessionColumns): unknown {
+  return (
+    session.competencyCoverage ??
+    parseSessionMetrics(session.metrics).competencyCoverage
+  );
 }

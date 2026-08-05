@@ -29,7 +29,9 @@ import {
 } from "@/lib/interview-setup";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import {
-  parseSessionMetrics,
+  readCompetencyCoverage,
+  readLaunchMeta,
+  readLoopProgress,
   type SessionLaunchMeta,
 } from "@/lib/session-launch-meta";
 import {
@@ -194,8 +196,7 @@ export default function SessionReportPage({
   }
 
   const { session, messages, jobDescription } = data;
-  const metricsPayload = parseSessionMetrics(session.metrics);
-  const launch = metricsPayload.launch;
+  const launch = readLaunchMeta(session);
   const loop = launch?.interviewLoop;
   const nextLoop = loop?.enabled ? getNextRoundLoop(loop) : null;
   const nextRound = nextLoop ? getCurrentRound(nextLoop) : null;
@@ -203,8 +204,8 @@ export default function SessionReportPage({
   // gating here made the coach treat every answer as behavioural/STAR.
   const currentRound = loop ? getCurrentRound(loop) : null;
   // Set once the loop has produced more than this single round.
-  const loopId = metricsPayload.loop?.loopId ?? null;
-  const coverage = parseCoverage(metricsPayload.competencyCoverage);
+  const loopId = readLoopProgress(session)?.loopId ?? null;
+  const coverage = parseCoverage(readCompetencyCoverage(session));
   const ModeIcon = session.practiceMode === "voice" ? Mic : MessageSquare;
   const overallScore = pickNumber(session.metrics, "averageOverallScore");
   const confidenceScore = pickNumber(

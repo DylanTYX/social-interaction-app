@@ -5,7 +5,6 @@ import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
   listSessions,
-  updateSession,
   type PracticeMode,
 } from "@/lib/db/sessions";
 import {
@@ -74,8 +73,13 @@ export async function POST(request: Request) {
       body.launchMeta && typeof body.launchMeta === "object"
         ? (body.launchMeta as SessionLaunchMeta)
         : null;
+    // `buildLoopProgress` needs a session id, but it only uses it to seed the
+    // completed list — which is empty for a brand-new session.
+    const loopProgress = launchMeta
+      ? buildLoopProgress(launchMeta, "")
+      : null;
 
-    let session = await createSession(supabase, user.id, {
+    const session = await createSession(supabase, user.id, {
       practiceMode,
       scenarioValue,
       scenarioTitle:
@@ -90,18 +94,12 @@ export async function POST(request: Request) {
       resumeId: typeof body.resumeId === "string" ? body.resumeId : null,
       personaName: personaConfig.name,
       personaConfig,
-      metrics: launchMeta ? { launch: launchMeta } : null,
+      launchMeta,
+      // Columns let the loop progress land in the same insert; this used to be
+      // a create followed by an immediate patch.
+      loopId: loopProgress?.loopId ?? null,
+      loopProgress,
     });
-
-    if (launchMeta) {
-      const loop = buildLoopProgress(launchMeta, session.id);
-      session = await updateSession(supabase, session.id, {
-        metrics: {
-          launch: launchMeta,
-          loop,
-        },
-      });
-    }
 
     return NextResponse.json({ session }, { status: 201 });
   } catch (error) {

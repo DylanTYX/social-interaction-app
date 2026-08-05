@@ -4,15 +4,16 @@ import {
   createSession,
   getSession,
   listTurnAnalyses,
-  updateSession,
 } from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { buildLoopBrief } from "@/lib/loop-brief";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 import type { PersonaConfig } from "@/lib/persona-engine";
+import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
 import {
   buildLaunchMetaFromSetup,
-  parseSessionMetrics,
+  readLaunchMeta,
+  readLoopProgress,
 } from "@/lib/session-launch-meta";
 import {
   buildRoundScenarioDescription,
@@ -35,7 +36,7 @@ interface RouteParams {
 }
 
 function launchMetaToSetup(
-  launch: NonNullable<ReturnType<typeof parseSessionMetrics>["launch"]>,
+  launch: SessionLaunchMeta,
   session: {
     scenarioValue: string;
     scenarioDescription: string | null;
@@ -72,8 +73,7 @@ export async function POST(_request: Request, ctx: RouteParams) {
       return NextResponse.json({ error: "Session not found." }, { status: 404 });
     }
 
-    const metrics = parseSessionMetrics(previous.metrics);
-    const launch = metrics.launch;
+    const launch = readLaunchMeta(previous);
     if (!launch?.interviewLoop.enabled) {
       return NextResponse.json(
         { error: "This session is not part of a multi-round loop." },
@@ -120,9 +120,12 @@ export async function POST(_request: Request, ctx: RouteParams) {
       loopBrief: [launch.loopBrief, loopBrief].filter(Boolean).join("\n\n") || undefined,
     };
     const completedSessionIds = Array.from(
-      new Set([...(metrics.loop?.completedSessionIds ?? []), previous.id]),
+      new Set([
+        ...(readLoopProgress(previous)?.completedSessionIds ?? []),
+        previous.id,
+      ]),
     );
-    const loopId = metrics.loop?.loopId ?? crypto.randomUUID();
+    const loopId = readLoopProgress(previous)?.loopId ?? crypto.randomUUID();
 
     const roundPersona = activeRound.personaLibraryId
       ? (await listPersonas(supabase, user.id)).find(
@@ -130,7 +133,7 @@ export async function POST(_request: Request, ctx: RouteParams) {
         )?.config
       : undefined;
 
-    let session = await createSession(supabase, user.id, {
+    const session = await createSession(supabase, user.id, {
       practiceMode: activeRound.practiceMode,
       scenarioValue: previous.scenarioValue,
       scenarioTitle: buildRoundScenarioTitle(scenario.title, nextLoop),
@@ -146,18 +149,10 @@ export async function POST(_request: Request, ctx: RouteParams) {
       resumeId: previous.resumeId,
       personaName: roundPersona?.name ?? previous.personaName,
       personaConfig: roundPersona ?? previous.personaConfig,
-      metrics: { launch: launchMeta },
-    });
-
-    session = await updateSession(supabase, session.id, {
-      metrics: {
-        launch: launchMeta,
-        loop: {
-          loopId,
-          loop: nextLoop,
-          completedSessionIds,
-        },
-      },
+      // Columns, so this is one write rather than a create-then-patch.
+      launchMeta,
+      loopId,
+      loopProgress: { loopId, loop: nextLoop, completedSessionIds },
     });
 
     return NextResponse.json({ session, launchMeta }, { status: 201 });

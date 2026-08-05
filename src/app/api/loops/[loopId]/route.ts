@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/supabase/server";
-import { listSessions, listTurnAnalyses } from "@/lib/db/sessions";
-import { parseSessionMetrics } from "@/lib/session-launch-meta";
+import { listSessionsInLoop, listTurnAnalyses } from "@/lib/db/sessions";
+import {
+  readLaunchMeta,
+  readLoopProgress,
+} from "@/lib/session-launch-meta";
 import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 
@@ -48,28 +51,21 @@ export async function GET(_request: Request, ctx: RouteParams) {
 
     const { loopId } = await ctx.params;
 
-    // RLS scopes this to the caller, so a loop id belonging to someone else
-    // simply matches nothing. 200 covers a generous number of rounds.
-    const sessions = await listSessions(supabase, { limit: 200 });
-
-    const inLoop = sessions
-      .map((session) => ({
-        session,
-        metrics: parseSessionMetrics(session.metrics),
-      }))
-      .filter(({ metrics }) => metrics.loop?.loopId === loopId);
+    // Indexed lookup on `loop_id`. This used to load 200 full session rows and
+    // filter them in JavaScript, because the id lived inside a JSONB blob and
+    // could not be indexed.
+    const inLoop = await listSessionsInLoop(supabase, loopId);
 
     if (inLoop.length === 0) {
       return notFound("Loop not found.");
     }
 
-    // `listSessions` is newest-first; a loop reads in the order it was run.
-    inLoop.reverse();
-
     const rounds: LoopRoundSummary[] = await Promise.all(
-      inLoop.map(async ({ session, metrics }, position) => {
+      inLoop.map(async (session, position) => {
         const analyses = await listTurnAnalyses(supabase, session.id);
-        const loopConfig = metrics.loop?.loop ?? metrics.launch?.interviewLoop;
+        const loopConfig =
+          readLoopProgress(session)?.loop ??
+          readLaunchMeta(session)?.interviewLoop;
         // Each session records which round it *is*. Using its position in this
         // list instead would shift every subsequent round's title and type as
         // soon as a round is retried and produces two sessions.

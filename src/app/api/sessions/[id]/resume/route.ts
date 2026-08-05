@@ -5,7 +5,7 @@ import {
   listMessages,
   listTurnAnalyses,
 } from "@/lib/db/sessions";
-import { parseSessionMetrics } from "@/lib/session-launch-meta";
+import { readLaunchMeta } from "@/lib/session-launch-meta";
 import { getJobDescription } from "@/lib/db/job-descriptions";
 import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
@@ -41,7 +41,6 @@ export async function GET(
       listMessages(supabase, id, { limit: 200 }),
       listTurnAnalyses(supabase, id),
     ]);
-    const metrics = parseSessionMetrics(session.metrics);
 
     let jobDescription: {
       id: string;
@@ -64,7 +63,7 @@ export async function GET(
       session,
       messages,
       turnAnalyses,
-      launch: metrics.launch ?? null,
+      launch: readLaunchMeta(session) ?? null,
       jobDescription,
     });
   } catch (error) {

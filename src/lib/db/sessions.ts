@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PersonaConfig } from "@/lib/persona-engine";
+import type {
+  LoopProgress,
+  SessionLaunchMeta,
+} from "@/lib/session-launch-meta";
+import type { CompetencyCoverage } from "@/lib/competencies";
 
 export type PracticeMode = "text" | "voice";
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
@@ -21,7 +26,12 @@ export interface SessionRecord {
   turnCount: number;
   averageScore: number | null;
   durationMinutes: number | null;
+  /** Score metrics only — the server-owned parts are now their own columns. */
   metrics: Record<string, unknown> | null;
+  launchMeta: SessionLaunchMeta | null;
+  loopId: string | null;
+  loopProgress: LoopProgress | null;
+  competencyCoverage: CompetencyCoverage | null;
   startedAt: string;
   endedAt: string | null;
   createdAt: string;
@@ -52,6 +62,10 @@ interface SessionRow {
   average_score: number | null;
   duration_minutes: number | null;
   metrics: Record<string, unknown> | null;
+  launch_meta: SessionLaunchMeta | null;
+  loop_id: string | null;
+  loop_progress: LoopProgress | null;
+  competency_coverage: CompetencyCoverage | null;
   started_at: string;
   ended_at: string | null;
   created_at: string;
@@ -82,6 +96,10 @@ const SESSION_COLUMNS = `
   average_score,
   duration_minutes,
   metrics,
+  launch_meta,
+  loop_id,
+  loop_progress,
+  competency_coverage,
   started_at,
   ended_at,
   created_at
@@ -105,6 +123,10 @@ function rowToSession(row: SessionRow): SessionRecord {
     averageScore: row.average_score,
     durationMinutes: row.duration_minutes,
     metrics: row.metrics,
+    launchMeta: row.launch_meta,
+    loopId: row.loop_id,
+    loopProgress: row.loop_progress,
+    competencyCoverage: row.competency_coverage,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     createdAt: row.created_at,
@@ -136,6 +158,27 @@ export async function listSessions(
   return (data ?? []).map((row) => rowToSession(row as SessionRow));
 }
 
+/**
+ * Every session belonging to one interview loop, in the order it was run.
+ *
+ * Backed by `sessions_loop_idx`. Before migration 0009 the loop id lived inside
+ * the `metrics` JSONB and could not be indexed, so the caller loaded 200 rows
+ * and filtered them in memory.
+ */
+export async function listSessionsInLoop(
+  supabase: SupabaseClient,
+  loopId: string,
+): Promise<SessionRecord[]> {
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select(SESSION_COLUMNS)
+    .eq("loop_id", loopId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => rowToSession(row as SessionRow));
+}
+
 export async function getSession(
   supabase: SupabaseClient,
   id: string,
@@ -161,6 +204,9 @@ export interface CreateSessionInput {
   personaName: string;
   personaConfig: PersonaConfig;
   metrics?: Record<string, unknown> | null;
+  launchMeta?: SessionLaunchMeta | null;
+  loopId?: string | null;
+  loopProgress?: LoopProgress | null;
 }
 
 export async function createSession(
@@ -182,6 +228,9 @@ export async function createSession(
       persona_name: input.personaName,
       persona_config: input.personaConfig,
       metrics: input.metrics ?? null,
+      launch_meta: input.launchMeta ?? null,
+      loop_id: input.loopId ?? null,
+      loop_progress: input.loopProgress ?? null,
       status: "in_progress",
     })
     .select(SESSION_COLUMNS)
@@ -194,43 +243,15 @@ export async function createSession(
 export interface UpdateSessionInput {
   status?: SessionStatus;
   summary?: string | null;
+  /** Client-owned score metrics. Replaced wholesale — no merge needed now. */
   metrics?: Record<string, unknown> | null;
   averageScore?: number | null;
   durationMinutes?: number | null;
   endedAt?: string | null;
-}
-
-/**
- * `interview_sessions.metrics` is a single JSONB blob with three independent
- * owners: `launch` (setup config, written once at launch), `loop` (multi-round
- * progress, written by the server) and the live score metrics (written by the
- * client on every scored turn).
- *
- * Assigning the column wholesale meant a client PATCH carrying only score
- * fields silently deleted `launch` and `loop` — which broke round-type
- * selection in `/api/chat`, the `next-round` handoff, and cross-device resume.
- * We shallow-merge instead so each writer only touches its own keys.
- *
- * Shallow is the right depth here: every top-level key is replaced as a unit
- * (`launch` is always written whole, `dimensionSnapshots` is always the full
- * capped array), so a deep merge would only risk resurrecting stale nested
- * values.
- */
-async function mergeMetrics(
-  supabase: SupabaseClient,
-  id: string,
-  incoming: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const { data, error } = await supabase
-    .from("interview_sessions")
-    .select("metrics")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  const existing = (data?.metrics ?? {}) as Record<string, unknown>;
-  return { ...existing, ...incoming };
+  launchMeta?: SessionLaunchMeta | null;
+  loopId?: string | null;
+  loopProgress?: LoopProgress | null;
+  competencyCoverage?: CompetencyCoverage | null;
 }
 
 export async function updateSession(
@@ -241,12 +262,14 @@ export async function updateSession(
   const patch: Record<string, unknown> = {};
   if (input.status !== undefined) patch.status = input.status;
   if (input.summary !== undefined) patch.summary = input.summary;
-  if (input.metrics !== undefined) {
-    // `null` is an explicit reset; an object is merged over what is stored.
-    patch.metrics =
-      input.metrics === null
-        ? null
-        : await mergeMetrics(supabase, id, input.metrics);
+  // Straight assignment: the keys that used to collide with this write are
+  // their own columns now, so there is nothing to merge and nothing to race.
+  if (input.metrics !== undefined) patch.metrics = input.metrics;
+  if (input.launchMeta !== undefined) patch.launch_meta = input.launchMeta;
+  if (input.loopId !== undefined) patch.loop_id = input.loopId;
+  if (input.loopProgress !== undefined) patch.loop_progress = input.loopProgress;
+  if (input.competencyCoverage !== undefined) {
+    patch.competency_coverage = input.competencyCoverage;
   }
   if (input.averageScore !== undefined)
     patch.average_score = input.averageScore;
