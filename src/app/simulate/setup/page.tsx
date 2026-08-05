@@ -9,14 +9,12 @@ import {
   CheckCircle2,
   ChevronLeft,
   FileText,
-  Mic,
-  MessageSquare,
   Sliders,
   Rocket,
+  Sparkles,
   GaugeCircle,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,7 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
 } from "@/components/ui/select";
 import {
@@ -34,7 +31,6 @@ import {
   resolveScenarioForLaunch,
 } from "@/lib/scenarios";
 import { buildLaunchMetaFromSetup } from "@/lib/session-launch-meta";
-import { Textarea } from "@/components/ui/textarea";
 import {
   type PersonaConfig,
 } from "@/lib/persona-engine";
@@ -53,6 +49,8 @@ import {
 } from "@/lib/persona-library";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import { LoopStep } from "@/components/setup/loop-step";
+import { ContextStep } from "@/components/setup/context-step";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
 import {
@@ -64,7 +62,7 @@ import {
   getCurrentRound,
 } from "@/lib/interview-rounds";
 
-type StepId = "mode" | "brief" | "loop" | "persona" | "finalize";
+type StepId = "context" | "rounds" | "persona" | "review";
 
 type StepDefinition = {
   id: StepId;
@@ -76,27 +74,19 @@ type StepDefinition = {
 
 const STEPS: StepDefinition[] = [
   {
-    id: "mode",
-    title: "Choose your practice mode",
-    shortLabel: "Mode",
-    description:
-      "Decide whether you want to practice with typed or spoken responses.",
-    icon: MessageSquare,
-  },
-  {
-    id: "brief",
+    id: "context",
     title: "What are you preparing for?",
-    shortLabel: "Brief",
+    shortLabel: "Context",
     description:
-      "Describe the role, company, or situation in your own words.",
+      "Pick how you want to answer, describe the role, and optionally attach a job description or CV.",
     icon: FileText,
   },
   {
-    id: "loop",
+    id: "rounds",
     title: "Build your interview",
-    shortLabel: "Loop",
+    shortLabel: "Rounds",
     description:
-      "One focused round, or compose multiple rounds for a realistic loop.",
+      "One focused round, or compose several for a realistic loop.",
     icon: GaugeCircle,
   },
   {
@@ -104,15 +94,15 @@ const STEPS: StepDefinition[] = [
     title: "Shape the interviewer",
     shortLabel: "Interviewer",
     description:
-      "Pick a preset persona or fine-tune style, strictness, warmth, pace, and pushback.",
+      "Pick a persona, or fine-tune one of your own.",
     icon: Sliders,
   },
   {
-    id: "finalize",
-    title: "Final tune & launch",
-    shortLabel: "Launch",
+    id: "review",
+    title: "Review and launch",
+    shortLabel: "Review",
     description:
-      "Confirm your settings, run a quick mic check if needed, and start the session.",
+      "Confirm the session, run a mic check if you are practising by voice, and start.",
     icon: Rocket,
   },
 ];
@@ -139,7 +129,7 @@ function SetupLoadingFallback() {
 function SetupWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [currentStep, setCurrentStep] = useState<StepId>("mode");
+  const [currentStep, setCurrentStep] = useState<StepId>("context");
   const [microphoneStatus, setMicrophoneStatus] = useState<
     "idle" | "checking" | "ready" | "failed"
   >("idle");
@@ -581,94 +571,109 @@ function SetupWizard() {
     }
   };
 
-  const canProceedFromStep = (() => {
-    if (currentStep === "mode") {
-      return setup.practiceMode === "text" || setup.practiceMode === "voice";
-    }
-    if (currentStep === "brief") {
-      return (setup.customScenarioBrief?.trim().length ?? 0) >= 20;
-    }
-    if (currentStep === "persona") {
-      return (
-        setup.personaConfig.name.trim().length > 0 &&
-        setup.personaConfig.nationality.trim().length > 0 &&
-        setup.personaConfig.industry.trim().length > 0 &&
-        setup.personaConfig.seniority.trim().length > 0
-      );
-    }
-    if (currentStep === "finalize") {
+  /**
+   * Why the Continue button is disabled, or null when it is not.
+   *
+   * This used to return a bare boolean, so the button simply went dead with no
+   * indication of what was missing — a dead end on a form that is mostly
+   * optional fields. Returning the reason lets the UI say it.
+   *
+   * The document checks moved from the last step to the first, along with the
+   * pickers themselves.
+   */
+  const blockedReason = ((): string | null => {
+    if (currentStep === "context") {
+      if ((setup.customScenarioBrief?.trim().length ?? 0) < 20) {
+        return "Describe the role in at least 20 characters.";
+      }
       if (setup.jobDescription.enabled) {
         if (setup.jobDescription.mode === "paste") {
-          if (setup.jobDescription.rawText.trim().length < 80) return false;
+          if (setup.jobDescription.rawText.trim().length < 80) {
+            return "Paste at least 80 characters of the job description, or turn it off.";
+          }
         } else if (!setup.jobDescription.savedId) {
-          return false;
+          return "Choose or upload a job description, or turn it off.";
         }
       }
       if (setup.resume.enabled) {
         if (setup.resume.mode === "paste") {
-          if (setup.resume.rawText.trim().length < 80) return false;
+          if (setup.resume.rawText.trim().length < 80) {
+            return "Paste at least 80 characters of your CV, or turn it off.";
+          }
         } else if (!setup.resume.savedId) {
-          return false;
+          return "Choose or upload a CV, or turn it off.";
         }
       }
+      return null;
     }
-    return true;
+    if (currentStep === "persona") {
+      const missing = (
+        [
+          ["name", "a display name"],
+          ["nationality", "a nationality"],
+          ["industry", "an industry"],
+          ["seniority", "a seniority"],
+        ] as const
+      ).filter(
+        ([field]) => setup.personaConfig[field].trim().length === 0,
+      );
+      if (missing.length > 0) {
+        return `Give the interviewer ${missing.map(([, label]) => label).join(", ")}.`;
+      }
+    }
+    return null;
   })();
 
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(219,234,254,0.9),transparent_35%),radial-gradient(circle_at_top_right,rgba(207,250,254,0.6),transparent_28%),linear-gradient(to_bottom,#f8fafc,#ffffff_52%,#f8fbff)]">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full bg-blue-200/20 blur-3xl" />
-        <div className="absolute top-40 -left-16 h-80 w-80 rounded-full bg-cyan-200/25 blur-3xl" />
-      </div>
+  const canProceedFromStep = blockedReason === null;
 
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/dashboard">
-            <Button
-              variant="ghost"
-              className="gap-2 text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to dashboard
+  return (
+    <div className="min-h-screen bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+      <div className="mx-auto max-w-5xl space-y-8 p-8">
+        <PageHeader
+          eyebrow="Practice"
+          title="Interview practice"
+          description="Set up a session: what you are preparing for, how many rounds, and who is asking."
+          icon={<Sparkles className="h-6 w-6" />}
+          iconColor="blue"
+          actions={
+            <Button variant="outline" asChild>
+              <Link href="/dashboard" className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back to dashboard
+              </Link>
             </Button>
-          </Link>
-          <Badge variant="secondary" className="rounded-full px-3 py-1">
-            Step {stepIndex + 1} of {totalSteps}
-          </Badge>
-        </div>
+          }
+        />
 
         <Stepper currentStepId={currentStep} onStepSelect={setCurrentStep} />
 
-        <Card className="mt-6 border-gray-200/80 bg-white/85 shadow-soft backdrop-blur">
+        <Card className="border border-gray-200/80 shadow-soft">
           <CardHeader className="pb-4">
             <div className="space-y-1">
-              <CardTitle className="text-2xl tracking-tight">
-                {activeStep.title}
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-600">
-                {activeStep.description}
-              </CardDescription>
+              <CardTitle className="text-lg">{activeStep.title}</CardTitle>
+              <CardDescription>{activeStep.description}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-8">
-            {currentStep === "mode" && (
-              <ModeStep mode={setup.practiceMode} onChange={updateMode} />
-            )}
-
-            {currentStep === "brief" && (
-              <BriefStep
-                customBrief={setup.customScenarioBrief ?? ""}
-                onChange={(customScenarioBrief) =>
-                  updateSetup({
-                    customScenarioBrief,
-                    scenarioValue: CUSTOM_SCENARIO_VALUE,
-                  })
-                }
+            {currentStep === "context" && (
+              <ContextStep
+                setup={setup}
+                quickStarts={BRIEF_QUICK_STARTS}
+                onUpdate={(partial) => {
+                  if (partial.practiceMode) {
+                    updateMode(partial.practiceMode);
+                    return;
+                  }
+                  updateSetup(
+                    "customScenarioBrief" in partial
+                      ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
+                      : partial,
+                  );
+                }}
               />
             )}
 
-            {currentStep === "loop" && (
+            {currentStep === "rounds" && (
               <LoopStep
                 value={setup.interviewLoop}
                 practiceMode={setup.practiceMode}
@@ -699,7 +704,7 @@ function SetupWizard() {
               />
             )}
 
-            {currentStep === "finalize" && (
+            {currentStep === "review" && (
               <FinalizeStep
                 setup={setup}
                 onUpdate={updateSetup}
@@ -727,11 +732,16 @@ function SetupWizard() {
               </Button>
 
               <div className="flex items-center gap-3">
-                {isLastStep && (
+                {/* Previously the button just went disabled with no reason
+                    given, which on a step of mostly-optional fields is a dead
+                    end. */}
+                {blockedReason ? (
+                  <p className="text-xs text-amber-700">{blockedReason}</p>
+                ) : isLastStep ? (
                   <p className="text-xs text-gray-500">
                     Saved automatically. You can come back any time.
                   </p>
-                )}
+                ) : null}
                 <Button
                   onClick={goNext}
                   disabled={!canProceedFromStep || isLaunching}
@@ -763,7 +773,7 @@ function Stepper({
   const currentIndex = STEPS.findIndex((step) => step.id === currentStepId);
 
   return (
-    <ol className="flex flex-col gap-4 rounded-2xl border border-gray-200/70 bg-white/80 p-4 shadow-soft backdrop-blur sm:flex-row sm:items-center sm:gap-2">
+    <ol className="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-soft sm:flex-row sm:items-center">
       {STEPS.map((step, index) => {
         const Icon = step.icon;
         const isActive = step.id === currentStepId;
@@ -777,16 +787,16 @@ function Stepper({
               type="button"
               disabled={!isReachable}
               onClick={() => isReachable && onStepSelect(step.id)}
-              className={`flex h-14 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-all duration-200 ${
+              className={`flex h-11 w-full items-center gap-2.5 rounded-lg border px-3 text-left transition-all duration-200 ${
                 isActive
                   ? "border-blue-300 bg-blue-50 shadow-soft-md"
                   : isCompleted
-                    ? "border-emerald-200/70 bg-emerald-50/70 hover:bg-emerald-100/70"
-                    : "border-gray-200/70 bg-white/70 text-gray-400 cursor-default"
+                    ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                    : "border-gray-200 bg-white text-gray-400 cursor-default"
               }`}
             >
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
                   isActive
                     ? "bg-blue-500 text-white"
                     : isCompleted
@@ -800,30 +810,17 @@ function Stepper({
                   <Icon className="h-4 w-4" />
                 )}
               </span>
-              <div className="min-w-0">
-                <p
-                  className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                    isActive
-                      ? "text-blue-700"
-                      : isCompleted
-                        ? "text-emerald-700"
-                        : "text-gray-400"
-                  }`}
-                >
-                  Step {index + 1}
-                </p>
-                <p
-                  className={`truncate text-sm font-medium ${
-                    isActive
-                      ? "text-gray-900"
-                      : isCompleted
-                        ? "text-emerald-900"
-                        : "text-gray-500"
-                  }`}
-                >
-                  {step.shortLabel}
-                </p>
-              </div>
+              <p
+                className={`min-w-0 truncate text-sm font-medium ${
+                  isActive
+                    ? "text-gray-900"
+                    : isCompleted
+                      ? "text-emerald-900"
+                      : "text-gray-500"
+                }`}
+              >
+                {step.shortLabel}
+              </p>
             </button>
             <span
               aria-hidden
@@ -842,159 +839,3 @@ function Stepper({
   );
 }
 
-function ModeStep({
-  mode,
-  onChange,
-}: {
-  mode: PracticeMode;
-  onChange: (mode: PracticeMode) => void;
-}) {
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {[
-        {
-          value: "text" as const,
-          title: "Text interview",
-          description:
-            "Type your responses. You get up to 5 minutes per answer. Best for crafted, deliberate answers.",
-          highlights: [
-            "Optional token streaming",
-            "Markdown-rendered responses",
-            "Easy to revisit & re-read",
-          ],
-          icon: MessageSquare,
-          gradient: "from-blue-50 via-white to-cyan-50/70",
-          accent: "bg-blue-500",
-        },
-        {
-          value: "voice" as const,
-          title: "Voice interview",
-          description:
-            "Speak your answer and hear the interviewer reply. Closer to a real interview, but needs a microphone.",
-          highlights: [
-            "Real-time speech-to-text",
-            "Interviewer voice playback",
-            "Choose from neural voices",
-          ],
-          icon: Mic,
-          gradient: "from-violet-50 via-white to-blue-50/70",
-          accent: "bg-violet-500",
-        },
-      ].map((option) => {
-        const Icon = option.icon;
-        const isActive = mode === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={`group relative flex h-full flex-col gap-4 overflow-hidden rounded-2xl border p-5 text-left transition-all duration-200 ${
-              isActive
-                ? "border-blue-300 bg-linear-to-br shadow-soft-md ring-2 ring-blue-200"
-                : "border-gray-200/80 bg-linear-to-br hover:border-blue-200 hover:shadow-soft"
-            } ${option.gradient}`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-soft ${option.accent}`}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              {isActive && (
-                <Badge variant="default" className="rounded-full">
-                  Selected
-                </Badge>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {option.title}
-              </h3>
-              <p className="text-sm leading-6 text-gray-600">
-                {option.description}
-              </p>
-            </div>
-            <ul className="space-y-1.5">
-              {option.highlights.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-2 text-xs text-gray-600"
-                >
-                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function BriefStep({
-  customBrief,
-  onChange,
-}: {
-  customBrief: string;
-  onChange: (brief: string) => void;
-}) {
-  const charCount = customBrief.trim().length;
-  const isValid = charCount >= 20;
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-4 space-y-3">
-        <Label htmlFor="interview-brief" className="text-sm font-medium">
-          Tell the interviewer what you&apos;re preparing for
-        </Label>
-        <Textarea
-          id="interview-brief"
-          value={customBrief}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder='e.g. "Senior data analyst at a mid-size SaaS company. Expecting questions on SQL, dashboards, stakeholder communication, and a behavioral round on cross-team conflict."'
-          className="min-h-32 resize-y leading-6"
-        />
-        <div className="flex items-center justify-between text-xs">
-          <span className={isValid ? "text-emerald-600" : "text-gray-500"}>
-            {charCount} character{charCount === 1 ? "" : "s"} · at least 20
-            required
-          </span>
-          <span className="text-gray-400">
-            The interviewer drifts naturally between topics — round types
-            below set the rubric, this brief sets the content.
-          </span>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-blue-100/70 bg-blue-50/40 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700/80">
-          Quick starts
-        </p>
-        <p className="mt-1 text-xs text-blue-900/70">
-          Click to pre-fill — these are starting points, not constraints.
-          Edit freely.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {BRIEF_QUICK_STARTS.map((chip) => {
-            const isActive = customBrief.trim() === chip.template.trim();
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => onChange(chip.template)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  isActive
-                    ? "border-blue-400 bg-blue-600 text-white shadow-sm"
-                    : "border-blue-200 bg-white/80 text-blue-700 hover:bg-blue-100"
-                }`}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
