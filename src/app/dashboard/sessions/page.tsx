@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import {
   useInterviewHistory,
@@ -80,7 +81,7 @@ const STATUS_LABEL: Record<InterviewSessionSummary["status"], string> = {
 };
 
 export default function SessionsLibraryPage() {
-  const { sessions, status } = useInterviewHistory(50);
+  const { sessions, status, error, refresh } = useInterviewHistory(50);
 
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
@@ -167,6 +168,14 @@ export default function SessionsLibraryPage() {
 
       {isLoading ? (
         <SessionListSkeleton rows={5} />
+      ) : status === "error" ? (
+        // Before this branch existed, a failed load fell through to the empty
+        // state and told the user they had never run a session.
+        <ErrorStateCard
+          title="Couldn't load your sessions"
+          description={error}
+          onRetry={() => void refresh()}
+        />
       ) : filtered.length === 0 ? (
         sessions.length === 0 ? (
           <EmptyStateCard

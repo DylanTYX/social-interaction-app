@@ -38,10 +38,12 @@ import {
   ShieldCheck,
   Download,
   LogOut,
+  LogIn,
   Trash2,
   KeyRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { useCurrentUser, getInitials } from "@/hooks/use-current-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -65,7 +67,7 @@ type SaveState =
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, status } = useCurrentUser();
+  const { user, status, error: authError } = useCurrentUser();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -304,10 +306,29 @@ export default function SettingsPage() {
     }
   };
 
-  if (status === "loading" || !user) {
+  if (status === "loading") {
     return (
       <div className="p-8 max-w-5xl">
         <div className="h-32 rounded-xl bg-gray-100 animate-pulse" />
+      </div>
+    );
+  }
+
+  // `!user` used to share the skeleton branch above, so a signed-out visitor
+  // watched a placeholder pulse forever with nothing to act on. Signed out and
+  // still loading are different states and need different screens.
+  if (!user) {
+    return (
+      <div className="p-8 max-w-5xl">
+        <EmptyStateCard
+          icon={<LogIn className="h-6 w-6" />}
+          title={authError ? "We couldn't verify your session" : "You're signed out"}
+          description={
+            authError ??
+            "Sign in to change your practice defaults, manage your voice, or export your data."
+          }
+          primaryAction={{ label: "Sign in", href: "/auth/login" }}
+        />
       </div>
     );
   }

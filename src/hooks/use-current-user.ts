@@ -7,6 +7,11 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 export interface CurrentUserState {
   user: User | null;
   status: "loading" | "ready";
+  /**
+   * Set when the auth check itself failed — which is not the same as being
+   * signed out. Signed out is `{ user: null, status: "ready", error: null }`.
+   */
+  error: string | null;
 }
 
 /**
@@ -17,21 +22,38 @@ export interface CurrentUserState {
 export function useCurrentUser(): CurrentUserState {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<"loading" | "ready">("loading");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const supabase = getSupabaseBrowserClient();
 
-    void supabase.auth.getUser().then(({ data }) => {
-      if (cancelled) return;
-      setUser(data.user);
-      setStatus("ready");
-    });
+    void supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setUser(data.user);
+        setError(null);
+        setStatus("ready");
+      })
+      // Without this, a network failure or a misconfigured Supabase URL left
+      // `status` at "loading" permanently, which callers render as an infinite
+      // skeleton. Resolve the status either way and say what happened.
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.warn("Could not read the current user:", err);
+        setUser(null);
+        setError(
+          err instanceof Error ? err.message : "Could not verify your session.",
+        );
+        setStatus("ready");
+      });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setError(null);
       setStatus("ready");
     });
 
@@ -41,7 +63,7 @@ export function useCurrentUser(): CurrentUserState {
     };
   }, []);
 
-  return { user, status };
+  return { user, status, error };
 }
 
 /**

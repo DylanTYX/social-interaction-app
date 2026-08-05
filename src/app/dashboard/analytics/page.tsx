@@ -19,6 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
   parseSessionMetrics,
   type DimensionSnapshot,
@@ -326,24 +327,44 @@ function formatMinutes(total: number): string {
 }
 
 export default function AnalyticsPage() {
-  const { sessions, status } = useInterviewHistory(50);
+  const { sessions, status, error, refresh } = useInterviewHistory(50);
   const model = useMemo(() => buildModel(sessions), [sessions]);
   const isLoading = status === "loading" && sessions.length === 0;
 
+  const header = (
+    <PageHeader
+      eyebrow="Insights"
+      title="Analytics"
+      description="Real progress drawn from your interview history."
+      icon={<BarChart3 className="h-6 w-6" />}
+      iconColor="orange"
+      actions={
+        <Link href="/simulate/setup">
+          <Button>Start a session</Button>
+        </Link>
+      }
+    />
+  );
+
+  // Every tile, trend and breakdown on this page is derived from `sessions`.
+  // With none loaded they all render 0 / "—", which reads as "you have no
+  // progress" rather than "we could not fetch it" — so bail out entirely.
+  if (status === "error") {
+    return (
+      <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+        {header}
+        <ErrorStateCard
+          title="Couldn't load your analytics"
+          description={error}
+          onRetry={() => void refresh()}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
-      <PageHeader
-        eyebrow="Insights"
-        title="Analytics"
-        description="Real progress drawn from your interview history."
-        icon={<BarChart3 className="h-6 w-6" />}
-        iconColor="orange"
-        actions={
-          <Link href="/simulate/setup">
-            <Button>Start a session</Button>
-          </Link>
-        }
-      />
+      {header}
 
       {isLoading ? (
         <div className="grid md:grid-cols-4 gap-4">

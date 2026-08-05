@@ -98,7 +98,7 @@ export default function LoopReportPage({
     );
   }
 
-  if (error || !report) {
+  if (error || !report || report.rounds.length === 0) {
     return (
       <div className="mx-auto max-w-4xl p-4 sm:p-8">
         <Card>
@@ -107,7 +107,7 @@ export default function LoopReportPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-slate-600" role="alert">
-              {error}
+              {error ?? "This loop has no rounds to report on yet."}
             </p>
             <Link href="/dashboard/sessions">
               <Button>Back to sessions</Button>

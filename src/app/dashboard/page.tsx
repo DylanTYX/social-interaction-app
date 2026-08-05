@@ -33,6 +33,7 @@ import { OnboardingDialog } from "@/components/dashboard/onboarding-dialog";
 import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { TILE_BORDERS, TILE_COLORS, TILE_COLORS_INTERACTIVE } from "@/lib/tile-colors";
 
@@ -168,7 +169,7 @@ function QuickAction({
 }
 
 export default function DashboardPage() {
-  const { sessions, status } = useInterviewHistory();
+  const { sessions, status, error, refresh } = useInterviewHistory();
   const { user } = useCurrentUser();
   const { items: jobDescriptions } = useJobDescriptions();
 
@@ -199,6 +200,9 @@ export default function DashboardPage() {
   );
 
   const isLoading = status === "loading";
+  // A failed load must not be presented as "you have no data". Every count
+  // below is meaningless when this is true.
+  const hasError = status === "error";
   const firstName = useMemo(() => {
     const display = getDisplayName(user);
     return display.split(/\s+/)[0] ?? display;
@@ -375,6 +379,12 @@ export default function DashboardPage() {
             <CardContent className="pt-0">
               {isLoading ? (
                 <SessionListSkeleton rows={3} />
+              ) : hasError ? (
+                <ErrorStateCard
+                  title="Couldn't load your sessions"
+                  description={error}
+                  onRetry={() => void refresh()}
+                />
               ) : recentSessions.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
@@ -457,9 +467,13 @@ export default function DashboardPage() {
                 icon={<Target className="h-5 w-5" />}
                 iconColor="blue"
                 label="Total sessions"
-                value={String(stats.total)}
+                value={hasError ? "—" : String(stats.total)}
                 helper={
-                  stats.total === 0 ? "Start your first" : "All-time"
+                  hasError
+                    ? "Couldn't load"
+                    : stats.total === 0
+                      ? "Start your first"
+                      : "All-time"
                 }
               />
               <StatRow
@@ -467,25 +481,29 @@ export default function DashboardPage() {
                 iconColor="purple"
                 label="Average score"
                 value={
-                  stats.averageScore === null ? "—" : `${stats.averageScore}%`
+                  hasError || stats.averageScore === null
+                    ? "—"
+                    : `${stats.averageScore}%`
                 }
-                helper="Across scored sessions"
+                helper={hasError ? "Couldn't load" : "Across scored sessions"}
               />
               <StatRow
                 icon={<Clock className="h-5 w-5" />}
                 iconColor="teal"
                 label="Practice time"
                 value={
-                  stats.totalMinutes >= 60
-                    ? `${(stats.totalMinutes / 60).toFixed(1)}h`
-                    : `${stats.totalMinutes}m`
+                  hasError
+                    ? "—"
+                    : stats.totalMinutes >= 60
+                      ? `${(stats.totalMinutes / 60).toFixed(1)}h`
+                      : `${stats.totalMinutes}m`
                 }
-                helper="Time on interviews"
+                helper={hasError ? "Couldn't load" : "Time on interviews"}
               />
             </CardContent>
           </Card>
 
-          {!isLoading && (
+          {!isLoading && !hasError && (
             <div data-tour="goals">
               <GoalsCard sessions={sessions} />
             </div>

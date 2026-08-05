@@ -49,6 +49,13 @@ export function ScoreComparison({
         if (prior.length > 0 && typeof prior[0].averageScore === "number") {
           setDelta(Math.round(currentScore - prior[0].averageScore));
         }
+      } catch (err) {
+        // There was no catch here, so a network or parse failure escaped as an
+        // unhandled rejection. Rendering nothing is the right *visible*
+        // behaviour — this is a supplementary "vs your last session" line, and
+        // an error card for it would be noise next to the real report — but
+        // the failure should still be recorded rather than vanish.
+        console.warn("Score comparison unavailable:", err);
       } finally {
         if (!cancelled) setLoaded(true);
       }
