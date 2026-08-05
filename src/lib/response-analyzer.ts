@@ -11,6 +11,7 @@ import {
 } from "@/lib/interview-rounds";
 import type { UsageCollector } from "@/lib/api/token-usage";
 import { parseCodeAnswer } from "@/lib/code-answer";
+import { analyzeText } from "@/lib/text-metrics";
 
 /**
  * Scoring should be near-deterministic so the same answer doesn't swing
@@ -216,22 +217,15 @@ Return ONLY valid JSON with this structure:
   ${starBlock}
   ${technicalBlock}
   "specificityMetrics": {
-    "hasMetrics": boolean,
-    "metricCount": number,
-    "hasTimeframes": boolean,
     "hasStakeholders": boolean,
     "vaguenessScore": number (0-10, 10=vague),
     "concreteExamples": number
   },
   "confidenceIndicators": {
-    "hesitationMarkers": number,
     "assertivenessScore": number (0-10),
-    "qualificationCount": number,
-    "revisionsCount": number,
     "clarity": number (0-10)
   },
   "responseQuality": {
-    "length": number,
     "isRelevant": boolean,
     "addressesExplicitly": boolean,
     "depthLevel": "surface" | "moderate" | "deep",
@@ -355,14 +349,32 @@ export async function analyzeResponse(
       );
     }
 
+    // Six fields are no longer asked of the model — they are counts, and the
+    // model was neither cheap nor reliable at counting. Merged in here so the
+    // shape callers consume is unchanged. See `text-metrics.ts`.
+    const counted = analyzeText(candidateResponse);
+
     return {
       overallScore: analysisData.overallScore,
       roundType,
       starAnalysis: analysisData.starAnalysis,
       technicalScores: analysisData.technicalScores,
-      specificityMetrics: analysisData.specificityMetrics,
-      confidenceIndicators: analysisData.confidenceIndicators,
-      responseQuality: analysisData.responseQuality,
+      specificityMetrics: {
+        ...analysisData.specificityMetrics,
+        hasMetrics: counted.hasMetrics,
+        metricCount: counted.metricCount,
+        hasTimeframes: counted.hasTimeframes,
+      },
+      confidenceIndicators: {
+        ...analysisData.confidenceIndicators,
+        hesitationMarkers: counted.hesitationMarkers,
+        qualificationCount: counted.qualificationCount,
+        revisionsCount: counted.revisionsCount,
+      },
+      responseQuality: {
+        ...analysisData.responseQuality,
+        length: counted.wordCount,
+      },
       strengths: analysisData.strengths,
       gaps: analysisData.gaps,
       followupTopics: analysisData.followupTopics,
