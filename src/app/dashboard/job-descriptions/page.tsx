@@ -19,12 +19,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { JobDescriptionRowSkeleton } from "@/components/dashboard/page-skeletons";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
-
-function formatDate(iso: string): string {
-  const ts = Date.parse(iso);
-  if (Number.isNaN(ts)) return "";
-  return new Date(ts).toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function JobDescriptionsPage() {
   const { items, status, error, uploadText, uploadPdf, remove } =
@@ -245,7 +240,7 @@ export default function JobDescriptionsPage() {
                   </p>
                   <p className="text-xs text-gray-500 truncate">
                     {item.roleTitle ?? "No role title"} ·{" "}
-                    {formatDate(item.createdAt)}
+                    {formatDateTime(item.createdAt)}
                   </p>
                 </div>
                 <Button

@@ -36,39 +36,7 @@ import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { TILE_BORDERS, TILE_COLORS, TILE_COLORS_INTERACTIVE } from "@/lib/tile-colors";
-
-function formatRelativeDate(generatedAt: string): string {
-  const ts = Date.parse(generatedAt);
-  if (Number.isNaN(ts)) return "";
-
-  const diffMs = Date.now() - ts;
-  const minutes = Math.round(diffMs / (1000 * 60));
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
-
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
-
-  const days = Math.round(hours / 24);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-
-  const weeks = Math.round(days / 7);
-  if (weeks < 5) return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
-
-  return new Date(ts).toLocaleDateString();
-}
-
-function buildAvatar(name: string): string {
-  if (!name) return "??";
-  const parts = name
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return "??";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
+import { formatRelativeDate, initialsFromName } from "@/lib/format";
 
 interface DashboardStats {
   total: number;
@@ -418,7 +386,7 @@ export default function DashboardPage() {
                         className="flex items-center gap-4 p-4 rounded-xl bg-gray-50/70 hover:bg-gray-100 transition-colors duration-150 group"
                       >
                         <div className="h-10 w-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                          {buildAvatar(session.personaName)}
+                          {initialsFromName(session.personaName)}
                         </div>
 
                         <div className="flex-1 min-w-0">

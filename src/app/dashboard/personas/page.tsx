@@ -39,17 +39,7 @@ import {
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import { toast } from "sonner";
-
-function buildAvatar(name: string): string {
-  if (!name) return "??";
-  const parts = name
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return "??";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
+import { initialsFromName } from "@/lib/format";
 
 const KIND_BADGE: Record<PersonaLibraryEntry["kind"], string> = {
   preset: "Preset",
@@ -196,7 +186,7 @@ export default function PersonasPage() {
               <CardHeader>
                 <div className="flex items-start gap-4">
                   <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-base font-semibold shadow-soft-md shrink-0">
-                    {buildAvatar(entry.config.name)}
+                    {initialsFromName(entry.config.name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">

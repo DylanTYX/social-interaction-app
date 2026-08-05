@@ -18,12 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { useResumes } from "@/hooks/use-resumes";
-
-function formatDate(iso: string): string {
-  const ts = Date.parse(iso);
-  if (Number.isNaN(ts)) return "";
-  return new Date(ts).toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function ResumesPage() {
   const { items, status, error, uploadText, uploadPdf, remove } = useResumes();
@@ -243,7 +238,7 @@ export default function ResumesPage() {
                     {item.title}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {formatDate(item.createdAt)}
+                    {formatDateTime(item.createdAt)}
                   </p>
                 </div>
                 <Button

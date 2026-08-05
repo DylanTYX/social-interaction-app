@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { initialsFromName } from "@/lib/format";
 
 export interface CurrentUserState {
   user: User | null;
@@ -88,12 +89,5 @@ export function getDisplayName(user: User | null): string {
 }
 
 export function getInitials(user: User | null): string {
-  const name = getDisplayName(user);
-  const parts = name
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return initialsFromName(getDisplayName(user));
 }
