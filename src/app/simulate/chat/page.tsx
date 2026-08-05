@@ -823,7 +823,7 @@ function ChatSimulateInner() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="shadow-soft-sm">
+              <Button variant="outline" className="shadow-soft">
                 <Settings2 className="h-4 w-4" />
                 <span className="sr-only">Open settings</span>
               </Button>

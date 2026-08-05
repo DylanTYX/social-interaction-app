@@ -311,6 +311,14 @@ export function normalizeInterviewLoop(
             typeof round.focus === "string" && round.focus.trim()
               ? round.focus
               : "Practice this interview round.",
+          // Must be carried through. Every read path normalizes — localStorage
+          // load, and the server launch meta — so dropping it here silently
+          // discarded the setup wizard's answer-format choice and left
+          // `resolveAnswerFormat` falling back to the round type alone.
+          answerFormat:
+            round.answerFormat === "code" || round.answerFormat === "prose"
+              ? round.answerFormat
+              : undefined,
         }))
       : defaults.rounds.map((round) => ({ ...round, practiceMode }));
 

@@ -912,7 +912,7 @@ function ModeStep({
           value: "text" as const,
           title: "Text interview",
           description:
-            "Type your responses with a 35-second timer per turn. Best for crafted, deliberate answers.",
+            "Type your responses. You get up to 5 minutes per answer. Best for crafted, deliberate answers.",
           highlights: [
             "Optional token streaming",
             "Markdown-rendered responses",

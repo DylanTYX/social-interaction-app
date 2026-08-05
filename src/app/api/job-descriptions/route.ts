@@ -12,6 +12,7 @@ import {
   unauthorized,
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { UsageCollector } from "@/lib/api/token-usage";
 
 export const runtime = "nodejs";
 
@@ -104,12 +105,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Chunk embedding is the single most expensive one-off in the app; record
+    // it rather than leaving upload cost invisible.
+    const usage = new UsageCollector();
     const jobDescription = await createJobDescription({
       supabase,
       userId: user.id,
       rawText,
       roleTitle,
+      usage,
     });
+    await usage.flush(supabase, { userId: user.id });
 
     return NextResponse.json({ jobDescription }, { status: 201 });
   } catch (error) {

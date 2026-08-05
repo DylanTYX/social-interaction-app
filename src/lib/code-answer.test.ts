@@ -27,6 +27,16 @@ describe("formatCodeAnswer / parseCodeAnswer", () => {
     expect(parsed?.code).toBe("SELECT 1;");
   });
 
+  it("separates prose written on both sides of the fence", () => {
+    // These used to be concatenated with no separator, producing
+    // "my approachthe complexity is O(n)".
+    const parsed = parseCodeAnswer(
+      "My approach:\n\n```python\npass\n```\n\nThe complexity is O(n).",
+    );
+
+    expect(parsed?.note).toBe("My approach:\n\nThe complexity is O(n).");
+  });
+
   it("returns null for a prose answer, leaving normal turns untouched", () => {
     expect(parseCodeAnswer("I led a team of four engineers.")).toBeNull();
     expect(parseCodeAnswer("")).toBeNull();

@@ -31,20 +31,32 @@ export interface DeliveryMetrics {
 
 const LONG_PAUSE_SECONDS = 1.5;
 
-// Curated filler set. We deliberately avoid ambiguous words like "so" and
-// "right" that are usually legitimate, to keep counts trustworthy.
+// Curated filler set. We deliberately avoid words that are usually legitimate,
+// to keep counts trustworthy.
+//
+// "like", "actually", "basically" and "literally" used to be counted
+// unconditionally, which contradicted this rule and inflated the count for
+// ordinary sentences — "I actually shipped it", "a linked list, like a queue".
+// They now only count as fillers when adjacent to a genuine hesitation marker
+// or a discourse pause, which is where they really are filler.
+const HESITATION_NEIGHBOUR = String.raw`(?:um+|uh+|erm*|,|\.\.\.)\s+`;
+
 const FILLER_PATTERNS: { label: string; regex: RegExp }[] = [
   { label: "um", regex: /\b(?:um+|umm+)\b/gi },
   { label: "uh", regex: /\b(?:uh+|err+|erm+)\b/gi },
   { label: "ah", regex: /\b(?:ah+|ahh+)\b/gi },
-  { label: "like", regex: /\blike\b/gi },
   { label: "you know", regex: /\byou know\b/gi },
   { label: "i mean", regex: /\bi mean\b/gi },
-  { label: "basically", regex: /\bbasically\b/gi },
-  { label: "actually", regex: /\bactually\b/gi },
-  { label: "literally", regex: /\bliterally\b/gi },
   { label: "sort of", regex: /\bsort of\b/gi },
   { label: "kind of", regex: /\bkind of\b/gi },
+  {
+    label: "like",
+    regex: new RegExp(String.raw`${HESITATION_NEIGHBOUR}like\b`, "gi"),
+  },
+  {
+    label: "basically",
+    regex: new RegExp(String.raw`${HESITATION_NEIGHBOUR}basically\b`, "gi"),
+  },
 ];
 
 function countWords(text: string): number {

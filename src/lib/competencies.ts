@@ -217,7 +217,14 @@ export function formatCoverageSteer(
     return null;
   }
 
-  const picks = remaining.slice(0, max);
+  // Rotate the starting point by how many competencies are already covered.
+  // Always taking the first two in declaration order made every session steer
+  // toward conflict then failure, so an "improvised" interview came out
+  // identical for every user.
+  const offset = Object.keys(coverage.covered).length % remaining.length;
+  const picks = Array.from({ length: Math.min(max, remaining.length) }, (_, i) =>
+    remaining[(offset + i) % remaining.length],
+  );
   return [
     `- Competencies not yet explored in this interview: ${picks
       .map((c) => c.label.toLowerCase())

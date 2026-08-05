@@ -67,14 +67,18 @@ export async function GET(_request: Request, ctx: RouteParams) {
     inLoop.reverse();
 
     const rounds: LoopRoundSummary[] = await Promise.all(
-      inLoop.map(async ({ session, metrics }, index) => {
+      inLoop.map(async ({ session, metrics }, position) => {
         const analyses = await listTurnAnalyses(supabase, session.id);
         const loopConfig = metrics.loop?.loop ?? metrics.launch?.interviewLoop;
-        const round = loopConfig?.rounds?.[index];
+        // Each session records which round it *is*. Using its position in this
+        // list instead would shift every subsequent round's title and type as
+        // soon as a round is retried and produces two sessions.
+        const roundIndex = loopConfig?.currentRoundIndex ?? position;
+        const round = loopConfig?.rounds?.[roundIndex];
 
         return {
           sessionId: session.id,
-          roundIndex: index,
+          roundIndex,
           title: round?.title ?? session.scenarioTitle,
           roundType: round?.type ?? null,
           practiceMode: session.practiceMode,

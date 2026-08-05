@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createEmbedding, createEmbeddings } from "@/lib/embeddings";
+import type { UsageCollector } from "@/lib/api/token-usage";
 import {
   buildJobDescriptionTitle,
   chunkJobDescription,
@@ -61,6 +62,7 @@ export async function createJobDescription(input: {
   userId: string;
   rawText: string;
   roleTitle?: string | null;
+  usage?: UsageCollector;
 }): Promise<JobDescriptionRecord> {
   const rawText = input.rawText.trim();
   if (rawText.length < 80) {
@@ -91,7 +93,10 @@ export async function createJobDescription(input: {
 
   if (jdError) throw jdError;
 
-  const embeddings = await createEmbeddings(chunks.map((chunk) => chunk.content));
+  const embeddings = await createEmbeddings(
+    chunks.map((chunk) => chunk.content),
+    input.usage,
+  );
   const chunkRows = chunks.map((chunk, index) => ({
     user_id: input.userId,
     job_description_id: jd.id,
@@ -203,11 +208,12 @@ export async function retrieveJobDescriptionChunks(input: {
   matchCount?: number;
   /** Override the relevance floor; 0 disables it. */
   minSimilarity?: number;
+  usage?: UsageCollector;
 }): Promise<RetrievedJobDescriptionChunk[]> {
   const query = input.query.trim();
   if (!query) return [];
 
-  const embedding = await createEmbedding(query);
+  const embedding = await createEmbedding(query, input.usage);
   const { data, error } = await input.supabase.rpc(
     "match_job_description_chunks",
     {

@@ -141,14 +141,36 @@ describe("formatCoverageSteer", () => {
     expect(formatCoverageSteer(emptyCoverage())).toBeNull();
   });
 
-  it("names specific uncovered competencies once some are covered", () => {
+  it("names only uncovered competencies", () => {
     const coverage = applyCoverage(emptyCoverage(), [
       { id: COMPETENCIES[0].id, similarity: 0.9 },
     ]);
 
-    const steer = formatCoverageSteer(coverage);
-    expect(steer).toContain(COMPETENCIES[1].label.toLowerCase());
-    expect(steer).not.toContain(COMPETENCIES[0].label.toLowerCase());
+    const steer = formatCoverageSteer(coverage) ?? "";
+    const named = COMPETENCIES.filter((c) =>
+      steer.includes(c.label.toLowerCase()),
+    );
+
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.map((c) => c.id)).not.toContain(COMPETENCIES[0].id);
+  });
+
+  it("rotates which competencies it names as coverage grows", () => {
+    // Always taking the first two in declaration order made every session
+    // steer toward the same pair, so an "improvised" interview came out
+    // identical for every user.
+    const namedFor = (coveredCount: number) =>
+      formatCoverageSteer(
+        applyCoverage(
+          emptyCoverage(),
+          COMPETENCIES.slice(0, coveredCount).map((c) => ({
+            id: c.id,
+            similarity: 0.9,
+          })),
+        ),
+      ) ?? "";
+
+    expect(namedFor(1)).not.toBe(namedFor(2));
   });
 
   it("says nothing once everything is covered", () => {

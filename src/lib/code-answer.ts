@@ -49,8 +49,13 @@ export function parseCodeAnswer(message: string): ParsedCodeAnswer | null {
   if (!match) return null;
 
   const [, rawLanguage, code] = match;
-  const note = (message.slice(0, match.index) + message.slice((match.index ?? 0) + match[0].length))
-    .trim();
+  const start = match.index ?? 0;
+  // Join with a blank line, not by concatenation — a candidate who writes above
+  // *and* below the fence would otherwise get "my approachthe complexity is O(n)".
+  const note = [message.slice(0, start), message.slice(start + match[0].length)]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n\n");
 
   return {
     language: isCodeLanguage(rawLanguage) ? rawLanguage : null,

@@ -1,4 +1,5 @@
 import { createEmbeddings } from "@/lib/embeddings";
+import type { UsageCollector } from "@/lib/api/token-usage";
 import {
   applyCoverage,
   COMPETENCIES,
@@ -46,6 +47,7 @@ export function resetCompetencyEmbeddings(): void {
 export async function updateCoverageForQuestion(
   coverage: CompetencyCoverage,
   question: string,
+  usage?: UsageCollector,
 ): Promise<CompetencyCoverage> {
   const text = question.trim();
   if (!text) return coverage;
@@ -53,7 +55,7 @@ export async function updateCoverageForQuestion(
   try {
     const [probeVectors, [questionVector]] = await Promise.all([
       getCompetencyEmbeddings(),
-      createEmbeddings([text]),
+      createEmbeddings([text], usage),
     ]);
 
     if (!questionVector) return coverage;

@@ -448,6 +448,7 @@ async function loadJobDescriptionContext(input: {
   supabase: SupabaseClient;
   jobDescriptionId: string;
   query: string;
+  usage?: UsageCollector;
 }): Promise<{ context: string | null; stable: boolean }> {
   const chunkCount = await countJobDescriptionChunks(
     input.supabase,
@@ -472,6 +473,7 @@ async function loadJobDescriptionContext(input: {
     jobDescriptionId: input.jobDescriptionId,
     query: input.query,
     matchCount: 4,
+    usage: input.usage,
   });
 
   return { context: formatRetrievedJobContext(retrieved), stable: false };
@@ -624,6 +626,7 @@ export async function POST(request: Request) {
             supabase,
             jobDescriptionId: session.jobDescriptionId,
             query: retrievalQuery,
+            usage,
           })
         : Promise.resolve({ context: null, stable: false }),
       session.resumeId
@@ -834,6 +837,7 @@ export async function POST(request: Request) {
         const nextCoverage = await updateCoverageForQuestion(
           coverage,
           aiMessage,
+          usage,
         );
         if (
           Object.keys(nextCoverage.covered).length >
