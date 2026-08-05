@@ -45,7 +45,6 @@ function fromApi(persona: ApiPersona): PersonaLibraryEntry {
   };
 }
 
-
 /**
  * Fetches the user's persona library. Throws if the user is unauthenticated
  * or if the network call fails.

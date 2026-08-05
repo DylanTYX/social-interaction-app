@@ -81,8 +81,6 @@
 
 /* Enhanced transitions and animations for polish */
 @layer utilities {
-  /* Smooth transitions for interactive elements */
-
 
   /* Hover lift effect for cards */
   .hover-lift {
@@ -91,12 +89,6 @@
 
   .hover-lift:hover {
     transform: translateY(-2px);
-  }
-
-  /* Subtle scale on hover for buttons */
-
-  .hover-scale:hover {
-    transform: scale(1.02);
   }
 
   /* Refined shadows for depth */

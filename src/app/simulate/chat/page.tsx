@@ -241,8 +241,6 @@ function ChatSimulateInner() {
     bootstrap.interviewLoop,
   ]);
 
-
-
   const handleSend = async (message: string) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSending) {

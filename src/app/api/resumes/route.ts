@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { parseLimit } from "@/lib/api/fetch-json";
+import { parseLimit } from "@/lib/api/query";
 import {
   createResume,
   listResumes,

@@ -18,7 +18,6 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-
 /**
  * Section hero used at the top of every dashboard page. Mirrors the
  * landing-page treatment: optional eyebrow + colored icon tile + bold title

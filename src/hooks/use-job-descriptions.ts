@@ -19,7 +19,6 @@ interface ApiPayload {
   error?: string;
 }
 
-
 export interface UseJobDescriptions {
   items: JobDescriptionSummary[];
   status: "loading" | "ready" | "error";

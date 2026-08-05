@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { ChatTurnResponse } from "@/lib/chat-contract";
 import {
@@ -20,6 +20,7 @@ import type {
 } from "@/lib/response-analyzer";
 import {
   appendDimensionSnapshot,
+  dimensionSnapshotFromAnalysis,
   type DimensionSnapshot,
 } from "@/lib/session-launch-meta";
 
@@ -47,7 +48,6 @@ export interface AppliedTurn {
 export interface InterviewTurnState {
   sessionState: InterviewSessionState;
   analyses: AnalysisResult[];
-  strategies: InterviewStrategy[];
   metrics: InterviewMetrics | null;
   lastFollowupPrompt: string | null;
   lastDecisionReason: string | null;
@@ -67,6 +67,50 @@ export interface InterviewTurnState {
   endSession: () => Promise<number | null>;
 }
 
+/**
+ * Mirror progress to the session row.
+ *
+ * Best-effort by design: the report reads from Supabase, and a failed mirror
+ * write must never interrupt an interview in progress. Only score metrics are
+ * sent — `launch`, `loop` and `competencyCoverage` are server-owned, and the
+ * server merges these keys over what it already stored.
+ */
+async function persistTurn(
+  sessionId: string,
+  input: {
+    metrics: InterviewMetrics;
+    snapshots: DimensionSnapshot[];
+    /** Non-null marks the session finished, and adds status/duration/endedAt. */
+    completedAt: InterviewSessionState | null;
+  },
+): Promise<void> {
+  const body: Record<string, unknown> = {
+    averageScore: Number.isFinite(input.metrics.averageOverallScore)
+      ? Math.round(input.metrics.averageOverallScore)
+      : null,
+    metrics: { ...input.metrics, dimensionSnapshots: input.snapshots },
+  };
+
+  if (input.completedAt) {
+    const startedAtMs = Date.parse(input.completedAt.createdAt);
+    body.status = "completed";
+    body.endedAt = new Date().toISOString();
+    body.durationMinutes = Number.isFinite(startedAtMs)
+      ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
+      : null;
+  }
+
+  try {
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // Best-effort mirror.
+  }
+}
+
 export function useInterviewTurnState(input: {
   sessionId: string | null;
   personaName: string;
@@ -81,7 +125,6 @@ export function useInterviewTurnState(input: {
   const [analyses, setAnalyses] = useState<AnalysisResult[]>(
     input.initialAnalyses ?? [],
   );
-  const [strategies, setStrategies] = useState<InterviewStrategy[]>([]);
   const [metrics, setMetrics] = useState<InterviewMetrics | null>(null);
   const [snapshots, setSnapshots] = useState<DimensionSnapshot[]>([]);
   const [lastFollowupPrompt, setLastFollowupPrompt] = useState<string | null>(
@@ -95,15 +138,25 @@ export function useInterviewTurnState(input: {
   );
   const [lastConfidence, setLastConfidence] = useState<number | null>(null);
 
-  // The session id is not known on first render — `useInterviewSessionBootstrap`
-  // resolves it a tick later — so adopt it once it arrives. Metrics carry the
-  // id, and without this they would be stamped with the placeholder.
-  useEffect(() => {
-    if (!sessionId) return;
-    setSessionState((current) =>
-      current.sessionId === sessionId ? current : { ...current, sessionId },
-    );
-  }, [sessionId]);
+  // Restored history arrives asynchronously — after this hook's first render —
+  // so it cannot be a `useState` initial value and does not need an effect to
+  // adopt it either. Derive instead: use our own history once we have one,
+  // otherwise whatever was restored. Snapshots are a pure function of the
+  // analyses, so rebuilding them beats persisting them separately; without
+  // this the first post-resume turn overwrites the stored array with a single
+  // element, because session metrics merge shallowly.
+  const restored = input.initialAnalyses;
+  const effectiveAnalyses = useMemo(
+    () => (analyses.length > 0 ? analyses : (restored ?? [])),
+    [analyses, restored],
+  );
+  const effectiveSnapshots = useMemo(
+    () =>
+      snapshots.length > 0
+        ? snapshots
+        : effectiveAnalyses.map(dimensionSnapshotFromAnalysis),
+    [snapshots, effectiveAnalyses],
+  );
 
   const applyTurn = useCallback(
     (turn: ChatTurnResponse, context: { userMessage: string }) => {
@@ -133,18 +186,20 @@ export function useInterviewTurnState(input: {
       const nextState = isInterviewComplete(advanced)
         ? markInterviewComplete(advanced)
         : advanced;
-      const nextAnalyses = [...analyses, analysis];
-      const nextMetrics = buildInterviewMetrics({
-        analyses: nextAnalyses,
-        state: nextState,
-      });
+      const nextAnalyses = [...effectiveAnalyses, analysis];
+      const nextMetrics = {
+        ...buildInterviewMetrics({ analyses: nextAnalyses, state: nextState }),
+        // The real id is not known when this hook first renders.
+        sessionId: sessionId ?? nextState.sessionId,
+      };
       const nextSnapshots =
-        appendDimensionSnapshot({ dimensionSnapshots: snapshots }, analysis)
-          .dimensionSnapshots ?? [];
+        appendDimensionSnapshot(
+          { dimensionSnapshots: effectiveSnapshots },
+          analysis,
+        ).dimensionSnapshots ?? [];
 
       setSessionState(nextState);
       setAnalyses(nextAnalyses);
-      setStrategies((current) => [...current, strategy]);
       setMetrics(nextMetrics);
       setSnapshots(nextSnapshots);
       setLastFollowupPrompt(turn.followupSummary);
@@ -154,69 +209,53 @@ export function useInterviewTurnState(input: {
 
       // One writer for `averageScore`. The text screen used to have two — a
       // per-turn write of this turn's raw score, and an effect writing the
-      // running mean — racing on every turn, so the stored value was whichever
-      // request happened to land last.
+      // running mean — racing on every turn.
+      //
+      // The completion write also happens here rather than via `endSession`,
+      // because a caller that finishes the interview calls both in the same
+      // tick: `endSession` would still be closed over the *pre-turn* state and
+      // would overwrite this turn's score with the previous mean.
+      const complete = isInterviewComplete(nextState);
       if (sessionId) {
-        void fetch(`/api/sessions/${sessionId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            averageScore: Math.round(nextMetrics.averageOverallScore),
-            metrics: { ...nextMetrics, dimensionSnapshots: nextSnapshots },
-          }),
-        }).catch(() => {
-          // Best-effort mirror; the report reads from Supabase directly.
+        void persistTurn(sessionId, {
+          metrics: nextMetrics,
+          snapshots: nextSnapshots,
+          completedAt: complete ? nextState : null,
         });
       }
 
-      return { analysis, strategy, isComplete: isInterviewComplete(nextState) };
+      return { analysis, strategy, isComplete: complete };
     },
-    [analyses, sessionId, sessionState, snapshots],
+    [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState],
   );
 
   const endSession = useCallback(async () => {
     const completedState = markInterviewComplete(sessionState);
-    const finalMetrics = buildInterviewMetrics({
-      analyses,
-      state: completedState,
-    });
-    const averageScore = analyses.length
+    const finalMetrics = {
+      ...buildInterviewMetrics({
+        analyses: effectiveAnalyses,
+        state: completedState,
+      }),
+      sessionId: sessionId ?? completedState.sessionId,
+    };
+    const averageScore = effectiveAnalyses.length
       ? Math.round(finalMetrics.averageOverallScore)
       : null;
 
-    if (!sessionId) return averageScore;
-
-    const startedAtMs = Date.parse(sessionState.createdAt);
-    const durationMinutes = Number.isFinite(startedAtMs)
-      ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-      : null;
-
-    try {
-      // Only the score metrics are sent. `launch`, `loop` and
-      // `competencyCoverage` are server-owned; the server merges these keys
-      // over what it already stored.
-      await fetch(`/api/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "completed",
-          averageScore,
-          durationMinutes,
-          metrics: { ...finalMetrics, dimensionSnapshots: snapshots },
-          endedAt: new Date().toISOString(),
-        }),
+    if (sessionId) {
+      await persistTurn(sessionId, {
+        metrics: finalMetrics,
+        snapshots: effectiveSnapshots,
+        completedAt: completedState,
       });
-    } catch {
-      // Best-effort; the user is still routed to their report.
     }
 
     return averageScore;
-  }, [analyses, sessionId, sessionState, snapshots]);
+  }, [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState]);
 
   return {
     sessionState,
-    analyses,
-    strategies,
+    analyses: effectiveAnalyses,
     metrics,
     lastFollowupPrompt,
     lastDecisionReason,

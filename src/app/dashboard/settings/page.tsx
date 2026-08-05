@@ -129,7 +129,6 @@ export default function SettingsPage() {
     };
   }, []);
 
-
   const handleSaveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user) return;

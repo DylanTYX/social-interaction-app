@@ -10,7 +10,6 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();

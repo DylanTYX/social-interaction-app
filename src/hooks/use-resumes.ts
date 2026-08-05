@@ -18,7 +18,6 @@ interface ApiPayload {
   error?: string;
 }
 
-
 export interface UseResumes {
   items: ResumeSummary[];
   status: "loading" | "ready" | "error";

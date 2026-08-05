@@ -32,7 +32,6 @@ export function getCompetencyEmbeddings(): Promise<number[][]> {
   return cache;
 }
 
-
 /**
  * Score a question against every competency and fold the result into the
  * running coverage.

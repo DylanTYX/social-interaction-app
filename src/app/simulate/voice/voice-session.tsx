@@ -191,8 +191,6 @@ function VoiceSimulateInner() {
     }
   }, [bootstrap.status, bootstrap.voiceConfig]);
 
-
-
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
     saveInterviewSetup({

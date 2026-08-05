@@ -114,7 +114,6 @@ interface StatRowProps {
   helper: string;
 }
 
-
 function StatRow({ icon, iconColor, label, value, helper }: StatRowProps) {
   return (
     <div className="flex items-center gap-3 py-3">
@@ -139,8 +138,6 @@ interface QuickActionProps {
   title: string;
   description: string;
 }
-
-
 
 function QuickAction({
   href,

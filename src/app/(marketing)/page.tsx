@@ -16,6 +16,7 @@ import {
   Repeat,
   Lightbulb,
   ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
 import { AnimatedDemo } from "@/components/marketing/animated-demo";
 import { Reveal } from "@/components/marketing/reveal";
@@ -23,7 +24,12 @@ import { StatCounter } from "@/components/marketing/stat-counter";
 import { TryQuestion } from "@/components/marketing/try-question";
 import { TILE_BORDERS, TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 
-const FEATURES = [
+const FEATURES: Array<{
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  color: TileColor;
+}> = [
   {
     icon: Target,
     color: "blue",
@@ -67,8 +73,6 @@ const FEATURES = [
       "Per-dimension trends across sessions show exactly where you're improving and what to work on next.",
   },
 ] as const;
-
-
 
 const STEPS = [
   {
@@ -229,11 +233,11 @@ export default function LandingPage() {
               return (
                 <Reveal key={feature.title} delay={(index % 3) * 80}>
                   <Card
-                    className={`h-full border border-gray-200/60 transition-all duration-200 hover-lift hover:shadow-soft-md ${TILE_BORDERS[feature.color as TileColor]}`}
+                    className={`h-full border border-gray-200/60 transition-all duration-200 hover-lift hover:shadow-soft-md ${TILE_BORDERS[feature.color]}`}
                   >
                     <CardHeader>
                       <div
-                        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${TILE_COLORS[feature.color as TileColor]}`}
+                        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${TILE_COLORS[feature.color]}`}
                       >
                         <Icon className="h-6 w-6" />
                       </div>

@@ -10,7 +10,6 @@ import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
-
 export async function GET() {
   try {
     const { supabase, user } = await getCurrentUser();

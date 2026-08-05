@@ -34,12 +34,13 @@ const LONG_PAUSE_SECONDS = 1.5;
 // Curated filler set. We deliberately avoid words that are usually legitimate,
 // to keep counts trustworthy.
 //
-// "like", "actually", "basically" and "literally" used to be counted
-// unconditionally, which contradicted this rule and inflated the count for
-// ordinary sentences — "I actually shipped it", "a linked list, like a queue".
-// They now only count as fillers when adjacent to a genuine hesitation marker
-// or a discourse pause, which is where they really are filler.
-const HESITATION_NEIGHBOUR = String.raw`(?:um+|uh+|erm*|,|\.\.\.)\s+`;
+// "like" and "basically" used to be counted unconditionally, which
+// contradicted this rule and inflated the count for ordinary sentences —
+// "a linked list, like a queue". They now only count when adjacent to a real
+// hesitation marker or a discourse pause, which is where they are genuinely
+// filler. "actually" and "literally" are dropped entirely: they are far more
+// often emphasis than hesitation.
+const HESITATION_NEIGHBOUR = String.raw`(?:\b(?:um+|uh+|erm*)\b|,|\.\.\.)\s+`;
 
 const FILLER_PATTERNS: { label: string; regex: RegExp }[] = [
   { label: "um", regex: /\b(?:um+|umm+)\b/gi },

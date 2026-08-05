@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { parseLimit } from "@/lib/api/fetch-json";
+import { parseLimit } from "@/lib/api/query";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
@@ -15,7 +15,6 @@ import {
 import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
-
 
 export async function GET(request: Request) {
   try {
