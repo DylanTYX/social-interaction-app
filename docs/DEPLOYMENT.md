@@ -20,10 +20,14 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 3. `supabase/migrations/0003_table_privileges.sql`
 4. `supabase/migrations/0004_resumes.sql`
 5. `supabase/migrations/0005_atomic_turns_and_preset_uniqueness.sql`
+6. `supabase/migrations/0006_turn_analyses.sql`
+7. `supabase/migrations/0007_llm_usage.sql`
+8. `supabase/migrations/0008_resume_profile.sql`
 
-> **`0005` is not optional.** It creates the `append_interview_turn` RPC that
-> `src/lib/db/sessions.ts` calls on every interview turn. Skip it and the app
-> deploys cleanly but fails the moment anyone sends a message.
+> **`0005` and `0006` are not optional.** Together they create the
+> `append_interview_turn` RPC that `src/lib/db/sessions.ts` calls on every
+> interview turn — `0006` replaces the signature `0005` introduced. Skip either
+> and the app deploys cleanly but fails the moment anyone sends a message.
 
 (Or use Supabase CLI: `supabase db push` if you have the project linked.)
 
@@ -139,7 +143,9 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | AI never responds | `OPENAI_API_KEY` missing or invalid; check function logs |
 | Voice broken | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` |
 | PDF upload fails | Migrations `0002`/`0004` not applied on production DB |
-| Sending a message 500s | Migration `0005` not applied — `append_interview_turn` RPC is missing |
+| Sending a message 500s | Migrations `0005`/`0006` not applied — `append_interview_turn` RPC is missing or has the old signature |
+| Report shows scores but no per-question detail | Migration `0006` not applied — analyses are not being persisted |
+| Resume context looks truncated | Migration `0008` not applied — falls back to raw text, which still works |
 | New account has every preset persona twice | Migration `0005` not applied — the unique index is missing |
 | API timeout (~10s) on Hobby | Rare for streaming chat; if analyze route times out, retry or upgrade plan |
 
@@ -172,7 +178,7 @@ CLI is optional; the GitHub dashboard flow above is enough.
 
 ## Checklist (printable)
 
-- [ ] Migrations `0001`–`0005` applied on Supabase
+- [ ] Migrations `0001`–`0008` applied on Supabase
 - [ ] Vercel project imported from GitHub
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set
 - [ ] `OPENAI_API_KEY` set
