@@ -10,7 +10,7 @@ import {
   updatePersonaEntry,
   type PersonaLibraryEntry,
 } from "@/lib/persona-library";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 
 export interface UsePersonaLibrary {
   library: PersonaLibraryEntry[];

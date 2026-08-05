@@ -4,7 +4,7 @@ import type {
   InterviewStrategy,
   STARAnalysis,
   TechnicalScores,
-} from "./responseAnalyzer";
+} from "./response-analyzer";
 
 export interface DecisionContext {
   personaName: string;

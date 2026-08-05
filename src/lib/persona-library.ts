@@ -1,7 +1,7 @@
 import {
   type CommunicationStyle,
   type PersonaConfig,
-} from "./personaEngine";
+} from "./persona-engine";
 import { readJson } from "@/lib/api/fetch-json";
 
 /**

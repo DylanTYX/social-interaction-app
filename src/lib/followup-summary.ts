@@ -1,4 +1,4 @@
-import type { AnalysisResult, InterviewStrategy } from "./responseAnalyzer";
+import type { AnalysisResult, InterviewStrategy } from "./response-analyzer";
 
 function excerpt(text: string, wordLimit = 3): string {
   const words = text.trim().split(/\s+/).filter(Boolean);

@@ -4,7 +4,7 @@ import {
   appendUniqueTranscript,
   extractSpeakableSentences,
   paceToRatePercent,
-} from "@/lib/speechService";
+} from "@/lib/speech-service";
 
 describe("extractSpeakableSentences", () => {
   it("splits on sentence-ending punctuation", () => {

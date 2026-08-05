@@ -2,7 +2,7 @@ import {
   PERSONA_DIAL_DEFAULT,
   type CommunicationStyle,
   type PersonaConfig,
-} from "@/lib/personaEngine";
+} from "@/lib/persona-engine";
 
 /**
  * Validation for a `PersonaConfig` arriving from an untrusted source — a

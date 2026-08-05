@@ -24,7 +24,7 @@ import {
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
-import { generatePersonaPrompt } from "@/lib/personaEngine";
+import { generatePersonaPrompt } from "@/lib/persona-engine";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
   formatPlaybooksForPrompt,
@@ -45,12 +45,12 @@ import {
   isInterviewStrategy,
   type AnalysisResult,
   type InterviewStrategy,
-} from "@/lib/responseAnalyzer";
+} from "@/lib/response-analyzer";
 import {
   decideInterviewAction,
   estimateFollowupDifficulty,
-} from "@/lib/decisionEngine";
-import { summarizeFollowup } from "@/lib/followupGenerator";
+} from "@/lib/decision-engine";
+import { summarizeFollowup } from "@/lib/followup-summary";
 import {
   deriveMicroFeedback,
   type MicroFeedbackResult,

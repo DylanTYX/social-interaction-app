@@ -1,5 +1,5 @@
-import type { AnalysisResult, InterviewStrategy } from "./responseAnalyzer";
-import type { DecisionOutcome } from "./decisionEngine";
+import type { AnalysisResult, InterviewStrategy } from "./response-analyzer";
+import type { DecisionOutcome } from "./decision-engine";
 
 export type InterviewStage =
   | "intro"

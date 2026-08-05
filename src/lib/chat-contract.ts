@@ -2,7 +2,7 @@ import type { MicroFeedbackResult } from "@/lib/micro-feedback";
 import type {
   AnalysisResult,
   InterviewStrategy,
-} from "@/lib/responseAnalyzer";
+} from "@/lib/response-analyzer";
 
 /**
  * The `/api/chat` wire contract.

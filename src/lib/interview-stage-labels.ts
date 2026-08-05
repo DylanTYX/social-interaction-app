@@ -1,5 +1,5 @@
-import type { InterviewSessionState } from "@/lib/interviewStateMachine";
-import type { InterviewMetrics } from "@/lib/metricsTracker";
+import type { InterviewSessionState } from "@/lib/interview-state-machine";
+import type { InterviewMetrics } from "@/lib/interview-metrics";
 
 /**
  * Presentation of interview state, shared by the text and voice screens.

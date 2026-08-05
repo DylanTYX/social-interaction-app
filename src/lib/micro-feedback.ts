@@ -1,4 +1,4 @@
-import type { AnalysisResult } from "@/lib/responseAnalyzer";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 
 export type MicroFeedbackTone = "positive" | "constructive" | "neutral";
 

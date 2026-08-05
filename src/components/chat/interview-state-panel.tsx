@@ -3,9 +3,9 @@ import { Brain, Gauge, Layers3, Radar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { InterviewSessionState } from "@/lib/interviewStateMachine";
-import type { InterviewMetrics } from "@/lib/metricsTracker";
-import type { InterviewStrategy } from "@/lib/responseAnalyzer";
+import type { InterviewSessionState } from "@/lib/interview-state-machine";
+import type { InterviewMetrics } from "@/lib/interview-metrics";
+import type { InterviewStrategy } from "@/lib/response-analyzer";
 
 type InterviewStatePanelProps = {
   state: InterviewSessionState;

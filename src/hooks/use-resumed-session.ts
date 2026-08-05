@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { AnalysisResult } from "@/lib/responseAnalyzer";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 
 /**
  * Restores a session's transcript and scoring history from the server.

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   decideInterviewAction,
   estimateFollowupDifficulty,
-} from "@/lib/decisionEngine";
-import type { AnalysisResult } from "@/lib/responseAnalyzer";
+} from "@/lib/decision-engine";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 
 /**
  * A strong, fully-formed answer. Individual tests weaken one dimension at a

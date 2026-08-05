@@ -17,7 +17,7 @@ import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
-import { isInterviewComplete } from "@/lib/interviewStateMachine";
+import { isInterviewComplete } from "@/lib/interview-state-machine";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import type { ChatTurnResponse } from "@/lib/chat-contract";
@@ -59,7 +59,7 @@ import {
   getSpeechService,
   paceToRatePercent,
   type TranscriptResult,
-} from "@/lib/speechService";
+} from "@/lib/speech-service";
 import { consumeChatStream } from "@/lib/chat-stream";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {

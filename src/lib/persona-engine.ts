@@ -133,8 +133,19 @@ function buildPushbackProfile(pushback: Pushback): string {
   return "Pushback: minimal. You accept answers as given, encourage the candidate, and don't dwell on inconsistencies unless they're glaring.";
 }
 
+/**
+ * Coerce a 1-10 persona dial, defaulting when absent.
+ *
+ * This used to be called `clampDial` while doing no clamping — it defaulted,
+ * then asserted the result back to the dial type, so an out-of-range value
+ * read from storage passed straight through under a name promising it could
+ * not. Now it actually clamps.
+ */
 function clampDial<T extends number>(value: T | undefined): T {
-  return (value ?? PERSONA_DIAL_DEFAULT) as T;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return PERSONA_DIAL_DEFAULT as T;
+  }
+  return Math.min(10, Math.max(1, Math.round(value))) as T;
 }
 
 /**

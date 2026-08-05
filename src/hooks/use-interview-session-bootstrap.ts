@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 import {
   normalizeInterviewLoop,
   type InterviewLoopConfig,

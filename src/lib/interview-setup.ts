@@ -1,4 +1,4 @@
-import { getPersonaConfig, type PersonaConfig } from "./personaEngine";
+import { getPersonaConfig, type PersonaConfig } from "./persona-engine";
 import {
   createDefaultInterviewLoop,
   normalizeInterviewLoop,

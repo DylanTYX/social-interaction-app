@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   PRESET_PERSONAS,
   type PersonaConfig,
-} from "@/lib/personaEngine";
+} from "@/lib/persona-engine";
 
 export type PersonaKind = "preset" | "user";
 

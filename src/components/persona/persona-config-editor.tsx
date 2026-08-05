@@ -12,7 +12,7 @@ import {
 import type {
   CommunicationStyle,
   PersonaConfig,
-} from "@/lib/personaEngine";
+} from "@/lib/persona-engine";
 
 const STYLES: Array<{ value: CommunicationStyle; label: string }> = [
   { value: "direct", label: "Direct" },

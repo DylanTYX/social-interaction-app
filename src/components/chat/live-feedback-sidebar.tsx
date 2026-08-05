@@ -2,8 +2,8 @@ import { Activity, MessageCircleHeart, Timer, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { InterviewMetrics } from "@/lib/metricsTracker";
-import type { AnalysisResult } from "@/lib/responseAnalyzer";
+import type { InterviewMetrics } from "@/lib/interview-metrics";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 
 type LiveFeedbackSidebarProps = {
   metrics: InterviewMetrics | null;

@@ -27,7 +27,7 @@ import {
   createDefaultResumeConfig,
   saveInterviewLaunch,
 } from "@/lib/interview-setup";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 import {
   parseSessionMetrics,
   type SessionLaunchMeta,

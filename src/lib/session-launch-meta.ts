@@ -1,6 +1,6 @@
 import type { InterviewSetupState, VoiceSetupConfig } from "@/lib/interview-setup";
 import type { InterviewLoopConfig } from "@/lib/interview-rounds";
-import type { AnalysisResult, TechnicalScores } from "@/lib/responseAnalyzer";
+import type { AnalysisResult, TechnicalScores } from "@/lib/response-analyzer";
 import type { CompetencyCoverage } from "@/lib/competencies";
 
 /**

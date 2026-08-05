@@ -9,15 +9,15 @@ import {
   markInterviewComplete,
   recordInterviewTurn,
   type InterviewSessionState,
-} from "@/lib/interviewStateMachine";
+} from "@/lib/interview-state-machine";
 import {
   buildInterviewMetrics,
   type InterviewMetrics,
-} from "@/lib/metricsTracker";
+} from "@/lib/interview-metrics";
 import type {
   AnalysisResult,
   InterviewStrategy,
-} from "@/lib/responseAnalyzer";
+} from "@/lib/response-analyzer";
 import {
   appendDimensionSnapshot,
   type DimensionSnapshot,

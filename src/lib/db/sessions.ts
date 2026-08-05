@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 
 export type PracticeMode = "text" | "voice";
 export type SessionStatus = "in_progress" | "completed" | "abandoned";

@@ -55,7 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   type CommunicationStyle,
   type PersonaConfig,
-} from "@/lib/personaEngine";
+} from "@/lib/persona-engine";
 import {
   createDefaultInterviewSetup,
   saveInterviewLaunch,

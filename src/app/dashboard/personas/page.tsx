@@ -37,7 +37,7 @@ import {
   type PersonaLibraryEntry,
 } from "@/lib/persona-library";
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 import { toast } from "sonner";
 
 function buildAvatar(name: string): string {

@@ -19,7 +19,7 @@
  * Hits the real OpenAI API, so it costs money and needs OPENAI_API_KEY.
  */
 
-import { analyzeResponse, type AnalysisResult } from "@/lib/responseAnalyzer";
+import { analyzeResponse, type AnalysisResult } from "@/lib/response-analyzer";
 import { BAND_RANGES, FIXTURES, type EvalFixture } from "@/eval/fixtures";
 
 interface RunResult {

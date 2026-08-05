@@ -5,7 +5,7 @@ import {
   getSession,
   updateSession,
 } from "@/lib/db/sessions";
-import type { PersonaConfig } from "@/lib/personaEngine";
+import type { PersonaConfig } from "@/lib/persona-engine";
 import {
   buildLaunchMetaFromSetup,
   parseSessionMetrics,
