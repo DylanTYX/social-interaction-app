@@ -3,7 +3,7 @@ import { Brain, Gauge, Layers3, Radar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import type { InterviewSessionState } from "@/lib/interview-state-machine";
+import type { InterviewSessionState } from "@/lib/interview-session-state";
 import type { InterviewMetrics } from "@/lib/interview-metrics";
 import type { InterviewStrategy } from "@/lib/response-analyzer";
 
@@ -70,7 +70,7 @@ export function InterviewStatePanel({
             className="gap-1 border-slate-300/80 bg-white/70"
           >
             <Layers3 className="h-3.5 w-3.5" />
-            Stage {state.currentStage}
+            Stage {stageLabel}
           </Badge>
           <Badge
             variant="outline"

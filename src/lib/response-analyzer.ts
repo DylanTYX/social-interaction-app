@@ -144,7 +144,10 @@ function buildAnalysisPrompt(
   roundType: InterviewRoundType,
 ): string {
   const rubric = ROUND_RUBRIC_LABELS[roundType];
-  const useStar = roundType === "behavioral" || roundType === "screening";
+  const useStar =
+    roundType === "behavioral" ||
+    roundType === "screening" ||
+    roundType === "hr";
 
   const technicalBlock =
     roundType === "technical_swe" ||

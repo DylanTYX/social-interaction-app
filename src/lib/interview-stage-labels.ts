@@ -1,4 +1,4 @@
-import type { InterviewSessionState } from "@/lib/interview-state-machine";
+import type { InterviewStage } from "@/lib/interview-session-state";
 import type { InterviewMetrics } from "@/lib/interview-metrics";
 
 /**
@@ -9,14 +9,11 @@ import type { InterviewMetrics } from "@/lib/interview-metrics";
  * advanced-state dialog rendered a blank paragraph.
  */
 
-type Stage = InterviewSessionState["currentStage"];
+type Stage = InterviewStage;
 
 const STAGE_LABELS: Record<Stage, string> = {
   intro: "Opening",
   questioning: "Exploration",
-  analysis: "Review",
-  strategy: "Decision",
-  followup: "Follow-up",
   wrap_up: "Wrap-up",
   report: "Report",
 };
@@ -29,9 +26,6 @@ const STAGE_GUIDANCE: Record<Stage, string> = {
   intro: "Start broad, then narrow toward a concrete example.",
   questioning:
     "Keep the candidate talking in STAR form and collect specifics.",
-  analysis: "The response has been analyzed. Use the follow-up to push depth.",
-  strategy: "Target the weakest STAR element with the next question.",
-  followup: "Ask the next targeted question and watch for specificity.",
   wrap_up:
     "Close with reflection, lessons learned, and a final check on impact.",
   report: "Session complete. Review the summary and performance trends.",
@@ -43,11 +37,12 @@ export function getStageGuidance(
   followupPrompt: string | null,
 ): string {
   // Two stages say something more specific when there is context to use.
-  if (stage === "strategy" && metrics && metrics.averageOverallScore > 75) {
-    return "The answer is strong. Shift toward trade-offs and reasoning.";
-  }
-  if (stage === "followup" && followupPrompt) {
+  // Two stages say something more specific when there is context to use.
+  if (stage === "questioning" && followupPrompt) {
     return `Adaptive follow-up ready: ${followupPrompt}`;
+  }
+  if (stage === "wrap_up" && metrics && metrics.averageOverallScore > 75) {
+    return "The answer is strong. Close on trade-offs and reasoning.";
   }
   return (
     STAGE_GUIDANCE[stage] ??

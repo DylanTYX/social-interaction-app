@@ -18,7 +18,6 @@ import {
   Save,
   Trash2,
   Volume2,
-  Wand2,
   MessageSquare,
   Sliders,
   Rocket,
@@ -73,24 +72,17 @@ import {
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
 import { ResumePicker } from "@/components/setup/resume-picker";
+import { LoopStep } from "@/components/setup/loop-step";
 import {
   AZURE_VOICE_OPTIONS,
   type SpeechVoiceOption,
 } from "@/lib/speech-voices";
+import { describeRoundLength } from "@/lib/interview-progress";
 import {
-  ROUND_RUBRIC_LABELS,
-  resolveAnswerFormat,
   ROUND_TYPE_LABELS,
-  appendRoundToLoop,
   buildRoundScenarioDescription,
   buildRoundScenarioTitle,
-  createLoopFromTemplate,
   getCurrentRound,
-  removeRoundFromLoop,
-  suggestLoopFromJobDescription,
-  type InterviewLoopConfig,
-  type InterviewRoundConfig,
-  type InterviewRoundType,
 } from "@/lib/interview-rounds";
 
 type StepId = "mode" | "brief" | "loop" | "persona" | "finalize";
@@ -734,6 +726,7 @@ function SetupWizard() {
                     ? setup.jobDescription.rawText
                     : ""
                 }
+                personaLibrary={personaLibrary}
                 onChange={(interviewLoop) => updateSetup({ interviewLoop })}
               />
             )}
@@ -1051,263 +1044,6 @@ function BriefStep({
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function LoopStep({
-  value,
-  practiceMode,
-  jobDescriptionText,
-  onChange,
-}: {
-  value: InterviewLoopConfig;
-  practiceMode: PracticeMode;
-  jobDescriptionText: string;
-  onChange: (value: InterviewLoopConfig) => void;
-}) {
-  const updateRound = (
-    index: number,
-    patch: Partial<InterviewRoundConfig>,
-  ) => {
-    onChange({
-      ...value,
-      rounds: value.rounds.map((round, roundIndex) =>
-        roundIndex === index ? { ...round, ...patch } : round,
-      ),
-    });
-  };
-
-  const isMultiRound = value.enabled && value.rounds.length > 1;
-
-  return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-gray-200 bg-white/80 p-4">
-        <Label className="text-sm font-medium">Loop type</Label>
-        <p className="mt-1 text-xs text-gray-500">
-          Pick a single round for a focused practice session, or build a
-          multi-round loop that mirrors a real interview day.
-        </p>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => onChange(createLoopFromTemplate("single", practiceMode))}
-            className={`rounded-2xl border p-4 text-left transition-all ${
-              !value.enabled
-                ? "border-blue-300 bg-blue-50/80 shadow-soft-md ring-2 ring-blue-200"
-                : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-gray-900">Single round</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">
-                  One focused practice session — the simplest setup.
-                </p>
-              </div>
-              <Badge variant={!value.enabled ? "default" : "outline"}>
-                1 round
-              </Badge>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onChange(createLoopFromTemplate("custom", practiceMode))}
-            className={`rounded-2xl border p-4 text-left transition-all ${
-              isMultiRound
-                ? "border-blue-300 bg-blue-50/80 shadow-soft-md ring-2 ring-blue-200"
-                : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-gray-900">Custom loop</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500">
-                  Add as many rounds as you want — works for any role.
-                </p>
-              </div>
-              <Badge variant={isMultiRound ? "default" : "outline"}>
-                {isMultiRound ? `${value.rounds.length} rounds` : "Build"}
-              </Badge>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {jobDescriptionText.trim().length >= 80 && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-indigo-900">
-              Suggest a loop from your job description
-            </p>
-            <p className="text-xs text-indigo-800/80">
-              We&apos;ll seed rounds based on JD keywords. You can still edit
-              every round below.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              onChange(
-                suggestLoopFromJobDescription(jobDescriptionText, practiceMode),
-              )
-            }
-          >
-            <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-            Suggest loop
-          </Button>
-        </div>
-      )}
-
-      {isMultiRound && (
-        <div className="rounded-2xl border border-blue-100 bg-white/80 p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Label className="text-sm font-medium">Round plan</Label>
-              <p className="text-xs text-gray-500">
-                Edit each round. You can continue immediately or take a break
-                from the report screen between rounds.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs text-gray-500">Break</Label>
-              <Select
-                value={String(value.breakMinutes)}
-                onValueChange={(next) =>
-                  onChange({ ...value, breakMinutes: Number(next) })
-                }
-              >
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[0, 5, 10, 15].map((minutes) => (
-                    <SelectItem key={minutes} value={String(minutes)}>
-                      {minutes === 0 ? "No break" : `${minutes} min`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {value.rounds.map((round, index) => (
-              <div
-                key={round.id}
-                className="grid gap-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3 md:grid-cols-[1fr_170px_120px_auto]"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Round {index + 1}</Badge>
-                    <Input
-                      value={round.title}
-                      onChange={(event) =>
-                        updateRound(index, { title: event.target.value })
-                      }
-                    />
-                  </div>
-                  <Input
-                    value={round.focus}
-                    onChange={(event) =>
-                      updateRound(index, { focus: event.target.value })
-                    }
-                    placeholder="What this round should focus on"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Select
-                    value={round.type}
-                    onValueChange={(next) =>
-                      updateRound(index, {
-                        type: next as InterviewRoundType,
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ROUND_TYPE_LABELS).map(
-                        ([type, label]) => (
-                          <SelectItem key={type} value={type}>
-                            {label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] leading-4 text-gray-500">
-                    {ROUND_RUBRIC_LABELS[round.type]}
-                  </p>
-                  {round.practiceMode === "text" && (
-                    <label className="flex items-center gap-2 text-[11px] leading-4 text-gray-600">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 rounded border-gray-300"
-                        checked={resolveAnswerFormat(round) === "code"}
-                        onChange={(event) =>
-                          updateRound(index, {
-                            answerFormat: event.target.checked
-                              ? "code"
-                              : "prose",
-                          })
-                        }
-                      />
-                      Answer in a code editor
-                    </label>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Input
-                    type="number"
-                    min={5}
-                    max={90}
-                    value={round.durationMinutes}
-                    onChange={(event) =>
-                      updateRound(index, {
-                        durationMinutes: Math.max(
-                          5,
-                          Math.min(90, Number(event.target.value) || 5),
-                        ),
-                      })
-                    }
-                  />
-                  <p className="text-[11px] text-gray-500">minutes</p>
-                </div>
-                <div className="flex items-start justify-end pt-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-red-600"
-                    title="Remove round"
-                    disabled={value.rounds.length <= 1}
-                    onClick={() => onChange(removeRoundFromLoop(value, index))}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 flex justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => onChange(appendRoundToLoop(value, practiceMode))}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add round
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1792,11 +1528,11 @@ function FinalizeStep({
           />
           <SummaryRow label="Brief" value={activeScenario.title} />
           <SummaryRow
-            label="Round"
+            label={setup.interviewLoop.enabled ? "Rounds" : "Session"}
             value={
               setup.interviewLoop.enabled
-                ? `${setup.interviewLoop.currentRoundIndex + 1}/${setup.interviewLoop.rounds.length}: ${activeRound.title}`
-                : "Single round"
+                ? `${setup.interviewLoop.rounds.length} rounds · starting with ${ROUND_TYPE_LABELS[activeRound.type]}`
+                : `${ROUND_TYPE_LABELS[activeRound.type]} · ${describeRoundLength(activeRound.durationMinutes)}`
             }
           />
           <SummaryRow label="Interviewer" value={setup.personaConfig.name} />

@@ -6,6 +6,7 @@ export const ROUND_TYPES = [
   "system_design",
   "case",
   "screening",
+  "hr",
 ] as const;
 
 export type InterviewRoundType = (typeof ROUND_TYPES)[number];
@@ -29,6 +30,12 @@ export interface InterviewRoundConfig {
   focus: string;
   /** Defaults to `code` for technical_swe, `prose` everywhere else. */
   answerFormat?: AnswerFormat;
+  /**
+   * Persona library entry to run this round. Real loops put a recruiter, then
+   * engineers, then a hiring manager in front of you; unset means inherit the
+   * session's default interviewer.
+   */
+  personaLibraryId?: string;
 }
 
 /**
@@ -64,6 +71,7 @@ export const ROUND_TYPE_LABELS: Record<InterviewRoundType, string> = {
   system_design: "System design",
   case: "Case / problem solving",
   screening: "Intro / screening",
+  hr: "HR / People",
 };
 
 export const ROUND_RUBRIC_LABELS: Record<InterviewRoundType, string> = {
@@ -74,6 +82,7 @@ export const ROUND_RUBRIC_LABELS: Record<InterviewRoundType, string> = {
     "Requirements, architecture, depth, tradeoffs, scalability, communication",
   case: "Problem framing, structure, tradeoffs, depth, communication",
   screening: "Clarity, motivation, fit, concision",
+  hr: "Motivation, values fit, logistics, questions for us",
 };
 
 export const SINGLE_ROUND: InterviewRoundConfig = {
@@ -322,6 +331,10 @@ export function normalizeInterviewLoop(
             round.answerFormat === "code" || round.answerFormat === "prose"
               ? round.answerFormat
               : undefined,
+          personaLibraryId:
+            typeof round.personaLibraryId === "string" && round.personaLibraryId
+              ? round.personaLibraryId
+              : undefined,
         }))
       : defaults.rounds.map((round) => ({ ...round, practiceMode }));
 
@@ -370,12 +383,18 @@ export function buildRoundScenarioDescription(
   baseDescription: string,
   loop: InterviewLoopConfig,
 ): string {
-  if (!loop.enabled) return baseDescription;
   const round = getCurrentRound(loop);
+  // `enabled` means "is a multi-round loop", so gating on it here left a
+  // targeted single round's interviewer with no idea of its own type or rubric
+  // — while the analyzer graded against that rubric regardless.
+  const roundLine = loop.enabled
+    ? `Interview loop round: ${round.title}.`
+    : `Round: ${round.title}.`;
+
   return [
     baseDescription,
     "",
-    `Interview loop round: ${round.title}.`,
+    roundLine,
     `Round type: ${ROUND_TYPE_LABELS[round.type]}.`,
     `Evaluation rubric: ${ROUND_RUBRIC_LABELS[round.type]}.`,
     `Round focus: ${round.focus}`,

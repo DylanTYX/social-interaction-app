@@ -5,11 +5,14 @@ import { useCallback, useMemo, useState } from "react";
 import type { ChatTurnResponse } from "@/lib/chat-contract";
 import {
   createInterviewSessionState,
-  isInterviewComplete,
-  markInterviewComplete,
+  interviewStage,
   recordInterviewTurn,
   type InterviewSessionState,
-} from "@/lib/interview-state-machine";
+} from "@/lib/interview-session-state";
+import {
+  DEFAULT_TARGET_TURNS,
+  isInterviewComplete,
+} from "@/lib/interview-progress";
 import {
   buildInterviewMetrics,
   type InterviewMetrics,
@@ -53,15 +56,15 @@ export interface InterviewTurnState {
   lastDecisionReason: string | null;
   lastStrategy: InterviewStrategy | null;
   lastConfidence: number | null;
+  /** For the in-session progress indicator. */
+  targetTurns: number;
+  stage: ReturnType<typeof interviewStage>;
 
   /**
    * Fold a scored turn in. Returns null for turns with no analysis — opening
    * turns and trivial answers — so callers can skip their own bookkeeping.
    */
-  applyTurn: (
-    turn: ChatTurnResponse,
-    context: { userMessage: string },
-  ) => AppliedTurn | null;
+  applyTurn: (turn: ChatTurnResponse) => AppliedTurn | null;
 
   /** Mark complete and persist final metrics. Returns the average score. */
   endSession: () => Promise<number | null>;
@@ -114,10 +117,16 @@ async function persistTurn(
 export function useInterviewTurnState(input: {
   sessionId: string | null;
   personaName: string;
+  /**
+   * How many scored turns this round runs for, derived from its configured
+   * duration. Sessions used to end at a flat 12 regardless.
+   */
+  targetTurns?: number;
   /** Restored from `interview_turn_analyses` when resuming. */
   initialAnalyses?: AnalysisResult[];
 }): InterviewTurnState {
   const { sessionId, personaName } = input;
+  const targetTurns = input.targetTurns ?? DEFAULT_TARGET_TURNS;
 
   const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
     createInterviewSessionState(sessionId ?? "local", personaName),
@@ -159,7 +168,7 @@ export function useInterviewTurnState(input: {
   );
 
   const applyTurn = useCallback(
-    (turn: ChatTurnResponse, context: { userMessage: string }) => {
+    (turn: ChatTurnResponse) => {
       if (!turn.analysis || !turn.strategy) return null;
 
       const analysis = turn.analysis;
@@ -167,8 +176,6 @@ export function useInterviewTurnState(input: {
       const confidence = turn.confidence ?? 50;
 
       const advanced = recordInterviewTurn(sessionState, {
-        userMessage: context.userMessage,
-        aiMessage: turn.aiMessage,
         question: turn.aiMessage,
         analysis,
         decision: {
@@ -181,11 +188,9 @@ export function useInterviewTurnState(input: {
           shouldSlowDown: turn.shouldSlowDown ?? false,
           nextFocus: analysis.followupTopics?.[0] ?? "specific examples",
         },
-      }).state;
+      });
 
-      const nextState = isInterviewComplete(advanced)
-        ? markInterviewComplete(advanced)
-        : advanced;
+      const nextState = advanced;
       const nextAnalyses = [...effectiveAnalyses, analysis];
       const nextMetrics = {
         ...buildInterviewMetrics({ analyses: nextAnalyses, state: nextState }),
@@ -215,7 +220,7 @@ export function useInterviewTurnState(input: {
       // because a caller that finishes the interview calls both in the same
       // tick: `endSession` would still be closed over the *pre-turn* state and
       // would overwrite this turn's score with the previous mean.
-      const complete = isInterviewComplete(nextState);
+      const complete = isInterviewComplete(nextState.turnCount, targetTurns);
       if (sessionId) {
         void persistTurn(sessionId, {
           metrics: nextMetrics,
@@ -226,11 +231,11 @@ export function useInterviewTurnState(input: {
 
       return { analysis, strategy, isComplete: complete };
     },
-    [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState],
+    [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState, targetTurns],
   );
 
   const endSession = useCallback(async () => {
-    const completedState = markInterviewComplete(sessionState);
+    const completedState = sessionState;
     const finalMetrics = {
       ...buildInterviewMetrics({
         analyses: effectiveAnalyses,
@@ -255,6 +260,8 @@ export function useInterviewTurnState(input: {
 
   return {
     sessionState,
+    targetTurns,
+    stage: interviewStage(sessionState, targetTurns),
     analyses: effectiveAnalyses,
     metrics,
     lastFollowupPrompt,

@@ -1,5 +1,5 @@
 import type { AnalysisResult } from "./response-analyzer";
-import type { InterviewSessionState } from "./interview-state-machine";
+import type { InterviewSessionState } from "./interview-session-state";
 
 export interface InterviewMetrics {
   sessionId: string;

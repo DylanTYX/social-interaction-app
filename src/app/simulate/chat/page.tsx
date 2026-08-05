@@ -43,6 +43,7 @@ import {
   saveInterviewSetup,
 } from "@/lib/interview-setup";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { ChatTurnError, ChatTurnResponse } from "@/lib/chat-contract";
 import {
   formatMessageTime,
@@ -130,6 +131,9 @@ function ChatSimulateInner() {
   const turn = useInterviewTurnState({
     sessionId: bootstrap.sessionId,
     personaName: bootstrap.personaConfig.name,
+    targetTurns: targetTurnsForRound(
+      bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex],
+    ),
     initialAnalyses: resumed.analyses,
   });
 
@@ -165,9 +169,9 @@ function ChatSimulateInner() {
   const activeRound =
     bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
   const answerFormat = resolveAnswerFormat(activeRound);
-  const stageLabel = getStageLabel(turn.sessionState.currentStage);
+  const stageLabel = getStageLabel(turn.stage);
   const stageGuidance = getStageGuidance(
-    turn.sessionState.currentStage,
+    turn.stage,
     turn.metrics,
     turn.lastFollowupPrompt,
   );
@@ -397,7 +401,7 @@ function ChatSimulateInner() {
 
       // Trivial answers ("yes", "ready") come back with no analysis — the
       // hook returns null for those and there is no bookkeeping to do.
-      const applied = turn.applyTurn(data, { userMessage: trimmedMessage });
+      const applied = turn.applyTurn(data);
       if (!applied) return;
 
       if (applied.isComplete) {
@@ -565,6 +569,9 @@ function ChatSimulateInner() {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
+                <Badge variant="outline" className="h-8 px-3 tabular-nums">
+                  Question {Math.min(turn.sessionState.turnCount + 1, turn.targetTurns)} of ~{turn.targetTurns}
+                </Badge>
                 <Badge variant="secondary" className="h-8 px-3">
                   {streamResponses ? "Streaming on" : "Streaming off"}
                 </Badge>

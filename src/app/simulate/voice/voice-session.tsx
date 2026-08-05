@@ -17,7 +17,6 @@ import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
-import { isInterviewComplete } from "@/lib/interview-state-machine";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import type { ChatTurnResponse } from "@/lib/chat-contract";
@@ -61,6 +60,7 @@ import {
   type TranscriptResult,
 } from "@/lib/speech-service";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {
   analyzeDelivery,
@@ -129,6 +129,9 @@ function VoiceSimulateInner() {
   const turn = useInterviewTurnState({
     sessionId: bootstrap.sessionId,
     personaName: bootstrap.personaConfig.name,
+    targetTurns: targetTurnsForRound(
+      bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex],
+    ),
     initialAnalyses: resumed.analyses,
   });
 
@@ -165,8 +168,8 @@ function VoiceSimulateInner() {
   }, [isRecording]);
 
   useEffect(() => {
-    sessionCompleteRef.current = isInterviewComplete(turn.sessionState);
-  }, [turn.sessionState]);
+    sessionCompleteRef.current = turn.stage === "report";
+  }, [turn.stage]);
 
   const [showLiveCoaching, setShowLiveCoaching] = useState(true);
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
@@ -174,7 +177,7 @@ function VoiceSimulateInner() {
   const [isEnding, setIsEnding] = useState(false);
 
   const activeScenario = scenarioFromBootstrap(bootstrap);
-  const stageLabel = getStageLabel(turn.sessionState.currentStage);
+  const stageLabel = getStageLabel(turn.stage);
   const metricTone = getMetricTone(turn.metrics);
 
   useEffect(() => {
@@ -789,7 +792,7 @@ function VoiceSimulateInner() {
         );
       }
 
-      const applied = turn.applyTurn(result, { userMessage });
+      const applied = turn.applyTurn(result);
       if (!applied) return;
 
       if (applied.isComplete) {
@@ -1040,6 +1043,11 @@ function VoiceSimulateInner() {
                     Recording
                   </Badge>
                 )}
+                <Badge variant="outline" className="h-8 px-3 tabular-nums">
+                  Question{" "}
+                  {Math.min(turn.sessionState.turnCount + 1, turn.targetTurns)}{" "}
+                  of ~{turn.targetTurns}
+                </Badge>
                 <Badge variant="outline" className="h-8 px-3">
                   {metricTone}
                 </Badge>
@@ -1153,7 +1161,7 @@ function VoiceSimulateInner() {
               state={turn.sessionState}
               stageLabel={stageLabel}
               stageGuidance={getStageGuidance(
-                turn.sessionState.currentStage,
+                turn.stage,
                 turn.metrics,
                 turn.lastFollowupPrompt,
               )}

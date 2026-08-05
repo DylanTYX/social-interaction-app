@@ -44,6 +44,12 @@ const PLAYBOOKS: InterviewerPlaybook[] = [
       "For screening rounds, keep it concise. Test motivation, role fit, and communication clarity.",
   },
   {
+    id: "hr-people",
+    tags: ["hr", "motivation"],
+    content:
+      "For HR rounds, cover what a People partner actually asks: why this role and this company, how they work with others, notice period and timing, and what they are looking for next. Leave room near the end for their questions about the team, and answer them in character.",
+  },
+  {
     id: "acknowledge-strength",
     tags: ["positive", "warmth"],
     content:
@@ -57,6 +63,7 @@ const ROUND_TAGS: Record<InterviewRoundType, string[]> = {
   system_design: ["system_design", "architecture", "technical"],
   case: ["case", "framing", "vague"],
   screening: ["screening", "motivation"],
+  hr: ["hr", "motivation"],
 };
 
 export function selectInterviewerPlaybooks(input: {

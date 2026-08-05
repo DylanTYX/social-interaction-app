@@ -199,7 +199,9 @@ export default function SessionReportPage({
   const loop = launch?.interviewLoop;
   const nextLoop = loop?.enabled ? getNextRoundLoop(loop) : null;
   const nextRound = nextLoop ? getCurrentRound(nextLoop) : null;
-  const currentRound = loop?.enabled ? getCurrentRound(loop) : null;
+  // Not gated on `enabled`: a targeted single round has a real type, and
+  // gating here made the coach treat every answer as behavioural/STAR.
+  const currentRound = loop ? getCurrentRound(loop) : null;
   // Set once the loop has produced more than this single round.
   const loopId = metricsPayload.loop?.loopId ?? null;
   const coverage = parseCoverage(metricsPayload.competencyCoverage);
