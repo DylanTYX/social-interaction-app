@@ -3,6 +3,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils";
+import { initialsFromName } from "@/lib/format";
 
 interface ChatMessageProps {
   role: "user" | "ai";
@@ -25,6 +26,103 @@ const FEEDBACK_TONE_CLASS: Record<
   neutral: "border-slate-200 bg-slate-50 text-slate-700",
 };
 
+/**
+ * Hoisted out of the component on purpose.
+ *
+ * These twenty renderers close over nothing, and rebuilding the object every
+ * render handed `ReactMarkdown` a new `components` prop each time — which
+ * matters here more than it looks: streaming calls `setMessages` once per
+ * token, so the whole transcript re-rendered and re-parsed its markdown on
+ * every chunk of every reply.
+ */
+const markdownComponents = {
+  h1: ({ children }: { children?: React.ReactNode }) => (
+    <h1 className="mb-4 text-xl font-semibold tracking-tight text-slate-950 last:mb-0">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h2 className="mb-3.5 text-lg font-semibold tracking-tight text-slate-950 last:mb-0">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="mb-3 text-base font-semibold text-slate-950 last:mb-0">
+      {children}
+    </h3>
+  ),
+  h4: ({ children }: { children?: React.ReactNode }) => (
+    <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700 last:mb-0">
+      {children}
+    </h4>
+  ),
+  h5: ({ children }: { children?: React.ReactNode }) => (
+    <h5 className="mb-2 text-sm font-semibold text-slate-800 last:mb-0">
+      {children}
+    </h5>
+  ),
+  h6: ({ children }: { children?: React.ReactNode }) => (
+    <h6 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 last:mb-0">
+      {children}
+    </h6>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-4 list-disc space-y-2 pl-5 last:mb-0">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-4 list-decimal space-y-2 pl-5 last:mb-0">{children}</ol>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="mb-4 border-l-2 border-slate-300 pl-3 italic text-slate-600 last:mb-0">
+      {children}
+    </blockquote>
+  ),
+  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+    >
+      {children}
+    </a>
+  ),
+  code: ({
+    children,
+    className,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+  }) => {
+    const isInline = !className;
+
+    if (isInline) {
+      return (
+        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-900">
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <code className="block overflow-x-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-sm text-slate-100">
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }: { children?: React.ReactNode }) => (
+    <pre className="mb-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-100 last:mb-0">
+      {children}
+    </pre>
+  ),
+};
+
 export function ChatMessage({
   role,
   content,
@@ -36,106 +134,10 @@ export function ChatMessage({
   deliveryNote,
 }: ChatMessageProps) {
   const isUser = role === "user";
-  const markdownComponents = {
-    h1: ({ children }: { children?: React.ReactNode }) => (
-      <h1 className="mb-4 text-xl font-semibold tracking-tight text-slate-950 last:mb-0">
-        {children}
-      </h1>
-    ),
-    h2: ({ children }: { children?: React.ReactNode }) => (
-      <h2 className="mb-3.5 text-lg font-semibold tracking-tight text-slate-950 last:mb-0">
-        {children}
-      </h2>
-    ),
-    h3: ({ children }: { children?: React.ReactNode }) => (
-      <h3 className="mb-3 text-base font-semibold text-slate-950 last:mb-0">
-        {children}
-      </h3>
-    ),
-    h4: ({ children }: { children?: React.ReactNode }) => (
-      <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700 last:mb-0">
-        {children}
-      </h4>
-    ),
-    h5: ({ children }: { children?: React.ReactNode }) => (
-      <h5 className="mb-2 text-sm font-semibold text-slate-800 last:mb-0">
-        {children}
-      </h5>
-    ),
-    h6: ({ children }: { children?: React.ReactNode }) => (
-      <h6 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 last:mb-0">
-        {children}
-      </h6>
-    ),
-    p: ({ children }: { children?: React.ReactNode }) => (
-      <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
-    ),
-    ul: ({ children }: { children?: React.ReactNode }) => (
-      <ul className="mb-4 list-disc space-y-2 pl-5 last:mb-0">{children}</ul>
-    ),
-    ol: ({ children }: { children?: React.ReactNode }) => (
-      <ol className="mb-4 list-decimal space-y-2 pl-5 last:mb-0">{children}</ol>
-    ),
-    li: ({ children }: { children?: React.ReactNode }) => (
-      <li className="leading-relaxed">{children}</li>
-    ),
-    blockquote: ({ children }: { children?: React.ReactNode }) => (
-      <blockquote className="mb-4 border-l-2 border-slate-300 pl-3 italic text-slate-600 last:mb-0">
-        {children}
-      </blockquote>
-    ),
-    a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
-      >
-        {children}
-      </a>
-    ),
-    code: ({
-      children,
-      className,
-    }: {
-      children?: React.ReactNode;
-      className?: string;
-    }) => {
-      const isInline = !className;
 
-      if (isInline) {
-        return (
-          <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-900">
-            {children}
-          </code>
-        );
-      }
-
-      return (
-        <code className="block overflow-x-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-sm text-slate-100">
-          {children}
-        </code>
-      );
-    },
-    pre: ({ children }: { children?: React.ReactNode }) => (
-      <pre className="mb-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm text-slate-100 last:mb-0">
-        {children}
-      </pre>
-    ),
-  };
-
-  // Extract initials from persona name
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   const displayName = isUser ? "You" : personaName;
-  const initials = isUser ? "You" : getInitials(personaName);
+  const initials = isUser ? "You" : initialsFromName(personaName);
 
   return (
     <div className={cn("flex gap-3 items-start", isUser && "flex-row-reverse")}>
