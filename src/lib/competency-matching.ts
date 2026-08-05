@@ -21,9 +21,18 @@ import {
  */
 let cache: Promise<number[][]> | null = null;
 
-export function getCompetencyEmbeddings(): Promise<number[][]> {
+export function getCompetencyEmbeddings(
+  usage?: UsageCollector,
+): Promise<number[][]> {
   if (!cache) {
-    cache = createEmbeddings(COMPETENCIES.map((c) => c.probe)).catch((error) => {
+    // Recorded even though it is memoised: it is a real batch of 12 embeddings
+    // billed once per server process, and on a serverless deploy "once per
+    // process" can mean once per cold start. Leaving it unrecorded made
+    // `llm_usage` under-report embedding spend by an amount nobody could see.
+    cache = createEmbeddings(
+      COMPETENCIES.map((c) => c.probe),
+      usage,
+    ).catch((error) => {
       // Do not poison the cache — a transient failure should be retryable.
       cache = null;
       throw error;
@@ -49,7 +58,7 @@ export async function updateCoverageForQuestion(
 
   try {
     const [probeVectors, [questionVector]] = await Promise.all([
-      getCompetencyEmbeddings(),
+      getCompetencyEmbeddings(usage),
       createEmbeddings([text], usage),
     ]);
 

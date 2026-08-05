@@ -21,6 +21,8 @@ import { parseCodeAnswer } from "@/lib/code-answer";
 const ANALYZER_MODEL = process.env.ANALYZER_MODEL ?? "gpt-4o-mini";
 const ANALYZER_TEMPERATURE = 0.1;
 const ANALYZER_MAX_TOKENS = 900;
+/** Second attempt when the first is cut off. See the retry in `analyzeResponse`. */
+const ANALYZER_RETRY_MAX_TOKENS = 1600;
 
 export interface STARAnalysis {
   situation: {
@@ -277,7 +279,7 @@ export async function analyzeResponse(
     roundType,
   );
 
-  try {
+  const callAnalyzer = async (maxTokens: number) => {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -301,7 +303,7 @@ export async function analyzeResponse(
         temperature: ANALYZER_TEMPERATURE,
         // The full rubric fits comfortably; without a cap this ran unbounded
         // on every scored turn.
-        max_tokens: ANALYZER_MAX_TOKENS,
+        max_tokens: maxTokens,
         response_format: { type: "json_object" },
       }),
     });
@@ -313,18 +315,35 @@ export async function analyzeResponse(
       );
     }
 
-    const result = await response.json();
-    options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
-    const rawAnalysis = result.choices[0].message.content;
+    return response.json();
+  };
 
-    // A truncated reply is still syntactically *almost* JSON, so it surfaces as
-    // a generic parse failure and the turn silently loses its score. Say what
-    // actually happened — the cap above is the thing to raise.
+  try {
+    let result = await callAnalyzer(ANALYZER_MAX_TOKENS);
+    options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
+
+    // A truncated reply is still syntactically *almost* JSON, so it used to
+    // surface as a generic parse failure and the turn silently lost its score.
+    //
+    // One retry at a larger cap is worth it: the alternative is a gap in the
+    // report with no explanation, and truncation should be rare enough that
+    // the extra call barely registers. If it stops being rare, `llm_usage`
+    // will show it — two analyzer rows for one turn.
     if (result.choices[0].finish_reason === "length") {
-      throw new Error(
-        `Analyzer response was truncated at ${ANALYZER_MAX_TOKENS} tokens (finish_reason=length).`,
+      console.warn(
+        `Analyzer truncated at ${ANALYZER_MAX_TOKENS} tokens; retrying at ${ANALYZER_RETRY_MAX_TOKENS}.`,
       );
+      result = await callAnalyzer(ANALYZER_RETRY_MAX_TOKENS);
+      options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
+
+      if (result.choices[0].finish_reason === "length") {
+        throw new Error(
+          `Analyzer response was truncated even at ${ANALYZER_RETRY_MAX_TOKENS} tokens (finish_reason=length).`,
+        );
+      }
     }
+
+    const rawAnalysis = result.choices[0].message.content;
 
     // Parse the JSON response
     let analysisData;

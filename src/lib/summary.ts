@@ -18,7 +18,20 @@
 
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
 
-const SUMMARY_MODEL = "gpt-4o-mini";
+const SUMMARY_MODEL = process.env.SUMMARY_MODEL ?? "gpt-4o-mini";
+
+/**
+ * Output cap for the summary.
+ *
+ * This was the only chat completion in the app with no `max_tokens`, and it is
+ * the worst place to omit one: the summary is regenerated *from itself* and
+ * injected into the volatile prompt layer on every later turn, so one long
+ * generation inflates the whole rest of the session rather than costing once.
+ *
+ * The prompt asks for under 180 words (~240 tokens); 400 leaves headroom so the
+ * cap is a backstop rather than a routine truncation point.
+ */
+const SUMMARY_MAX_TOKENS = 400;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 export const RECENT_MESSAGES_KEPT = 6;
@@ -126,6 +139,10 @@ export async function updateRollingSummary(
         { role: "user", content: prompt },
       ],
       temperature: 0.2,
+      max_tokens: SUMMARY_MAX_TOKENS,
+      // Only the trailing transcript changes between refreshes; the system
+      // message and instructions are constant.
+      prompt_cache_key: "summary",
     }),
   });
 
@@ -135,10 +152,23 @@ export async function updateRollingSummary(
   }
 
   const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
     usage?: OpenAIUsage;
   };
   input.usage?.record("summary", SUMMARY_MODEL, data.usage);
+
+  // A truncated summary is uniquely damaging here, because it is not just
+  // shown once — it is persisted and fed into every subsequent prompt, and the
+  // next refresh builds on top of it. A half-written final bullet would compound
+  // for the rest of the session. Returning null makes the caller keep the
+  // previous summary, which is stale but coherent.
+  if (data.choices?.[0]?.finish_reason === "length") {
+    console.warn(
+      `Rolling summary truncated at ${SUMMARY_MAX_TOKENS} tokens; keeping the previous summary.`,
+    );
+    return null;
+  }
+
   const summary = data.choices?.[0]?.message?.content?.trim();
   if (!summary) {
     throw new Error("Summary generation returned an empty response.");

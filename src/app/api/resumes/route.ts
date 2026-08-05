@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { UsageCollector } from "@/lib/api/token-usage";
 import { parseLimit } from "@/lib/api/query";
 import {
   createResume,
@@ -83,12 +84,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // `createResume` distils the CV into a compact profile with a model call.
+    // It has always accepted a collector; this route never passed one, so the
+    // profile call was missing from `llm_usage` entirely. Mirrors what
+    // POST /api/job-descriptions already does for its embedding batch.
+    const usage = new UsageCollector();
     const resume = await createResume({
       supabase,
       userId: user.id,
       rawText,
       title,
+      usage,
     });
+    await usage.flush(supabase, { userId: user.id });
 
     return NextResponse.json({ resume }, { status: 201 });
   } catch (error) {

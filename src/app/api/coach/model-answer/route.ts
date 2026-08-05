@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
 
 import { getCurrentUser } from "@/lib/supabase/server";
+import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
 import {
   isRoundType,
   ROUND_RUBRIC_LABELS,
@@ -23,6 +24,17 @@ import {
 export const runtime = "nodejs";
 
 const MODEL = process.env.COACH_MODEL ?? "gpt-4o-mini";
+
+/**
+ * Output cap.
+ *
+ * Was 700, which was too tight for what the prompt asks for: a 4-8 sentence
+ * model answer, plus a full rewrite of the candidate's answer, plus four tips —
+ * roughly 550-710 tokens of JSON at the top end. Sitting on the boundary meant
+ * occasional truncation, and because there was no `finish_reason` check it
+ * surfaced as an unparseable-JSON error with no indication of the real cause.
+ */
+const COACH_MAX_TOKENS = 1000;
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 interface ModelAnswerResult {
@@ -44,7 +56,7 @@ function rubricGuidance(roundType: InterviewRoundType | undefined): string {
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    const { user } = await getCurrentUser();
+    const { supabase, user } = await getCurrentUser();
     if (!user) {
       return unauthorized();
     }
@@ -99,7 +111,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0.5,
-        max_tokens: 700,
+        max_tokens: COACH_MAX_TOKENS,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -125,8 +137,30 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const data = (await response.json()) as {
-      choices?: { message?: { content?: string } }[];
+      choices?: { message?: { content?: string }; finish_reason?: string }[];
+      usage?: OpenAIUsage;
     };
+
+    // Say what actually happened rather than letting it fail as bad JSON.
+    if (data.choices?.[0]?.finish_reason === "length") {
+      console.error(
+        `[POST /api/coach/model-answer] truncated at ${COACH_MAX_TOKENS} tokens.`,
+      );
+      return NextResponse.json(
+        { error: "That answer was too long to coach. Try a shorter one." },
+        { status: 502 },
+      );
+    }
+
+    // "coach" has been a declared LlmCallSite since the usage table was added,
+    // and nothing ever wrote it — so every model answer was invisible in
+    // `llm_usage` and the cost figures under-reported real spend. Coach calls
+    // are not tied to a session (the drills page has none), so `sessionId` is
+    // deliberately absent.
+    const usage = new UsageCollector();
+    usage.record("coach", MODEL, data.usage);
+    await usage.flush(supabase, { userId: user.id });
+
     const content = data.choices?.[0]?.message?.content ?? "";
 
     let parsed: { modelAnswer?: string; rewrite?: string; tips?: unknown };
