@@ -66,9 +66,14 @@ that named the wrong cause.
 Note the check narrowed deliberately. Six fields — word count, hesitation
 markers, qualifiers, self-corrections, metric count, timeframes — moved to
 [`text-metrics.ts`](../src/lib/text-metrics.ts) and are now computed in code, so
-they can no longer be missing. The harness checks the leaf fields the model is
-still responsible for (`vaguenessScore`, `assertivenessScore`, `depthLevel` and
-the rest) rather than their container objects, which are now always present.
+they can no longer be missing.
+
+The remaining judgement fields carry neutral defaults, so the product never sees
+an undefined score. That would make the finished object complete by
+construction and the metric meaningless, so `analyzeResponse` reports an
+`omittedFields` list recording what the model actually left out *before* the
+defaults fill it in. The harness reads that. It is diagnostic only — nothing in
+the product consumes it.
 
 ---
 
