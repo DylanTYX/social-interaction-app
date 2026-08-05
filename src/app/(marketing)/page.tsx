@@ -21,6 +21,7 @@ import { AnimatedDemo } from "@/components/marketing/animated-demo";
 import { Reveal } from "@/components/marketing/reveal";
 import { StatCounter } from "@/components/marketing/stat-counter";
 import { TryQuestion } from "@/components/marketing/try-question";
+import { TILE_BORDERS, TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 
 const FEATURES = [
   {
@@ -67,23 +68,7 @@ const FEATURES = [
   },
 ] as const;
 
-const FEATURE_TILE: Record<string, string> = {
-  blue: "bg-blue-100 text-blue-600",
-  purple: "bg-purple-100 text-purple-600",
-  indigo: "bg-indigo-100 text-indigo-600",
-  green: "bg-green-100 text-green-600",
-  orange: "bg-orange-100 text-orange-600",
-  pink: "bg-pink-100 text-pink-600",
-};
 
-const FEATURE_BORDER: Record<string, string> = {
-  blue: "hover:border-blue-200",
-  purple: "hover:border-purple-200",
-  indigo: "hover:border-indigo-200",
-  green: "hover:border-green-200",
-  orange: "hover:border-orange-200",
-  pink: "hover:border-pink-200",
-};
 
 const STEPS = [
   {
@@ -244,11 +229,11 @@ export default function LandingPage() {
               return (
                 <Reveal key={feature.title} delay={(index % 3) * 80}>
                   <Card
-                    className={`h-full border border-gray-200/60 transition-all duration-200 hover-lift hover:shadow-soft-md ${FEATURE_BORDER[feature.color]}`}
+                    className={`h-full border border-gray-200/60 transition-all duration-200 hover-lift hover:shadow-soft-md ${TILE_BORDERS[feature.color as TileColor]}`}
                   >
                     <CardHeader>
                       <div
-                        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${FEATURE_TILE[feature.color]}`}
+                        className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${TILE_COLORS[feature.color as TileColor]}`}
                       >
                         <Icon className="h-6 w-6" />
                       </div>

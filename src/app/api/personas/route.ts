@@ -1,28 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createPersona,
   listPersonas,
   type PersonaKind,
 } from "@/lib/db/personas";
-import type { PersonaConfig } from "@/lib/personaEngine";
 import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
-function parseConfig(value: unknown): PersonaConfig | null {
-  if (!value || typeof value !== "object") return null;
-  const config = value as Partial<PersonaConfig>;
-  if (
-    typeof config.name !== "string" ||
-    typeof config.nationality !== "string" ||
-    typeof config.industry !== "string" ||
-    typeof config.seniority !== "string"
-  ) {
-    return null;
-  }
-  return config as PersonaConfig;
-}
 
 export async function GET() {
   try {
@@ -50,7 +37,7 @@ export async function POST(request: Request) {
       config?: unknown;
       kind?: string;
     };
-    const config = parseConfig(body.config);
+    const config = parsePersonaConfig(body.config);
     const name =
       typeof body.name === "string" && body.name.trim()
         ? body.name.trim()

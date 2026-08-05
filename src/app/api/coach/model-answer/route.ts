@@ -3,6 +3,7 @@ import { jsonrepair } from "jsonrepair";
 
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
+  isRoundType,
   ROUND_RUBRIC_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
@@ -44,10 +45,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const body = (await request.json()) as Record<string, unknown>;
     const question = typeof body.question === "string" ? body.question.trim() : "";
     const answer = typeof body.answer === "string" ? body.answer.trim() : "";
-    const roundType =
-      typeof body.roundType === "string"
-        ? (body.roundType as InterviewRoundType)
-        : undefined;
+    // `roundType` selects the scoring rubric, so a garbage value silently
+    // changes how the answer is graded. Validate rather than cast.
+    const roundType = isRoundType(body.roundType) ? body.roundType : undefined;
 
     if (!question || !answer) {
       return badRequest("Missing required fields: question, answer.");

@@ -27,6 +27,7 @@ import {
   useInterviewHistory,
   type InterviewSessionSummary,
 } from "@/hooks/use-interview-history";
+import { TILE_COLORS } from "@/lib/tile-colors";
 
 interface ScenarioBucket {
   title: string;
@@ -329,16 +330,6 @@ export default function AnalyticsPage() {
   const model = useMemo(() => buildModel(sessions), [sessions]);
   const isLoading = status === "loading" && sessions.length === 0;
 
-  const STAT_TILE_COLORS: Record<
-    "blue" | "purple" | "teal" | "orange",
-    string
-  > = {
-    blue: "bg-blue-100 text-blue-600",
-    purple: "bg-purple-100 text-purple-600",
-    teal: "bg-teal-100 text-teal-600",
-    orange: "bg-orange-100 text-orange-600",
-  };
-
   return (
     <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
       <PageHeader
@@ -370,7 +361,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Sessions</p>
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${STAT_TILE_COLORS.blue}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.blue}`}
                 >
                   <Target className="h-5 w-5" />
                 </div>
@@ -387,7 +378,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Avg score</p>
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${STAT_TILE_COLORS.purple}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.purple}`}
                 >
                   <TrendingUp className="h-5 w-5" />
                 </div>
@@ -413,7 +404,7 @@ export default function AnalyticsPage() {
                   Practice time
                 </p>
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${STAT_TILE_COLORS.teal}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.teal}`}
                 >
                   <Clock className="h-5 w-5" />
                 </div>
@@ -433,7 +424,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Mode mix</p>
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${STAT_TILE_COLORS.orange}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.orange}`}
                 >
                   <Mic className="h-5 w-5" />
                 </div>

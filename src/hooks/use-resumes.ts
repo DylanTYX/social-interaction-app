@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { readJson } from "@/lib/api/fetch-json";
 
 export interface ResumeSummary {
   id: string;
@@ -17,20 +18,6 @@ interface ApiPayload {
   error?: string;
 }
 
-async function readJson<T extends ApiPayload>(response: Response): Promise<T> {
-  const text = await response.text();
-  if (!response.ok) {
-    let message = `Request failed (HTTP ${response.status}).`;
-    try {
-      const parsed = JSON.parse(text) as { error?: string };
-      if (parsed?.error) message = parsed.error;
-    } catch {
-      // ignore parse error
-    }
-    throw new Error(message);
-  }
-  return JSON.parse(text) as T;
-}
 
 export interface UseResumes {
   items: ResumeSummary[];

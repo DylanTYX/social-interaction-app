@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { TILE_COLORS } from "@/lib/tile-colors";
 
 interface PageHeaderProps {
   eyebrow?: string;
@@ -17,15 +18,6 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-const ICON_TILE: Record<NonNullable<PageHeaderProps["iconColor"]>, string> = {
-  blue: "bg-blue-100 text-blue-600",
-  purple: "bg-purple-100 text-purple-600",
-  indigo: "bg-indigo-100 text-indigo-600",
-  green: "bg-green-100 text-green-600",
-  orange: "bg-orange-100 text-orange-600",
-  pink: "bg-pink-100 text-pink-600",
-  teal: "bg-teal-100 text-teal-600",
-};
 
 /**
  * Section hero used at the top of every dashboard page. Mirrors the
@@ -45,7 +37,7 @@ export function PageHeader({
       <div className="flex items-start gap-4">
         {icon && (
           <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl shrink-0 ${ICON_TILE[iconColor]}`}
+            className={`flex h-12 w-12 items-center justify-center rounded-xl shrink-0 ${TILE_COLORS[iconColor]}`}
           >
             {icon}
           </div>

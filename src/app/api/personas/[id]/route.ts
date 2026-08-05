@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { parsePersonaConfig } from "@/lib/persona-schema";
 import { deletePersona, updatePersona } from "@/lib/db/personas";
-import type { PersonaConfig } from "@/lib/personaEngine";
 import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
@@ -10,19 +10,6 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-function parseConfig(value: unknown): PersonaConfig | null {
-  if (!value || typeof value !== "object") return null;
-  const config = value as Partial<PersonaConfig>;
-  if (
-    typeof config.name !== "string" ||
-    typeof config.nationality !== "string" ||
-    typeof config.industry !== "string" ||
-    typeof config.seniority !== "string"
-  ) {
-    return null;
-  }
-  return config as PersonaConfig;
-}
 
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
@@ -36,7 +23,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       name?: string;
       config?: unknown;
     };
-    const config = parseConfig(body.config);
+    const config = parsePersonaConfig(body.config);
     const name =
       typeof body.name === "string" && body.name.trim()
         ? body.name.trim()

@@ -34,6 +34,7 @@ import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { GoalsCard } from "@/components/dashboard/goals-card";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
+import { TILE_BORDERS, TILE_COLORS, TILE_COLORS_INTERACTIVE } from "@/lib/tile-colors";
 
 function formatRelativeDate(generatedAt: string): string {
   const ts = Date.parse(generatedAt);
@@ -135,18 +136,12 @@ interface StatRowProps {
   helper: string;
 }
 
-const STAT_TILE_COLORS: Record<StatRowProps["iconColor"], string> = {
-  blue: "bg-blue-100 text-blue-600",
-  purple: "bg-purple-100 text-purple-600",
-  teal: "bg-teal-100 text-teal-600",
-  orange: "bg-orange-100 text-orange-600",
-};
 
 function StatRow({ icon, iconColor, label, value, helper }: StatRowProps) {
   return (
     <div className="flex items-center gap-3 py-3">
       <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${STAT_TILE_COLORS[iconColor]}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TILE_COLORS[iconColor]}`}
       >
         {icon}
       </div>
@@ -167,23 +162,7 @@ interface QuickActionProps {
   description: string;
 }
 
-const QUICK_ACTION_TILE: Record<QuickActionProps["iconColor"], string> = {
-  blue: "bg-blue-100 text-blue-600 group-hover:bg-blue-200",
-  purple: "bg-purple-100 text-purple-600 group-hover:bg-purple-200",
-  indigo: "bg-indigo-100 text-indigo-600 group-hover:bg-indigo-200",
-  green: "bg-green-100 text-green-600 group-hover:bg-green-200",
-  orange: "bg-orange-100 text-orange-600 group-hover:bg-orange-200",
-  pink: "bg-pink-100 text-pink-600 group-hover:bg-pink-200",
-};
 
-const QUICK_ACTION_BORDER: Record<QuickActionProps["iconColor"], string> = {
-  blue: "hover:border-blue-200",
-  purple: "hover:border-purple-200",
-  indigo: "hover:border-indigo-200",
-  green: "hover:border-green-200",
-  orange: "hover:border-orange-200",
-  pink: "hover:border-pink-200",
-};
 
 function QuickAction({
   href,
@@ -195,10 +174,10 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className={`group flex items-start gap-3 rounded-xl border border-gray-200/70 bg-white p-4 transition-all duration-200 hover:shadow-soft-md hover-lift ${QUICK_ACTION_BORDER[iconColor]}`}
+      className={`group flex items-start gap-3 rounded-xl border border-gray-200/70 bg-white p-4 transition-all duration-200 hover:shadow-soft-md hover-lift ${TILE_BORDERS[iconColor]}`}
     >
       <div
-        className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 transition-colors ${QUICK_ACTION_TILE[iconColor]}`}
+        className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 transition-colors ${TILE_COLORS_INTERACTIVE[iconColor]}`}
       >
         {icon}
       </div>

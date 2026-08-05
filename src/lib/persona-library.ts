@@ -2,6 +2,7 @@ import {
   type CommunicationStyle,
   type PersonaConfig,
 } from "./personaEngine";
+import { readJson } from "@/lib/api/fetch-json";
 
 /**
  * Persona library — backed by Supabase via the `/api/personas` routes.
@@ -44,20 +45,6 @@ function fromApi(persona: ApiPersona): PersonaLibraryEntry {
   };
 }
 
-async function readJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  if (!response.ok) {
-    let message = `Request failed (HTTP ${response.status}).`;
-    try {
-      const parsed = JSON.parse(text) as { error?: string };
-      if (parsed?.error) message = parsed.error;
-    } catch {
-      // ignore parse error
-    }
-    throw new Error(message);
-  }
-  return JSON.parse(text) as T;
-}
 
 /**
  * Fetches the user's persona library. Throws if the user is unauthenticated

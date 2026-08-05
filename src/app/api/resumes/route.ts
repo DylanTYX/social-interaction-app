@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { parseLimit } from "@/lib/api/fetch-json";
 import {
   createResume,
   listResumes,
@@ -20,11 +21,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("limit"));
-    const limit =
-      Number.isFinite(limitParam) && limitParam > 0
-        ? Math.min(limitParam, 50)
-        : 20;
+    const limit = parseLimit(searchParams, { fallback: 20, max: 50 });
 
     const resumes = await listResumes(supabase, { limit });
     return NextResponse.json({ resumes });

@@ -1,11 +1,14 @@
 import type { PracticeMode } from "@/lib/interview-setup";
 
-export type InterviewRoundType =
-  | "behavioral"
-  | "technical_swe"
-  | "system_design"
-  | "case"
-  | "screening";
+export const ROUND_TYPES = [
+  "behavioral",
+  "technical_swe",
+  "system_design",
+  "case",
+  "screening",
+] as const;
+
+export type InterviewRoundType = (typeof ROUND_TYPES)[number];
 
 /**
  * How the candidate composes an answer for a round.
@@ -379,12 +382,14 @@ export function buildRoundScenarioDescription(
   ].join("\n");
 }
 
-function isRoundType(value: unknown): value is InterviewRoundType {
+/**
+ * Narrow an untrusted round type. Derived from `ROUND_TYPES` so the guard and
+ * the union cannot drift — the hand-listed version would silently reject any
+ * newly added type.
+ */
+export function isRoundType(value: unknown): value is InterviewRoundType {
   return (
-    value === "behavioral" ||
-    value === "technical_swe" ||
-    value === "system_design" ||
-    value === "case" ||
-    value === "screening"
+    typeof value === "string" &&
+    (ROUND_TYPES as readonly string[]).includes(value)
   );
 }

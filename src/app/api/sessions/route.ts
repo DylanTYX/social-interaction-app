@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { parseLimit } from "@/lib/api/fetch-json";
+import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
   listSessions,
   updateSession,
   type PracticeMode,
 } from "@/lib/db/sessions";
-import type { PersonaConfig } from "@/lib/personaEngine";
 import {
   buildLoopProgress,
   type SessionLaunchMeta,
@@ -15,19 +16,6 @@ import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
-function parsePersonaConfig(value: unknown): PersonaConfig | null {
-  if (!value || typeof value !== "object") return null;
-  const config = value as Partial<PersonaConfig>;
-  if (
-    typeof config.name !== "string" ||
-    typeof config.nationality !== "string" ||
-    typeof config.industry !== "string" ||
-    typeof config.seniority !== "string"
-  ) {
-    return null;
-  }
-  return config as PersonaConfig;
-}
 
 export async function GET(request: Request) {
   try {
@@ -37,11 +25,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("limit"));
-    const limit =
-      Number.isFinite(limitParam) && limitParam > 0
-        ? Math.min(limitParam, 100)
-        : 25;
+    const limit = parseLimit(searchParams, { fallback: 25, max: 100 });
 
     const sessions = await listSessions(supabase, { limit });
     return NextResponse.json({ sessions });
