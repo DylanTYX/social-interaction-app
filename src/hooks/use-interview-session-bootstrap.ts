@@ -17,6 +17,7 @@ import {
 } from "@/lib/interview-setup";
 import { getScenarioByValue } from "@/lib/scenarios";
 import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 
 export type BootstrapStatus =
   | "loading"
@@ -42,9 +43,54 @@ export interface InterviewBootstrap {
     roleTitle: string | null;
   } | null;
   voiceConfig: VoiceSetupConfig;
+  /**
+   * Transcript and scoring history restored from the server, when this load
+   * resumed an existing session.
+   *
+   * It lives here because it arrives in the *same* `/resume` response as the
+   * launch config. `useResumedSession` used to issue a second, identical
+   * request for it — and since the session id went into every interview URL,
+   * that happened on every load rather than only on an explicit resume, so
+   * each screen fetched the whole transcript and every turn analysis twice.
+   */
+  resumed: ResumedTranscript | null;
+}
+
+export interface ResumedTranscript {
+  messages: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    createdAt: string;
+  }>;
+  analyses: AnalysisResult[];
 }
 
 const DEFAULT = createDefaultInterviewSetup();
+
+function readResumedTranscript(payload: {
+  messages?: Array<{
+    id: string;
+    role: string;
+    content: string;
+    createdAt: string;
+  }>;
+  turnAnalyses?: Array<{ analysis: unknown }>;
+}): ResumedTranscript {
+  return {
+    messages: (payload.messages ?? []).map((row) => ({
+      id: row.id,
+      role: row.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: row.content,
+      createdAt: row.createdAt,
+    })),
+    // Pre-0006 sessions have no stored analyses; an empty history is the
+    // correct outcome there, not an error.
+    analyses: (payload.turnAnalyses ?? [])
+      .map((row) => row.analysis as AnalysisResult)
+      .filter((analysis): analysis is AnalysisResult => Boolean(analysis)),
+  };
+}
 
 function launchToBootstrap(
   launch: InterviewLaunchPayload,
@@ -67,6 +113,9 @@ function launchToBootstrap(
   return {
     status: "ready",
     error: null,
+    // Callers that resume overwrite this with the payload's transcript; a
+    // launch restored from localStorage has none.
+    resumed: null,
     personaConfig: launch.personaConfig,
     scenarioValue: scenarioOverride ?? launch.scenarioValue,
     customScenarioBrief: launch.customScenarioBrief ?? "",
@@ -148,6 +197,7 @@ export function useInterviewSessionBootstrap(
     jobDescriptionTitle: null,
     jobDescriptionRef: null,
     voiceConfig: DEFAULT.voiceConfig,
+    resumed: null,
   }));
 
   useEffect(() => {
@@ -173,6 +223,13 @@ export function useInterviewSessionBootstrap(
               title: string;
               roleTitle: string | null;
             } | null;
+            messages?: Array<{
+              id: string;
+              role: string;
+              content: string;
+              createdAt: string;
+            }>;
+            turnAnalyses?: Array<{ analysis: unknown }>;
           };
 
           const launch = sessionRowToLaunch(
@@ -196,7 +253,10 @@ export function useInterviewSessionBootstrap(
 
           saveInterviewLaunch(launch);
           if (!cancelled) {
-            setBootstrap(launchToBootstrap(launch, searchParams));
+            setBootstrap({
+              ...launchToBootstrap(launch, searchParams),
+              resumed: readResumedTranscript(payload),
+            });
           }
           return;
         } catch (error) {
@@ -217,6 +277,7 @@ export function useInterviewSessionBootstrap(
               jobDescriptionTitle: null,
               jobDescriptionRef: null,
               voiceConfig: DEFAULT.voiceConfig,
+              resumed: null,
             });
           }
           return;

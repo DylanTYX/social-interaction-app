@@ -60,6 +60,7 @@ import {
   type TranscriptResult,
 } from "@/lib/speech-service";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {
@@ -125,7 +126,7 @@ function VoiceSimulateInner() {
     (bootstrap.status === "ready" && tokenStatus === "fetching");
   const setupError = bootstrap.error ?? tokenError;
 
-  const resumed = useResumedSession(searchParams.get("session"));
+  const resumed = useResumedSession(bootstrap);
   const turn = useInterviewTurnState({
     sessionId: bootstrap.sessionId,
     personaName: bootstrap.personaConfig.name,
@@ -219,9 +220,9 @@ function VoiceSimulateInner() {
     bootstrap.voiceConfig,
   ]);
 
-  // `useResumedSession` owns the fetch; this just maps what it returned into
-  // display messages. It also restores the scoring history, which the old
-  // copy of this effect did not.
+  // The transcript arrives with the bootstrap; this maps it into display
+  // messages. It also restores the scoring history, which the old copy of this
+  // effect did not.
   useEffect(() => {
     if (bootstrap.status !== "ready" || messagesHydrated) return;
     if (resumed.status === "loading") return;
@@ -721,21 +722,31 @@ function VoiceSimulateInner() {
           },
         );
       } catch {
-        // Streaming failed mid-flight; fall back to a non-streamed request so
-        // the user still gets a reply.
-        const fallback = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: bootstrap.sessionId,
-            userMessage,
-            streamResponse: false,
-          }),
-        });
-        if (!fallback.ok) {
-          throw new Error("Failed to generate AI response.");
+        // Streaming failed mid-flight. The route persists the turn before it
+        // emits `done`, so this may already have succeeded server-side —
+        // re-posting would duplicate the turn and pay for it twice. Ask the
+        // server what it stored before deciding.
+        const recovered = bootstrap.sessionId
+          ? await recoverPersistedTurn(bootstrap.sessionId, userMessage)
+          : null;
+
+        if (recovered) {
+          result = recovered;
+        } else {
+          const fallback = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: bootstrap.sessionId,
+              userMessage,
+              streamResponse: false,
+            }),
+          });
+          if (!fallback.ok) {
+            throw new Error("Failed to generate AI response.");
+          }
+          result = (await fallback.json()) as ChatTurnResponse;
         }
-        result = (await fallback.json()) as ChatTurnResponse;
         ttsBuffer = result.aiMessage;
       }
 

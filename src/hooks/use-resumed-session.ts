@@ -1,17 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import type { InterviewBootstrap } from "@/hooks/use-interview-session-bootstrap";
 
 /**
- * Restores a session's transcript and scoring history from the server.
+ * A session's restored transcript and scoring history, in the shape both
+ * interview screens consume.
  *
- * Both interview screens had their own copy of this effect, and both restored
- * *only* the messages. That silently reset `analysisHistory` to empty, so the
- * running average regressed to whatever was scored after the resume, and the
- * first post-resume turn overwrote the stored `dimensionSnapshots` array with a
- * single element (session metrics merge shallowly).
+ * This used to issue its own `GET /api/sessions/[id]/resume` request. The
+ * bootstrap hook already calls that exact endpoint on the same render — it took
+ * the launch config from the response and discarded the transcript — so every
+ * interview load fetched the whole transcript and every turn analysis twice,
+ * both with `cache: "no-store"` so nothing deduplicated them.
+ *
+ * That went unnoticed while resuming was rare. Once the session id went into
+ * every interview URL, both requests started firing on every single load.
+ *
+ * So there is no fetch here any more: the data arrives with the bootstrap and
+ * this only reshapes it. Restoring *only* the messages (which an earlier
+ * version of this hook did) reset `analysisHistory` to empty, so the running
+ * average regressed and the first post-resume turn clobbered the stored
+ * dimension snapshots — hence analyses travel with the messages, not apart.
  */
 
 export interface ResumedMessage {
@@ -27,69 +38,28 @@ export interface ResumedSession {
   analyses: AnalysisResult[];
 }
 
-interface ResumePayload {
-  messages?: Array<{
-    id: string;
-    role: string;
-    content: string;
-    createdAt: string;
-  }>;
-  turnAnalyses?: Array<{ analysis: unknown }>;
-}
+const EMPTY: ResumedMessage[] = [];
+const NO_ANALYSES: AnalysisResult[] = [];
 
-export function useResumedSession(sessionId: string | null): ResumedSession {
-  const [state, setState] = useState<ResumedSession>({
-    status: sessionId ? "loading" : "idle",
-    messages: [],
-    analyses: [],
-  });
-
-  useEffect(() => {
-    if (!sessionId) {
-      setState({ status: "idle", messages: [], analyses: [] });
-      return;
+export function useResumedSession(
+  bootstrap: InterviewBootstrap,
+): ResumedSession {
+  return useMemo(() => {
+    if (bootstrap.status === "loading") {
+      return { status: "loading", messages: EMPTY, analyses: NO_ANALYSES };
     }
 
-    let cancelled = false;
+    // A fresh launch has no transcript to restore. That is "ready with
+    // nothing", not "idle" — the caller renders its welcome message and starts
+    // the interview, and it must not sit waiting for data that is not coming.
+    if (!bootstrap.resumed) {
+      return { status: "ready", messages: EMPTY, analyses: NO_ANALYSES };
+    }
 
-    void (async () => {
-      try {
-        const response = await fetch(
-          `/api/sessions/${encodeURIComponent(sessionId)}/resume`,
-          { cache: "no-store" },
-        );
-        if (!response.ok) throw new Error("Could not resume this session.");
-
-        const payload = (await response.json()) as ResumePayload;
-        if (cancelled) return;
-
-        setState({
-          status: "ready",
-          messages: (payload.messages ?? []).map((row) => ({
-            id: row.id,
-            role: row.role === "user" ? "user" : "assistant",
-            content: row.content,
-            createdAt: row.createdAt,
-          })),
-          // Pre-0006 sessions have no stored analyses; an empty history is the
-          // correct outcome there, not an error.
-          analyses: (payload.turnAnalyses ?? [])
-            .map((row) => row.analysis as AnalysisResult)
-            .filter((analysis): analysis is AnalysisResult => Boolean(analysis)),
-        });
-      } catch {
-        // A failed resume falls back to a fresh transcript rather than
-        // blocking the screen — the caller renders its welcome message.
-        if (!cancelled) {
-          setState({ status: "ready", messages: [], analyses: [] });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
+    return {
+      status: "ready",
+      messages: bootstrap.resumed.messages,
+      analyses: bootstrap.resumed.analyses,
     };
-  }, [sessionId]);
-
-  return state;
+  }, [bootstrap.status, bootstrap.resumed]);
 }

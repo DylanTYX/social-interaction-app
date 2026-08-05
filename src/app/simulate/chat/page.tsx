@@ -43,6 +43,7 @@ import {
   saveInterviewSetup,
 } from "@/lib/interview-setup";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { ChatTurnError, ChatTurnResponse } from "@/lib/chat-contract";
 import {
@@ -127,7 +128,7 @@ function ChatSimulateInner() {
   const [liveCoachingOn, setLiveCoachingOn] = useState(liveCoachingEnabled);
   const initialState = bootstrap;
 
-  const resumed = useResumedSession(searchParams.get("session"));
+  const resumed = useResumedSession(bootstrap);
   const turn = useInterviewTurnState({
     sessionId: bootstrap.sessionId,
     personaName: bootstrap.personaConfig.name,
@@ -188,8 +189,8 @@ function ChatSimulateInner() {
     }
   }, [bootstrap.status, router]);
 
-  // `useResumedSession` owns the fetch; this just turns what it returned into
-  // display messages, or seeds the welcome message for a fresh session.
+  // The transcript arrives with the bootstrap; this turns it into display
+  // messages, or seeds the welcome message for a fresh session.
   useEffect(() => {
     if (bootstrap.status !== "ready" || messagesHydrated) return;
     if (resumed.status === "loading") return;
@@ -320,23 +321,37 @@ function ChatSimulateInner() {
             );
           });
         } catch {
-          const fallbackResponse = await fetch("/api/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ ...payload, streamResponse: false }),
-          });
+          // The stream broke. The route persists the turn *before* emitting
+          // `done`, so this may well have succeeded server-side — blindly
+          // re-posting would duplicate the answer in the transcript and pay
+          // for the whole turn a second time. Ask the server what it stored.
+          const recovered = await recoverPersistedTurn(
+            payload.sessionId,
+            trimmedMessage,
+          );
 
-          if (!fallbackResponse.ok) {
-            const errorData =
-              (await fallbackResponse.json()) as ChatTurnError;
-            throw new Error(
-              errorData.error ?? "Failed to generate AI response.",
-            );
+          if (recovered) {
+            data = recovered;
+          } else {
+            // The turn genuinely did not land, so retrying is safe.
+            const fallbackResponse = await fetch("/api/chat", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ ...payload, streamResponse: false }),
+            });
+
+            if (!fallbackResponse.ok) {
+              const errorData =
+                (await fallbackResponse.json()) as ChatTurnError;
+              throw new Error(
+                errorData.error ?? "Failed to generate AI response.",
+              );
+            }
+
+            data = (await fallbackResponse.json()) as ChatTurnResponse;
           }
-
-          data = (await fallbackResponse.json()) as ChatTurnResponse;
         }
       } else {
         data = (await response.json()) as ChatTurnResponse;
