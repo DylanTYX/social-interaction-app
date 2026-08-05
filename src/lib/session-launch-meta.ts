@@ -1,5 +1,13 @@
 import type { InterviewSetupState, VoiceSetupConfig } from "@/lib/interview-setup";
-import type { InterviewLoopConfig } from "@/lib/interview-rounds";
+import {
+  normalizeInterviewLoop,
+  type InterviewLoopConfig,
+} from "@/lib/interview-rounds";
+import type { PracticeMode } from "@/lib/interview-setup";
+import {
+  MAX_SCENARIO_DESCRIPTION_CHARS,
+  MAX_SCENARIO_TITLE_CHARS,
+} from "@/lib/api/input-limits";
 import type { AnalysisResult, TechnicalScores } from "@/lib/response-analyzer";
 import type { CompetencyCoverage } from "@/lib/competencies";
 
@@ -179,4 +187,80 @@ export function readCompetencyCoverage(session: SessionColumns): unknown {
     session.competencyCoverage ??
     parseSessionMetrics(session.metrics).competencyCoverage
   );
+}
+
+/**
+ * Maximum rounds in one loop. A real interview day is four or five rounds;
+ * this is a bug/abuse ceiling, since every round's title and focus reaches the
+ * interviewer's prompt.
+ */
+const MAX_LOOP_ROUNDS = 10;
+
+function clampText(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
+/**
+ * Sanitize client-supplied launch metadata before it is stored.
+ *
+ * `POST /api/sessions` used to take `body.launchMeta`, cast it straight through
+ * with `as SessionLaunchMeta`, and write it to the `launch_meta` column.
+ * `normalizeInterviewLoop` was never called server-side at all. Two things
+ * followed from that:
+ *
+ *   1. `loopBrief` is documented as server-written at round handoff, and
+ *      `/api/chat` injects it verbatim into the interviewer's *stable* prompt
+ *      layer. A client could therefore write its own system-prompt content.
+ *      It is dropped here unconditionally — only `next-round` may set it.
+ *   2. Round titles, focus text and the scenario brief also reach the prompt,
+ *      with no length bound and no cap on how many rounds could be sent.
+ *
+ * RLS means none of this crossed a tenant boundary — a user could only do it to
+ * their own session. It is still a server-owned field the client could write,
+ * and unbounded text billed on every turn.
+ *
+ * Text is clamped rather than rejected here, unlike `parseBoundedString`: this
+ * payload is rebuilt from localStorage on every launch, so an outdated or
+ * oversized value should degrade to a usable session rather than block the user
+ * from starting one.
+ */
+export function sanitizeLaunchMeta(
+  value: unknown,
+  practiceMode: PracticeMode,
+): SessionLaunchMeta | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Partial<SessionLaunchMeta>;
+
+  const loop = normalizeInterviewLoop(input.interviewLoop, practiceMode);
+  const rounds = loop.rounds.slice(0, MAX_LOOP_ROUNDS).map((round) => ({
+    ...round,
+    title: clampText(round.title, MAX_SCENARIO_TITLE_CHARS) ?? round.title,
+    focus: clampText(round.focus, MAX_SCENARIO_DESCRIPTION_CHARS) ?? round.focus,
+  }));
+
+  return {
+    streamResponses: Boolean(input.streamResponses),
+    liveCoachingEnabled: Boolean(input.liveCoachingEnabled),
+    interviewLoop: {
+      ...loop,
+      rounds,
+      enabled: loop.enabled && rounds.length > 1,
+      currentRoundIndex: Math.max(
+        0,
+        Math.min(rounds.length - 1, loop.currentRoundIndex),
+      ),
+    },
+    voiceConfig: input.voiceConfig as SessionLaunchMeta["voiceConfig"],
+    jobDescription: input.jobDescription as SessionLaunchMeta["jobDescription"],
+    resume: input.resume,
+    customScenarioBrief: clampText(
+      input.customScenarioBrief,
+      MAX_SCENARIO_DESCRIPTION_CHARS,
+    ),
+    personaLibraryId: clampText(input.personaLibraryId, 100),
+    // `loopBrief` is deliberately absent. It is server-owned; see above.
+  };
 }

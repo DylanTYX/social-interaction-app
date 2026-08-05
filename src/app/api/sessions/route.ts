@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { parseLimit } from "@/lib/api/query";
+import { parseBoundedString, parseLimit } from "@/lib/api/query";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
@@ -9,9 +9,13 @@ import {
 } from "@/lib/db/sessions";
 import {
   buildLoopProgress,
-  type SessionLaunchMeta,
+  sanitizeLaunchMeta,
 } from "@/lib/session-launch-meta";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import {
+  MAX_SCENARIO_DESCRIPTION_CHARS,
+  MAX_SCENARIO_TITLE_CHARS,
+} from "@/lib/api/input-limits";
+import { handleRouteError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -28,7 +32,7 @@ export async function GET(request: Request) {
     const sessions = await listSessions(supabase, { limit });
     return NextResponse.json({ sessions });
   } catch (error) {
-    return serverError("GET /api/sessions", error);
+    return handleRouteError("GET /api/sessions", error);
   }
 }
 
@@ -48,7 +52,9 @@ export async function POST(request: Request) {
       jobDescriptionId?: string | null;
       resumeId?: string | null;
       personaConfig?: unknown;
-      launchMeta?: SessionLaunchMeta;
+      // Deliberately `unknown`: it is client-supplied and must go through
+      // `sanitizeLaunchMeta` rather than be trusted at its declared type.
+      launchMeta?: unknown;
     };
 
     const practiceMode: PracticeMode =
@@ -69,21 +75,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const launchMeta =
-      body.launchMeta && typeof body.launchMeta === "object"
-        ? (body.launchMeta as SessionLaunchMeta)
-        : null;
+    // Sanitized, not cast. `loopBrief` is server-owned and is dropped here;
+    // round text is clamped. See `sanitizeLaunchMeta`.
+    const launchMeta = sanitizeLaunchMeta(body.launchMeta, practiceMode);
     const loopProgress = launchMeta ? buildLoopProgress(launchMeta) : null;
 
     const session = await createSession(supabase, user.id, {
       practiceMode,
       scenarioValue,
-      scenarioTitle:
-        typeof body.scenarioTitle === "string" ? body.scenarioTitle : null,
-      scenarioDescription:
-        typeof body.scenarioDescription === "string"
-          ? body.scenarioDescription
-          : null,
+      scenarioTitle: parseBoundedString(body.scenarioTitle, {
+        field: "scenarioTitle",
+        max: MAX_SCENARIO_TITLE_CHARS,
+      }),
+      // Reaches the interviewer's stable prompt layer, so it is billed on every
+      // turn of the session rather than once.
+      scenarioDescription: parseBoundedString(body.scenarioDescription, {
+        field: "scenarioDescription",
+        max: MAX_SCENARIO_DESCRIPTION_CHARS,
+      }),
       personaId: typeof body.personaId === "string" ? body.personaId : null,
       jobDescriptionId:
         typeof body.jobDescriptionId === "string" ? body.jobDescriptionId : null,
@@ -99,6 +108,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ session }, { status: 201 });
   } catch (error) {
-    return serverError("POST /api/sessions", error);
+    return handleRouteError("POST /api/sessions", error);
   }
 }

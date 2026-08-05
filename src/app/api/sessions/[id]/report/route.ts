@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import {
   getSession,
   listMessages,
@@ -9,6 +10,9 @@ import { getJobDescription } from "@/lib/db/job-descriptions";
 import { notFound, serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
+
+/** Transcript rows rendered in a report. Well past any real session length. */
+const MAX_REPORT_MESSAGES = 400;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -27,6 +31,12 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
+    const limited = enforceRateLimit(
+      `report:${user.id}`,
+      RATE_LIMITS.heavyRead,
+    );
+    if (limited) return limited;
+
     const { id } = await ctx.params;
     const session = await getSession(supabase, id);
     if (!session) {
@@ -34,7 +44,9 @@ export async function GET(_request: Request, ctx: RouteParams) {
     }
 
     const [messages, turnAnalyses] = await Promise.all([
-      listMessages(supabase, id),
+      // The resume endpoint has always capped this at 200; the report did not,
+      // so the longest sessions read the most rows on the least urgent path.
+      listMessages(supabase, id, { limit: MAX_REPORT_MESSAGES }),
       listTurnAnalyses(supabase, id),
     ]);
 

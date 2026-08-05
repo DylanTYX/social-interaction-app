@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { listSessions, listMessages } from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { listJobDescriptions } from "@/lib/db/job-descriptions";
 import { serverError, unauthorized } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
+
+/** Cap on transcript rows per session in the export. */
+const MESSAGES_PER_SESSION = 500;
 
 /**
  * Bundles the user's data into one downloadable JSON document. The response
@@ -18,6 +22,12 @@ export async function GET() {
       return unauthorized();
     }
 
+    const limited = enforceRateLimit(
+      `export:${user.id}`,
+      RATE_LIMITS.heavyRead,
+    );
+    if (limited) return limited;
+
     const [sessions, personas, jobDescriptions] = await Promise.all([
       listSessions(supabase, { limit: 500 }),
       listPersonas(supabase, user.id),
@@ -27,7 +37,12 @@ export async function GET() {
     // Inline messages alongside each session so the export is self-contained.
     const sessionsWithMessages = await Promise.all(
       sessions.map(async (session) => {
-        const messages = await listMessages(supabase, session.id);
+        // Bounded per session: an export is a convenience, not an archive
+        // guarantee, and one query per session over 500 sessions is already
+        // the most expensive read in the app.
+        const messages = await listMessages(supabase, session.id, {
+          limit: MESSAGES_PER_SESSION,
+        });
         return { ...session, messages };
       }),
     );

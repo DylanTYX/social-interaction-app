@@ -7,8 +7,18 @@ import {
   ROUND_RUBRIC_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
-import { badRequest, serverError, unauthorized } from "@/lib/api/errors";
+import {
+  badRequest,
+  handleRouteError,
+  serverError,
+  unauthorized,
+} from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { parseBoundedString } from "@/lib/api/query";
+import {
+  MAX_COACH_ANSWER_CHARS,
+  MAX_COACH_QUESTION_CHARS,
+} from "@/lib/api/input-limits";
 
 export const runtime = "nodejs";
 
@@ -43,8 +53,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (limited) return limited;
 
     const body = (await request.json()) as Record<string, unknown>;
-    const question = typeof body.question === "string" ? body.question.trim() : "";
-    const answer = typeof body.answer === "string" ? body.answer.trim() : "";
+    const question =
+      parseBoundedString(body.question, {
+        field: "question",
+        max: MAX_COACH_QUESTION_CHARS,
+      }) ?? "";
+    const answer =
+      parseBoundedString(body.answer, {
+        field: "answer",
+        max: MAX_COACH_ANSWER_CHARS,
+      }) ?? "";
     // `roundType` selects the scoring rubric, so a garbage value silently
     // changes how the answer is graded. Validate rather than cast.
     const roundType = isRoundType(body.roundType) ? body.roundType : undefined;
@@ -130,6 +148,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     };
     return NextResponse.json(result);
   } catch (error) {
-    return serverError("POST /api/coach/model-answer", error);
+    return handleRouteError("POST /api/coach/model-answer", error);
   }
 }

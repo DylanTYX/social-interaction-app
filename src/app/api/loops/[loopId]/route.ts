@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/supabase/server";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { listSessionsInLoop, listTurnAnalyses } from "@/lib/db/sessions";
 import {
   readLaunchMeta,
@@ -48,6 +49,11 @@ export async function GET(_request: Request, ctx: RouteParams) {
     if (!user) {
       return unauthorized();
     }
+
+    // One `listTurnAnalyses` query per round in the loop, so the cost scales
+    // with a value the client chooses.
+    const limited = enforceRateLimit(`loop:${user.id}`, RATE_LIMITS.heavyRead);
+    if (limited) return limited;
 
     const { loopId } = await ctx.params;
 

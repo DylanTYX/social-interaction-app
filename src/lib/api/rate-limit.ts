@@ -82,6 +82,15 @@ export const RATE_LIMITS = {
   speechToken: { limit: 20, windowMs: 60_000 },
   /** Uploading + embedding a document is the most expensive single action. */
   documentUpload: { limit: 15, windowMs: 60_000 },
+  /**
+   * Reads that fan out across a user's whole history: the full-account export,
+   * the loop report (one analyses query per round) and the single-session
+   * report. Cheap per row, but unbounded in row count, so they are the easiest
+   * way to make the database do a lot of work from one click.
+   */
+  heavyRead: { limit: 30, windowMs: 60_000 },
+  /** Creates a session row per call, so it needs a ceiling like any write. */
+  nextRound: { limit: 20, windowMs: 60_000 },
 } as const;
 
 /**

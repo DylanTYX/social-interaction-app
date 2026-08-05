@@ -5,7 +5,14 @@ import {
   updateSession,
   type SessionStatus,
 } from "@/lib/db/sessions";
-import { notFound, serverError, unauthorized } from "@/lib/api/errors";
+import {
+  handleRouteError,
+  notFound,
+  serverError,
+  unauthorized,
+} from "@/lib/api/errors";
+import { parseBoundedString } from "@/lib/api/query";
+import { MAX_SUMMARY_CHARS } from "@/lib/api/input-limits";
 
 export const runtime = "nodejs";
 
@@ -54,6 +61,27 @@ function stripServerOwnedMetrics(
   return sanitized;
 }
 
+/** A percentage. Anything else is dropped rather than written. */
+function parseScore(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+/** Wall-clock minutes. The cap is a sanity bound, not a product rule. */
+function parseDurationMinutes(value: unknown): number | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.min(24 * 60, Math.round(value)));
+}
+
+/** An ISO timestamp Postgres will accept, or nothing. */
+function parseTimestamp(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "string") return undefined;
+  return Number.isFinite(Date.parse(value)) ? value : undefined;
+}
+
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
@@ -64,11 +92,11 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     const { id } = await ctx.params;
     const body = (await request.json()) as {
       status?: string;
-      summary?: string | null;
+      summary?: unknown;
       metrics?: Record<string, unknown> | null;
-      averageScore?: number | null;
-      durationMinutes?: number | null;
-      endedAt?: string | null;
+      averageScore?: unknown;
+      durationMinutes?: unknown;
+      endedAt?: unknown;
     };
 
     const status: SessionStatus | undefined =
@@ -80,15 +108,23 @@ export async function PATCH(request: Request, ctx: RouteParams) {
 
     const session = await updateSession(supabase, id, {
       status,
-      summary: body.summary,
+      // The server feeds this straight back into the next interviewer prompt,
+      // so an unbounded value inflates every remaining turn of the session.
+      summary: parseBoundedString(body.summary, {
+        field: "summary",
+        max: MAX_SUMMARY_CHARS,
+      }),
       metrics: stripServerOwnedMetrics(body.metrics),
-      averageScore: body.averageScore,
-      durationMinutes: body.durationMinutes,
-      endedAt: body.endedAt,
+      // These three used to pass through untouched into Postgres `int` and
+      // `timestamptz` columns, so a NaN or an out-of-range number surfaced as
+      // an opaque 500 from the database rather than a 400 from us.
+      averageScore: parseScore(body.averageScore),
+      durationMinutes: parseDurationMinutes(body.durationMinutes),
+      endedAt: parseTimestamp(body.endedAt),
     });
 
     return NextResponse.json({ session });
   } catch (error) {
-    return serverError("PATCH /api/sessions/[id]", error);
+    return handleRouteError("PATCH /api/sessions/[id]", error);
   }
 }

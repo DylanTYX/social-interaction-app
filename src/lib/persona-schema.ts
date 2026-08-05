@@ -1,4 +1,8 @@
 import {
+  MAX_PERSONA_FIELD_CHARS,
+  MAX_PERSONA_LIST_ITEMS,
+} from "@/lib/api/input-limits";
+import {
   PERSONA_DIAL_DEFAULT,
   type CommunicationStyle,
   type PersonaConfig,
@@ -43,13 +47,26 @@ function dial(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 {
   return bounded as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 }
 
+/**
+ * Persona list fields (traits, boundaries, interest areas) are `.join(", ")`ed
+ * into the persona prompt, which is the interviewer's cacheable prefix — so
+ * both the item count and each item's length are billed on every turn. Clamped
+ * rather than rejected: a persona is reusable library data, and an oversized
+ * one should still produce a usable interview.
+ */
 function stringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string");
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, MAX_PERSONA_FIELD_CHARS))
+    .filter(Boolean)
+    .slice(0, MAX_PERSONA_LIST_ITEMS);
 }
 
 function nonEmptyString(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, MAX_PERSONA_FIELD_CHARS) : null;
 }
 
 /**

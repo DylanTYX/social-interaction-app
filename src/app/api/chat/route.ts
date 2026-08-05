@@ -19,10 +19,12 @@ import {
 import {
   badRequest,
   notFound,
-  serverError,
+  handleRouteError,
   unauthorized,
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { parseBoundedString } from "@/lib/api/query";
+import { MAX_USER_MESSAGE_CHARS } from "@/lib/api/input-limits";
 import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
 import { generatePersonaPrompt } from "@/lib/persona-engine";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
@@ -538,8 +540,13 @@ export async function POST(request: Request) {
     const body = (await request.json()) as ChatRequestBody;
     const sessionId =
       typeof body.sessionId === "string" ? body.sessionId.trim() : "";
+    // Bounded: this one field reaches the interviewer, the analyzer and an
+    // embedding call in a single request.
     const userMessage =
-      typeof body.userMessage === "string" ? body.userMessage.trim() : "";
+      parseBoundedString(body.userMessage, {
+        field: "userMessage",
+        max: MAX_USER_MESSAGE_CHARS,
+      }) ?? "";
     const streamResponse = shouldStreamResponse(body.streamResponse);
     const isOpening = body.mode === "opening";
 
@@ -866,7 +873,7 @@ export async function POST(request: Request) {
     const result = await buildResult();
     return NextResponse.json(result);
   } catch (error) {
-    return serverError("POST /api/chat", error);
+    return handleRouteError("POST /api/chat", error);
   }
 }
 
