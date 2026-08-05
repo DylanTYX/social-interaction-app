@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,7 +208,9 @@ export function LoopStep({
         {/* Only meaningful between rounds. */}
         {isLoop && (
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-500">Break between rounds</Label>
+            <Label className="text-xs text-gray-500">
+              Break between rounds
+            </Label>
             <Select
               value={String(value.breakMinutes)}
               onValueChange={(next) =>
@@ -249,134 +253,138 @@ function RoundCard({
   const isLoop = total > 1;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <Badge variant={isLoop ? "secondary" : "outline"}>
-          {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
-        </Badge>
-        {onRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-red-600"
-            aria-label={`Remove round ${index + 1}`}
-            onClick={onRemove}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-600">Type</Label>
-          <Select
-            value={round.type}
-            onValueChange={(next) =>
-              onChange({ type: next as InterviewRoundType })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
-                <SelectItem key={type} value={type}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] leading-4 text-gray-500">
-            {ROUND_RUBRIC_LABELS[round.type]}
-          </p>
+    <Card className="border border-gray-200/80 shadow-soft">
+      <CardContent className="space-y-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <Badge variant={isLoop ? "secondary" : "outline"}>
+            {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
+          </Badge>
+          {onRemove && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-400 hover:text-red-600"
+              aria-label={`Remove round ${index + 1}`}
+              onClick={onRemove}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-baseline justify-between">
-            <Label className="text-xs text-gray-600">Length</Label>
-            {/* The consequence, not the raw number — duration now drives when
-                the interview actually ends. */}
-            <span className="text-[11px] tabular-nums text-gray-500">
-              {describeRoundLength(round.durationMinutes)}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={5}
-            max={90}
-            step={5}
-            value={round.durationMinutes}
-            onChange={(event) =>
-              onChange({ durationMinutes: Number(event.target.value) })
-            }
-            aria-label="Round length in minutes"
-            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-blue-600"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-600">Title</Label>
-          <Input
-            value={round.title}
-            onChange={(event) => onChange({ title: event.target.value })}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs text-gray-600">Focus</Label>
-          <Input
-            value={round.focus}
-            onChange={(event) => onChange({ focus: event.target.value })}
-            placeholder="What this round should dig into"
-          />
-        </div>
-
-        {/* A different interviewer per round is only a concept in a loop — a
-            single round already has the Interviewer step. */}
-        {isLoop && (
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Interviewer</Label>
+            <Label className="text-xs text-gray-600">Type</Label>
             <Select
-              value={round.personaLibraryId ?? "default"}
+              value={round.type}
               onValueChange={(next) =>
-                onChange({
-                  personaLibraryId: next === "default" ? undefined : next,
-                })
+                onChange({ type: next as InterviewRoundType })
               }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Same as default</SelectItem>
-                {personaLibrary.map((entry) => (
-                  <SelectItem key={entry.id} value={entry.id}>
-                    {entry.config.name} · {entry.config.seniority}
+                {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
+                  <SelectItem key={type} value={type}>
+                    {label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs leading-4 text-gray-500">
+              {ROUND_RUBRIC_LABELS[round.type]}
+            </p>
           </div>
-        )}
 
-        {round.practiceMode === "text" && (
-          <label className="flex items-center gap-2 self-end pb-1 text-xs text-gray-600">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <Label className="text-xs text-gray-600">Length</Label>
+              {/* The consequence, not the raw number — duration now drives when
+                the interview actually ends. */}
+              <span className="text-xs tabular-nums text-gray-500">
+                {describeRoundLength(round.durationMinutes)}
+              </span>
+            </div>
             <input
-              type="checkbox"
-              className="h-3.5 w-3.5 rounded border-gray-300"
-              checked={resolveAnswerFormat(round) === "code"}
+              type="range"
+              min={5}
+              max={90}
+              step={5}
+              value={round.durationMinutes}
               onChange={(event) =>
-                onChange({
-                  answerFormat: event.target.checked ? "code" : "prose",
-                })
+                onChange({ durationMinutes: Number(event.target.value) })
               }
+              aria-label="Round length in minutes"
+              className="w-full accent-blue-600"
             />
-            Answer in a code editor
-          </label>
-        )}
-      </div>
-    </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Title</Label>
+            <Input
+              value={round.title}
+              onChange={(event) => onChange({ title: event.target.value })}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-600">Focus</Label>
+            <Input
+              value={round.focus}
+              onChange={(event) => onChange({ focus: event.target.value })}
+              placeholder="What this round should dig into"
+            />
+          </div>
+
+          {/* A different interviewer per round is only a concept in a loop — a
+            single round already has the Interviewer step. */}
+          {isLoop && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-600">Interviewer</Label>
+              <Select
+                value={round.personaLibraryId ?? "default"}
+                onValueChange={(next) =>
+                  onChange({
+                    personaLibraryId: next === "default" ? undefined : next,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Same as default</SelectItem>
+                  {personaLibrary.map((entry) => (
+                    <SelectItem key={entry.id} value={entry.id}>
+                      {entry.config.name} · {entry.config.seniority}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {round.practiceMode === "text" && (
+            <div className="flex items-center gap-2 self-end pb-1">
+              <Switch
+                id={`code-editor-${round.id}`}
+                checked={resolveAnswerFormat(round) === "code"}
+                onCheckedChange={(checked) =>
+                  onChange({ answerFormat: checked ? "code" : "prose" })
+                }
+              />
+              <Label
+                htmlFor={`code-editor-${round.id}`}
+                className="text-xs text-gray-600"
+              >
+                Answer in a code editor
+              </Label>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -80,10 +80,10 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
   };
 
   return (
-    <Card className="border-purple-200/70 bg-white/85">
+    <Card className="border border-gray-200/80 shadow-soft">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <FileUser className="h-4 w-4 text-purple-600" />
+          <FileUser className="h-4 w-4 text-blue-600" />
           Your resume
         </CardTitle>
         <CardDescription>
@@ -119,7 +119,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                   onClick={() => setMode(tab.id)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                     value.mode === tab.id
-                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
                       : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
                   }`}
                 >
@@ -155,7 +155,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
             )}
 
             {value.mode === "upload" && (
-              <div className="space-y-3 rounded-xl border border-dashed border-purple-200 bg-purple-50/40 p-4">
+              <div className="space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -189,7 +189,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                       <Upload className="h-5 w-5" />
                     </div>
                     <p className="text-sm font-medium text-gray-800">
@@ -244,7 +244,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                           key={item.id}
                           className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
                             isActive
-                              ? "border-purple-500 bg-purple-50"
+                              ? "border-blue-500 bg-blue-50"
                               : "border-gray-200 bg-white hover:bg-gray-50"
                           }`}
                         >
