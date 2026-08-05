@@ -42,6 +42,7 @@ const securityHeaders = [
  *   NEXT_DEV_ORIGINS=192.168.1.42,10.0.0.5 npm run dev
  */
 const allowedDevOrigins = [
+  "172.20.10.2",
   "172.20.10.4",
   "192.168.0.29",
   ...(process.env.NEXT_DEV_ORIGINS?.split(",")
