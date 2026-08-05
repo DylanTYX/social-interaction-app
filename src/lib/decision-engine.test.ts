@@ -50,7 +50,6 @@ function makeAnalysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
     strengths: ["clear ownership"],
     gaps: [],
     followupTopics: ["tradeoffs"],
-    rawAnalysis: "{}",
     ...overrides,
   };
 }

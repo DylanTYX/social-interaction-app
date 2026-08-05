@@ -227,15 +227,20 @@ export async function retrieveJobDescriptionChunks(input: {
 
   const floor = input.minSimilarity ?? MIN_SIMILARITY;
 
-  return ((data ?? []) as MatchRow[])
-    .map((row) => ({
-      id: row.id,
-      jobDescriptionId: row.job_description_id,
-      content: row.content,
-      chunkIndex: row.chunk_index,
-      similarity: row.similarity,
-    }))
-    .filter((chunk) => chunk.similarity >= floor);
+  const chunks = ((data ?? []) as MatchRow[]).map((row) => ({
+    id: row.id,
+    jobDescriptionId: row.job_description_id,
+    content: row.content,
+    chunkIndex: row.chunk_index,
+    similarity: row.similarity,
+  }));
+
+  const relevant = chunks.filter((chunk) => chunk.similarity >= floor);
+
+  // Keep the single best chunk when the floor removes everything. Returning
+  // nothing drops role context from the prompt *and* from that turn's scoring,
+  // with no signal that it happened — worse than one weak excerpt.
+  return relevant.length > 0 ? relevant : chunks.slice(0, 1);
 }
 
 export function formatRetrievedJobContext(

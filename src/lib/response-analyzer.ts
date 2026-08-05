@@ -20,6 +20,7 @@ import { parseCodeAnswer } from "@/lib/code-answer";
  */
 const ANALYZER_MODEL = process.env.ANALYZER_MODEL ?? "gpt-4o-mini";
 const ANALYZER_TEMPERATURE = 0.1;
+const ANALYZER_MAX_TOKENS = 900;
 
 export interface STARAnalysis {
   situation: {
@@ -93,7 +94,6 @@ export interface AnalysisResult {
   strengths: string[];
   gaps: string[];
   followupTopics: string[];
-  rawAnalysis: string; // Raw text from analyzer model
 }
 
 function extractJsonPayload(rawAnalysis: string): string {
@@ -137,12 +137,18 @@ export interface AnalyzeResponseOptions {
   usage?: UsageCollector;
 }
 
+/**
+ * Split into a round-type-determined scaffold and the per-turn content. The
+ * scaffold is identical for every turn of a round type, so sending it first
+ * (and pinning `prompt_cache_key` to the round type) lets it serve as a cached
+ * prefix.
+ */
 function buildAnalysisPrompt(
   candidateResponse: string,
   question: string,
   jobContextBlock: string,
   roundType: InterviewRoundType,
-): string {
+): { staticScaffold: string; variable: string } {
   const rubric = ROUND_RUBRIC_LABELS[roundType];
   const useStar =
     roundType === "behavioral" ||
@@ -199,15 +205,9 @@ function buildAnalysisPrompt(
       }`
     : "";
 
-  return `You are an expert interview analyst. Score the candidate response for a ${roundType} interview round.
+  const staticScaffold = `You are an expert interview analyst. Score the candidate response for a ${roundType} interview round.
 Primary rubric: ${rubric}.
-Do not use STAR as the primary rubric unless this is behavioral or screening.${jobContextBlock}${codeBlock}
-
-QUESTION ASKED:
-${question}
-
-CANDIDATE RESPONSE:
-${candidateResponse}
+Do not use STAR as the primary rubric unless this is behavioral or screening.
 
 Return ONLY valid JSON with this structure:
 {
@@ -242,6 +242,16 @@ Return ONLY valid JSON with this structure:
 }
 
 Include at least one genuine strength when present. Keep strengths and gaps balanced.`;
+
+  const variable = `${jobContextBlock}${codeBlock}
+
+QUESTION ASKED:
+${question}
+
+CANDIDATE RESPONSE:
+${candidateResponse}`;
+
+  return { staticScaffold, variable };
 }
 
 /**
@@ -260,7 +270,7 @@ export async function analyzeResponse(
       : "";
 
   const roundType = options.roundType ?? "behavioral";
-  const analysisPrompt = buildAnalysisPrompt(
+  const { staticScaffold, variable } = buildAnalysisPrompt(
     candidateResponse,
     question,
     jobContextBlock,
@@ -276,18 +286,22 @@ export async function analyzeResponse(
       },
       body: JSON.stringify({
         model: ANALYZER_MODEL,
+        // Round type keys the cache: the scaffold is identical across every
+        // turn of a round, so this is the reusable prefix.
+        prompt_cache_key: `analyzer:${roundType}`,
         messages: [
           {
             role: "system",
             content:
-              "You are an expert interview analyst. You score candidate responses precisely and consistently, and you always reply with a single valid JSON object and nothing else.",
+              "You are an expert interview analyst. You score candidate responses precisely and consistently, and you always reply with a single valid JSON object and nothing else.\n\n" +
+              staticScaffold,
           },
-          {
-            role: "user",
-            content: analysisPrompt,
-          },
+          { role: "user", content: variable },
         ],
         temperature: ANALYZER_TEMPERATURE,
+        // The full rubric fits comfortably; without a cap this ran unbounded
+        // on every scored turn.
+        max_tokens: ANALYZER_MAX_TOKENS,
         response_format: { type: "json_object" },
       }),
     });
@@ -324,7 +338,6 @@ export async function analyzeResponse(
       strengths: analysisData.strengths,
       gaps: analysisData.gaps,
       followupTopics: analysisData.followupTopics,
-      rawAnalysis,
     };
   } catch (error) {
     const errorMessage =

@@ -66,6 +66,23 @@ const ROUND_TAGS: Record<InterviewRoundType, string[]> = {
   hr: ["hr", "motivation"],
 };
 
+/**
+ * The playbook a round type always gets, independent of what the candidate just
+ * said. Stable for the whole round, so it belongs in the cacheable prompt
+ * prefix rather than the per-turn layer.
+ */
+export function selectRoundPlaybook(
+  roundType: InterviewRoundType | undefined,
+): InterviewerPlaybook | null {
+  if (!roundType) return null;
+  const tags = new Set(ROUND_TAGS[roundType]);
+  return (
+    PLAYBOOKS.find((playbook) =>
+      playbook.tags.some((tag) => tags.has(tag)),
+    ) ?? null
+  );
+}
+
 export function selectInterviewerPlaybooks(input: {
   roundType?: InterviewRoundType;
   userMessage?: string;

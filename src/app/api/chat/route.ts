@@ -29,6 +29,7 @@ import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
   formatPlaybooksForPrompt,
   selectInterviewerPlaybooks,
+  selectRoundPlaybook,
 } from "@/lib/interviewer-playbooks";
 import {
   countJobDescriptionChunks,
@@ -70,9 +71,15 @@ export const runtime = "nodejs";
  * impression) uses the stronger one. Both are env-overridable so quality/cost
  * can be tuned without a code change.
  */
+/**
+ * One model for every interviewer turn.
+ *
+ * The opening turn used to run on `gpt-4o` for a stronger first impression, but
+ * a different model is a different prompt cache, so turn 2 could never reuse
+ * turn 1's prefix — the session paid the full prompt twice over. Override with
+ * INTERVIEWER_MODEL if the trade is worth revisiting.
+ */
 const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
-const INTERVIEWER_OPENING_MODEL =
-  process.env.INTERVIEWER_OPENING_MODEL ?? "gpt-4o";
 // Enforces the "2-5 sentences" guidance and bounds cost per turn.
 const INTERVIEWER_MAX_TOKENS = 320;
 // Below this, an answer is treated as trivial ("yes", "ready") and skipped by
@@ -155,6 +162,8 @@ function buildPromptLayers(input: {
    * retrieved excerpts change per turn and must stay volatile.
    */
   jobDescriptionIsStable: boolean;
+  /** Round-type coaching that holds for the whole round. */
+  roundGuidance: string | null;
   resumeContext: string | null;
   behaviorContext: string | null;
 }): { stablePrompt: string; volatilePrompt: string } {
@@ -173,6 +182,9 @@ function buildPromptLayers(input: {
     input.personaDescription,
     ...(input.scenarioContext
       ? ["", "Scenario context:", input.scenarioContext]
+      : []),
+    ...(input.roundGuidance
+      ? ["", "How to run this kind of round:", input.roundGuidance]
       : []),
     ...(stableJobDescription
       ? [
@@ -671,11 +683,14 @@ export async function POST(request: Request) {
 
     // When we have an analysis-driven steer, keep only one round-type playbook
     // (the steer is more specific); otherwise lean on the playbooks.
+    // Split by stability: the round-type playbook never changes during a round,
+    // so it joins the cacheable prefix; only the message-matched one is
+    // per-turn.
+    const roundPlaybook = selectRoundPlaybook(roundType);
     const playbooks = selectInterviewerPlaybooks({
-      roundType,
       userMessage: isOpening ? undefined : userMessage,
       max: steeringContext ? 1 : 2,
-    });
+    }).filter((playbook) => playbook.id !== roundPlaybook?.id);
     // Nudge the interviewer toward competencies this session has not touched.
     // Questions are model-improvised, so without this a session can circle the
     // same two or three themes for twelve turns and the gap goes unrecorded.
@@ -695,6 +710,7 @@ export async function POST(request: Request) {
       rollingSummary: session.summary,
       jobDescriptionContext: jobDescription.context,
       jobDescriptionIsStable: jobDescription.stable,
+      roundGuidance: roundPlaybook?.content ?? null,
       resumeContext,
       behaviorContext: behaviorContext || null,
     });
@@ -719,9 +735,7 @@ export async function POST(request: Request) {
         ]
       : toOpenAIMessages(prompts, recent, userMessage);
 
-    const interviewerModel = isOpening
-      ? INTERVIEWER_OPENING_MODEL
-      : INTERVIEWER_MODEL;
+    const interviewerModel = INTERVIEWER_MODEL;
 
     const buildResult = async (
       onChunk?: (chunk: string) => void,
