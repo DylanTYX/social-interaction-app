@@ -228,6 +228,8 @@ before scaling out.
 ## Documentation
 
 - `docs/FEATURES.md` — **what the app does, written for the end user**
+- `docs/TOKEN-COST.md` — **token cost and prompt-caching design, and how to
+  verify it**
 - `docs/DEPLOYMENT.md` — Vercel + Supabase deployment runbook
 - `docs/UAT.md` — user-acceptance test plan and exit criteria
 - `docs/UAT-tester-handout.md` — participant script
