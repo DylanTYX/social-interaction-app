@@ -203,12 +203,3 @@ export const FIXTURES: EvalFixture[] = [
   },
 ];
 
-export const FIXTURES_BY_BAND = FIXTURES.reduce<
-  Record<QualityBand, EvalFixture[]>
->(
-  (acc, fixture) => {
-    acc[fixture.band].push(fixture);
-    return acc;
-  },
-  { weak: [], mediocre: [], strong: [] },
-);

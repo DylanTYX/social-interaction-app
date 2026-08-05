@@ -125,15 +125,6 @@ function parseAnalysisJson(rawAnalysis: string) {
   }
 }
 
-export type InterviewStage =
-  | "intro"
-  | "questioning"
-  | "analysis"
-  | "strategy"
-  | "followup"
-  | "wrap_up"
-  | "report";
-
 export interface AnalyzeResponseOptions {
   /**
    * Optional role-context block (already formatted, e.g. via

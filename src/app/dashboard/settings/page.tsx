@@ -51,7 +51,10 @@ import {
   type PracticeMode,
   type VoiceSetupConfig,
 } from "@/lib/interview-setup";
-import { AZURE_VOICE_OPTIONS } from "@/lib/speech-voices";
+import {
+  AZURE_VOICE_OPTIONS,
+  type SpeechVoiceOption,
+} from "@/lib/speech-voices";
 import { toast } from "sonner";
 
 type SaveState =
@@ -59,11 +62,6 @@ type SaveState =
   | { kind: "saving" }
   | { kind: "saved" }
   | { kind: "error"; message: string };
-
-interface VoiceOption {
-  name: string;
-  uri: string;
-}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -90,7 +88,7 @@ export default function SettingsPage() {
   );
   // A static catalogue — no state, no effect, and no need to construct a
   // SpeechService (which would drag the Azure SDK into this page's bundle).
-  const voiceOptions: readonly VoiceOption[] = AZURE_VOICE_OPTIONS;
+  const voiceOptions: readonly SpeechVoiceOption[] = AZURE_VOICE_OPTIONS;
   const [voiceState, setVoiceState] = useState<SaveState>({ kind: "idle" });
 
   const [resetState, setResetState] = useState<SaveState>({ kind: "idle" });

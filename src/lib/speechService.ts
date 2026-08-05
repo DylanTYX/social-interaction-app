@@ -626,10 +626,7 @@ export class SpeechService {
     return fed;
   }
 
-  private ensureQueuePlayback(
-    voiceUri: string | undefined,
-    prosody: ProsodyOptions | undefined,
-  ): NonNullable<typeof this.queuePlayback> {
+  private ensureQueuePlayback(voiceUri: string | undefined): NonNullable<typeof this.queuePlayback> {
     const voiceName = voiceUri || "en-US-AriaNeural";
 
     if (this.queuePlayback && this.queuePlayback.voiceName === voiceName) {
@@ -672,7 +669,7 @@ export class SpeechService {
     voiceUri?: string;
     prosody?: ProsodyOptions;
   }): Promise<void> {
-    const playback = this.ensureQueuePlayback(item.voiceUri, item.prosody);
+    const playback = this.ensureQueuePlayback(item.voiceUri);
     const trimmed = item.text.trim();
     const voiceName = playback.voiceName;
 

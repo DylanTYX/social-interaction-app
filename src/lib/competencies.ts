@@ -114,7 +114,6 @@ export const COMPETENCIES: readonly Competency[] = [
   },
 ] as const;
 
-export const COMPETENCY_IDS = COMPETENCIES.map((c) => c.id);
 
 export function getCompetency(id: string): Competency | undefined {
   return COMPETENCIES.find((c) => c.id === id);

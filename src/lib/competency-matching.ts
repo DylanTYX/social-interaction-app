@@ -32,10 +32,6 @@ export function getCompetencyEmbeddings(): Promise<number[][]> {
   return cache;
 }
 
-/** Test seam: drop the cached vectors. */
-export function resetCompetencyEmbeddings(): void {
-  cache = null;
-}
 
 /**
  * Score a question against every competency and fold the result into the

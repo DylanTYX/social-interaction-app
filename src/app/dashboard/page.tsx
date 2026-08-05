@@ -73,7 +73,6 @@ interface DashboardStats {
   total: number;
   averageScore: number | null;
   totalMinutes: number;
-  streakDays: number;
 }
 
 function computeStats(sessions: InterviewSessionSummary[]): DashboardStats {
@@ -95,28 +94,7 @@ function computeStats(sessions: InterviewSessionSummary[]): DashboardStats {
     0,
   );
 
-  const sortedDates = sessions
-    .map((entry) => Date.parse(entry.createdAt))
-    .filter((ts) => !Number.isNaN(ts))
-    .sort((a, b) => b - a);
-
-  let streakDays = 0;
-  if (sortedDates.length > 0) {
-    const dayKey = (ms: number) => new Date(ms).toDateString();
-    const seen = new Set(sortedDates.map(dayKey));
-    const today = new Date();
-    for (let offset = 0; offset < 30; offset += 1) {
-      const probe = new Date(today);
-      probe.setDate(today.getDate() - offset);
-      if (seen.has(probe.toDateString())) {
-        streakDays += 1;
-      } else if (offset > 0) {
-        break;
-      }
-    }
-  }
-
-  return { total, averageScore, totalMinutes, streakDays };
+  return { total, averageScore, totalMinutes };
 }
 
 function getGreeting(): string {

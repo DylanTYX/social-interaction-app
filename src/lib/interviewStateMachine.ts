@@ -46,10 +46,6 @@ export interface InterviewTransitionInput {
 
 export interface InterviewTransitionResult {
   state: InterviewSessionState;
-  nextStage: InterviewStage;
-  shouldGenerateFollowup: boolean;
-  shouldCollectMetrics: boolean;
-  summary: string;
 }
 
 function createTimestamp(): string {
@@ -116,7 +112,6 @@ export function recordInterviewTurn(
 
   const shouldGenerateFollowup =
     Boolean(input.decision) && nextStage === "followup";
-  const shouldCollectMetrics = Boolean(input.analysis);
 
   const turn: InterviewTurn = {
     id: `${state.sessionId}-${state.turnCount + 1}`,
@@ -142,22 +137,7 @@ export function recordInterviewTurn(
     updatedAt: createTimestamp(),
   };
 
-  return {
-    state: updatedState,
-    nextStage,
-    shouldGenerateFollowup,
-    shouldCollectMetrics,
-    summary: buildStateSummary(updatedState, input.decision),
-  };
-}
-
-export function buildStateSummary(
-  state: InterviewSessionState,
-  decision?: DecisionOutcome,
-): string {
-  const strategy = decision?.strategy ?? state.lastStrategy ?? "PROBE_ACTION";
-
-  return `Stage ${state.currentStage} with ${state.turnCount} turns. Next strategy: ${strategy}. Follow-up count: ${state.followupCount}.`;
+  return { state: updatedState };
 }
 
 export function isInterviewComplete(state: InterviewSessionState): boolean {
