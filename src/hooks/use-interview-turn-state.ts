@@ -56,7 +56,8 @@ export interface InterviewTurnState {
   lastDecisionReason: string | null;
   lastStrategy: InterviewStrategy | null;
   lastConfidence: number | null;
-  /** For the in-session progress indicator. */
+  /** For the in-session progress indicator; includes turns restored on resume. */
+  scoredTurns: number;
   targetTurns: number;
   stage: ReturnType<typeof interviewStage>;
 
@@ -75,8 +76,8 @@ export interface InterviewTurnState {
  *
  * Best-effort by design: the report reads from Supabase, and a failed mirror
  * write must never interrupt an interview in progress. Only score metrics are
- * sent — `launch`, `loop` and `competencyCoverage` are server-owned, and the
- * server merges these keys over what it already stored.
+ * sent. `launch`, `loop` and `competencyCoverage` live in their own columns
+ * since migration 0009, so this write cannot touch them.
  */
 async function persistTurn(
   sessionId: string,
@@ -131,6 +132,12 @@ export function useInterviewTurnState(input: {
   const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
     createInterviewSessionState(sessionId ?? "local", personaName),
   );
+  // Restored turns count toward the round's length. Without this a reload
+  // restarted the counter at zero, so the interview ran its full length again
+  // — and since the session id is now always in the URL, that happened on
+  // every refresh, not just an explicit resume.
+  const restoredTurns = input.initialAnalyses?.length ?? 0;
+  const scoredTurns = Math.max(sessionState.turnCount, restoredTurns);
   const [analyses, setAnalyses] = useState<AnalysisResult[]>(
     input.initialAnalyses ?? [],
   );
@@ -220,7 +227,10 @@ export function useInterviewTurnState(input: {
       // because a caller that finishes the interview calls both in the same
       // tick: `endSession` would still be closed over the *pre-turn* state and
       // would overwrite this turn's score with the previous mean.
-      const complete = isInterviewComplete(nextState.turnCount, targetTurns);
+      const complete = isInterviewComplete(
+        Math.max(nextState.turnCount, restoredTurns + 1),
+        targetTurns,
+      );
       if (sessionId) {
         void persistTurn(sessionId, {
           metrics: nextMetrics,
@@ -231,7 +241,14 @@ export function useInterviewTurnState(input: {
 
       return { analysis, strategy, isComplete: complete };
     },
-    [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState, targetTurns],
+    [
+      effectiveAnalyses,
+      effectiveSnapshots,
+      restoredTurns,
+      sessionId,
+      sessionState,
+      targetTurns,
+    ],
   );
 
   const endSession = useCallback(async () => {
@@ -261,7 +278,8 @@ export function useInterviewTurnState(input: {
   return {
     sessionState,
     targetTurns,
-    stage: interviewStage(sessionState, targetTurns),
+    scoredTurns,
+    stage: interviewStage({ ...sessionState, turnCount: scoredTurns }, targetTurns),
     analyses: effectiveAnalyses,
     metrics,
     lastFollowupPrompt,

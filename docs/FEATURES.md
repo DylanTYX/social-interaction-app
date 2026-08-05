@@ -63,7 +63,7 @@ Every round is editable. For each one you choose:
 | Case / problem solving | Problem framing, structure, tradeoffs, depth |
 | HR / People | Motivation, values fit, logistics, your questions for them |
 
-**Length** — 5 to 60 minutes. This genuinely controls how long the interview
+**Length** — 5 to 90 minutes. This genuinely controls how long the interview
 runs; the slider tells you roughly how many questions to expect.
 
 **Focus** — a free-text note on what this round should dig into.

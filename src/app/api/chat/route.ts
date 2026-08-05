@@ -694,6 +694,7 @@ export async function POST(request: Request) {
     // per-turn.
     const roundPlaybook = selectRoundPlaybook(roundType);
     const playbooks = selectInterviewerPlaybooks({
+      roundType,
       userMessage: isOpening ? undefined : userMessage,
       max: steeringContext ? 1 : 2,
     }).filter((playbook) => playbook.id !== roundPlaybook?.id);

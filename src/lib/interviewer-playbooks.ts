@@ -70,17 +70,29 @@ const ROUND_TAGS: Record<InterviewRoundType, string[]> = {
  * The playbook a round type always gets, independent of what the candidate just
  * said. Stable for the whole round, so it belongs in the cacheable prompt
  * prefix rather than the per-turn layer.
+ *
+ * Named explicitly rather than matched by tag. Tag matching returned the first
+ * entry in array order, which is not the best entry: `hr` matched
+ * `screening-fit` before `hr-people`, `system_design` matched
+ * `technical-framing` before `system-design`, and `technical_swe` matched the
+ * generic `vague-answer` — so three round types silently got the wrong
+ * guidance and their own playbook was never reachable.
  */
+const ROUND_PLAYBOOK_IDS: Record<InterviewRoundType, string> = {
+  behavioral: "behavioral-star",
+  technical_swe: "technical-framing",
+  system_design: "system-design",
+  case: "technical-framing",
+  screening: "screening-fit",
+  hr: "hr-people",
+};
+
 export function selectRoundPlaybook(
   roundType: InterviewRoundType | undefined,
 ): InterviewerPlaybook | null {
   if (!roundType) return null;
-  const tags = new Set(ROUND_TAGS[roundType]);
-  return (
-    PLAYBOOKS.find((playbook) =>
-      playbook.tags.some((tag) => tags.has(tag)),
-    ) ?? null
-  );
+  const id = ROUND_PLAYBOOK_IDS[roundType];
+  return PLAYBOOKS.find((playbook) => playbook.id === id) ?? null;
 }
 
 export function selectInterviewerPlaybooks(input: {

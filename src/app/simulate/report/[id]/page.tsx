@@ -203,7 +203,6 @@ export default function SessionReportPage({
   // Not gated on `enabled`: a targeted single round has a real type, and
   // gating here made the coach treat every answer as behavioural/STAR.
   const currentRound = loop ? getCurrentRound(loop) : null;
-  // Set once the loop has produced more than this single round.
   const loopId = readLoopProgress(session)?.loopId ?? null;
   const coverage = parseCoverage(readCompetencyCoverage(session));
   const ModeIcon = session.practiceMode === "voice" ? Mic : MessageSquare;

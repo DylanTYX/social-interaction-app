@@ -18,6 +18,7 @@ import {
   appendRoundToLoop,
   createLoopFromTemplate,
   removeRoundFromLoop,
+  SINGLE_ROUND,
   resolveAnswerFormat,
   ROUND_RUBRIC_LABELS,
   ROUND_TYPE_LABELS,
@@ -69,6 +70,20 @@ const PRESETS: Preset[] = [
   },
 ];
 
+function isCustomised(value: InterviewLoopConfig): boolean {
+  // Anything beyond a pristine single default round is worth not silently
+  // discarding: presets replace the entire configuration.
+  if (value.rounds.length > 1) return true;
+  const [round] = value.rounds;
+  return (
+    round?.type !== SINGLE_ROUND.type ||
+    round?.durationMinutes !== SINGLE_ROUND.durationMinutes ||
+    round?.focus !== SINGLE_ROUND.focus ||
+    Boolean(round?.answerFormat) ||
+    Boolean(round?.personaLibraryId)
+  );
+}
+
 export function LoopStep({
   value,
   practiceMode,
@@ -85,6 +100,18 @@ export function LoopStep({
   const rounds = value.rounds;
   const isLoop = rounds.length > 1;
   const canSuggest = jobDescriptionText.trim().length >= 80;
+
+  const applyPreset = (next: InterviewLoopConfig) => {
+    if (
+      isCustomised(value) &&
+      !window.confirm(
+        "Starting from a preset replaces the rounds you have set up. Continue?",
+      )
+    ) {
+      return;
+    }
+    onChange(next);
+  };
 
   const updateRound = (index: number, patch: Partial<InterviewRoundConfig>) => {
     onChange({
@@ -106,7 +133,7 @@ export function LoopStep({
             variant="outline"
             size="sm"
             className="h-8 rounded-full text-xs"
-            onClick={() => onChange(preset.build(practiceMode))}
+            onClick={() => applyPreset(preset.build(practiceMode))}
           >
             {preset.label}
           </Button>
@@ -118,7 +145,7 @@ export function LoopStep({
             size="sm"
             className="h-8 gap-1.5 rounded-full border-indigo-200 text-xs text-indigo-700 hover:bg-indigo-50"
             onClick={() =>
-              onChange(
+              applyPreset(
                 suggestLoopFromJobDescription(jobDescriptionText, practiceMode),
               )
             }
@@ -259,7 +286,7 @@ function RoundCard({
           <input
             type="range"
             min={5}
-            max={60}
+            max={90}
             step={5}
             value={round.durationMinutes}
             onChange={(event) =>

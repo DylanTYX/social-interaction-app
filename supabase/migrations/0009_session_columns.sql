@@ -17,9 +17,14 @@
 -- Columns give all of that for free, and let `/api/loops/[loopId]` query by
 -- loop id instead of loading 200 sessions and filtering in memory.
 --
--- Deliberately non-destructive: the old keys are left inside `metrics` for one
--- release so a rollback does not lose data. A later migration can drop them
--- once this is proven.
+-- The backfill is non-destructive and re-runnable: it only fills columns that
+-- are still null, and never deletes from `metrics`.
+--
+-- Note what that does and does not buy. The application replaces `metrics`
+-- wholesale on the next scored turn, so a session's legacy keys disappear the
+-- first time it is written to after deploy. Rollback safety therefore covers
+-- rows that have not been touched since — untouched history stays readable,
+-- in-flight sessions do not. Roll back promptly or not at all.
 
 alter table interview_sessions
   add column if not exists launch_meta jsonb,

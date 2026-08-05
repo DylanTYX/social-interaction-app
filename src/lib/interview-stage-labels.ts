@@ -37,7 +37,6 @@ export function getStageGuidance(
   followupPrompt: string | null,
 ): string {
   // Two stages say something more specific when there is context to use.
-  // Two stages say something more specific when there is context to use.
   if (stage === "questioning" && followupPrompt) {
     return `Adaptive follow-up ready: ${followupPrompt}`;
   }

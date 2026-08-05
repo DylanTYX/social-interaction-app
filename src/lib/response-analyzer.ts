@@ -207,7 +207,7 @@ function buildAnalysisPrompt(
 
   const staticScaffold = `You are an expert interview analyst. Score the candidate response for a ${roundType} interview round.
 Primary rubric: ${rubric}.
-Do not use STAR as the primary rubric unless this is behavioral or screening.
+Use the STAR fields below only if they are filled in for this round; otherwise judge against the primary rubric above.
 
 Return ONLY valid JSON with this structure:
 {
@@ -316,6 +316,15 @@ export async function analyzeResponse(
     const result = await response.json();
     options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
     const rawAnalysis = result.choices[0].message.content;
+
+    // A truncated reply is still syntactically *almost* JSON, so it surfaces as
+    // a generic parse failure and the turn silently loses its score. Say what
+    // actually happened — the cap above is the thing to raise.
+    if (result.choices[0].finish_reason === "length") {
+      throw new Error(
+        `Analyzer response was truncated at ${ANALYZER_MAX_TOKENS} tokens (finish_reason=length).`,
+      );
+    }
 
     // Parse the JSON response
     let analysisData;

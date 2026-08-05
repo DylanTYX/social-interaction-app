@@ -570,7 +570,7 @@ function ChatSimulateInner() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="h-8 px-3 tabular-nums">
-                  Question {Math.min(turn.sessionState.turnCount + 1, turn.targetTurns)} of ~{turn.targetTurns}
+                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of ~{turn.targetTurns}
                 </Badge>
                 <Badge variant="secondary" className="h-8 px-3">
                   {streamResponses ? "Streaming on" : "Streaming off"}

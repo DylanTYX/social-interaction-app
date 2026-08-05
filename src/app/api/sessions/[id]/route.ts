@@ -32,6 +32,28 @@ export async function GET(_request: Request, ctx: RouteParams) {
   }
 }
 
+/**
+ * Keys the read helpers still fall back to inside `metrics` when a row predates
+ * migration 0009. Because that fallback exists, a client PATCH writing these
+ * keys would be read back as authoritative — `loopBrief` goes straight into the
+ * interviewer's prompt and `interviewLoop` drives which rubric scores the
+ * answer — so they stay stripped until the fallback is removed.
+ */
+const LEGACY_SERVER_OWNED_KEYS = [
+  "launch",
+  "loop",
+  "competencyCoverage",
+] as const;
+
+function stripServerOwnedMetrics(
+  metrics: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null | undefined {
+  if (!metrics || typeof metrics !== "object") return metrics;
+  const sanitized = { ...metrics };
+  for (const key of LEGACY_SERVER_OWNED_KEYS) delete sanitized[key];
+  return sanitized;
+}
+
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
@@ -59,9 +81,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     const session = await updateSession(supabase, id, {
       status,
       summary: body.summary,
-      // No denylist needed: launch, loop and coverage are their own
-      // columns now, and this endpoint cannot write them.
-      metrics: body.metrics,
+      metrics: stripServerOwnedMetrics(body.metrics),
       averageScore: body.averageScore,
       durationMinutes: body.durationMinutes,
       endedAt: body.endedAt,

@@ -1045,7 +1045,7 @@ function VoiceSimulateInner() {
                 )}
                 <Badge variant="outline" className="h-8 px-3 tabular-nums">
                   Question{" "}
-                  {Math.min(turn.sessionState.turnCount + 1, turn.targetTurns)}{" "}
+                  {Math.min(turn.scoredTurns + 1, turn.targetTurns)}{" "}
                   of ~{turn.targetTurns}
                 </Badge>
                 <Badge variant="outline" className="h-8 px-3">
