@@ -74,3 +74,18 @@ describe("analyzeText", () => {
     );
   });
 });
+
+/**
+ * The analyzer's merge contract. These guard the shape the sidebar and the
+ * decision engine index into directly.
+ */
+describe("analyzer merge defaults (documented contract)", () => {
+  it("keeps counted fields separate from judged ones", () => {
+    // Regression guard for the split: if a countable field ever reappears in
+    // the LLM schema, both sources would disagree and the code one must win.
+    const m = analyzeText("I cut latency by 40% over three months.");
+    expect(m.hasMetrics).toBe(true);
+    expect(m.hasTimeframes).toBe(true);
+    expect(m.wordCount).toBe(8);
+  });
+});

@@ -86,6 +86,35 @@ export interface TechnicalScores {
   codeQuality: number;
 }
 
+/**
+ * What the model actually returns, as opposed to what it was asked for.
+ *
+ * `parseAnalysisJson` casts the reply to `AnalysisResult`, which claims every
+ * field is present. Treating it as partial at the one place that reads it is
+ * the difference between a neutral default and a `NaN` in a chart.
+ */
+/**
+ * The judgement fields the model is still responsible for, after the countable
+ * ones moved to `text-metrics.ts`. Used only to report omissions.
+ */
+const MODEL_OWNED_FIELDS = [
+  ["specificityMetrics", "hasStakeholders"],
+  ["specificityMetrics", "vaguenessScore"],
+  ["specificityMetrics", "concreteExamples"],
+  ["confidenceIndicators", "assertivenessScore"],
+  ["confidenceIndicators", "clarity"],
+  ["responseQuality", "isRelevant"],
+  ["responseQuality", "addressesExplicitly"],
+  ["responseQuality", "depthLevel"],
+  ["responseQuality", "thinkingVisible"],
+] as const satisfies ReadonlyArray<readonly [keyof DeepPartialAnalysis, string]>;
+
+type DeepPartialAnalysis = {
+  specificityMetrics?: Partial<SpecificityMetrics>;
+  confidenceIndicators?: Partial<ConfidenceIndicators>;
+  responseQuality?: Partial<ResponseQuality>;
+};
+
 export interface AnalysisResult {
   overallScore: number; // 0-100
   roundType?: InterviewRoundType;
@@ -97,6 +126,12 @@ export interface AnalysisResult {
   strengths: string[];
   gaps: string[];
   followupTopics: string[];
+  /**
+   * Judgement fields the model omitted, which neutral defaults have since
+   * filled in. Diagnostic only — read by the eval harness to measure schema
+   * compliance, ignored by the product.
+   */
+  omittedFields?: string[];
 }
 
 function extractJsonPayload(rawAnalysis: string): string {
@@ -353,31 +388,58 @@ export async function analyzeResponse(
     // model was neither cheap nor reliable at counting. Merged in here so the
     // shape callers consume is unchanged. See `text-metrics.ts`.
     const counted = analyzeText(candidateResponse);
+    // Typed as a deep-partial: `AnalysisResult` says these fields are required,
+    // but the model is not bound by our type declarations.
+    const judged = analysisData as DeepPartialAnalysis;
+
+    // Record what the model left out *before* the defaults below hide it.
+    // Without this the eval harness's completeness metric would read 100%
+    // forever, since every field is populated by the time it sees the result.
+    const omittedFields = MODEL_OWNED_FIELDS.filter(
+      ([parent, leaf]) => judged?.[parent]?.[leaf as never] === undefined,
+    ).map(([parent, leaf]) => `${parent}.${leaf}`);
 
     return {
       overallScore: analysisData.overallScore,
       roundType,
       starAnalysis: analysisData.starAnalysis,
       technicalScores: analysisData.technicalScores,
+      // The model-owned fields carry neutral defaults, because these three
+      // objects are now *always* present — the counted fields below guarantee
+      // it. Without defaults, a model that omitted `vaguenessScore` would
+      // previously have produced `undefined` on a missing object (a crash at
+      // the read site) and now produces `undefined` on a present one, which
+      // reaches the sparklines as `(10 - undefined) * 10` = NaN. Silent NaN in
+      // a chart is worse than either. 5 on a 0-10 scale matches the fallback
+      // `decision-engine.ts` already uses.
       specificityMetrics: {
-        ...analysisData.specificityMetrics,
+        hasStakeholders: judged?.specificityMetrics?.hasStakeholders ?? false,
+        vaguenessScore: judged?.specificityMetrics?.vaguenessScore ?? 5,
+        concreteExamples: judged?.specificityMetrics?.concreteExamples ?? 0,
         hasMetrics: counted.hasMetrics,
         metricCount: counted.metricCount,
         hasTimeframes: counted.hasTimeframes,
       },
       confidenceIndicators: {
-        ...analysisData.confidenceIndicators,
+        assertivenessScore:
+          judged?.confidenceIndicators?.assertivenessScore ?? 5,
+        clarity: judged?.confidenceIndicators?.clarity ?? 5,
         hesitationMarkers: counted.hesitationMarkers,
         qualificationCount: counted.qualificationCount,
         revisionsCount: counted.revisionsCount,
       },
       responseQuality: {
-        ...analysisData.responseQuality,
+        isRelevant: judged?.responseQuality?.isRelevant ?? true,
+        addressesExplicitly:
+          judged?.responseQuality?.addressesExplicitly ?? true,
+        depthLevel: judged?.responseQuality?.depthLevel ?? "moderate",
+        thinkingVisible: judged?.responseQuality?.thinkingVisible ?? false,
         length: counted.wordCount,
       },
       strengths: analysisData.strengths,
       gaps: analysisData.gaps,
       followupTopics: analysisData.followupTopics,
+      omittedFields,
     };
   } catch (error) {
     const errorMessage =
