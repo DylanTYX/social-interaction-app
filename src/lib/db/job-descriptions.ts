@@ -151,11 +151,58 @@ export async function deleteJobDescription(
   if (error) throw error;
 }
 
+/**
+ * Cosine similarity below which a chunk is not worth the tokens.
+ *
+ * Retrieval used to return the top `matchCount` chunks unconditionally, so a
+ * turn about something the JD never mentions still paid for four chunks of
+ * unrelated text — and handed the interviewer irrelevant context to work from.
+ */
+const MIN_SIMILARITY = 0.3;
+
+/**
+ * A JD at or below this many chunks is small enough that retrieving from it is
+ * pointless: the top-k *is* the whole document, so we would pay for an
+ * embedding call per turn to reassemble text we could have sent once. Callers
+ * detect this via `countJobDescriptionChunks` and inline instead.
+ */
+export const SMALL_JD_CHUNK_LIMIT = 4;
+
+export async function countJobDescriptionChunks(
+  supabase: SupabaseClient,
+  jobDescriptionId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("job_description_chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("job_description_id", jobDescriptionId);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Every chunk of a JD, in document order. Used for the small-JD inline path. */
+export async function listJobDescriptionChunks(
+  supabase: SupabaseClient,
+  jobDescriptionId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("job_description_chunks")
+    .select("content, chunk_index")
+    .eq("job_description_id", jobDescriptionId)
+    .order("chunk_index", { ascending: true });
+
+  if (error) throw error;
+  return ((data ?? []) as Array<{ content: string }>).map((r) => r.content);
+}
+
 export async function retrieveJobDescriptionChunks(input: {
   supabase: SupabaseClient;
   jobDescriptionId: string;
   query: string;
   matchCount?: number;
+  /** Override the relevance floor; 0 disables it. */
+  minSimilarity?: number;
 }): Promise<RetrievedJobDescriptionChunk[]> {
   const query = input.query.trim();
   if (!query) return [];
@@ -172,13 +219,17 @@ export async function retrieveJobDescriptionChunks(input: {
 
   if (error) throw error;
 
-  return ((data ?? []) as MatchRow[]).map((row) => ({
-    id: row.id,
-    jobDescriptionId: row.job_description_id,
-    content: row.content,
-    chunkIndex: row.chunk_index,
-    similarity: row.similarity,
-  }));
+  const floor = input.minSimilarity ?? MIN_SIMILARITY;
+
+  return ((data ?? []) as MatchRow[])
+    .map((row) => ({
+      id: row.id,
+      jobDescriptionId: row.job_description_id,
+      content: row.content,
+      chunkIndex: row.chunk_index,
+      similarity: row.similarity,
+    }))
+    .filter((chunk) => chunk.similarity >= floor);
 }
 
 export function formatRetrievedJobContext(

@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { UsageCollector } from "@/lib/api/token-usage";
+
+/**
+ * `flush` only ever calls `from(...).insert(...)`, so a stub with that one
+ * path is enough. Narrowing through `unknown` in this single helper keeps the
+ * cast out of the tests themselves.
+ */
+function stubSupabase(insert: () => Promise<unknown>) {
+  const from = vi.fn(() => ({ insert }));
+  return { from, client: { from } as unknown as SupabaseClient };
+}
 
 describe("UsageCollector", () => {
   it("records a usage block", () => {
@@ -62,14 +73,13 @@ describe("UsageCollector", () => {
 
   it("writes one batched insert and then empties", async () => {
     const insert = vi.fn().mockResolvedValue({ error: null });
-    const supabase = { from: vi.fn(() => ({ insert })) };
+    const supabase = stubSupabase(insert);
 
     const collector = new UsageCollector();
     collector.record("interviewer", "gpt-4o-mini", { prompt_tokens: 100 });
     collector.record("analyzer", "gpt-4o-mini", { prompt_tokens: 200 });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await collector.flush(supabase as any, { userId: "u1", sessionId: "s1" });
+    await collector.flush(supabase.client, { userId: "u1", sessionId: "s1" });
 
     expect(supabase.from).toHaveBeenCalledTimes(1);
     expect(insert).toHaveBeenCalledTimes(1);
@@ -81,34 +91,30 @@ describe("UsageCollector", () => {
     });
 
     // Flushing twice must not double-write.
-    await collector.flush(supabase as any, { userId: "u1", sessionId: "s1" });
+    await collector.flush(supabase.client, { userId: "u1", sessionId: "s1" });
     expect(insert).toHaveBeenCalledTimes(1);
   });
 
   it("never throws when the write fails", async () => {
-    const supabase = {
-      from: () => ({
-        insert: vi.fn().mockRejectedValue(new Error("connection lost")),
-      }),
-    };
+    const supabase = stubSupabase(
+      vi.fn().mockRejectedValue(new Error("connection lost")),
+    );
 
     const collector = new UsageCollector();
     collector.record("interviewer", "gpt-4o-mini", { prompt_tokens: 100 });
 
     // Accounting must not be able to fail a turn that already produced an
     // answer for the user.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(
-      collector.flush(supabase as any, { userId: "u1" }),
+      collector.flush(supabase.client, { userId: "u1" }),
     ).resolves.toBeUndefined();
   });
 
   it("skips the write entirely when nothing was recorded", async () => {
-    const supabase = { from: vi.fn() };
+    const supabase = stubSupabase(vi.fn());
     const collector = new UsageCollector();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await collector.flush(supabase as any, { userId: "u1" });
+    await collector.flush(supabase.client, { userId: "u1" });
     expect(supabase.from).not.toHaveBeenCalled();
   });
 });

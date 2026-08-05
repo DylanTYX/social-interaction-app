@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   appendTurn,
-  getPreviousStrategy,
+  getPreviousTurnSignal,
   getSession,
   listMessages,
   updateSession,
@@ -31,9 +31,13 @@ import {
   selectInterviewerPlaybooks,
 } from "@/lib/interviewer-playbooks";
 import {
+  countJobDescriptionChunks,
   formatRetrievedJobContext,
+  listJobDescriptionChunks,
   retrieveJobDescriptionChunks,
+  SMALL_JD_CHUNK_LIMIT,
 } from "@/lib/db/job-descriptions";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatResumeForPrompt, getResume } from "@/lib/db/resumes";
 import { parseSessionMetrics } from "@/lib/session-launch-meta";
 import {
@@ -47,6 +51,10 @@ import {
   estimateFollowupDifficulty,
 } from "@/lib/decisionEngine";
 import { summarizeFollowup } from "@/lib/followupGenerator";
+import {
+  deriveMicroFeedback,
+  type MicroFeedbackResult,
+} from "@/lib/micro-feedback";
 
 export const runtime = "nodejs";
 
@@ -126,6 +134,12 @@ interface ChatResult {
   shouldEscalate: boolean | null;
   shouldSlowDown: boolean | null;
   followupSummary: string | null;
+  /**
+   * The one-line coaching hint for the live panel, derived from the analysis
+   * above. This replaced a separate `/api/analyze/micro` round-trip that made
+   * its own model call to say something the analyzer had already worked out.
+   */
+  microFeedback: MicroFeedbackResult | null;
 }
 
 function shouldStreamResponse(value: unknown): boolean {
@@ -163,9 +177,23 @@ function buildPromptLayers(input: {
   scenarioContext: string | undefined;
   rollingSummary: string | null;
   jobDescriptionContext: string | null;
+  /**
+   * True when the JD was inlined whole rather than retrieved. A whole document
+   * is identical on every turn, so it belongs in the cacheable prefix;
+   * retrieved excerpts change per turn and must stay volatile.
+   */
+  jobDescriptionIsStable: boolean;
   resumeContext: string | null;
   behaviorContext: string | null;
 }): { stablePrompt: string; volatilePrompt: string } {
+  const stableJobDescription =
+    input.jobDescriptionIsStable && input.jobDescriptionContext
+      ? input.jobDescriptionContext
+      : null;
+  const volatileJobDescription = input.jobDescriptionIsStable
+    ? null
+    : input.jobDescriptionContext;
+
   const stablePrompt = [
     STATIC_INTERVIEWER_INSTRUCTIONS,
     "",
@@ -173,6 +201,13 @@ function buildPromptLayers(input: {
     input.personaDescription,
     ...(input.scenarioContext
       ? ["", "Scenario context:", input.scenarioContext]
+      : []),
+    ...(stableJobDescription
+      ? [
+          "",
+          "Job description for the role being interviewed for. Tailor questions to these responsibilities, requirements, skills and tradeoffs:",
+          stableJobDescription,
+        ]
       : []),
     // The resume is short and stable for the whole session, so it lives in the
     // cacheable prefix rather than the volatile layer.
@@ -186,10 +221,10 @@ function buildPromptLayers(input: {
   ].join("\n");
 
   const volatilePrompt = [
-    ...(input.jobDescriptionContext
+    ...(volatileJobDescription
       ? [
           "Relevant job description excerpts:",
-          input.jobDescriptionContext,
+          volatileJobDescription,
           "",
           "Use these excerpts to tailor the next interview question. Focus on responsibilities, requirements, skills, and role-specific tradeoffs.",
           "",
@@ -388,6 +423,54 @@ async function requestOpenAI(
   return text;
 }
 
+/**
+ * Resolve the job-description context for this turn.
+ *
+ * Two paths, because retrieval is only worth doing on a document large enough
+ * to have irrelevant parts:
+ *
+ *   - **Small JD** (<= SMALL_JD_CHUNK_LIMIT chunks — a typical 1-2 page
+ *     posting). The top-k *is* the whole document, so embedding the query each
+ *     turn to reassemble it was pure overhead. Inline it whole, and mark it
+ *     `stable` so it joins the cacheable prompt prefix instead of the volatile
+ *     layer.
+ *   - **Large JD.** Retrieve, now with a relevance floor so a turn about
+ *     something the posting never mentions contributes nothing rather than four
+ *     chunks of noise.
+ */
+async function loadJobDescriptionContext(input: {
+  supabase: SupabaseClient;
+  jobDescriptionId: string;
+  query: string;
+}): Promise<{ context: string | null; stable: boolean }> {
+  const chunkCount = await countJobDescriptionChunks(
+    input.supabase,
+    input.jobDescriptionId,
+  );
+
+  if (chunkCount === 0) {
+    return { context: null, stable: false };
+  }
+
+  if (chunkCount <= SMALL_JD_CHUNK_LIMIT) {
+    const chunks = await listJobDescriptionChunks(
+      input.supabase,
+      input.jobDescriptionId,
+    );
+    const text = chunks.join("\n\n").trim();
+    return { context: text || null, stable: true };
+  }
+
+  const retrieved = await retrieveJobDescriptionChunks({
+    supabase: input.supabase,
+    jobDescriptionId: input.jobDescriptionId,
+    query: input.query,
+    matchCount: 4,
+  });
+
+  return { context: formatRetrievedJobContext(retrieved), stable: false };
+}
+
 function formatSseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -505,37 +588,44 @@ export async function POST(request: Request) {
         parts.push(`Description: ${session.scenarioDescription}`);
       return parts.length > 0 ? parts.join("\n") : undefined;
     })();
-    // These three are independent of one another, so run them concurrently
-    // rather than stacking three round-trips ahead of the first token.
-    const [jobDescriptionContext, resumeRecord, previousStrategy] =
-      await Promise.all([
-        session.jobDescriptionId
-          ? retrieveJobDescriptionChunks({
-              supabase,
-              jobDescriptionId: session.jobDescriptionId,
-              query: isOpening
-                ? [
-                    session.scenarioTitle,
-                    session.scenarioDescription,
-                    "opening interview question role requirements responsibilities",
-                  ]
-                    .filter(Boolean)
-                    .join("\n")
-                : userMessage,
-              matchCount: 4,
-            }).then(formatRetrievedJobContext)
-          : Promise.resolve(null),
-        session.resumeId
-          ? getResume(supabase, session.resumeId)
-          : Promise.resolve(null),
-        isOpening
-          ? Promise.resolve(null)
-          : getPreviousStrategy(supabase, sessionId),
-      ]);
+    // The previous turn's decision drives the retrieval query below, so this
+    // one indexed single-row lookup has to land first. The two expensive
+    // fetches then run concurrently.
+    const previousSignal = isOpening
+      ? null
+      : await getPreviousTurnSignal(supabase, sessionId);
 
-    const resumeContext = resumeRecord
-      ? formatResumeForPrompt(resumeRecord.rawText)
-      : null;
+    // What the *next* question should be about. Retrieving on this rather than
+    // on the candidate's raw answer is the point: the answer pulls JD text
+    // resembling what was just said, when what we need is text about what is
+    // about to be probed. Falls back to the answer on the first scored turn.
+    const retrievalQuery = isOpening
+      ? [
+          session.scenarioTitle,
+          session.scenarioDescription,
+          "opening interview question role requirements responsibilities",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : previousSignal?.nextFocus
+        ? `${previousSignal.nextFocus}\n${userMessage}`
+        : userMessage;
+
+    const [jobDescription, resumeRecord] = await Promise.all([
+      session.jobDescriptionId
+        ? loadJobDescriptionContext({
+            supabase,
+            jobDescriptionId: session.jobDescriptionId,
+            query: retrievalQuery,
+          })
+        : Promise.resolve({ context: null, stable: false }),
+      session.resumeId
+        ? getResume(supabase, session.resumeId)
+        : Promise.resolve(null),
+    ]);
+
+    // Pass the record so the compact profile is preferred over the raw text.
+    const resumeContext = formatResumeForPrompt(resumeRecord);
 
     // Closed loop: analyze the answer the user just gave BEFORE generating the
     // next question, then feed the verdict in as a coaching signal. This also
@@ -555,6 +645,7 @@ export async function POST(request: Request) {
     let shouldEscalate: boolean | null = null;
     let shouldSlowDown: boolean | null = null;
     let followupSummary: string | null = null;
+    let microFeedback: MicroFeedbackResult | null = null;
     let steeringContext: string | null = null;
 
     if (shouldAnalyze && priorQuestion) {
@@ -563,7 +654,7 @@ export async function POST(request: Request) {
           userMessage,
           priorQuestion,
           process.env.OPENAI_API_KEY as string,
-          { jobContext: jobDescriptionContext, roundType, usage },
+          { jobContext: jobDescription.context, roundType, usage },
         );
         // Supplying `previousStrategy` is what activates the anti-repetition
         // path: `decideInterviewAction` escalates when it is about to pick the
@@ -573,8 +664,8 @@ export async function POST(request: Request) {
           personaName: session.personaName,
           strictness: session.personaConfig.strictness,
           warmth: session.personaConfig.warmth,
-          previousStrategy: isInterviewStrategy(previousStrategy)
-            ? previousStrategy
+          previousStrategy: isInterviewStrategy(previousSignal?.strategy)
+            ? previousSignal.strategy
             : undefined,
         };
         const decision = decideInterviewAction(analysis, decisionContext);
@@ -585,6 +676,7 @@ export async function POST(request: Request) {
         shouldEscalate = decision.shouldEscalate;
         shouldSlowDown = decision.shouldSlowDown;
         followupSummary = summarizeFollowup(decision.strategy, analysis);
+        microFeedback = deriveMicroFeedback(analysis);
         steeringContext = buildSteeringBlock(
           analysis,
           decision.strategy,
@@ -616,7 +708,8 @@ export async function POST(request: Request) {
       personaDescription,
       scenarioContext,
       rollingSummary: session.summary,
-      jobDescriptionContext,
+      jobDescriptionContext: jobDescription.context,
+      jobDescriptionIsStable: jobDescription.stable,
       resumeContext,
       behaviorContext: behaviorContext || null,
     });
@@ -733,6 +826,7 @@ export async function POST(request: Request) {
         shouldEscalate,
         shouldSlowDown,
         followupSummary,
+        microFeedback,
       };
     };
 

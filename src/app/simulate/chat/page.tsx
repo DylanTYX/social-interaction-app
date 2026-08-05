@@ -86,6 +86,7 @@ type ChatApiResponse = {
   shouldEscalate: boolean | null;
   shouldSlowDown: boolean | null;
   followupSummary: string | null;
+  microFeedback: { hint: string; tone: MicroFeedbackTone } | null;
   error?: string;
   details?: string;
 };
@@ -620,55 +621,25 @@ function ChatSimulateInner() {
         return;
       }
 
+      // The hint now arrives with the reply, derived from the same analysis
+      // that produced the score. It used to be a second round-trip to
+      // /api/analyze/micro, which made its own model call — a third of the
+      // LLM calls in a text session — to restate what the analyzer already
+      // knew, and could contradict the score shown next to it.
       if (liveCoachingOn) {
-        void fetch("/api/analyze/micro", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            candidateResponse: trimmedMessage,
-            question: data.aiMessage,
-          }),
-        })
-          .then(async (microResponse) => {
-            if (!microResponse.ok) return null;
-            return (await microResponse.json()) as {
-              hint: string;
-              tone: MicroFeedbackTone;
-            };
-          })
-          .then((micro) => {
-            if (!micro) {
-              setMessages((current) =>
-                current.map((item) =>
-                  item.id === userMessage.id
-                    ? { ...item, feedbackLoading: false }
-                    : item,
-                ),
-              );
-              return;
-            }
-            setMessages((current) =>
-              current.map((item) =>
-                item.id === userMessage.id
-                  ? {
-                      ...item,
-                      feedbackHint: micro.hint,
-                      feedbackTone: micro.tone,
-                      feedbackLoading: false,
-                    }
-                  : item,
-              ),
-            );
-          })
-          .catch(() => {
-            setMessages((current) =>
-              current.map((item) =>
-                item.id === userMessage.id
-                  ? { ...item, feedbackLoading: false }
-                  : item,
-              ),
-            );
-          });
+        const micro = data.microFeedback;
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === userMessage.id
+              ? {
+                  ...item,
+                  feedbackHint: micro?.hint,
+                  feedbackTone: micro?.tone,
+                  feedbackLoading: false,
+                }
+              : item,
+          ),
+        );
       }
 
       // The interviewer already scored this answer inline. Trivial answers

@@ -19,7 +19,9 @@ export type LlmCallSite =
   | "analyzer"
   | "summary"
   | "embedding"
-  | "coach";
+  | "coach"
+  // One-off at document upload, not on the per-turn hot path.
+  | "resume-profile";
 
 /** The shape OpenAI returns on both chat completions and embeddings. */
 export interface OpenAIUsage {

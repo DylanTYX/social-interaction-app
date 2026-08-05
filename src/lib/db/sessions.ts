@@ -401,26 +401,45 @@ export async function listTurnAnalyses(
   return (data ?? []).map((row) => rowToTurnAnalysis(row as TurnAnalysisRow));
 }
 
+export interface PreviousTurnSignal {
+  /**
+   * `decideInterviewAction` escalates when the same strategy would be chosen
+   * twice running — but nothing ever supplied it, so that path was dead.
+   */
+  strategy: string | null;
+  /**
+   * What the previous turn decided to probe next. Used as the job-description
+   * retrieval query: this turn's question *is* that probe, so it retrieves what
+   * is about to be asked about rather than what was just said.
+   */
+  nextFocus: string | null;
+}
+
 /**
- * The strategy used on the previous scored turn.
- *
- * `decideInterviewAction` takes `previousStrategy` and escalates when the same
- * strategy would be chosen twice running — but nothing ever supplied it, so
- * that path was dead in production. One indexed lookup on the turn we are
- * about to score.
+ * The decision signal carried over from the previous scored turn. One indexed
+ * lookup on the turn we are about to score.
  */
-export async function getPreviousStrategy(
+export async function getPreviousTurnSignal(
   supabase: SupabaseClient,
   sessionId: string,
-): Promise<string | null> {
+): Promise<PreviousTurnSignal> {
   const { data, error } = await supabase
     .from("interview_turn_analyses")
-    .select("strategy")
+    .select("strategy, analysis")
     .eq("session_id", sessionId)
     .order("turn_index", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) throw error;
-  return data?.strategy ?? null;
+  if (!data) return { strategy: null, nextFocus: null };
+
+  const topics = (data.analysis as { followupTopics?: unknown } | null)
+    ?.followupTopics;
+  const nextFocus =
+    Array.isArray(topics) && typeof topics[0] === "string" && topics[0].trim()
+      ? topics[0].trim()
+      : null;
+
+  return { strategy: data.strategy ?? null, nextFocus };
 }

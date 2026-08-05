@@ -76,8 +76,6 @@ export function checkRateLimit(
 export const RATE_LIMITS = {
   /** One interview turn ≈ 1 request. 60/min tolerates retries and streaming fallbacks. */
   chat: { limit: 60, windowMs: 60_000 },
-  /** Fires once per user turn alongside chat. */
-  microFeedback: { limit: 60, windowMs: 60_000 },
   /** Explicit user action on the report/drills pages. */
   coach: { limit: 20, windowMs: 60_000 },
   /** Tokens last ~10 minutes; the client refreshes far less often than this. */
