@@ -536,6 +536,8 @@ export default function SessionReportPage({
                           question={questionForTurn}
                           answer={message.content}
                           roundType={currentRound?.type}
+                          sessionId={id}
+                          turnIndex={message.turnIndex}
                         />
                       )}
                     </div>
@@ -565,10 +567,19 @@ function TurnCoaching({
   question,
   answer,
   roundType,
+  sessionId,
+  turnIndex,
 }: {
   question: string;
   answer: string;
   roundType: InterviewRoundType | undefined;
+  /**
+   * Both identify the turn so the server can cache the result. Without them
+   * the answer was regenerated at full price on every reload — the state below
+   * only survives while this component stays mounted.
+   */
+  sessionId: string;
+  turnIndex: number;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -589,7 +600,13 @@ function TurnCoaching({
       const response = await fetch("/api/coach/model-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, answer, roundType }),
+        body: JSON.stringify({
+          question,
+          answer,
+          roundType,
+          sessionId,
+          turnIndex,
+        }),
       });
       const payload = (await response.json()) as ModelAnswerResult & {
         error?: string;

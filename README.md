@@ -103,6 +103,7 @@ In the Supabase dashboard → **SQL Editor**, run every file in
 | `0007_llm_usage` | token accounting |
 | `0008_resume_profile` | distilled resume profile |
 | `0009_session_columns` | server-owned session fields promoted out of JSONB |
+| `0010_coach_answers` | cache for generated model answers |
 
 > `0005` and `0006` are **not optional** — `src/lib/db/sessions.ts` calls the
 > `append_interview_turn` RPC on every interview turn. Without them the app

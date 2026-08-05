@@ -3,6 +3,7 @@ import { jsonrepair } from "jsonrepair";
 
 import { getCurrentUser } from "@/lib/supabase/server";
 import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
+import { getCoachAnswer, saveCoachAnswer } from "@/lib/db/coach-answers";
 import {
   isRoundType,
   ROUND_RUBRIC_LABELS,
@@ -79,8 +80,30 @@ export async function POST(request: Request): Promise<NextResponse> {
     // changes how the answer is graded. Validate rather than cast.
     const roundType = isRoundType(body.roundType) ? body.roundType : undefined;
 
+    // Optional: the report page sends both so the result can be cached against
+    // the turn. The drills page has no session and sends neither.
+    const sessionId =
+      typeof body.sessionId === "string" && body.sessionId.trim()
+        ? body.sessionId.trim()
+        : null;
+    const turnIndex =
+      typeof body.turnIndex === "number" && Number.isInteger(body.turnIndex)
+        ? body.turnIndex
+        : null;
+    const cacheable = sessionId !== null && turnIndex !== null;
+
     if (!question || !answer) {
       return badRequest("Missing required fields: question, answer.");
+    }
+
+    // Nothing about a completed turn changes, so a second look at the same
+    // report should not be a second bill. RLS scopes the lookup to sessions
+    // this user owns.
+    if (cacheable) {
+      const cached = await getCoachAnswer(supabase, sessionId, turnIndex);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -180,6 +203,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       rewrite: typeof parsed.rewrite === "string" ? parsed.rewrite : "",
       tips,
     };
+
+    if (cacheable) {
+      await saveCoachAnswer(supabase, {
+        sessionId,
+        turnIndex,
+        roundType: roundType ?? null,
+        answer: result,
+      });
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     return handleRouteError("POST /api/coach/model-answer", error);
