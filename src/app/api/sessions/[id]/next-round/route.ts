@@ -3,8 +3,12 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import {
   createSession,
   getSession,
+  listTurnAnalyses,
   updateSession,
 } from "@/lib/db/sessions";
+import { listPersonas } from "@/lib/db/personas";
+import { buildLoopBrief } from "@/lib/loop-brief";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import {
   buildLaunchMetaFromSetup,
@@ -15,6 +19,7 @@ import {
   buildRoundScenarioTitle,
   getCurrentRound,
   getNextRoundLoop,
+  ROUND_TYPE_LABELS,
 } from "@/lib/interview-rounds";
 import { resolveScenarioForLaunch } from "@/lib/scenarios";
 import {
@@ -93,11 +98,37 @@ export async function POST(_request: Request, ctx: RouteParams) {
     );
     const scenario = resolveScenarioForLaunch(setup);
     const activeRound = getCurrentRound(nextLoop);
-    const launchMeta = buildLaunchMetaFromSetup(setup);
+
+    // Hand the next interviewer a note from the rounds already run. Without it
+    // each round starts cold and the loop is N strangers rather than a panel.
+    const previousAnalyses = await listTurnAnalyses(supabase, previous.id);
+    const previousRound = getCurrentRound(launch.interviewLoop);
+    const loopBrief = buildLoopBrief([
+      {
+        title: previousRound.title,
+        roundTypeLabel: ROUND_TYPE_LABELS[previousRound.type],
+        averageScore: previous.averageScore,
+        analyses: previousAnalyses.map(
+          (row) => row.analysis as unknown as AnalysisResult,
+        ),
+      },
+    ]);
+
+    const launchMeta = {
+      ...buildLaunchMetaFromSetup(setup),
+      // Carry forward what earlier rounds already said, plus this round's note.
+      loopBrief: [launch.loopBrief, loopBrief].filter(Boolean).join("\n\n") || undefined,
+    };
     const completedSessionIds = Array.from(
       new Set([...(metrics.loop?.completedSessionIds ?? []), previous.id]),
     );
     const loopId = metrics.loop?.loopId ?? crypto.randomUUID();
+
+    const roundPersona = activeRound.personaLibraryId
+      ? (await listPersonas(supabase, user.id)).find(
+          (entry) => entry.id === activeRound.personaLibraryId,
+        )?.config
+      : undefined;
 
     let session = await createSession(supabase, user.id, {
       practiceMode: activeRound.practiceMode,
@@ -107,11 +138,14 @@ export async function POST(_request: Request, ctx: RouteParams) {
         scenario.description,
         nextLoop,
       ),
-  personaId: previous.personaId,
-  jobDescriptionId: previous.jobDescriptionId,
-  resumeId: previous.resumeId,
-  personaName: previous.personaName,
-      personaConfig: previous.personaConfig,
+      // A round may nominate its own interviewer; otherwise inherit. Real
+      // loops put a recruiter, then engineers, then a hiring manager in front
+      // of you.
+      personaId: activeRound.personaLibraryId ?? previous.personaId,
+      jobDescriptionId: previous.jobDescriptionId,
+      resumeId: previous.resumeId,
+      personaName: roundPersona?.name ?? previous.personaName,
+      personaConfig: roundPersona ?? previous.personaConfig,
       metrics: { launch: launchMeta },
     });
 

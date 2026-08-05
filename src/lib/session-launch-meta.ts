@@ -16,6 +16,11 @@ export interface SessionLaunchMeta {
   resume?: InterviewSetupState["resume"];
   customScenarioBrief?: string;
   personaLibraryId?: string;
+  /**
+   * Handover note from earlier rounds of the same loop. Server-written at round
+   * handoff and injected into the interviewer's stable prompt layer.
+   */
+  loopBrief?: string;
 }
 
 export interface LoopProgress {

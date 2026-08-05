@@ -429,8 +429,13 @@ export default function SessionReportPage({
                   <Sparkles className="h-4 w-4" />
                   {isStartingNextRound ? "Starting..." : "Start next round"}
                 </Button>
+                <p className="w-full text-xs text-slate-500">
+                  Your next interviewer will see a short summary of this round.
+                </p>
                 {nextRoundError && (
-                  <p className="w-full text-sm text-red-600">{nextRoundError}</p>
+                  <p className="w-full text-sm text-red-600" role="alert">
+                    {nextRoundError}
+                  </p>
                 )}
               </CardContent>
             ) : (

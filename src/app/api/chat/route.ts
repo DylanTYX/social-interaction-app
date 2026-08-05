@@ -164,6 +164,8 @@ function buildPromptLayers(input: {
   jobDescriptionIsStable: boolean;
   /** Round-type coaching that holds for the whole round. */
   roundGuidance: string | null;
+  /** Handover note from earlier rounds of the same loop. */
+  loopBrief: string | null;
   resumeContext: string | null;
   behaviorContext: string | null;
 }): { stablePrompt: string; volatilePrompt: string } {
@@ -186,6 +188,7 @@ function buildPromptLayers(input: {
     ...(input.roundGuidance
       ? ["", "How to run this kind of round:", input.roundGuidance]
       : []),
+    ...(input.loopBrief ? ["", input.loopBrief] : []),
     ...(stableJobDescription
       ? [
           "",
@@ -711,6 +714,7 @@ export async function POST(request: Request) {
       jobDescriptionContext: jobDescription.context,
       jobDescriptionIsStable: jobDescription.stable,
       roundGuidance: roundPlaybook?.content ?? null,
+      loopBrief: metrics.launch?.loopBrief ?? null,
       resumeContext,
       behaviorContext: behaviorContext || null,
     });
