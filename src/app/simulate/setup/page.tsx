@@ -650,17 +650,14 @@ function SetupWizard() {
               <ContextStep
                 setup={setup}
                 quickStarts={BRIEF_QUICK_STARTS}
-                onUpdate={(partial) => {
-                  if (partial.practiceMode) {
-                    updateMode(partial.practiceMode);
-                    return;
-                  }
+                onModeChange={updateMode}
+                onUpdate={(partial) =>
                   updateSetup(
                     "customScenarioBrief" in partial
                       ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
                       : partial,
-                  );
-                }}
+                  )
+                }
               />
             )}
 

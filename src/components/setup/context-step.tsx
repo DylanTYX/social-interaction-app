@@ -52,10 +52,16 @@ export function ContextStep({
   setup,
   quickStarts,
   onUpdate,
+  onModeChange,
 }: {
   setup: InterviewSetupState;
   quickStarts: ReadonlyArray<{ id: string; label: string; template: string }>;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
+  /**
+   * Separate from `onUpdate` on purpose: changing the mode also has to rewrite
+   * every round's `practiceMode`, so it cannot be a plain field patch.
+   */
+  onModeChange: (mode: PracticeMode) => void;
 }) {
   const brief = setup.customScenarioBrief ?? "";
   const charCount = brief.trim().length;
@@ -75,7 +81,7 @@ export function ContextStep({
               <button
                 key={option.value}
                 type="button"
-                onClick={() => onUpdate({ practiceMode: option.value })}
+                onClick={() => onModeChange(option.value)}
                 aria-pressed={isActive}
                 className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-colors ${
                   isActive
