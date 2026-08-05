@@ -23,17 +23,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-} from "@/components/ui/select";
+import {} from "@/components/ui/select";
 import {
   BRIEF_QUICK_STARTS,
   CUSTOM_SCENARIO_VALUE,
   resolveScenarioForLaunch,
 } from "@/lib/scenarios";
 import { buildLaunchMetaFromSetup } from "@/lib/session-launch-meta";
-import {
-  type PersonaConfig,
-} from "@/lib/persona-engine";
+import { type PersonaConfig } from "@/lib/persona-engine";
 import {
   createDefaultInterviewSetup,
   saveInterviewLaunch,
@@ -53,9 +50,7 @@ import { ContextStep } from "@/components/setup/context-step";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
-import {
-  AZURE_VOICE_OPTIONS,
-} from "@/lib/speech-voices";
+import { AZURE_VOICE_OPTIONS } from "@/lib/speech-voices";
 import {
   buildRoundScenarioDescription,
   buildRoundScenarioTitle,
@@ -85,16 +80,14 @@ const STEPS: StepDefinition[] = [
     id: "rounds",
     title: "Build your interview",
     shortLabel: "Rounds",
-    description:
-      "One focused round, or compose several for a realistic loop.",
+    description: "One focused round, or compose several for a realistic loop.",
     icon: GaugeCircle,
   },
   {
     id: "persona",
     title: "Shape the interviewer",
     shortLabel: "Interviewer",
-    description:
-      "Pick a persona, or fine-tune one of your own.",
+    description: "Pick a persona, or fine-tune one of your own.",
     icon: Sliders,
   },
   {
@@ -170,9 +163,7 @@ function SetupWizard() {
       setSetup({
         ...stored,
         streamResponses:
-          streamValue === null
-            ? stored.streamResponses
-            : streamValue === "1",
+          streamValue === null ? stored.streamResponses : streamValue === "1",
         practiceMode:
           modeValue === "voice" || modeValue === "text"
             ? modeValue
@@ -376,9 +367,9 @@ function SetupWizard() {
           });
 
           if (!jdResponse.ok) {
-            const detail = (await jdResponse
-              .json()
-              .catch(() => null)) as { error?: string } | null;
+            const detail = (await jdResponse.json().catch(() => null)) as {
+              error?: string;
+            } | null;
             throw new Error(
               detail?.error ??
                 `Failed to prepare job description context (HTTP ${jdResponse.status}).`,
@@ -421,9 +412,9 @@ function SetupWizard() {
           });
 
           if (!resumeResponse.ok) {
-            const detail = (await resumeResponse
-              .json()
-              .catch(() => null)) as { error?: string } | null;
+            const detail = (await resumeResponse.json().catch(() => null)) as {
+              error?: string;
+            } | null;
             throw new Error(
               detail?.error ??
                 `Failed to prepare resume context (HTTP ${resumeResponse.status}).`,
@@ -467,15 +458,17 @@ function SetupWizard() {
       });
 
       if (!response.ok) {
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(
           detail?.error ?? `Failed to start session (HTTP ${response.status}).`,
         );
       }
 
-      const { session } = (await response.json()) as { session: { id: string } };
+      const { session } = (await response.json()) as {
+        session: { id: string };
+      };
 
       saveInterviewLaunch({
         ...setup,
@@ -614,9 +607,7 @@ function SetupWizard() {
           ["industry", "an industry"],
           ["seniority", "a seniority"],
         ] as const
-      ).filter(
-        ([field]) => setup.personaConfig[field].trim().length === 0,
-      );
+      ).filter(([field]) => setup.personaConfig[field].trim().length === 0);
       if (missing.length > 0) {
         return `Give the interviewer ${missing.map(([, label]) => label).join(", ")}.`;
       }
@@ -838,4 +829,3 @@ function Stepper({
     </ol>
   );
 }
-

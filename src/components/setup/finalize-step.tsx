@@ -19,8 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
-import { ResumePicker } from "@/components/setup/resume-picker";
 import { getCurrentRound, ROUND_TYPE_LABELS } from "@/lib/interview-rounds";
 import { getScenarioByValue } from "@/lib/scenarios";
 import { describeRoundLength } from "@/lib/interview-progress";
@@ -34,6 +32,11 @@ import type { SpeechVoiceOption } from "@/lib/speech-voices";
  * Extracted from `setup/page.tsx` alongside `PersonaStep`. It reads the whole
  * setup object and reports patches back, so the seam is the object itself
  * rather than a long prop list.
+ *
+ * The job-description and CV pickers used to live here and now sit on the
+ * first step, where they belong — they are context, not final tuning, and
+ * collecting them last meant the round builder's "Suggest from job
+ * description" button could never fire on a first pass.
  */
 
 export function FinalizeStep({
@@ -60,14 +63,18 @@ export function FinalizeStep({
 
   return (
     <div className="space-y-6">
-      <Card className="border-blue-200/70 bg-linear-to-br from-blue-50 via-white to-cyan-50/60">
+      <Card className="border border-blue-200/70 bg-linear-to-br from-blue-50 via-white to-indigo-50/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Your session at a glance</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <SummaryRow
             label="Mode"
-            value={setup.practiceMode === "voice" ? "Voice interview" : "Text interview"}
+            value={
+              setup.practiceMode === "voice"
+                ? "Voice interview"
+                : "Text interview"
+            }
           />
           <SummaryRow label="Brief" value={activeScenario.title} />
           <SummaryRow
@@ -118,52 +125,54 @@ export function FinalizeStep({
         </CardContent>
       </Card>
 
-      <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <Label className="text-sm font-medium">Live response streaming</Label>
-            <p className="text-xs text-gray-500">
-              Stream the interviewer&apos;s reply token-by-token as it&apos;s generated.
-            </p>
+      {/* Two identical single-toggle panels became one card. The dashboard's
+          settings page groups its switches the same way. */}
+      <Card className="border border-gray-200/80 shadow-soft">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">During the interview</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+            <div>
+              <Label htmlFor="stream-responses" className="text-sm font-medium">
+                Live response streaming
+              </Label>
+              <p className="text-xs text-gray-500">
+                Stream the interviewer&apos;s reply token-by-token as it&apos;s
+                generated.
+              </p>
+            </div>
+            <Switch
+              id="stream-responses"
+              checked={setup.streamResponses}
+              onCheckedChange={(checked) =>
+                onUpdate({ streamResponses: checked })
+              }
+            />
           </div>
-          <Switch
-            checked={setup.streamResponses}
-            onCheckedChange={(checked) =>
-              onUpdate({ streamResponses: checked })
-            }
-          />
-        </div>
-      </div>
 
-      <div className="rounded-2xl border border-gray-200/80 bg-white/80 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <Label className="text-sm font-medium">Live coaching tips</Label>
-            <p className="text-xs text-gray-500">
-              Show short notes after each answer, including what you did well.
-            </p>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+            <div>
+              <Label htmlFor="live-coaching" className="text-sm font-medium">
+                Live coaching tips
+              </Label>
+              <p className="text-xs text-gray-500">
+                Show short notes after each answer, including what you did well.
+              </p>
+            </div>
+            <Switch
+              id="live-coaching"
+              checked={setup.liveCoachingEnabled}
+              onCheckedChange={(checked) =>
+                onUpdate({ liveCoachingEnabled: checked })
+              }
+            />
           </div>
-          <Switch
-            checked={setup.liveCoachingEnabled}
-            onCheckedChange={(checked) =>
-              onUpdate({ liveCoachingEnabled: checked })
-            }
-          />
-        </div>
-      </div>
-
-      <JobDescriptionPicker
-        value={setup.jobDescription}
-        onChange={(next) => onUpdate({ jobDescription: next })}
-      />
-
-      <ResumePicker
-        value={setup.resume}
-        onChange={(next) => onUpdate({ resume: next })}
-      />
+        </CardContent>
+      </Card>
 
       {setup.practiceMode === "voice" && (
-        <Card className="border-blue-200/70 bg-white/85">
+        <Card className="border border-gray-200/80 shadow-soft">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Mic className="h-4 w-4 text-blue-600" />
@@ -237,9 +246,7 @@ export function FinalizeStep({
                       selectedVoiceName:
                         selectedVoice?.name ?? "Aria — US Female (warm)",
                       selectedVoiceUri:
-                        selectedValue === "default"
-                          ? ""
-                          : selectedValue,
+                        selectedValue === "default" ? "" : selectedValue,
                     },
                   });
                 }}
@@ -312,8 +319,8 @@ export function FinalizeStep({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-blue-100/70 bg-white/80 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-blue-600/80">
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+      <p className="text-xs uppercase tracking-[0.18em] text-gray-500">
         {label}
       </p>
       <p className="text-sm font-medium text-gray-900">{value}</p>

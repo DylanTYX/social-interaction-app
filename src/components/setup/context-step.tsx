@@ -113,12 +113,16 @@ export function ContextStep({
             <span className={isValid ? "text-emerald-600" : undefined}>
               {charCount} character{charCount === 1 ? "" : "s"}
             </span>
-            {" · at least 20 required. This sets what you are asked about; the round types on the next step set how it is scored."}
+            {
+              " · at least 20 required. This sets what you are asked about; the round types on the next step set how it is scored."
+            }
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-gray-500">Quick starts</span>
+          <span className="text-xs font-medium text-gray-500">
+            Quick starts
+          </span>
           {quickStarts.map((chip) => {
             const isActive = brief.trim() === chip.template.trim();
             return (
