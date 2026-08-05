@@ -61,6 +61,7 @@ import {
   type CompetencyCoverage,
 } from "@/lib/competencies";
 import { updateCoverageForQuestion } from "@/lib/competency-matching";
+import type { ChatTurnResponse } from "@/lib/chat-contract";
 
 export const runtime = "nodejs";
 
@@ -111,41 +112,6 @@ interface ChatRequestBody {
    * paired user message. We support that via `mode: "opening"`.
    */
   mode?: unknown;
-}
-
-interface ChatResult {
-  aiMessage: string;
-  turnCount: number;
-  summary: string | null;
-  /**
-   * Analysis of the user's latest answer. Null on opening turns and trivial
-   * answers. Returned here so the client doesn't need a second round-trip to
-   * `/api/analyze` — the same analysis that steered this reply also drives the
-   * live coaching panels, metrics, and end-of-session report.
-   */
-  analysis: AnalysisResult | null;
-  strategy: InterviewStrategy | null;
-  decisionReason: string | null;
-  confidence: number | null;
-  /**
-   * The server's own escalation verdict.
-   *
-   * These used to be re-derived on the client from `confidence < 50` /
-   * `confidence > 80`, which is different logic from `decideInterviewAction`
-   * (`overallScore < 45 || vaguenessWeight > 12 || repeatedStrategy`). The two
-   * disagreed regularly, so the coaching panel could say the interviewer was
-   * easing off while the interviewer had actually been told to push harder.
-   * Send the real values instead of approximating them twice.
-   */
-  shouldEscalate: boolean | null;
-  shouldSlowDown: boolean | null;
-  followupSummary: string | null;
-  /**
-   * The one-line coaching hint for the live panel, derived from the analysis
-   * above. This replaced a separate `/api/analyze/micro` round-trip that made
-   * its own model call to say something the analyzer had already worked out.
-   */
-  microFeedback: MicroFeedbackResult | null;
 }
 
 function shouldStreamResponse(value: unknown): boolean {
@@ -484,7 +450,7 @@ function formatSseEvent(event: string, data: unknown): string {
 }
 
 function createStreamingResponse(
-  task: (onChunk: (chunk: string) => void) => Promise<ChatResult>,
+  task: (onChunk: (chunk: string) => void) => Promise<ChatTurnResponse>,
 ): Response {
   const encoder = new TextEncoder();
 
@@ -759,7 +725,7 @@ export async function POST(request: Request) {
 
     const buildResult = async (
       onChunk?: (chunk: string) => void,
-    ): Promise<ChatResult> => {
+    ): Promise<ChatTurnResponse> => {
       const aiMessage = await requestOpenAI(
         promptMessages,
         promptCacheKey,

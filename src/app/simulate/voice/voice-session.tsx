@@ -17,6 +17,16 @@ import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
+import { isInterviewComplete } from "@/lib/interviewStateMachine";
+import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
+import { useResumedSession } from "@/hooks/use-resumed-session";
+import type { ChatTurnResponse } from "@/lib/chat-contract";
+import {
+  formatMessageTime,
+  getMetricTone,
+  getStageGuidance,
+  getStageLabel,
+} from "@/lib/interview-stage-labels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,25 +45,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  computeAverageScore,
-  type InterviewReportSnapshot,
-} from "@/lib/interview-report";
-import {
-  createInterviewSessionState,
-  isInterviewComplete,
-  markInterviewComplete,
-  recordInterviewTurn,
-  type InterviewSessionState,
-} from "@/lib/interviewStateMachine";
-import {
-  buildInterviewMetrics,
-  type InterviewMetrics,
-} from "@/lib/metricsTracker";
-import {
-  type AnalysisResult,
-  type InterviewStrategy,
-} from "@/lib/responseAnalyzer";
-import {
   createDefaultInterviewSetup,
   saveInterviewSetup,
 } from "@/lib/interview-setup";
@@ -70,6 +61,7 @@ import {
   type TranscriptResult,
 } from "@/lib/speechService";
 import { consumeChatStream } from "@/lib/chat-stream";
+import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {
   analyzeDelivery,
   describeDelivery,
@@ -85,84 +77,24 @@ type DisplayMessage = {
   timestamp: string;
   /** Voice delivery summary (pace, fillers, pauses) for user turns. */
   delivery?: string | null;
-};
-
-type ChatApiResponse = {
-  aiMessage: string;
-  turnCount: number;
-  summary: string | null;
-  // The chat route analyzes the answer inline and returns the verdict, so the
-  // voice client no longer makes a separate /api/analyze call.
-  analysis: AnalysisResult | null;
-  strategy: InterviewStrategy | null;
-  decisionReason: string | null;
-  confidence: number | null;
-  shouldEscalate: boolean | null;
-  shouldSlowDown: boolean | null;
-  followupSummary: string | null;
-  error?: string;
-  details?: string;
+  /**
+   * Coaching hint for the user's turn. The server has always returned this;
+   * voice used to drop it because its local copy of the response type had
+   * drifted and omitted the field.
+   */
+  feedbackHint?: string | null;
+  feedbackTone?: MicroFeedbackTone;
 };
 
 const DEFAULT_SETUP = createDefaultInterviewSetup();
 
-function getCurrentTimestamp() {
-  return new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function createSessionId(): string {
-  return `voice-session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function getStageLabel(stage: InterviewSessionState["currentStage"]): string {
-  switch (stage) {
-    case "intro":
-      return "Opening";
-    case "questioning":
-      return "Exploration";
-    case "analysis":
-      return "Review";
-    case "strategy":
-      return "Decision";
-    case "followup":
-      return "Follow-up";
-    case "wrap_up":
-      return "Wrap-up";
-    case "report":
-      return "Report";
-    default:
-      return "In progress";
-  }
-}
-
-function getMetricTone(metrics: InterviewMetrics | null): string {
-  if (!metrics) {
-    return "Waiting for the first scored response.";
-  }
-
-  if (metrics.improvementTrend === "improving") {
-    return "The candidate is improving across responses.";
-  }
-
-  if (metrics.improvementTrend === "declining") {
-    return "The candidate is losing specificity or confidence.";
-  }
-
-  return "The response quality is holding steady.";
-}
-
 /**
  * The voice interview screen.
  *
- * This is loaded by `./page.tsx` through `next/dynamic` with `ssr: false`, so
- * it — and the Azure Speech SDK it pulls in — never enters the server-render
- * graph. That is both a correctness and a build concern: the page cannot
- * render without a microphone and speaker, and on the server the SDK resolves
- * its Node-only certificate-checking path (`async-disk-cache` and friends),
- * which the SDK's own `browser` field exists to stub out.
+ * Loaded by `./page.tsx` through `next/dynamic` with `ssr: false`, so it — and
+ * the Azure Speech SDK it pulls in — never enters the server-render graph. The
+ * page cannot render without a microphone and speaker, and on the server the
+ * SDK resolves its Node-only certificate-checking path.
  */
 export default function VoiceSession() {
   return (
@@ -193,25 +125,12 @@ function VoiceSimulateInner() {
     (bootstrap.status === "ready" && tokenStatus === "fetching");
   const setupError = bootstrap.error ?? tokenError;
 
-  const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
-    createInterviewSessionState(
-      bootstrap.sessionId ?? createSessionId(),
-      bootstrap.personaConfig.name,
-    ),
-  );
-  const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([]);
-  const [strategyHistory, setStrategyHistory] = useState<InterviewStrategy[]>(
-    [],
-  );
-  const [liveMetrics, setLiveMetrics] = useState<InterviewMetrics | null>(null);
-  const [lastFollowupPrompt, setLastFollowupPrompt] = useState<string | null>(
-    null,
-  );
-  const [lastDecisionReason, setLastDecisionReason] = useState<string>("");
-  const [lastStrategy, setLastStrategy] = useState<InterviewStrategy | null>(
-    null,
-  );
-  const [lastDecisionConfidence, setLastDecisionConfidence] = useState(0);
+  const resumed = useResumedSession(searchParams.get("session"));
+  const turn = useInterviewTurnState({
+    sessionId: bootstrap.sessionId,
+    personaName: bootstrap.personaConfig.name,
+    initialAnalyses: resumed.analyses,
+  });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -246,8 +165,8 @@ function VoiceSimulateInner() {
   }, [isRecording]);
 
   useEffect(() => {
-    sessionCompleteRef.current = isInterviewComplete(sessionState);
-  }, [sessionState]);
+    sessionCompleteRef.current = isInterviewComplete(turn.sessionState);
+  }, [turn.sessionState]);
 
   const [showLiveCoaching, setShowLiveCoaching] = useState(true);
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
@@ -255,8 +174,8 @@ function VoiceSimulateInner() {
   const [isEnding, setIsEnding] = useState(false);
 
   const activeScenario = scenarioFromBootstrap(bootstrap);
-  const stageLabel = getStageLabel(sessionState.currentStage);
-  const metricTone = getMetricTone(liveMetrics);
+  const stageLabel = getStageLabel(turn.sessionState.currentStage);
+  const metricTone = getMetricTone(turn.metrics);
 
   useEffect(() => {
     if (bootstrap.status === "redirect-setup") {
@@ -272,14 +191,7 @@ function VoiceSimulateInner() {
     }
   }, [bootstrap.status, bootstrap.voiceConfig]);
 
-  useEffect(() => {
-    if (bootstrap.sessionId) {
-      setSessionState((current) => ({
-        ...current,
-        sessionId: bootstrap.sessionId!,
-      }));
-    }
-  }, [bootstrap.sessionId]);
+
 
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
@@ -306,60 +218,27 @@ function VoiceSimulateInner() {
     bootstrap.voiceConfig,
   ]);
 
+  // `useResumedSession` owns the fetch; this just maps what it returned into
+  // display messages. It also restores the scoring history, which the old
+  // copy of this effect did not.
   useEffect(() => {
     if (bootstrap.status !== "ready" || messagesHydrated) return;
+    if (resumed.status === "loading") return;
 
-    const resumeId = searchParams.get("session");
-    if (resumeId && bootstrap.sessionId) {
-      let cancelled = false;
-      const hydrate = async () => {
-        try {
-          const response = await fetch(
-            `/api/sessions/${encodeURIComponent(resumeId)}/resume`,
-            { cache: "no-store" },
-          );
-          if (!response.ok) throw new Error("Failed to load messages.");
-          const { messages: rows } = (await response.json()) as {
-            messages: Array<{
-              id: string;
-              role: string;
-              content: string;
-              createdAt: string;
-            }>;
-          };
-          if (cancelled) return;
-          const restored: DisplayMessage[] = rows.map((row) => ({
-            id: row.id,
-            role: row.role === "user" ? "user" : "ai",
-            content: row.content,
-            timestamp: new Date(row.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          }));
-          if (restored.length > 0) {
-            setMessages(restored);
-            openingGeneratedRef.current = true;
-          }
-        } catch {
-          // fresh opening will be generated
-        } finally {
-          if (!cancelled) setMessagesHydrated(true);
-        }
-      };
-      queueMicrotask(() => void hydrate());
-      return () => {
-        cancelled = true;
-      };
+    if (resumed.messages.length > 0) {
+      setMessages(
+        resumed.messages.map((row) => ({
+          id: row.id,
+          role: row.role === "user" ? "user" : "ai",
+          content: row.content,
+          timestamp: formatMessageTime(new Date(row.createdAt)),
+        })),
+      );
+      // A resumed session already has its opening turn.
+      openingGeneratedRef.current = true;
     }
-
     setMessagesHydrated(true);
-  }, [
-    bootstrap.status,
-    bootstrap.sessionId,
-    messagesHydrated,
-    searchParams,
-  ]);
+  }, [bootstrap.status, messagesHydrated, resumed.status, resumed.messages]);
 
   useEffect(() => {
     if (bootstrap.status !== "ready") {
@@ -519,7 +398,7 @@ function VoiceSimulateInner() {
           return;
         }
 
-        const data = (await response.json()) as ChatApiResponse;
+        const data = (await response.json()) as ChatTurnResponse;
 
         if (!isMountedRef.current) {
           return;
@@ -529,7 +408,7 @@ function VoiceSimulateInner() {
           id: `msg-${Date.now()}-opening`,
           role: "ai",
           content: data.aiMessage,
-          timestamp: getCurrentTimestamp(),
+          timestamp: formatMessageTime(),
         };
 
         setMessages([openingMessage]);
@@ -752,7 +631,7 @@ function VoiceSimulateInner() {
           id: userMessageId,
           role: "user",
           content: userMessage,
-          timestamp: getCurrentTimestamp(),
+          timestamp: formatMessageTime(),
           delivery: deliveryNote ?? null,
         },
       ]);
@@ -767,7 +646,7 @@ function VoiceSimulateInner() {
           id: aiMessageId,
           role: "ai",
           content: "",
-          timestamp: getCurrentTimestamp(),
+          timestamp: formatMessageTime(),
         },
       ]);
 
@@ -822,9 +701,9 @@ function VoiceSimulateInner() {
         );
       }
 
-      let result: ChatApiResponse;
+      let result: ChatTurnResponse;
       try {
-        result = await consumeChatStream<ChatApiResponse>(
+        result = await consumeChatStream<ChatTurnResponse>(
           chatResponse,
           (chunk) => {
             ttsBuffer += chunk;
@@ -855,7 +734,7 @@ function VoiceSimulateInner() {
         if (!fallback.ok) {
           throw new Error("Failed to generate AI response.");
         }
-        result = (await fallback.json()) as ChatApiResponse;
+        result = (await fallback.json()) as ChatTurnResponse;
         ttsBuffer = result.aiMessage;
       }
 
@@ -895,95 +774,35 @@ function VoiceSimulateInner() {
         return;
       }
 
-      const analysisResult = result.analysis;
-      const turnStrategy = result.strategy;
-      const turnConfidence = result.confidence ?? 50;
+      // The hint arrives with the reply, derived from the same analysis that
+      // produced the score. Voice used to discard it.
+      if (result.microFeedback) {
+        const micro = result.microFeedback;
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === userMessageId
+              ? {
+                  ...item,
+                  feedbackHint: micro.hint,
+                  feedbackTone: micro.tone,
+                }
+              : item,
+          ),
+        );
+      }
 
-      // Escalation flags come from the server's own decision, not a guess
-      // re-derived from `confidence`. The two used different rules and
-      // disagreed regularly.
-      const decision = {
-        strategy: turnStrategy,
-        reason: result.decisionReason ?? "",
-        confidence: turnConfidence,
-        shouldEscalate: result.shouldEscalate ?? false,
-        shouldSlowDown: result.shouldSlowDown ?? false,
-        nextFocus: analysisResult.followupTopics?.[0] ?? "specific examples",
-      };
+      const applied = turn.applyTurn(result, { userMessage });
+      if (!applied) return;
 
-      const updatedSessionState = recordInterviewTurn(sessionState, {
-        userMessage,
-        aiMessage,
-        question: aiMessage,
-        analysis: analysisResult,
-        decision,
-      }).state;
-
-      const finalSessionState = isInterviewComplete(updatedSessionState)
-        ? markInterviewComplete(updatedSessionState)
-        : updatedSessionState;
-
-      const nextAnalysisHistory = [...analysisHistory, analysisResult];
-      const nextStrategyHistory = [...strategyHistory, turnStrategy];
-
-      setSessionState(finalSessionState);
-      setAnalysisHistory(nextAnalysisHistory);
-      setStrategyHistory(nextStrategyHistory);
-      setLiveMetrics(
-        buildInterviewMetrics({
-          analyses: nextAnalysisHistory,
-          state: finalSessionState,
-        }),
-      );
-      setLastFollowupPrompt(result.followupSummary);
-      setLastDecisionReason(result.decisionReason ?? "");
-      setLastStrategy(turnStrategy);
-      setLastDecisionConfidence(turnConfidence);
-
-      if (isInterviewComplete(finalSessionState)) {
+      if (applied.isComplete) {
         sessionCompleteRef.current = true;
-        const finalMetrics = buildInterviewMetrics({
-          analyses: nextAnalysisHistory,
-          state: finalSessionState,
-        });
-        const snapshot: InterviewReportSnapshot = {
-          sessionState: finalSessionState,
-          metrics: finalMetrics,
-          analyses: nextAnalysisHistory,
-          strategyHistory: nextStrategyHistory,
-          scenarioTitle: activeScenario.title,
-          scenarioDescription: activeScenario.description,
-          personaName: activePersonaConfig.name,
-          generatedAt: new Date().toISOString(),
-          jobDescription: bootstrap.jobDescriptionRef,
-        };
-
-        const sessionId = bootstrap.sessionId;
-        if (sessionId) {
-          const averageScore = computeAverageScore(snapshot);
-          const startedAtMs = Date.parse(sessionState.createdAt);
-          const durationMinutes = Number.isFinite(startedAtMs)
-            ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-            : null;
-          void fetch(`/api/sessions/${sessionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              status: "completed",
-              averageScore,
-              durationMinutes,
-              metrics: finalMetrics,
-              endedAt: new Date().toISOString(),
-            }),
-          }).catch(() => {
-            // ignore; report page reads from Supabase
-          });
-        }
-
+        await turn.endSession();
         setTimeout(() => {
           if (isMountedRef.current) {
             router.push(
-              sessionId ? `/simulate/report/${sessionId}` : "/dashboard",
+              bootstrap.sessionId
+                ? `/simulate/report/${bootstrap.sessionId}`
+                : "/dashboard",
             );
           }
         }, 1000);
@@ -1075,52 +894,9 @@ function VoiceSimulateInner() {
   const handleEndSession = async () => {
     if (isEnding) return;
     setIsEnding(true);
-    handleNavigateAway();
     const sessionId = bootstrap.sessionId;
-    if (sessionId) {
-      const finalMetrics = buildInterviewMetrics({
-        analyses: analysisHistory,
-        state: sessionState,
-      });
-      const startedAtMs = Date.parse(sessionState.createdAt);
-      const durationMinutes = Number.isFinite(startedAtMs)
-        ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-        : null;
-      const completedSnapshot: InterviewReportSnapshot = {
-        sessionState: markInterviewComplete(sessionState),
-        metrics: finalMetrics,
-        analyses: analysisHistory,
-        strategyHistory,
-        scenarioTitle: activeScenario.title,
-        scenarioDescription: activeScenario.description,
-        personaName: activePersonaConfig.name,
-        generatedAt: new Date().toISOString(),
-        jobDescription: bootstrap.jobDescriptionRef,
-      };
-      const averageScore = computeAverageScore(completedSnapshot);
-      try {
-        // Only the score metrics are sent. `launch` and `loop` belong to the
-        // server (it wrote them at launch and merges our keys over them), and
-        // rebuilding them here from client defaults used to overwrite the real
-        // JD/resume config with blanks.
-        await fetch(`/api/sessions/${sessionId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "completed",
-            averageScore,
-            durationMinutes,
-            metrics: finalMetrics,
-            endedAt: new Date().toISOString(),
-          }),
-        });
-      } catch {
-        // best-effort
-      }
-      router.push(`/simulate/report/${sessionId}`);
-    } else {
-      router.push("/dashboard");
-    }
+    await turn.endSession();
+    router.push(sessionId ? `/simulate/report/${sessionId}` : "/dashboard");
   };
 
   return (
@@ -1283,6 +1059,8 @@ function VoiceSimulateInner() {
                   timestamp={msg.timestamp}
                   personaName={activePersonaConfig.name}
                   deliveryNote={msg.delivery}
+                  feedbackHint={msg.feedbackHint}
+                  feedbackTone={msg.feedbackTone}
                 />
               ))}
 
@@ -1342,9 +1120,9 @@ function VoiceSimulateInner() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <LiveFeedbackSidebar
-                metrics={liveMetrics}
-                analyses={analysisHistory}
-                followupPrompt={lastFollowupPrompt}
+                metrics={turn.metrics}
+                analyses={turn.analyses}
+                followupPrompt={turn.lastFollowupPrompt}
               />
             </div>
           ) : (
@@ -1374,13 +1152,17 @@ function VoiceSimulateInner() {
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto pr-1">
             <InterviewStatePanel
-              state={sessionState}
+              state={turn.sessionState}
               stageLabel={stageLabel}
-              stageGuidance=""
-              lastStrategy={lastStrategy}
-              decisionReason={lastDecisionReason}
-              decisionConfidence={lastDecisionConfidence}
-              metrics={liveMetrics}
+              stageGuidance={getStageGuidance(
+                turn.sessionState.currentStage,
+                turn.metrics,
+                turn.lastFollowupPrompt,
+              )}
+              lastStrategy={turn.lastStrategy}
+              decisionReason={turn.lastDecisionReason}
+              decisionConfidence={turn.lastConfidence}
+              metrics={turn.metrics}
             />
           </div>
         </DialogContent>

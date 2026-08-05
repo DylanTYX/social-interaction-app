@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -34,35 +34,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  computeAverageScore,
-  type InterviewReportSnapshot,
-} from "@/lib/interview-report";
-import { appendDimensionSnapshot } from "@/lib/session-launch-meta";
-import {
   scenarioFromBootstrap,
   useInterviewSessionBootstrap,
 } from "@/hooks/use-interview-session-bootstrap";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import {
-  createInterviewSessionState,
-  isInterviewComplete,
-  markInterviewComplete,
-  recordInterviewTurn,
-  type InterviewSessionState,
-} from "@/lib/interviewStateMachine";
-import {
-  buildInterviewMetrics,
-  type InterviewMetrics,
-} from "@/lib/metricsTracker";
-import {
-  type AnalysisResult,
-  type InterviewStrategy,
-} from "@/lib/responseAnalyzer";
-import {
   createDefaultInterviewSetup,
   saveInterviewSetup,
 } from "@/lib/interview-setup";
 import { consumeChatStream } from "@/lib/chat-stream";
+import type { ChatTurnError, ChatTurnResponse } from "@/lib/chat-contract";
+import {
+  formatMessageTime,
+  getMetricTone,
+  getStageGuidance,
+  getStageLabel,
+} from "@/lib/interview-stage-labels";
+import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
+import { useResumedSession } from "@/hooks/use-resumed-session";
 import { resolveAnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
@@ -75,24 +64,6 @@ type DisplayMessage = {
   feedbackLoading?: boolean;
 };
 
-type ChatApiResponse = {
-  aiMessage: string;
-  turnCount: number;
-  summary: string | null;
-  // The chat route now analyzes the user's answer inline and returns the
-  // verdict here, so the client no longer makes a separate /api/analyze call.
-  analysis: AnalysisResult | null;
-  strategy: InterviewStrategy | null;
-  decisionReason: string | null;
-  confidence: number | null;
-  shouldEscalate: boolean | null;
-  shouldSlowDown: boolean | null;
-  followupSummary: string | null;
-  microFeedback: { hint: string; tone: MicroFeedbackTone } | null;
-  error?: string;
-  details?: string;
-};
-
 type ScenarioOption = {
   value: string;
   title: string;
@@ -101,19 +72,6 @@ type ScenarioOption = {
 
 const DEFAULT_SETUP = createDefaultInterviewSetup();
 const RESPONSE_TIME_LIMIT_SECONDS = 300; // 5 minutes per answer
-
-function getCurrentTimestamp() {
-  return new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function createSessionId() {
-  return `session-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-}
 
 function createMessageId() {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -133,85 +91,8 @@ function buildWelcomeMessage(
     id: "welcome",
     role: "ai",
     content: `Welcome to ${scenario.title} practice with ${personaLabel}. ${scenario.description} Start with your opening response whenever you're ready.`,
-    timestamp: getCurrentTimestamp(),
+    timestamp: formatMessageTime(),
   };
-}
-
-function getStageLabel(stage: InterviewSessionState["currentStage"]): string {
-  switch (stage) {
-    case "intro":
-      return "Opening";
-    case "questioning":
-      return "Exploration";
-    case "analysis":
-      return "Review";
-    case "strategy":
-      return "Decision";
-    case "followup":
-      return "Follow-up";
-    case "wrap_up":
-      return "Wrap-up";
-    case "report":
-      return "Report";
-    default:
-      return "In progress";
-  }
-}
-
-function getStageGuidance(
-  stage: InterviewSessionState["currentStage"],
-  metrics: InterviewMetrics | null,
-  prompt: string | null,
-): string {
-  if (stage === "intro") {
-    return "Start broad, then narrow toward a concrete example.";
-  }
-
-  if (stage === "questioning") {
-    return "Keep the candidate talking in STAR form and collect specifics.";
-  }
-
-  if (stage === "analysis") {
-    return "The response has been analyzed. Use the follow-up to push depth.";
-  }
-
-  if (stage === "strategy") {
-    return metrics && metrics.averageOverallScore > 75
-      ? "The answer is strong. Shift toward trade-offs and reasoning."
-      : "Target the weakest STAR element with the next question.";
-  }
-
-  if (stage === "followup") {
-    return prompt
-      ? `Adaptive follow-up ready: ${prompt}`
-      : "Ask the next targeted question and watch for specificity.";
-  }
-
-  if (stage === "wrap_up") {
-    return "Close with reflection, lessons learned, and a final check on impact.";
-  }
-
-  if (stage === "report") {
-    return "Session complete. Review the summary and performance trends.";
-  }
-
-  return "Continue the interview and adjust difficulty based on the last answer.";
-}
-
-function getMetricTone(metrics: InterviewMetrics | null): string {
-  if (!metrics) {
-    return "Waiting for the first scored response.";
-  }
-
-  if (metrics.improvementTrend === "improving") {
-    return "The candidate is improving across responses.";
-  }
-
-  if (metrics.improvementTrend === "declining") {
-    return "The candidate is losing specificity or confidence.";
-  }
-
-  return "The response quality is holding steady.";
 }
 
 export default function ChatSimulatePage() {
@@ -245,34 +126,15 @@ function ChatSimulateInner() {
   const [liveCoachingOn, setLiveCoachingOn] = useState(liveCoachingEnabled);
   const initialState = bootstrap;
 
-  const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
-    createInterviewSessionState(
-      bootstrap.sessionId ?? createSessionId(),
-      bootstrap.personaConfig.name,
-    ),
-  );
+  const resumed = useResumedSession(searchParams.get("session"));
+  const turn = useInterviewTurnState({
+    sessionId: bootstrap.sessionId,
+    personaName: bootstrap.personaConfig.name,
+    initialAnalyses: resumed.analyses,
+  });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [messagesHydrated, setMessagesHydrated] = useState(false);
-  const [dimensionSnapshots, setDimensionSnapshots] = useState<
-    import("@/lib/session-launch-meta").DimensionSnapshot[]
-  >([]);
-
-  const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([]);
-  const [strategyHistory, setStrategyHistory] = useState<InterviewStrategy[]>(
-    [],
-  );
-  const [liveMetrics, setLiveMetrics] = useState<InterviewMetrics | null>(null);
-  const [lastFollowupPrompt, setLastFollowupPrompt] = useState<string | null>(
-    null,
-  );
-  const [lastDecisionReason, setLastDecisionReason] = useState<string | null>(
-    null,
-  );
-  const [lastStrategy, setLastStrategy] = useState<string | null>(null);
-  const [lastDecisionConfidence, setLastDecisionConfidence] = useState<
-    number | null
-  >(null);
   const [isSending, setIsSending] = useState(false);
   const [userTurnKey, setUserTurnKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -291,51 +153,9 @@ function ChatSimulateInner() {
   const handleEndSession = async () => {
     if (isEnding) return;
     setIsEnding(true);
-    const sessionId = bootstrap.sessionId ?? initialState.sessionId;
-    if (sessionId) {
-      const finalMetrics = buildInterviewMetrics({
-        analyses: analysisHistory,
-        state: sessionState,
-      });
-      const startedAtMs = Date.parse(sessionState.createdAt);
-      const durationMinutes = Number.isFinite(startedAtMs)
-        ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-        : null;
-      const completedSnapshot: InterviewReportSnapshot = {
-        sessionState: markInterviewComplete(sessionState),
-        metrics: finalMetrics,
-        analyses: analysisHistory,
-        strategyHistory,
-        scenarioTitle: activeScenario.title,
-        scenarioDescription: activeScenario.description,
-        personaName: activePersonaConfig.name,
-        generatedAt: new Date().toISOString(),
-        jobDescription: initialState.jobDescriptionRef,
-      };
-      const averageScore = computeAverageScore(completedSnapshot);
-      try {
-        // Only the score metrics are sent. `launch` and `loop` belong to the
-        // server (it wrote them at launch and merges our keys over them), and
-        // rebuilding them here from client defaults used to overwrite the real
-        // JD/resume config with blanks.
-        await fetch(`/api/sessions/${sessionId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "completed",
-            averageScore,
-            durationMinutes,
-            metrics: finalMetrics,
-            endedAt: new Date().toISOString(),
-          }),
-        });
-      } catch {
-        // best-effort; the user still gets routed to the report page
-      }
-      router.push(`/simulate/report/${sessionId}`);
-    } else {
-      router.push("/dashboard");
-    }
+    const sessionId = bootstrap.sessionId;
+    await turn.endSession();
+    router.push(sessionId ? `/simulate/report/${sessionId}` : "/dashboard");
   };
 
   const activeScenario = scenarioFromBootstrap(bootstrap);
@@ -345,13 +165,13 @@ function ChatSimulateInner() {
   const activeRound =
     bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
   const answerFormat = resolveAnswerFormat(activeRound);
-  const stageLabel = getStageLabel(sessionState.currentStage);
+  const stageLabel = getStageLabel(turn.sessionState.currentStage);
   const stageGuidance = getStageGuidance(
-    sessionState.currentStage,
-    liveMetrics,
-    lastFollowupPrompt,
+    turn.sessionState.currentStage,
+    turn.metrics,
+    turn.lastFollowupPrompt,
   );
-  const metricTone = getMetricTone(liveMetrics);
+  const metricTone = getMetricTone(turn.metrics);
 
   // Handle redirects without doing setState here — the lazy initializers
   // above already populated all state slots from the launch payload, so this
@@ -364,75 +184,40 @@ function ChatSimulateInner() {
     }
   }, [bootstrap.status, router]);
 
+  // `useResumedSession` owns the fetch; this just turns what it returned into
+  // display messages, or seeds the welcome message for a fresh session.
   useEffect(() => {
     if (bootstrap.status !== "ready" || messagesHydrated) return;
+    if (resumed.status === "loading") return;
 
-    const resumeId = searchParams.get("session");
-    if (resumeId && bootstrap.sessionId) {
-      let cancelled = false;
-      const hydrate = async () => {
-        try {
-          const response = await fetch(
-            `/api/sessions/${encodeURIComponent(resumeId)}/resume`,
-            { cache: "no-store" },
-          );
-          if (!response.ok) throw new Error("Failed to load messages.");
-          const { messages: rows } = (await response.json()) as {
-            messages: Array<{
-              id: string;
-              role: string;
-              content: string;
-              createdAt: string;
-            }>;
-          };
-          if (cancelled) return;
-          const restored: DisplayMessage[] = rows.map((row) => ({
-            id: row.id,
-            role: row.role === "user" ? "user" : "ai",
-            content: row.content,
-            timestamp: new Date(row.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          }));
-          setMessages(
-            restored.length > 0
-              ? restored
-              : [
-                  buildWelcomeMessage(
-                    activeScenario,
-                    bootstrap.personaConfig.name,
-                  ),
-                ],
-          );
-        } catch {
-          if (!cancelled) {
-            setMessages([
-              buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name),
-            ]);
-          }
-        } finally {
-          if (!cancelled) setMessagesHydrated(true);
-        }
-      };
-      queueMicrotask(() => void hydrate());
-      return () => {
-        cancelled = true;
-      };
-    }
+    const restored: DisplayMessage[] = resumed.messages.map((row) => ({
+      id: row.id,
+      role: row.role === "user" ? "user" : "ai",
+      content: row.content,
+      timestamp: formatMessageTime(new Date(row.createdAt)),
+    }));
 
-    setMessages([
-      buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name),
-    ]);
+    setMessages(
+      restored.length > 0
+        ? restored
+        : [buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name)],
+    );
     setMessagesHydrated(true);
   }, [
     bootstrap.status,
-    bootstrap.sessionId,
     bootstrap.personaConfig.name,
     activeScenario,
     messagesHydrated,
-    searchParams,
+    resumed.status,
+    resumed.messages,
   ]);
+
+  // Keep the newest message in view. The voice screen has always done this;
+  // the text transcript did not, so replies landed below the fold.
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
@@ -456,45 +241,7 @@ function ChatSimulateInner() {
     bootstrap.interviewLoop,
   ]);
 
-  useEffect(() => {
-    // Mirror progress to the Supabase session row so the dashboard stays in
-    // sync. Fire-and-forget; failures are silent.
-    if (!bootstrap.sessionId || analysisHistory.length === 0) return;
 
-    const snapshot: InterviewReportSnapshot = {
-      sessionState,
-      metrics: liveMetrics,
-      analyses: analysisHistory,
-      strategyHistory,
-      scenarioTitle: activeScenario.title,
-      scenarioDescription: activeScenario.description,
-      personaName: activePersonaConfig.name,
-      generatedAt: new Date().toISOString(),
-      jobDescription: initialState.jobDescriptionRef,
-    };
-
-    const averageScore = computeAverageScore(snapshot);
-    void fetch(`/api/sessions/${bootstrap.sessionId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        averageScore,
-        metrics: liveMetrics,
-      }),
-    }).catch(() => {
-      // ignore; the report page reads from Supabase directly
-    });
-  }, [
-    initialState.sessionId,
-    initialState.jobDescriptionRef,
-    sessionState,
-    liveMetrics,
-    analysisHistory,
-    strategyHistory,
-    activeScenario.title,
-    activeScenario.description,
-    activePersonaConfig.name,
-  ]);
 
   const handleSend = async (message: string) => {
     const trimmedMessage = message.trim();
@@ -513,7 +260,7 @@ function ChatSimulateInner() {
       id: createMessageId(),
       role: "user",
       content: trimmedMessage,
-      timestamp: getCurrentTimestamp(),
+      timestamp: formatMessageTime(),
       feedbackLoading: liveCoachingOn,
     };
 
@@ -539,7 +286,7 @@ function ChatSimulateInner() {
             id: assistantMessageId,
             role: "ai",
             content: "",
-            timestamp: getCurrentTimestamp(),
+            timestamp: formatMessageTime(),
           },
         ]);
       }
@@ -553,15 +300,15 @@ function ChatSimulateInner() {
       });
 
       if (!response.ok) {
-        const errorData = (await response.json()) as Partial<ChatApiResponse>;
+        const errorData = (await response.json()) as ChatTurnError;
         throw new Error(errorData.error ?? "Failed to generate AI response.");
       }
 
-      let data: ChatApiResponse;
+      let data: ChatTurnResponse;
 
       if (streamResponses) {
         try {
-          data = await consumeChatStream<ChatApiResponse>(response, (chunk) => {
+          data = await consumeChatStream<ChatTurnResponse>(response, (chunk) => {
             setMessages((currentMessages) =>
               currentMessages.map((item) =>
                 item.id === assistantMessageId
@@ -581,16 +328,16 @@ function ChatSimulateInner() {
 
           if (!fallbackResponse.ok) {
             const errorData =
-              (await fallbackResponse.json()) as Partial<ChatApiResponse>;
+              (await fallbackResponse.json()) as ChatTurnError;
             throw new Error(
               errorData.error ?? "Failed to generate AI response.",
             );
           }
 
-          data = (await fallbackResponse.json()) as ChatApiResponse;
+          data = (await fallbackResponse.json()) as ChatTurnResponse;
         }
       } else {
-        data = (await response.json()) as ChatApiResponse;
+        data = (await response.json()) as ChatTurnResponse;
       }
 
       if (streamResponses) {
@@ -609,7 +356,7 @@ function ChatSimulateInner() {
           id: assistantMessageId,
           role: "ai",
           content: data.aiMessage,
-          timestamp: getCurrentTimestamp(),
+          timestamp: formatMessageTime(),
         };
 
         setMessages((currentMessages) => [...currentMessages, aiMessage]);
@@ -650,110 +397,13 @@ function ChatSimulateInner() {
         );
       }
 
-      // The interviewer already scored this answer inline. Trivial answers
-      // ("yes", "ready") come back with analysis null — skip the scored-turn
-      // bookkeeping for those.
-      if (!data.analysis || !data.strategy) {
-        return;
-      }
+      // Trivial answers ("yes", "ready") come back with no analysis — the
+      // hook returns null for those and there is no bookkeeping to do.
+      const applied = turn.applyTurn(data, { userMessage: trimmedMessage });
+      if (!applied) return;
 
-      const analysisResult = data.analysis;
-      const turnStrategy = data.strategy;
-      const turnConfidence = data.confidence ?? 50;
-
-      // Escalation flags come from the server's own decision, not a guess
-      // re-derived from `confidence`. The two used different rules and
-      // disagreed regularly.
-      const decision = {
-        strategy: turnStrategy,
-        reason: data.decisionReason ?? "",
-        confidence: turnConfidence,
-        shouldEscalate: data.shouldEscalate ?? false,
-        shouldSlowDown: data.shouldSlowDown ?? false,
-        nextFocus: analysisResult.followupTopics?.[0] ?? "specific examples",
-      };
-
-      const updatedSessionState = recordInterviewTurn(sessionState, {
-        userMessage: trimmedMessage,
-        aiMessage: data.aiMessage,
-        question: data.aiMessage,
-        analysis: analysisResult,
-        decision,
-      }).state;
-
-      const finalSessionState = isInterviewComplete(updatedSessionState)
-        ? markInterviewComplete(updatedSessionState)
-        : updatedSessionState;
-
-      const nextAnalysisHistory = [...analysisHistory, analysisResult];
-      const nextStrategyHistory = [...strategyHistory, turnStrategy];
-
-      setSessionState(finalSessionState);
-      setAnalysisHistory(nextAnalysisHistory);
-      setStrategyHistory(nextStrategyHistory);
-      const nextMetrics = buildInterviewMetrics({
-        analyses: nextAnalysisHistory,
-        state: finalSessionState,
-      });
-      setLiveMetrics(nextMetrics);
-
-      if (bootstrap.sessionId) {
-        const metricsPayload = appendDimensionSnapshot(
-          { dimensionSnapshots },
-          analysisResult,
-        );
-        const nextSnapshots = metricsPayload.dimensionSnapshots ?? [];
-        setDimensionSnapshots(nextSnapshots);
-        void fetch(`/api/sessions/${bootstrap.sessionId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            averageScore: analysisResult.overallScore,
-            metrics: { ...nextMetrics, ...metricsPayload },
-          }),
-        }).catch(() => {
-          // ignore
-        });
-      }
-      setLastFollowupPrompt(data.followupSummary);
-      setLastDecisionReason(data.decisionReason);
-      setLastStrategy(turnStrategy);
-      setLastDecisionConfidence(turnConfidence);
-
-      if (initialState.sessionId && isInterviewComplete(finalSessionState)) {
-        const finalMetrics = buildInterviewMetrics({
-          analyses: nextAnalysisHistory,
-          state: finalSessionState,
-        });
-        const completedSnapshot: InterviewReportSnapshot = {
-          sessionState: finalSessionState,
-          metrics: finalMetrics,
-          analyses: nextAnalysisHistory,
-          strategyHistory: nextStrategyHistory,
-          scenarioTitle: activeScenario.title,
-          scenarioDescription: activeScenario.description,
-          personaName: activePersonaConfig.name,
-          generatedAt: new Date().toISOString(),
-          jobDescription: initialState.jobDescriptionRef,
-        };
-        const averageScore = computeAverageScore(completedSnapshot);
-        const startedAtMs = Date.parse(finalSessionState.createdAt);
-        const durationMinutes = Number.isFinite(startedAtMs)
-          ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-          : null;
-        void fetch(`/api/sessions/${bootstrap.sessionId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "completed",
-            averageScore,
-            durationMinutes,
-            metrics: finalMetrics,
-            endedAt: new Date().toISOString(),
-          }),
-        }).catch(() => {
-          // ignore; local snapshot drives the report page
-        });
+      if (applied.isComplete) {
+        await turn.endSession();
       }
     } catch (requestError) {
       const messageText =
@@ -963,6 +613,8 @@ function ChatSimulateInner() {
                   Generating interviewer response...
                 </div>
               )}
+
+              <div ref={messagesEndRef} />
             </div>
           </div>
 
@@ -998,9 +650,9 @@ function ChatSimulateInner() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <LiveFeedbackSidebar
-                metrics={liveMetrics}
-                analyses={analysisHistory}
-                followupPrompt={lastFollowupPrompt}
+                metrics={turn.metrics}
+                analyses={turn.analyses}
+                followupPrompt={turn.lastFollowupPrompt}
               />
             </div>
           ) : (
@@ -1029,13 +681,13 @@ function ChatSimulateInner() {
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto pr-1">
             <InterviewStatePanel
-              state={sessionState}
+              state={turn.sessionState}
               stageLabel={stageLabel}
               stageGuidance={stageGuidance}
-              lastStrategy={lastStrategy ? (lastStrategy as InterviewStrategy) : null}
-              decisionReason={lastDecisionReason}
-              decisionConfidence={lastDecisionConfidence}
-              metrics={liveMetrics}
+              lastStrategy={turn.lastStrategy}
+              decisionReason={turn.lastDecisionReason}
+              decisionConfidence={turn.lastConfidence}
+              metrics={turn.metrics}
             />
           </div>
         </DialogContent>

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FileUser, Trash2, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
   CardContent,
@@ -29,6 +30,7 @@ export default function ResumesPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -247,7 +249,7 @@ export default function ResumesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void remove(item.id)}
+                  onClick={() => setPendingDelete(item.id)}
                   aria-label="Delete resume"
                 >
                   <Trash2 className="h-4 w-4 text-gray-500" />
@@ -257,6 +259,20 @@ export default function ResumesPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="Delete this resume?"
+        description="The extracted text is removed permanently. Interviews that already used it keep their transcripts."
+        onConfirm={async () => {
+          if (pendingDelete) await remove(pendingDelete);
+          setPendingDelete(null);
+        }}
+      />
+
     </div>
   );
 }

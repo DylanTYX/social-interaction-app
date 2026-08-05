@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -67,6 +68,7 @@ export default function PersonasPage() {
   } = usePersonaLibrary();
 
   const [confirmReset, setConfirmReset] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [busy, setBusy] = useState<"random" | "reset" | null>(null);
   const [editingEntry, setEditingEntry] = useState<PersonaLibraryEntry | null>(
     null,
@@ -265,7 +267,7 @@ export default function PersonasPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => void handleDelete(entry.id)}
+                    onClick={() => setPendingDelete(entry.id)}
                     aria-label="Delete persona"
                   >
                     <Trash2 className="h-4 w-4 text-gray-500" />
@@ -346,6 +348,20 @@ export default function PersonasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="Delete this persona?"
+        description="Interviews already run with this persona keep their saved copy of it."
+        onConfirm={async () => {
+          if (pendingDelete) await handleDelete(pendingDelete);
+          setPendingDelete(null);
+        }}
+      />
+
     </div>
   );
 }

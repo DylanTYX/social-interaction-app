@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FileText, Trash2, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
   CardContent,
@@ -31,6 +32,7 @@ export default function JobDescriptionsPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [roleTitle, setRoleTitle] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -249,7 +251,7 @@ export default function JobDescriptionsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void remove(item.id)}
+                  onClick={() => setPendingDelete(item.id)}
                   aria-label="Delete job description"
                 >
                   <Trash2 className="h-4 w-4 text-gray-500" />
@@ -259,6 +261,20 @@ export default function JobDescriptionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title="Delete this job description?"
+        description="This also deletes its embedded chunks, so interviews can no longer retrieve context from it. Existing transcripts are unaffected."
+        onConfirm={async () => {
+          if (pendingDelete) await remove(pendingDelete);
+          setPendingDelete(null);
+        }}
+      />
+
     </div>
   );
 }
