@@ -62,9 +62,14 @@ export async function recoverPersistedTurn(
       turnCount: payload.session?.turnCount ?? messages.length,
       summary: payload.session?.summary ?? null,
       // The inline analysis travelled in the `done` frame we never received.
-      // Losing it costs this turn's live coaching hint; the score itself was
-      // persisted server-side by the same transaction that stored the messages,
-      // so it still reaches the report.
+      // The score itself was persisted server-side by the same transaction that
+      // stored the messages, so it still reaches the report — but the client
+      // cannot do this turn's bookkeeping without it.
+      //
+      // Two visible consequences, both accepted: no live coaching hint for this
+      // one turn, and if this happened to be the *final* turn the session will
+      // not auto-complete, so the candidate ends it with the button instead.
+      // Both beat charging them twice and duplicating the turn.
       analysis: null,
       strategy: null,
       decisionReason: null,
