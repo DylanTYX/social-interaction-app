@@ -13,6 +13,8 @@ import {
 
 import { ChatInput } from "@/components/chat/chat-input";
 import { CodeInput } from "@/components/chat/code-input";
+import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
+import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
@@ -135,7 +137,9 @@ function ChatSimulateInner() {
    * captured the default and the effect existed only to correct it — a
    * guaranteed extra render, and a window where the UI showed the wrong toggle.
    */
-  const [coachingOverride, setCoachingOverride] = useState<boolean | null>(null);
+  const [coachingOverride, setCoachingOverride] = useState<boolean | null>(
+    null,
+  );
   const [sidebarOverride, setSidebarOverride] = useState<boolean | null>(null);
   const liveCoachingOn = coachingOverride ?? liveCoachingEnabled;
   const showLiveCoaching = sidebarOverride ?? liveCoachingEnabled;
@@ -175,6 +179,14 @@ function ChatSimulateInner() {
   const activeRound =
     bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
   const answerFormat = resolveAnswerFormat(activeRound);
+
+  // Round-level, not per-answer: CodeInput is remounted after every turn to
+  // clear the editor, so local state there reset the language each question.
+  const [codeLanguage, setCodeLanguage] = useState<CodeLanguage>(
+    ROUND_TYPE_SPECS[activeRound?.type ?? "technical_swe"].defaults.language ??
+      DEFAULT_CODE_LANGUAGE,
+  );
+
   const stageLabel = getStageLabel(turn.stage);
   const stageGuidance = getStageGuidance(
     turn.stage,
@@ -319,15 +331,18 @@ function ChatSimulateInner() {
 
       if (streamResponses) {
         try {
-          data = await consumeChatStream<ChatTurnResponse>(response, (chunk) => {
-            setMessages((currentMessages) =>
-              currentMessages.map((item) =>
-                item.id === assistantMessageId
-                  ? { ...item, content: `${item.content}${chunk}` }
-                  : item,
-              ),
-            );
-          });
+          data = await consumeChatStream<ChatTurnResponse>(
+            response,
+            (chunk) => {
+              setMessages((currentMessages) =>
+                currentMessages.map((item) =>
+                  item.id === assistantMessageId
+                    ? { ...item, content: `${item.content}${chunk}` }
+                    : item,
+                ),
+              );
+            },
+          );
         } catch {
           // The stream broke. The route persists the turn *before* emitting
           // `done`, so this may well have succeeded server-side — blindly
@@ -597,7 +612,8 @@ function ChatSimulateInner() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="h-8 px-3 tabular-nums">
-                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of ~{turn.targetTurns}
+                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of
+                  ~{turn.targetTurns}
                 </Badge>
                 <Badge variant="secondary" className="h-8 px-3">
                   {streamResponses ? "Streaming on" : "Streaming off"}
@@ -632,9 +648,7 @@ function ChatSimulateInner() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800">
-                      {error}
-                    </p>
+                    <p className="text-sm text-amber-800">{error}</p>
                   </CardContent>
                 </Card>
               )}
@@ -654,6 +668,8 @@ function ChatSimulateInner() {
             {answerFormat === "code" ? (
               <CodeInput
                 key={userTurnKey}
+                language={codeLanguage}
+                onLanguageChange={setCodeLanguage}
                 onSend={handleSend}
                 disabled={isSending}
               />
@@ -708,7 +724,8 @@ function ChatSimulateInner() {
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>
-              Internal interview strategy and decision context for debugging and optimization.
+              Internal interview strategy and decision context for debugging and
+              optimization.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto pr-1">

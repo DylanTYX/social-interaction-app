@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import {
   CODE_LANGUAGES,
-  DEFAULT_CODE_LANGUAGE,
   describeCode,
   formatCodeAnswer,
   type CodeLanguage,
@@ -51,13 +50,24 @@ function languageExtension(language: CodeLanguage) {
 export function CodeInput({
   onSend,
   disabled,
+  language,
+  onLanguageChange,
 }: {
   onSend: (message: string) => void;
   disabled?: boolean;
+  /**
+   * Owned by the caller so it survives the remount between turns.
+   *
+   * This used to be local state seeded with `DEFAULT_CODE_LANGUAGE`, and the
+   * chat page remounts this component after every answer (`key={userTurnKey}`)
+   * to clear the editor — so a five-question round in Java meant choosing Java
+   * five times. The code and note still reset, which is the point of the
+   * remount; the language is a round-level preference, not a per-answer one.
+   */
+  language: CodeLanguage;
+  onLanguageChange: (next: CodeLanguage) => void;
 }) {
-  const [language, setLanguage] = useState<CodeLanguage>(
-    DEFAULT_CODE_LANGUAGE,
-  );
+  const setLanguage = onLanguageChange;
   const [code, setCode] = useState("");
   const [note, setNote] = useState("");
 
