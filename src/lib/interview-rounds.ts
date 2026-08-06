@@ -1,4 +1,9 @@
 import type { PracticeMode } from "@/lib/interview-setup";
+import {
+  defaultAnswerFormat,
+  ROUND_TYPE_SPECS,
+  supportsCodeEditor,
+} from "@/lib/round-types";
 
 export const ROUND_TYPES = [
   "behavioral",
@@ -40,14 +45,23 @@ export interface InterviewRoundConfig {
 
 /**
  * Voice rounds cannot use an editor, so the mode wins over the round type.
+ *
+ * A stored `answerFormat: "code"` is also **ignored on a type that does not
+ * support an editor**. It used to win outright, which is how a behavioural
+ * round could end up with one: the wizard offered the toggle (it gated on
+ * practice mode, not round type), and once written the override beat the
+ * default. Saved loops and localStorage payloads still carry those values, so
+ * refusing them here is what actually fixes it.
  */
 export function resolveAnswerFormat(
-  round: Pick<InterviewRoundConfig, "type" | "practiceMode" | "answerFormat">
+  round:
+    | Pick<InterviewRoundConfig, "type" | "practiceMode" | "answerFormat">
     | undefined,
 ): AnswerFormat {
   if (!round || round.practiceMode === "voice") return "prose";
+  if (!supportsCodeEditor(round.type)) return "prose";
   if (round.answerFormat) return round.answerFormat;
-  return round.type === "technical_swe" ? "code" : "prose";
+  return defaultAnswerFormat(round.type);
 }
 
 export interface InterviewLoopConfig {
@@ -65,25 +79,19 @@ export interface InterviewLoopTemplate {
   rounds: InterviewRoundConfig[];
 }
 
-export const ROUND_TYPE_LABELS: Record<InterviewRoundType, string> = {
-  behavioral: "Behavioral",
-  technical_swe: "Technical SWE",
-  system_design: "System design",
-  case: "Case / problem solving",
-  screening: "Intro / screening",
-  hr: "HR / People",
-};
+/**
+ * Views over `ROUND_TYPE_SPECS`. Kept as exported records because a dozen call
+ * sites index them directly; they are no longer a second place to edit.
+ */
+export const ROUND_TYPE_LABELS: Record<InterviewRoundType, string> =
+  Object.fromEntries(
+    ROUND_TYPES.map((type) => [type, ROUND_TYPE_SPECS[type].label]),
+  ) as Record<InterviewRoundType, string>;
 
-export const ROUND_RUBRIC_LABELS: Record<InterviewRoundType, string> = {
-  behavioral: "STAR, clarity, specificity",
-  technical_swe:
-    "Problem framing, approach, correctness, complexity, communication, edge cases, code quality",
-  system_design:
-    "Requirements, architecture, depth, tradeoffs, scalability, communication",
-  case: "Problem framing, structure, tradeoffs, depth, communication",
-  screening: "Clarity, motivation, fit, concision",
-  hr: "Motivation, values fit, logistics, questions for us",
-};
+export const ROUND_RUBRIC_LABELS: Record<InterviewRoundType, string> =
+  Object.fromEntries(
+    ROUND_TYPES.map((type) => [type, ROUND_TYPE_SPECS[type].rubric]),
+  ) as Record<InterviewRoundType, string>;
 
 export const SINGLE_ROUND: InterviewRoundConfig = {
   id: "single-behavioral",
@@ -205,10 +213,7 @@ export function removeRoundFromLoop(
     ...loop,
     enabled: nextRounds.length > 1,
     templateId: nextRounds.length > 1 ? "custom" : "single",
-    currentRoundIndex: Math.min(
-      loop.currentRoundIndex,
-      nextRounds.length - 1,
-    ),
+    currentRoundIndex: Math.min(loop.currentRoundIndex, nextRounds.length - 1),
     rounds: nextRounds,
   };
 }
@@ -243,14 +248,17 @@ export function suggestLoopFromJobDescription(
     lower.includes("frontend") ||
     lower.includes("full stack") ||
     lower.includes("developer");
-  const isPm = lower.includes("product manager") || lower.includes("product management");
-  const isDesign = lower.includes("designer") || lower.includes("design system");
+  const isPm =
+    lower.includes("product manager") || lower.includes("product management");
+  const isDesign =
+    lower.includes("designer") || lower.includes("design system");
   const isData =
     lower.includes("data scientist") ||
     lower.includes("data analyst") ||
     lower.includes("machine learning");
   const isMarketing = lower.includes("marketing");
-  const isSales = lower.includes("sales") || lower.includes("account executive");
+  const isSales =
+    lower.includes("sales") || lower.includes("account executive");
 
   if (isSwe) {
     push({
@@ -354,7 +362,9 @@ export function normalizeInterviewLoop(
   };
 }
 
-export function getCurrentRound(loop: InterviewLoopConfig): InterviewRoundConfig {
+export function getCurrentRound(
+  loop: InterviewLoopConfig,
+): InterviewRoundConfig {
   return loop.rounds[loop.currentRoundIndex] ?? loop.rounds[0] ?? SINGLE_ROUND;
 }
 
@@ -411,4 +421,54 @@ export function isRoundType(value: unknown): value is InterviewRoundType {
     typeof value === "string" &&
     (ROUND_TYPES as readonly string[]).includes(value)
   );
+}
+
+/**
+ * Re-apply a round type's defaults when the user switches type.
+ *
+ * Changing the type used to patch the type alone, so a round switched to System
+ * design kept 15 minutes and "What you want this round to focus on." — even
+ * though the codebase already knew system design means 30 minutes and
+ * "Requirements, architecture, and tradeoffs". Those defaults existed, trapped
+ * inside template literals.
+ *
+ * Only values still equal to the *previous* type's default are replaced, so
+ * anything the user typed survives the change. `answerFormat` is cleared
+ * outright: an explicit choice made for one type says nothing about another,
+ * and leaving it set is how a code override followed a round to a type with no
+ * editor.
+ */
+export function applyRoundType(
+  round: InterviewRoundConfig,
+  nextType: InterviewRoundType,
+): InterviewRoundConfig {
+  const previous = ROUND_TYPE_SPECS[round.type].defaults;
+  const next = ROUND_TYPE_SPECS[nextType].defaults;
+
+  return {
+    ...round,
+    type: nextType,
+    durationMinutes:
+      round.durationMinutes === previous.durationMinutes
+        ? next.durationMinutes
+        : round.durationMinutes,
+    focus: isUneditedFocus(round.focus, previous.focus)
+      ? next.focus
+      : round.focus,
+    answerFormat: undefined,
+  };
+}
+
+/**
+ * A focus string counts as unedited if it still matches the previous type's
+ * default, or one of the generic placeholders a blank round is created with.
+ */
+function isUneditedFocus(current: string, previousDefault: string): boolean {
+  const generic = [
+    previousDefault,
+    "What you want this round to focus on.",
+    "Practice this interview round.",
+    "A focused interview practice round using the selected scenario.",
+  ];
+  return generic.some((value) => value.trim() === current.trim());
 }

@@ -88,14 +88,34 @@ describe("resolveAnswerFormat", () => {
     ).toBe("prose");
   });
 
-  it("honours an explicit override", () => {
+  it("honours an explicit opt-out on a type that supports code", () => {
     expect(resolveAnswerFormat({ ...round, answerFormat: "prose" })).toBe(
       "prose",
     );
+  });
+
+  it("refuses a code override on a type that has no editor", () => {
+    // Behaviour change, and the point of the round-type registry. This used to
+    // return "code": the override beat the type. That is how a behavioural
+    // round ended up with a code editor — the wizard offered the toggle
+    // because it gated on practice mode rather than round type, and once the
+    // value was written it won.
+    //
+    // Saved loops and localStorage payloads still carry those values, so
+    // refusing them here is what actually fixes it rather than just hiding
+    // the control.
+    for (const type of ["behavioral", "screening", "hr", "case", "system_design"] as const) {
+      expect(
+        resolveAnswerFormat({ ...round, type, answerFormat: "code" }),
+        type,
+      ).toBe("prose");
+    }
+
+    // The one type that does support an editor still honours the override.
     expect(
       resolveAnswerFormat({
         ...round,
-        type: "case",
+        type: "technical_swe",
         answerFormat: "code",
       }),
     ).toBe("code");

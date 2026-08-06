@@ -1,4 +1,8 @@
-import type { InterviewRoundType } from "@/lib/interview-rounds";
+import {
+  ROUND_TYPES,
+  type InterviewRoundType,
+} from "@/lib/interview-rounds";
+import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 
 export interface InterviewerPlaybook {
   id: string;
@@ -57,14 +61,9 @@ const PLAYBOOKS: InterviewerPlaybook[] = [
   },
 ];
 
-const ROUND_TAGS: Record<InterviewRoundType, string[]> = {
-  behavioral: ["behavioral", "star"],
-  technical_swe: ["technical", "framing", "vague"],
-  system_design: ["system_design", "architecture", "technical"],
-  case: ["case", "framing", "vague"],
-  screening: ["screening", "motivation"],
-  hr: ["hr", "motivation"],
-};
+const ROUND_TAGS: Record<InterviewRoundType, string[]> = Object.fromEntries(
+  ROUND_TYPES.map((type) => [type, ROUND_TYPE_SPECS[type].tags]),
+) as Record<InterviewRoundType, string[]>;
 
 /**
  * The playbook a round type always gets, independent of what the candidate just
@@ -78,14 +77,10 @@ const ROUND_TAGS: Record<InterviewRoundType, string[]> = {
  * generic `vague-answer` — so three round types silently got the wrong
  * guidance and their own playbook was never reachable.
  */
-const ROUND_PLAYBOOK_IDS: Record<InterviewRoundType, string> = {
-  behavioral: "behavioral-star",
-  technical_swe: "technical-framing",
-  system_design: "system-design",
-  case: "technical-framing",
-  screening: "screening-fit",
-  hr: "hr-people",
-};
+const ROUND_PLAYBOOK_IDS: Record<InterviewRoundType, string> =
+  Object.fromEntries(
+    ROUND_TYPES.map((type) => [type, ROUND_TYPE_SPECS[type].playbookId]),
+  ) as Record<InterviewRoundType, string>;
 
 export function selectRoundPlaybook(
   roundType: InterviewRoundType | undefined,

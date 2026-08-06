@@ -18,10 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { describeRoundLength } from "@/lib/interview-progress";
+import { supportsCodeEditor } from "@/lib/round-types";
 import {
   appendRoundToLoop,
   createLoopFromTemplate,
   removeRoundFromLoop,
+  applyRoundType,
   SINGLE_ROUND,
   resolveAnswerFormat,
   ROUND_RUBRIC_LABELS,
@@ -204,32 +206,6 @@ export function LoopStep({
           <Plus className="h-3.5 w-3.5" />
           Add round
         </Button>
-
-        {/* Only meaningful between rounds. */}
-        {isLoop && (
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-500">
-              Break between rounds
-            </Label>
-            <Select
-              value={String(value.breakMinutes)}
-              onValueChange={(next) =>
-                onChange({ ...value, breakMinutes: Number(next) })
-              }
-            >
-              <SelectTrigger className="h-8 w-28 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[0, 5, 10, 15].map((minutes) => (
-                  <SelectItem key={minutes} value={String(minutes)}>
-                    {minutes === 0 ? "No break" : `${minutes} min`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -279,7 +255,7 @@ function RoundCard({
             <Select
               value={round.type}
               onValueChange={(next) =>
-                onChange({ type: next as InterviewRoundType })
+                onChange(applyRoundType(round, next as InterviewRoundType))
               }
             >
               <SelectTrigger>
@@ -366,7 +342,7 @@ function RoundCard({
             </div>
           )}
 
-          {round.practiceMode === "text" && (
+          {supportsCodeEditor(round.type) && round.practiceMode === "text" && (
             <div className="flex items-center gap-2 self-end pb-1">
               <Switch
                 id={`code-editor-${round.id}`}

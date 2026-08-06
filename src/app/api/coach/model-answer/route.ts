@@ -15,6 +15,7 @@ import {
   serverError,
   unauthorized,
 } from "@/lib/api/errors";
+import { isTechnicalRound } from "@/lib/round-types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
 import {
@@ -45,14 +46,10 @@ interface ModelAnswerResult {
 }
 
 function rubricGuidance(roundType: InterviewRoundType | undefined): string {
-  switch (roundType) {
-    case "technical_swe":
-    case "system_design":
-    case "case":
-      return `This is a ${ROUND_RUBRIC_LABELS[roundType] ?? "technical"} question. A strong answer is structured: clarify the problem, state assumptions, reason through tradeoffs out loud, and land on a concrete approach with complexity/impact.`;
-    default:
-      return "This is a behavioral question. A strong answer uses the STAR structure (Situation, Task, Action, Result) with a specific, first-person example and a quantified outcome.";
+  if (isTechnicalRound(roundType) && roundType) {
+    return `This is a ${ROUND_RUBRIC_LABELS[roundType]} question. A strong answer is structured: clarify the problem, state assumptions, reason through tradeoffs out loud, and land on a concrete approach with complexity/impact.`;
   }
+  return "This is a behavioral question. A strong answer uses the STAR structure (Situation, Task, Action, Result) with a specific, first-person example and a quantified outcome.";
 }
 
 export async function POST(request: Request): Promise<NextResponse> {

@@ -1,4 +1,4 @@
-import type { InterviewRoundType } from "./interview-rounds";
+import { isTechnicalRound } from "./round-types";
 import type {
   AnalysisResult,
   InterviewStrategy,
@@ -24,11 +24,6 @@ export interface DecisionOutcome {
 }
 
 /** Rounds judged on the technical rubric rather than STAR. */
-const TECHNICAL_ROUNDS = new Set<InterviewRoundType>([
-  "technical_swe",
-  "system_design",
-  "case",
-]);
 
 /**
  * The analyzer's JSON is model-generated and not schema-validated, so any
@@ -72,7 +67,7 @@ function averageTechnical(scores: TechnicalScores): number {
  */
 function usesTechnicalRubric(analysis: AnalysisResult): boolean {
   if (analysis.technicalScores) return true;
-  return analysis.roundType ? TECHNICAL_ROUNDS.has(analysis.roundType) : false;
+  return isTechnicalRound(analysis.roundType);
 }
 
 function getVaguenessWeight(analysis: AnalysisResult): number {

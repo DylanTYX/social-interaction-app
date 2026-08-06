@@ -64,3 +64,21 @@ export function describeRoundLength(durationMinutes: number): string {
   const turns = targetTurnsForDuration(durationMinutes);
   return `${durationMinutes} min · ~${turns} questions`;
 }
+
+
+/**
+ * A suggested rest before the next round, in minutes.
+ *
+ * This used to be a `breakMinutes` select in the setup wizard — a control whose
+ * only effect anywhere was one string on the report. Asking the user to choose
+ * it made them think about a setting that changed nothing they could feel, and
+ * whichever value they picked, nothing in the app ever paused.
+ *
+ * Deriving it from the round they just finished keeps the (mild) realism nudge
+ * and removes the decision: a long round earns a longer breather.
+ */
+export function suggestedBreakMinutes(durationMinutes: number): number {
+  if (durationMinutes >= 45) return 10;
+  if (durationMinutes >= 20) return 5;
+  return 0;
+}
