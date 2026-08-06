@@ -1,10 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Sparkles } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
@@ -230,86 +241,143 @@ function RoundCard({
 }) {
   const isLoop = total > 1;
 
+  const ids = {
+    type: `round-${round.id}-type`,
+    title: `round-${round.id}-title`,
+    length: `round-${round.id}-length`,
+    focus: `round-${round.id}-focus`,
+    persona: `round-${round.id}-persona`,
+    code: `round-${round.id}-code`,
+  };
+
   return (
     <Card className="border border-border shadow-soft">
-      <CardContent className="space-y-3">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <Badge variant={isLoop ? "secondary" : "outline"}>
-            {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
-          </Badge>
-          {onRemove && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-red-600"
-              aria-label={`Remove round ${index + 1}`}
-              onClick={onRemove}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+      <CardHeader>
+        <CardTitle className="text-base">
+          {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
+        </CardTitle>
+        {onRemove && (
+          <CardAction>
+            {/* In the overflow menu, matching the persona cards. It used to be
+                a trash icon sitting directly above every field it destroys. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Actions for round ${index + 1}`}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                  Remove round
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </CardAction>
+        )}
+      </CardHeader>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Type</Label>
-            <Select
-              value={round.type}
-              onValueChange={(next) =>
-                onChange(applyRoundType(round, next as InterviewRoundType))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
-                  <SelectItem key={type} value={type}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs leading-4 text-muted-foreground">
-              {ROUND_RUBRIC_LABELS[round.type]}
-            </p>
+      {/* Grouped by concern rather than laid out in one flat grid. Previously
+          identity (type, title) was split across three non-adjacent cells with
+          shape (length) wedged between, and because it was a single
+          `sm:grid-cols-2`, Title sat beside Type on desktop but beside Length
+          on mobile — the grouping was a side-effect of the column count. */}
+      <CardContent className="space-y-6">
+        <section className="space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            What kind of round
+          </h4>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor={ids.type}>Type</Label>
+              <Select
+                value={round.type}
+                onValueChange={(next) =>
+                  onChange(applyRoundType(round, next as InterviewRoundType))
+                }
+              >
+                <SelectTrigger id={ids.type}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
+                    <SelectItem key={type} value={type}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs leading-4 text-muted-foreground">
+                Scored on {ROUND_RUBRIC_LABELS[round.type].toLowerCase()}.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={ids.title}>Title</Label>
+              <Input
+                id={ids.title}
+                value={round.title}
+                onChange={(event) => onChange({ title: event.target.value })}
+              />
+            </div>
           </div>
+        </section>
 
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <Label className="text-xs text-muted-foreground">Length</Label>
-              {/* The consequence, not the raw number — duration now drives when
-                the interview actually ends. */}
+        <section className="space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Shape
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <Label htmlFor={ids.length}>Length</Label>
               <span className="text-xs tabular-nums text-muted-foreground">
                 {describeRoundLength(round.durationMinutes)}
               </span>
             </div>
-            <input
-              type="range"
-              min={5}
-              max={90}
-              step={5}
-              value={round.durationMinutes}
-              onChange={(event) =>
-                onChange({ durationMinutes: Number(event.target.value) })
-              }
-              aria-label="Round length in minutes"
-              className="w-full accent-blue-600"
-            />
+            {/* Boxed to 36px so the slider shares a baseline with the inputs
+                above it — a bare range is ~19px tall. */}
+            <div className="flex h-9 items-center">
+              <input
+                id={ids.length}
+                type="range"
+                min={5}
+                max={90}
+                step={5}
+                value={round.durationMinutes}
+                onChange={(event) =>
+                  onChange({ durationMinutes: Number(event.target.value) })
+                }
+                className="w-full accent-blue-600"
+              />
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Title</Label>
-            <Input
-              value={round.title}
-              onChange={(event) => onChange({ title: event.target.value })}
-            />
-          </div>
+          {supportsCodeEditor(round.type) && round.practiceMode === "text" && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <Label htmlFor={ids.code}>Answer in a code editor</Label>
+              <Switch
+                id={ids.code}
+                checked={resolveAnswerFormat(round) === "code"}
+                onCheckedChange={(checked) =>
+                  onChange({ answerFormat: checked ? "code" : "prose" })
+                }
+              />
+            </div>
+          )}
+        </section>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Focus</Label>
+        <section className="space-y-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Content
+          </h4>
+          <div className="space-y-2">
+            <Label htmlFor={ids.focus}>Focus</Label>
             <Input
+              id={ids.focus}
               value={round.focus}
               onChange={(event) => onChange({ focus: event.target.value })}
               placeholder="What this round should dig into"
@@ -317,12 +385,10 @@ function RoundCard({
           </div>
 
           {/* A different interviewer per round is only a concept in a loop — a
-            single round already has the Interviewer step. */}
+              single round already has the Interviewer step. */}
           {isLoop && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Interviewer
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor={ids.persona}>Asked by</Label>
               <Select
                 value={round.personaLibraryId ?? "default"}
                 onValueChange={(next) =>
@@ -331,7 +397,7 @@ function RoundCard({
                   })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id={ids.persona}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -345,25 +411,7 @@ function RoundCard({
               </Select>
             </div>
           )}
-
-          {supportsCodeEditor(round.type) && round.practiceMode === "text" && (
-            <div className="flex items-center gap-2 self-end pb-1">
-              <Switch
-                id={`code-editor-${round.id}`}
-                checked={resolveAnswerFormat(round) === "code"}
-                onCheckedChange={(checked) =>
-                  onChange({ answerFormat: checked ? "code" : "prose" })
-                }
-              />
-              <Label
-                htmlFor={`code-editor-${round.id}`}
-                className="text-xs text-muted-foreground"
-              >
-                Answer in a code editor
-              </Label>
-            </div>
-          )}
-        </div>
+        </section>
       </CardContent>
     </Card>
   );
