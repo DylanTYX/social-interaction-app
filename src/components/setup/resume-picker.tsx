@@ -3,13 +3,6 @@
 import { useRef, useState } from "react";
 import { CheckCircle2, FileUser, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,28 +73,17 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
   };
 
   return (
-    <Card className="border border-gray-200/80 shadow-soft">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileUser className="h-4 w-4 text-blue-600" />
-          Your resume
-        </CardTitle>
-        <CardDescription>
-          Optional. The interviewer asks about your real experience and
-          pressure-tests the claims on your resume.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
-          <div>
-            <Label className="text-sm font-medium">
-              Tailor questions to my background
+          <div className="flex items-center gap-2">
+            <FileUser className="h-4 w-4 shrink-0 text-blue-600" />
+            <Label htmlFor="use-resume" className="text-sm font-medium">
+              CV
             </Label>
-            <p className="text-xs text-gray-500">
-              Ground the interview in your own experience.
-            </p>
           </div>
           <Switch
+            id="use-resume"
             checked={value.enabled}
             onCheckedChange={(checked) =>
               onChange({ ...value, enabled: checked })
@@ -283,7 +265,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

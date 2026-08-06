@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Dice5,
+  HelpCircle,
   MoreHorizontal,
   RefreshCw,
   RotateCcw,
@@ -12,7 +13,18 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   DropdownMenu,
@@ -141,16 +153,9 @@ export function PersonaStep({
     // side above `lg`, stacked below.
     <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
       <Card className="border border-gray-200/80 shadow-soft">
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">Persona library</Label>
-              <p className="text-xs text-gray-600">
-                Pick a starting point — the built-in presets are just an
-                onboarding guide, you can edit, rename, duplicate, or delete any
-                of them.
-              </p>
-            </div>
+        <CardHeader>
+          <CardTitle className="text-base">Pick an interviewer</CardTitle>
+          <CardAction>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -173,8 +178,9 @@ export function PersonaStep({
                 Restore presets
               </Button>
             </div>
-          </div>
-
+          </CardAction>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {isLoading && sortedLibrary.length === 0
               ? [0, 1, 2, 3].map((index) => (
@@ -303,21 +309,17 @@ export function PersonaStep({
       </Card>
 
       <Card className="border border-gray-200/80 shadow-soft">
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Label className="text-sm font-medium">Customize</Label>
-              <p className="text-xs text-gray-500">
-                Tweak the interviewer to match the role you are practicing for.
-                {isModified && activeLibraryId
-                  ? " Unsaved changes from the original."
-                  : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="rounded-full text-xs">
-                {value.name}
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            Customise
+            {isModified && activeLibraryId && (
+              <Badge variant="outline" className="font-normal text-amber-700">
+                Unsaved changes
               </Badge>
+            )}
+          </CardTitle>
+          <CardAction>
+            <div className="flex flex-wrap items-center gap-2">
               {activeLibraryId && isModified && (
                 <Button
                   type="button"
@@ -344,8 +346,9 @@ export function PersonaStep({
                 {showSaveAsNew ? "Cancel" : "Save as new"}
               </Button>
             </div>
-          </div>
-
+          </CardAction>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {showSaveAsNew && (
             <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-blue-200/70 bg-blue-50/60 p-3">
               <div className="flex-1 min-w-[200px] space-y-1">
@@ -534,7 +537,29 @@ function SliderField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <Label htmlFor={id}>{label}</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor={id}>{label}</Label>
+          {/* The one place a tooltip earns its keep in this flow: "higher means
+              more skepticism" is real explanation, not a restated label. It is
+              also the kind of detail you want once and never again, which is
+              exactly what hover-to-reveal is for.
+
+              `aria-describedby` carries the same text to screen readers and to
+              anyone who reaches the slider by keyboard, so the explanation is
+              never hover-only. */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={`What does ${label.toLowerCase()} do?`}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-56">{helper}</TooltipContent>
+          </Tooltip>
+        </div>
         <Badge variant="secondary" className="text-xs px-2 py-0.5">
           {value}/10
         </Badge>
@@ -547,10 +572,13 @@ function SliderField({
         step={1}
         value={value}
         aria-valuetext={`${value} out of 10`}
+        aria-describedby={`${id}-help`}
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-full accent-blue-600"
       />
-      <p className="text-xs text-gray-500">{helper}</p>
+      <span id={`${id}-help`} className="sr-only">
+        {helper}
+      </span>
     </div>
   );
 }
