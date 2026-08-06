@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { CheckCircle2, FileUser, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useResumes } from "@/hooks/use-resumes";
@@ -95,18 +96,13 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
               {TAB_OPTIONS.map((tab) => (
-                <button
+                <ChoiceChip
                   key={tab.id}
-                  type="button"
+                  selected={value.mode === tab.id}
                   onClick={() => setMode(tab.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    value.mode === tab.id
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-border bg-white text-muted-foreground hover:bg-muted"
-                  }`}
                 >
                   {tab.label}
-                </button>
+                </ChoiceChip>
               ))}
             </div>
 
