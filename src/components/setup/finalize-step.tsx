@@ -63,7 +63,7 @@ export function FinalizeStep({
 
   return (
     <div className="space-y-6">
-      <Card className="border border-blue-200/70 bg-linear-to-br from-blue-50 via-white to-indigo-50/50">
+      <Card className="border border-border shadow-soft">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Your session</CardTitle>
         </CardHeader>
@@ -127,17 +127,17 @@ export function FinalizeStep({
 
       {/* Two identical single-toggle panels became one card. The dashboard's
           settings page groups its switches the same way. */}
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="border border-border shadow-soft">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">During the interview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
             <div>
               <Label htmlFor="stream-responses" className="text-sm font-medium">
                 Live response streaming
               </Label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Stream the interviewer&apos;s reply token-by-token as it&apos;s
                 generated.
               </p>
@@ -151,12 +151,12 @@ export function FinalizeStep({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
             <div>
               <Label htmlFor="live-coaching" className="text-sm font-medium">
                 Live coaching tips
               </Label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Show short notes after each answer, including what you did well.
               </p>
             </div>
@@ -172,7 +172,7 @@ export function FinalizeStep({
       </Card>
 
       {setup.practiceMode === "voice" && (
-        <Card className="border border-gray-200/80 shadow-soft">
+        <Card className="border border-border shadow-soft">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Mic className="h-4 w-4 text-blue-600" />
@@ -184,13 +184,13 @@ export function FinalizeStep({
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
+              <div className="rounded-xl border border-border bg-white p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                   <Volume2 className="h-4 w-4 text-blue-600" />
                   Text-to-speech
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Hear interviewer prompts aloud.
                   </p>
                   <Switch
@@ -207,13 +207,13 @@ export function FinalizeStep({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
+              <div className="rounded-xl border border-border bg-white p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                   <Mic className="h-4 w-4 text-blue-600" />
                   Speech-to-text
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Convert your spoken answer to text.
                   </p>
                   <Switch
@@ -265,7 +265,7 @@ export function FinalizeStep({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Selected:{" "}
                 {setup.voiceConfig.selectedVoiceName ||
                   "Default (Aria — US Female)"}
@@ -274,12 +274,12 @@ export function FinalizeStep({
 
             <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-gray-700">
+                <div className="flex items-center gap-2 text-sm text-foreground">
                   <CheckCircle2
                     className={`h-4 w-4 ${
                       microphoneStatus === "ready"
                         ? "text-emerald-500"
-                        : "text-gray-400"
+                        : "text-muted-foreground"
                     }`}
                   />
                   {microphoneStatus === "ready"
@@ -319,11 +319,11 @@ export function FinalizeStep({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-gray-500">
+    <div className="rounded-lg border border-border px-3 py-2">
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-medium text-gray-900">{value}</p>
+      <p className="text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }

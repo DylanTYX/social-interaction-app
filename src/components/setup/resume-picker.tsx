@@ -75,9 +75,9 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
           <div className="flex items-center gap-2">
-            <FileUser className="h-4 w-4 shrink-0 text-blue-600" />
+            <FileUser className="h-4 w-4 shrink-0 text-muted-foreground" />
             <Label htmlFor="use-resume" className="text-sm font-medium">
               CV
             </Label>
@@ -102,7 +102,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                   className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                     value.mode === tab.id
                       ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      : "border-border bg-white text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {tab.label}
@@ -114,7 +114,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="resume-text">Paste resume</Label>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {value.rawText.trim().length} chars
                   </span>
                 </div>
@@ -129,7 +129,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                 />
                 {value.rawText.trim().length > 0 &&
                   value.rawText.trim().length < 80 && (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-destructive">
                       Paste at least 80 characters to enable resume context.
                     </p>
                   )}
@@ -137,7 +137,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
             )}
 
             {value.mode === "upload" && (
-              <div className="space-y-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-4">
+              <div className="space-y-3 rounded-xl border border-dashed border-border bg-muted/50 p-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -156,10 +156,12 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                   <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white p-3">
                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {value.savedTitle ?? "Uploaded resume"}
                       </p>
-                      <p className="text-xs text-gray-500">Ready to use</p>
+                      <p className="text-xs text-muted-foreground">
+                        Ready to use
+                      </p>
                     </div>
                     <Button
                       variant="outline"
@@ -171,13 +173,13 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <Upload className="h-5 w-5" />
                     </div>
                     <p className="text-sm font-medium text-gray-800">
                       Upload a PDF resume
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Text is extracted automatically. Image-only PDFs are not
                       supported in this version.
                     </p>
@@ -203,16 +205,16 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                     {[0, 1].map((index) => (
                       <div
                         key={index}
-                        className="h-16 rounded-lg bg-gray-100 animate-pulse"
+                        className="h-16 rounded-lg bg-muted animate-pulse"
                       />
                     ))}
                   </div>
                 ) : items.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center">
+                  <div className="rounded-lg border border-dashed border-border bg-muted p-4 text-center">
                     <p className="text-sm font-medium text-gray-800">
                       No saved resumes yet
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Switch to &quot;Paste text&quot; or &quot;Upload PDF&quot;
                       to add one.
                     </p>
@@ -226,8 +228,8 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                           key={item.id}
                           className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
                             isActive
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-200 bg-white hover:bg-gray-50"
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-border bg-white hover:bg-muted"
                           }`}
                         >
                           <button
@@ -235,10 +237,10 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                             onClick={() => handlePickSaved(item.id, item.title)}
                             className="flex-1 text-left"
                           >
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-foreground">
                               {item.title}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {new Date(item.createdAt).toLocaleDateString()}
                             </p>
                           </button>
@@ -248,7 +250,7 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                             onClick={() => handleRemoveSaved(item.id)}
                             aria-label="Delete resume"
                           >
-                            <Trash2 className="h-4 w-4 text-gray-500" />
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </div>
                       );

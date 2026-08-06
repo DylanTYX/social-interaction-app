@@ -96,8 +96,8 @@ export default function SetupPage() {
 
 function SetupLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="flex items-center gap-3 text-sm text-gray-500">
+    <div className="flex min-h-screen items-center justify-center bg-muted">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
         <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
         Preparing setup...
       </div>
@@ -715,7 +715,7 @@ function SetupWizard() {
             <Button
               variant="ghost"
               onClick={goBack}
-              className="gap-2 text-gray-600 hover:text-gray-900"
+              className="gap-2 text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
               {isFirstStep ? "Cancel" : "Back"}
@@ -727,12 +727,12 @@ function SetupWizard() {
                     end. */}
               {canProceedFromStep
                 ? isLastStep && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Saved automatically. You can come back any time.
                     </p>
                   )
                 : blockedReason && (
-                    <p className="text-xs text-amber-700">{blockedReason}</p>
+                    <p className="text-xs text-destructive">{blockedReason}</p>
                   )}
               <Button
                 onClick={goNext}
@@ -764,7 +764,7 @@ function Stepper({
   const currentIndex = STEPS.findIndex((step) => step.id === currentStepId);
 
   return (
-    <ol className="flex flex-col gap-2 rounded-xl border border-gray-200/80 bg-white p-3 shadow-soft sm:flex-row sm:items-center">
+    <ol className="flex flex-col gap-2 rounded-xl border border-border bg-white p-3 shadow-soft sm:flex-row sm:items-center">
       {STEPS.map((step, index) => {
         const Icon = step.icon;
         const isActive = step.id === currentStepId;
@@ -783,7 +783,7 @@ function Stepper({
                   ? "border-blue-300 bg-blue-50 shadow-soft-md"
                   : isCompleted
                     ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-                    : "border-gray-200 bg-white text-gray-400 cursor-default"
+                    : "border-border bg-white text-muted-foreground cursor-default"
               }`}
             >
               <span
@@ -792,7 +792,7 @@ function Stepper({
                     ? "bg-blue-500 text-white"
                     : isCompleted
                       ? "bg-emerald-500 text-white"
-                      : "bg-gray-100 text-gray-500"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {isCompleted ? (
@@ -804,10 +804,10 @@ function Stepper({
               <p
                 className={`min-w-0 truncate text-sm font-medium ${
                   isActive
-                    ? "text-gray-900"
+                    ? "text-foreground"
                     : isCompleted
                       ? "text-emerald-900"
-                      : "text-gray-500"
+                      : "text-muted-foreground"
                 }`}
               >
                 {step.shortLabel}
