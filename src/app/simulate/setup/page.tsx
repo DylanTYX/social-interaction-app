@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {} from "@/components/ui/select";
 import {
   BRIEF_QUICK_STARTS,
   CUSTOM_SCENARIO_VALUE,
   resolveScenarioForLaunch,
+  unfilledPlaceholders,
 } from "@/lib/scenarios";
 import { buildLaunchMetaFromSetup } from "@/lib/session-launch-meta";
 import { type PersonaConfig } from "@/lib/persona-engine";
@@ -563,7 +563,19 @@ function SetupWizard() {
   // *empty* string means it is not, but there is nothing worth saying yet.
   const blockedReason = ((): string | null => {
     if (currentStep === "context") {
-      const briefLength = setup.customScenarioBrief?.trim().length ?? 0;
+      const brief = setup.customScenarioBrief ?? "";
+      const briefLength = brief.trim().length;
+
+      // Length is not completeness. A quick-start template clears 20 characters
+      // while still reading "…for a [role] role", and that shipped straight
+      // into a live interview.
+      const placeholders = unfilledPlaceholders(brief);
+      if (briefLength >= 20 && placeholders.length > 0) {
+        return placeholders.length === 1
+          ? `Replace ${placeholders[0]} with the real detail.`
+          : `Replace ${placeholders.slice(0, 2).join(" and ")} with real details.`;
+      }
+
       if (briefLength < 20) {
         // Silent while the box is still empty. The brief starts blank, so
         // showing this on arrival meant the first step opened by telling the

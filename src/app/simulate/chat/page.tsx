@@ -94,7 +94,11 @@ function buildWelcomeMessage(
   return {
     id: "welcome",
     role: "ai",
-    content: `Welcome to ${scenario.title} practice with ${personaLabel}. ${scenario.description} Start with your opening response whenever you're ready.`,
+    // The brief is stated once. This used to interpolate BOTH `scenario.title`
+    // and `scenario.description`, which for a custom brief are the same text at
+    // two lengths — so the opening message read "Welcome to <brief truncated
+    // mid-word>… practice with <persona>. <the same brief again>."
+    content: `You're practising with ${personaLabel}. ${scenario.description} Start with your opening response whenever you're ready.`,
     timestamp: formatMessageTime(),
   };
 }
