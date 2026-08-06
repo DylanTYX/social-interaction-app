@@ -122,21 +122,43 @@ const LEGACY_SCENARIO_TITLES: Record<string, { title: string; description: strin
   },
 };
 
+/**
+ * A short label for the brief, for lists and headers.
+ *
+ * The 56-character truncation used to be an unnamed side-effect of
+ * `getScenarioByValue`, which returned the brief twice — once clipped as
+ * `title`, once whole as `description`. Callers treated those as two different
+ * facts, so the interview welcome message printed the brief twice, one copy
+ * cut mid-word. Giving the truncation a name and one owner is what stops that
+ * happening again: if you want prose, use the brief; if you want a label, ask
+ * for one.
+ */
+export function briefTitle(brief: string): string {
+  const trimmed = brief.trim();
+  if (!trimmed) return CUSTOM_SCENARIO_OPTION.title;
+  return trimmed.length > 56 ? `${trimmed.slice(0, 56)}…` : trimmed;
+}
+
+/**
+ * Placeholders the quick-start templates ship with, e.g. `[role]`.
+ *
+ * The brief was gated on being 20 characters long, which a template satisfies
+ * while still being a fill-in-the-blank — so "Recruiter screening call for a
+ * [role] role" reached a live interview. Length is not completeness.
+ */
+export function unfilledPlaceholders(brief: string): string[] {
+  return [...brief.matchAll(/\[[^\]\n]{1,40}\]/g)].map((match) => match[0]);
+}
+
 export function getScenarioByValue(
   value: string,
   customBrief?: string,
 ): ScenarioOption {
   if (value === CUSTOM_SCENARIO_VALUE) {
     const brief = customBrief?.trim() ?? "";
-    const title =
-      brief.length > 0
-        ? brief.length > 56
-          ? `${brief.slice(0, 56)}…`
-          : brief
-        : CUSTOM_SCENARIO_OPTION.title;
     return {
       ...CUSTOM_SCENARIO_OPTION,
-      title,
+      title: briefTitle(brief),
       description:
         brief.length > 0 ? brief : CUSTOM_SCENARIO_OPTION.description,
     };
