@@ -19,27 +19,29 @@ screen, two technical rounds, then a hiring manager.
 
 ## Setting up an interview
 
-The setup wizard has five steps. Everything is optional except picking a mode.
+Four steps. Only one thing is required: a sentence or two about the role.
 
-### 1. Mode
+### 1. Context
 
-**Text** — type your answers. **Voice** — speak them, and hear the interviewer
-speak back.
+**How you want to answer** — *Text* to type, *Voice* to speak and hear the
+interviewer speak back.
 
-### 2. Brief
+**The role** — describe it in your own words, or tap a quick-start to fill the
+box and edit from there. Twenty characters is the minimum; a couple of sentences
+works better.
 
-Describe the role in your own words, or paste a real job description. You can
-also attach:
+**Documents (optional)** — attach either or both:
 
 - **A job description** — paste it or upload a PDF. Questions are then tailored
-  to that role's actual responsibilities and requirements.
+  to that role's actual responsibilities, and the round builder on the next step
+  can suggest a matching set of rounds.
 - **Your CV** — paste it or upload a PDF. The interviewer asks about your real
   background and pressure-tests the claims on it, rather than inventing
   experience you don't have.
 
-Both are saved to your library so you can reuse them.
+Both are saved to your library and reusable across sessions.
 
-### 3. Build your interview
+### 2. Rounds
 
 Start from a preset, or build it yourself:
 
@@ -48,7 +50,7 @@ Start from a preset, or build it yourself:
 | Quick practice | One round, ready to go |
 | Screen + behavioural | Two rounds |
 | Full SWE loop | Screen, technical, system design, behavioural |
-| Suggest from job description | Rounds picked to match the JD you pasted |
+| Suggest from job description | Rounds picked to match the JD you attached |
 
 Every round is editable. For each one you choose:
 
@@ -77,18 +79,24 @@ loop feels like a real panel rather than the same person four times.
 
 Add a round to make it a loop; a loop also lets you set a break between rounds.
 
-### 4. Interviewer
+### 3. Interviewer
 
-Pick a saved persona or build one. You control nationality, industry,
-seniority, communication style, and four dials: **strictness**, **warmth**,
-**pace**, and **pushback**. A high-pushback interviewer challenges your claims;
-a warm one gives you room. Save personas to reuse them, or roll a random one.
+Pick one from the library — six presets ship with the app, and anything you save
+joins them. Each can be duplicated or deleted from the menu on its card.
 
-### 5. Launch
+On the right you set nationality, industry, seniority, communication style and
+years of experience. Four dials sit behind **Fine-tune interviewer style**:
+**strictness**, **warmth**, **pace** and **pushback**. A high-pushback
+interviewer challenges your claims; a warm one gives you room. Each dial has a
+tooltip explaining which direction does what.
 
-Review the summary, run a microphone check if you're doing voice, and start.
+Save your edits as a new persona, or update the one you started from.
 
----
+### 4. Review
+
+Your session at a glance, the two in-interview toggles (response streaming and
+live coaching tips), a microphone check if you picked Voice, and the button that
+starts it.
 
 ## During the interview
 
