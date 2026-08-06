@@ -16,13 +16,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {} from "@/components/ui/select";
 import {
   BRIEF_QUICK_STARTS,
@@ -63,7 +56,6 @@ type StepDefinition = {
   id: StepId;
   title: string;
   shortLabel: string;
-  description: string;
   icon: React.ComponentType<{ className?: string }>;
 };
 
@@ -72,30 +64,24 @@ const STEPS: StepDefinition[] = [
     id: "context",
     title: "What are you preparing for?",
     shortLabel: "Context",
-    description:
-      "Pick how you want to answer, describe the role, and optionally attach a job description or CV.",
     icon: FileText,
   },
   {
     id: "rounds",
     title: "Build your interview",
     shortLabel: "Rounds",
-    description: "One focused round, or compose several for a realistic loop.",
     icon: GaugeCircle,
   },
   {
     id: "persona",
     title: "Shape the interviewer",
     shortLabel: "Interviewer",
-    description: "Pick a persona, or fine-tune one of your own.",
     icon: Sliders,
   },
   {
     id: "review",
     title: "Review and launch",
     shortLabel: "Review",
-    description:
-      "Confirm the session, run a mic check if you are practising by voice, and start.",
     icon: Rocket,
   },
 ];
@@ -206,7 +192,6 @@ function SetupWizard() {
   const totalSteps = STEPS.length;
   const isLastStep = stepIndex === totalSteps - 1;
   const isFirstStep = stepIndex === 0;
-  const activeStep = STEPS[stepIndex];
 
   const updateSetup = (partial: Partial<InterviewSetupState>) => {
     setSetup((current) => ({ ...current, ...partial }));
@@ -574,10 +559,19 @@ function SetupWizard() {
    * The document checks moved from the last step to the first, along with the
    * pickers themselves.
    */
+  // `null` means the step is complete. A string means it is not — and an
+  // *empty* string means it is not, but there is nothing worth saying yet.
   const blockedReason = ((): string | null => {
     if (currentStep === "context") {
-      if ((setup.customScenarioBrief?.trim().length ?? 0) < 20) {
-        return "Describe the role in at least 20 characters.";
+      const briefLength = setup.customScenarioBrief?.trim().length ?? 0;
+      if (briefLength < 20) {
+        // Silent while the box is still empty. The brief starts blank, so
+        // showing this on arrival meant the first step opened by telling the
+        // user off for not having done anything yet. Once they have started
+        // typing, saying how far they have to go is genuinely useful.
+        return briefLength === 0
+          ? ""
+          : "Describe the role in at least 20 characters.";
       }
       if (setup.jobDescription.enabled) {
         if (setup.jobDescription.mode === "paste") {
@@ -623,7 +617,7 @@ function SetupWizard() {
         <PageHeader
           eyebrow="Practice"
           title="Interview practice"
-          description="Set up a session: what you are preparing for, how many rounds, and who is asking."
+          description="Four steps, then you are interviewing."
           icon={<Sparkles className="h-6 w-6" />}
           iconColor="blue"
           actions={
@@ -638,114 +632,111 @@ function SetupWizard() {
 
         <Stepper currentStepId={currentStep} onStepSelect={setCurrentStep} />
 
-        <Card className="border border-gray-200/80 shadow-soft">
-          <CardHeader className="pb-4">
-            <div className="space-y-1">
-              <CardTitle className="text-lg">{activeStep.title}</CardTitle>
-              <CardDescription>{activeStep.description}</CardDescription>
+        {/* No CardHeader. The stepper already names the step, and every
+            section inside carries its own CardTitle sitting directly above its
+            controls — so a step-level title/description pair only restated
+            what was above it and what was below it. On the first step it
+            repeated the inner heading word for word. */}
+        <div className="space-y-6">
+          {currentStep === "context" && (
+            <ContextStep
+              setup={setup}
+              quickStarts={BRIEF_QUICK_STARTS}
+              onModeChange={updateMode}
+              onUpdate={(partial) =>
+                updateSetup(
+                  "customScenarioBrief" in partial
+                    ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
+                    : partial,
+                )
+              }
+            />
+          )}
+
+          {currentStep === "rounds" && (
+            <LoopStep
+              value={setup.interviewLoop}
+              practiceMode={setup.practiceMode}
+              jobDescriptionText={
+                setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
+              }
+              personaLibrary={personaLibrary}
+              onChange={(interviewLoop) => updateSetup({ interviewLoop })}
+            />
+          )}
+
+          {currentStep === "persona" && (
+            <PersonaStep
+              value={setup.personaConfig}
+              activeLibraryId={setup.personaLibraryId}
+              library={personaLibrary}
+              isLoading={personaLibraryLoading}
+              onPatch={updatePersona}
+              onPick={handlePickPersona}
+              onRandomize={handleRandomizePersona}
+              onSaveAsNew={handleSavePersona}
+              onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
+              onDuplicate={handleDuplicatePersona}
+              onDelete={handleDeletePersona}
+              onResetLibrary={handleResetLibrary}
+            />
+          )}
+
+          {currentStep === "review" && (
+            <FinalizeStep
+              setup={setup}
+              onUpdate={updateSetup}
+              onMicCheck={checkMicrophone}
+              microphoneStatus={microphoneStatus}
+              microphoneMessage={microphoneMessage}
+              voiceOptions={azureVoiceOptions}
+            />
+          )}
+
+          {(launchError || personaLibraryError) && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {launchError ?? personaLibraryError}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {currentStep === "context" && (
-              <ContextStep
-                setup={setup}
-                quickStarts={BRIEF_QUICK_STARTS}
-                onModeChange={updateMode}
-                onUpdate={(partial) =>
-                  updateSetup(
-                    "customScenarioBrief" in partial
-                      ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
-                      : partial,
-                  )
-                }
-              />
-            )}
+          )}
 
-            {currentStep === "rounds" && (
-              <LoopStep
-                value={setup.interviewLoop}
-                practiceMode={setup.practiceMode}
-                jobDescriptionText={
-                  setup.jobDescription.enabled
-                    ? setup.jobDescription.rawText
-                    : ""
-                }
-                personaLibrary={personaLibrary}
-                onChange={(interviewLoop) => updateSetup({ interviewLoop })}
-              />
-            )}
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              variant="ghost"
+              onClick={goBack}
+              className="gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {isFirstStep ? "Cancel" : "Back"}
+            </Button>
 
-            {currentStep === "persona" && (
-              <PersonaStep
-                value={setup.personaConfig}
-                activeLibraryId={setup.personaLibraryId}
-                library={personaLibrary}
-                isLoading={personaLibraryLoading}
-                onPatch={updatePersona}
-                onPick={handlePickPersona}
-                onRandomize={handleRandomizePersona}
-                onSaveAsNew={handleSavePersona}
-                onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
-                onDuplicate={handleDuplicatePersona}
-                onDelete={handleDeletePersona}
-                onResetLibrary={handleResetLibrary}
-              />
-            )}
-
-            {currentStep === "review" && (
-              <FinalizeStep
-                setup={setup}
-                onUpdate={updateSetup}
-                onMicCheck={checkMicrophone}
-                microphoneStatus={microphoneStatus}
-                microphoneMessage={microphoneMessage}
-                voiceOptions={azureVoiceOptions}
-              />
-            )}
-
-            {(launchError || personaLibraryError) && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {launchError ?? personaLibraryError}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                variant="ghost"
-                onClick={goBack}
-                className="gap-2 text-gray-600 hover:text-gray-900"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {isFirstStep ? "Cancel" : "Back"}
-              </Button>
-
-              <div className="flex items-center gap-3">
-                {/* Previously the button just went disabled with no reason
+            <div className="flex items-center gap-3">
+              {/* Previously the button just went disabled with no reason
                     given, which on a step of mostly-optional fields is a dead
                     end. */}
-                {blockedReason ? (
-                  <p className="text-xs text-amber-700">{blockedReason}</p>
-                ) : isLastStep ? (
-                  <p className="text-xs text-gray-500">
-                    Saved automatically. You can come back any time.
-                  </p>
-                ) : null}
-                <Button
-                  onClick={goNext}
-                  disabled={!canProceedFromStep || isLaunching}
-                  className="gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-                >
-                  {isLastStep
-                    ? isLaunching
-                      ? "Starting..."
-                      : "Begin interview"
-                    : "Continue"}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
+              {canProceedFromStep
+                ? isLastStep && (
+                    <p className="text-xs text-gray-500">
+                      Saved automatically. You can come back any time.
+                    </p>
+                  )
+                : blockedReason && (
+                    <p className="text-xs text-amber-700">{blockedReason}</p>
+                  )}
+              <Button
+                onClick={goNext}
+                disabled={!canProceedFromStep || isLaunching}
+                className="gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+              >
+                {isLastStep
+                  ? isLaunching
+                    ? "Starting..."
+                    : "Begin interview"
+                  : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

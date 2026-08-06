@@ -65,7 +65,7 @@ export function FinalizeStep({
     <div className="space-y-6">
       <Card className="border border-blue-200/70 bg-linear-to-br from-blue-50 via-white to-indigo-50/50">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Your session at a glance</CardTitle>
+          <CardTitle className="text-base">Your session</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <SummaryRow
@@ -107,7 +107,7 @@ export function FinalizeStep({
             })()}
           />
           <SummaryRow
-            label="Resume"
+            label="CV"
             value={(() => {
               if (!setup.resume.enabled) return "Not used";
               if (

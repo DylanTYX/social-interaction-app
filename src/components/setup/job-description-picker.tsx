@@ -3,13 +3,6 @@
 import { useRef, useState } from "react";
 import { CheckCircle2, FileText, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -96,28 +89,17 @@ export function JobDescriptionPicker({
   };
 
   return (
-    <Card className="border border-gray-200/80 shadow-soft">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileText className="h-4 w-4 text-blue-600" />
-          Job description context
-        </CardTitle>
-        <CardDescription>
-          Optional. The full JD is embedded once and only the most relevant
-          excerpts are sent to the model each turn.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
+      <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
-          <div>
-            <Label className="text-sm font-medium">
-              Use job-description-aware questions
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 shrink-0 text-blue-600" />
+            <Label htmlFor="use-jd" className="text-sm font-medium">
+              Job description
             </Label>
-            <p className="text-xs text-gray-500">
-              Tailor interview questions to a specific role.
-            </p>
           </div>
           <Switch
+            id="use-jd"
             checked={value.enabled}
             onCheckedChange={(checked) =>
               onChange({
@@ -325,7 +307,7 @@ export function JobDescriptionPicker({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
