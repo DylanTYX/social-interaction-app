@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  suggestedBreakMinutes,
   DEFAULT_TARGET_TURNS,
   describeRoundLength,
   isInterviewComplete,
@@ -94,5 +95,22 @@ describe("recordInterviewTurn", () => {
 
     expect(first.turnCount).toBe(0);
     expect(second.turnCount).toBe(1);
+  });
+});
+
+describe("suggestedBreakMinutes", () => {
+  it("scales the breather with the round just finished", () => {
+    expect(suggestedBreakMinutes(15)).toBe(0);
+    expect(suggestedBreakMinutes(20)).toBe(5);
+    expect(suggestedBreakMinutes(30)).toBe(5);
+    expect(suggestedBreakMinutes(45)).toBe(10);
+    expect(suggestedBreakMinutes(90)).toBe(10);
+  });
+
+  it("suggests nothing after a short screen", () => {
+    // Replaces a `breakMinutes` select whose only effect anywhere was one
+    // string on the report. Deriving it removes a decision without losing the
+    // nudge.
+    expect(suggestedBreakMinutes(5)).toBe(0);
   });
 });

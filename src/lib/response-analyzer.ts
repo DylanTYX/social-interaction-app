@@ -12,6 +12,7 @@ import {
 import type { UsageCollector } from "@/lib/api/token-usage";
 import { parseCodeAnswer } from "@/lib/code-answer";
 import { analyzeText } from "@/lib/text-metrics";
+import { isTechnicalRound } from "@/lib/round-types";
 
 /**
  * Scoring should be near-deterministic so the same answer doesn't swing
@@ -188,15 +189,10 @@ function buildAnalysisPrompt(
   roundType: InterviewRoundType,
 ): { staticScaffold: string; variable: string } {
   const rubric = ROUND_RUBRIC_LABELS[roundType];
-  const useStar =
-    roundType === "behavioral" ||
-    roundType === "screening" ||
-    roundType === "hr";
+  // STAR and the technical block are the two halves of the same split.
+  const useStar = !isTechnicalRound(roundType);
 
-  const technicalBlock =
-    roundType === "technical_swe" ||
-    roundType === "system_design" ||
-    roundType === "case"
+  const technicalBlock = isTechnicalRound(roundType)
       ? `,
   "technicalScores": {
     "problemFraming": number (0-10),

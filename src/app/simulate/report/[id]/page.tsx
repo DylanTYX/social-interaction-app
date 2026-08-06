@@ -40,6 +40,8 @@ import {
   ROUND_TYPE_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
+import { isTechnicalRound } from "@/lib/round-types";
+import { suggestedBreakMinutes } from "@/lib/interview-progress";
 import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
@@ -212,10 +214,7 @@ export default function SessionReportPage({
     "averageConfidenceScore",
   );
   const starScore = pickNumber(session.metrics, "averageSTARScore");
-  const usesTechnicalRubric =
-    currentRound?.type === "technical_swe" ||
-    currentRound?.type === "system_design" ||
-    currentRound?.type === "case";
+  const usesTechnicalRubric = isTechnicalRound(currentRound?.type);
 
   const handleCopyLink = async () => {
     try {
@@ -417,8 +416,8 @@ export default function SessionReportPage({
               <CardContent className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm text-slate-700">
                   Next up: <strong>{nextRound.title}</strong>
-                  {loop.breakMinutes > 0
-                    ? ` · suggested ${loop.breakMinutes} min break`
+                  {suggestedBreakMinutes(currentRound.durationMinutes) > 0
+                    ? ` · suggested ${suggestedBreakMinutes(currentRound.durationMinutes)} min break`
                     : ""}
                 </div>
                 <Button

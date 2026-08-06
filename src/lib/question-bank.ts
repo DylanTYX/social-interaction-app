@@ -6,7 +6,8 @@ export type DrillCategory =
   | "technical_swe"
   | "system_design"
   | "screening"
-  | "case";
+  | "case"
+  | "hr";
 
 export interface DrillCategoryMeta {
   id: DrillCategory;
@@ -52,6 +53,12 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
     label: "Case / problem-solving",
     roundType: "case",
     blurb: "Structure, estimation, and reasoning out loud.",
+  },
+  {
+    id: "hr",
+    label: "HR / People",
+    roundType: "hr",
+    blurb: "Motivation, values, logistics, and questions for them.",
   },
 ];
 
@@ -104,6 +111,14 @@ export const DRILL_QUESTIONS: DrillQuestion[] = [
   { id: "c2", category: "case", prompt: "A SaaS product's monthly churn just doubled. How do you investigate?" },
   { id: "c3", category: "case", prompt: "Our checkout conversion dropped 15% last week. Walk me through how you'd diagnose it." },
   { id: "c4", category: "case", prompt: "How would you decide whether to build or buy an internal analytics tool?" },
+
+  // HR / People
+  { id: "h1", category: "hr", prompt: "What are you looking for in your next role?" },
+  { id: "h2", category: "hr", prompt: "What would make you turn down an offer from us?" },
+  { id: "h3", category: "hr", prompt: "Talk me through your notice period and what you would need to hand over." },
+  { id: "h4", category: "hr", prompt: "What are your compensation expectations, and how flexible are they?" },
+  { id: "h5", category: "hr", prompt: "Describe the team culture you do your best work in." },
+  { id: "h6", category: "hr", prompt: "What questions do you have for us?" },
 ];
 
 export function getQuestionsForCategory(

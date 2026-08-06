@@ -34,8 +34,14 @@ describe("normalizeInterviewLoop", () => {
       "text",
     );
 
+    // The field still survives normalization — that was a real bug once, and
+    // dropping it made the whole coding-round feature inert.
     expect(loop.rounds[0].answerFormat).toBe("code");
-    expect(resolveAnswerFormat(loop.rounds[0])).toBe("code");
+
+    // But it no longer *takes effect* on a behavioural round. Carrying the
+    // value and honouring it are different questions, and only the first one
+    // was ever the bug.
+    expect(resolveAnswerFormat(loop.rounds[0])).toBe("prose");
   });
 
   it("preserves an explicit opt-out on a technical round", () => {
