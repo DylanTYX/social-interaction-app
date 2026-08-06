@@ -3,6 +3,7 @@
 import { MessageSquare, Mic } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
@@ -79,23 +80,15 @@ export function ContextStep({
               const Icon = option.icon;
               const isActive = setup.practiceMode === option.value;
               return (
-                <button
+                <ChoiceChip
                   key={option.value}
-                  type="button"
+                  selected={isActive}
                   onClick={() => onModeChange(option.value)}
-                  aria-pressed={isActive}
-                  className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-colors ${
-                    isActive
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-border bg-white text-muted-foreground hover:bg-muted"
-                  }`}
+                  icon={<Icon className="h-4 w-4 shrink-0" />}
+                  hint={option.hint}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="font-medium">{option.label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {option.hint}
-                  </span>
-                </button>
+                  {option.label}
+                </ChoiceChip>
               );
             })}
           </div>
@@ -132,20 +125,15 @@ export function ContextStep({
             {quickStarts.map((chip) => {
               const isActive = brief.trim() === chip.template.trim();
               return (
-                <button
+                <ChoiceChip
                   key={chip.id}
-                  type="button"
+                  selected={isActive}
                   onClick={() =>
                     onUpdate({ customScenarioBrief: chip.template })
                   }
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                    isActive
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-border bg-white text-muted-foreground hover:bg-muted"
-                  }`}
                 >
                   {chip.label}
-                </button>
+                </ChoiceChip>
               );
             })}
           </div>

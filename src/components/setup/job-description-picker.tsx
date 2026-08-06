@@ -5,6 +5,7 @@ import { CheckCircle2, FileText, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
@@ -129,18 +130,13 @@ export function JobDescriptionPicker({
 
             <div className="flex flex-wrap gap-2">
               {TAB_OPTIONS.map((tab) => (
-                <button
+                <ChoiceChip
                   key={tab.id}
-                  type="button"
+                  selected={value.mode === tab.id}
                   onClick={() => setMode(tab.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    value.mode === tab.id
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-border bg-white text-muted-foreground hover:bg-muted"
-                  }`}
                 >
                   {tab.label}
-                </button>
+                </ChoiceChip>
               ))}
             </div>
 
