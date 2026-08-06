@@ -148,11 +148,14 @@ export function PersonaStep({
   };
 
   return (
-    // Library and editor sat stacked, so the step was one long scroll: a grid
-    // of six-plus preset cards, then six fields, then four sliders. Side by
-    // side above `lg`, stacked below.
-    <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-      <Card className="border border-gray-200/80 shadow-soft">
+    // Library beside editor above `lg`, stacked below.
+    //
+    // This first shipped with `lg:items-start`, which let each column size to
+    // its own content — six persona cards against a short form gave a ~3x
+    // height mismatch and a large dead area. Letting them stretch and scrolling
+    // the library inside its own card keeps the two the same height.
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">Pick an interviewer</CardTitle>
           <CardAction>
@@ -172,7 +175,7 @@ export function PersonaStep({
                 variant="ghost"
                 size="sm"
                 onClick={onResetLibrary}
-                className="gap-1.5 text-gray-600 hover:text-gray-900"
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Restore presets
@@ -186,7 +189,7 @@ export function PersonaStep({
               ? [0, 1, 2, 3].map((index) => (
                   <div
                     key={index}
-                    className="h-24 animate-pulse rounded-lg bg-gray-100"
+                    className="h-24 animate-pulse rounded-lg bg-muted"
                   />
                 ))
               : null}
@@ -198,54 +201,48 @@ export function PersonaStep({
               return (
                 <div
                   key={entry.id}
-                  className={`group relative flex h-full flex-col gap-2 rounded-lg border p-3 text-left transition-all duration-200 ${
+                  className={`group relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all duration-200 ${
                     isActive
-                      ? "border-blue-300 bg-white shadow-soft-md"
-                      : "border-gray-200/80 bg-white hover:border-blue-200 hover:bg-blue-50/40"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-border hover:border-blue-300 hover:bg-accent"
                   }`}
                 >
+                  {/* Name on its own line. It used to sit inline with the
+                      "Preset" badge, which in a ~200px column wrapped every
+                      name mid-flex — "Sarah / Chen", "Isabella / Rodriguez" —
+                      and shoved the style badge against the card's top edge. */}
                   <button
                     type="button"
                     onClick={() => handlePickEntry(entry)}
-                    className="flex flex-1 flex-col gap-2 text-left"
+                    className="flex flex-col gap-1.5 text-left"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900">
-                            {entry.config.name}
-                          </p>
-                          <Badge
-                            variant={
-                              entry.kind === "user" ? "default" : "outline"
-                            }
-                            className="rounded-full text-xs capitalize"
-                          >
-                            {entry.kind === "user" ? "Yours" : "Preset"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          {buildPresetSummary(entry.config)}
-                        </p>
-                      </div>
+                    <p className="truncate font-medium text-foreground">
+                      {entry.config.name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Badge
-                        variant="secondary"
-                        className="rounded-full text-xs capitalize"
+                        variant={entry.kind === "user" ? "default" : "outline"}
+                        className="capitalize"
                       >
+                        {entry.kind === "user" ? "Yours" : "Preset"}
+                      </Badge>
+                      <Badge variant="secondary" className="capitalize">
                         {entry.config.communicationStyle}
                       </Badge>
                     </div>
-                    <p className="text-xs leading-5 text-gray-600">
-                      {entry.config.nationality} • Strict{" "}
-                      {entry.config.strictness}
-                      /10 • Warm {entry.config.warmth}/10 • Pace{" "}
-                      {entry.config.pace ?? 5}/10 • Pushback{" "}
-                      {entry.config.pushback ?? 5}/10
+                    <p className="text-xs text-muted-foreground">
+                      {buildPresetSummary(entry.config)}
+                    </p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {entry.config.nationality} · Strict{" "}
+                      {entry.config.strictness} · Warm {entry.config.warmth} ·
+                      Pace {entry.config.pace ?? 5} · Pushback{" "}
+                      {entry.config.pushback ?? 5}
                     </p>
                   </button>
 
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-xs text-blue-700">
+                    <span className="text-xs text-emerald-700">
                       {isActive && (
                         <span className="inline-flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3" />
@@ -263,7 +260,7 @@ export function PersonaStep({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-gray-500"
+                          className="h-8 w-8 text-muted-foreground"
                           aria-label={`Actions for ${entry.config.name}`}
                           onClick={(event) => event.stopPropagation()}
                         >
@@ -308,12 +305,15 @@ export function PersonaStep({
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             Customise
             {isModified && activeLibraryId && (
-              <Badge variant="outline" className="font-normal text-amber-700">
+              <Badge
+                variant="outline"
+                className="font-normal text-muted-foreground"
+              >
                 Unsaved changes
               </Badge>
             )}
@@ -350,7 +350,7 @@ export function PersonaStep({
         </CardHeader>
         <CardContent className="space-y-4">
           {showSaveAsNew && (
-            <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-blue-200/70 bg-blue-50/60 p-3">
+            <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted p-3">
               <div className="flex-1 min-w-[200px] space-y-1">
                 <Label className="text-xs">Name your persona</Label>
                 <Input
@@ -434,7 +434,7 @@ export function PersonaStep({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {
                   COMMUNICATION_STYLE_OPTIONS.find(
                     (option) => option.value === value.communicationStyle,
@@ -466,16 +466,16 @@ export function PersonaStep({
             touch. Collapsed, so the step ends at the fields that actually
             need answering. The summary line on each library card and the
             review step both still show the values. */}
-          <details className="group mt-5 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-gray-700">
+          <details className="group mt-5 rounded-lg border border-border bg-muted p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-foreground">
               <span>
                 Fine-tune interviewer style
-                <span className="ml-2 font-normal text-xs text-gray-500">
+                <span className="ml-2 font-normal text-xs text-muted-foreground">
                   Strict {value.strictness} · Warm {value.warmth} · Pace{" "}
                   {value.pace ?? 5} · Pushback {value.pushback ?? 5}
                 </span>
               </span>
-              <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
             <div className="mt-4 grid gap-5 sm:grid-cols-2">
               <SliderField
@@ -552,7 +552,7 @@ function SliderField({
               <button
                 type="button"
                 aria-label={`What does ${label.toLowerCase()} do?`}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-muted-foreground"
               >
                 <HelpCircle className="h-3.5 w-3.5" />
               </button>

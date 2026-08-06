@@ -67,7 +67,7 @@ export function ContextStep({
 
   return (
     <>
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">
             How do you want to answer?
@@ -87,12 +87,14 @@ export function ContextStep({
                   className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-colors ${
                     isActive
                       ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      : "border-border bg-white text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="font-medium">{option.label}</span>
-                  <span className="text-xs text-gray-500">{option.hint}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {option.hint}
+                  </span>
                 </button>
               );
             })}
@@ -100,7 +102,7 @@ export function ContextStep({
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">Describe the role</CardTitle>
         </CardHeader>
@@ -118,13 +120,13 @@ export function ContextStep({
             />
             {/* The one hint that survives here: it states a bar you have to
                 clear, which nothing else on screen tells you. */}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {charCount}/20 characters minimum
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-gray-500">
+            <span className="text-xs font-medium text-muted-foreground">
               Or start from
             </span>
             {quickStarts.map((chip) => {
@@ -139,7 +141,7 @@ export function ContextStep({
                   className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                     isActive
                       ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      : "border-border bg-white text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {chip.label}
@@ -150,7 +152,7 @@ export function ContextStep({
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             Documents

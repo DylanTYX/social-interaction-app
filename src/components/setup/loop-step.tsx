@@ -134,7 +134,9 @@ export function LoopStep({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-gray-500">Start from</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          Start from
+        </span>
         {PRESETS.map((preset) => (
           <Button
             key={preset.id}
@@ -152,7 +154,7 @@ export function LoopStep({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 rounded-full border-indigo-200 text-xs text-indigo-700 hover:bg-indigo-50"
+            className="h-8 gap-1.5 rounded-full text-xs"
             onClick={() =>
               applyPreset(
                 suggestLoopFromJobDescription(jobDescriptionText, practiceMode),
@@ -229,7 +231,7 @@ function RoundCard({
   const isLoop = total > 1;
 
   return (
-    <Card className="border border-gray-200/80 shadow-soft">
+    <Card className="border border-border shadow-soft">
       <CardContent className="space-y-3">
         <div className="mb-3 flex items-center justify-between gap-2">
           <Badge variant={isLoop ? "secondary" : "outline"}>
@@ -240,7 +242,7 @@ function RoundCard({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-gray-400 hover:text-red-600"
+              className="h-8 w-8 text-muted-foreground hover:text-red-600"
               aria-label={`Remove round ${index + 1}`}
               onClick={onRemove}
             >
@@ -251,7 +253,7 @@ function RoundCard({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Type</Label>
+            <Label className="text-xs text-muted-foreground">Type</Label>
             <Select
               value={round.type}
               onValueChange={(next) =>
@@ -269,17 +271,17 @@ function RoundCard({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs leading-4 text-gray-500">
+            <p className="text-xs leading-4 text-muted-foreground">
               {ROUND_RUBRIC_LABELS[round.type]}
             </p>
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between">
-              <Label className="text-xs text-gray-600">Length</Label>
+              <Label className="text-xs text-muted-foreground">Length</Label>
               {/* The consequence, not the raw number — duration now drives when
                 the interview actually ends. */}
-              <span className="text-xs tabular-nums text-gray-500">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 {describeRoundLength(round.durationMinutes)}
               </span>
             </div>
@@ -298,7 +300,7 @@ function RoundCard({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Title</Label>
+            <Label className="text-xs text-muted-foreground">Title</Label>
             <Input
               value={round.title}
               onChange={(event) => onChange({ title: event.target.value })}
@@ -306,7 +308,7 @@ function RoundCard({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-600">Focus</Label>
+            <Label className="text-xs text-muted-foreground">Focus</Label>
             <Input
               value={round.focus}
               onChange={(event) => onChange({ focus: event.target.value })}
@@ -318,7 +320,9 @@ function RoundCard({
             single round already has the Interviewer step. */}
           {isLoop && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-600">Interviewer</Label>
+              <Label className="text-xs text-muted-foreground">
+                Interviewer
+              </Label>
               <Select
                 value={round.personaLibraryId ?? "default"}
                 onValueChange={(next) =>
@@ -353,7 +357,7 @@ function RoundCard({
               />
               <Label
                 htmlFor={`code-editor-${round.id}`}
-                className="text-xs text-gray-600"
+                className="text-xs text-muted-foreground"
               >
                 Answer in a code editor
               </Label>
