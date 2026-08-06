@@ -70,14 +70,22 @@ runs; the slider tells you roughly how many questions to expect.
 
 **Focus** — a free-text note on what this round should dig into.
 
-**Code editor** — technical rounds give you a real editor with syntax
-highlighting for Python, JavaScript, TypeScript, Java and SQL, instead of a chat
-box. Your code is reviewed by the interviewer, not executed.
+**Code editor** — the Technical SWE round swaps the chat box for a real editor
+with syntax highlighting for Python, JavaScript, TypeScript, Java and SQL. It is
+the only round type that offers one: the others are scored on things you write
+in prose, so an editor there would be graded against a rubric it cannot satisfy.
+Your language choice sticks for the whole round. Code is reviewed by the
+interviewer, **not executed** — nothing runs it or tests it.
 
 **Interviewer** (loops only) — each round can have a different interviewer, so a
 loop feels like a real panel rather than the same person four times.
 
-Add a round to make it a loop; a loop also lets you set a break between rounds.
+Add a round to make it a loop. Changing a round's type re-applies that type's
+sensible length and focus — switch to System design and it becomes 30 minutes —
+but anything you have typed yourself is left alone.
+
+Between rounds the report suggests a breather scaled to the round you just
+finished, so there is nothing to configure.
 
 ### 3. Interviewer
 
