@@ -105,7 +105,9 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-md border border-gray-200/80 shadow-soft-lg bg-white">
       <CardHeader className="space-y-2">
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+        <CardTitle as="h1" className="text-2xl font-bold">
+          Welcome back
+        </CardTitle>
         <CardDescription className="text-base">
           Sign in to continue your training
         </CardDescription>
