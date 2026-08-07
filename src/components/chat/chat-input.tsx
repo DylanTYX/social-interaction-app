@@ -161,7 +161,7 @@ export function ChatInput({
           placeholder="Type your message... (Press Enter to send)"
           disabled={disabled}
           aria-label="Your answer"
-          className="min-h-[60px] max-h-32 resize-none focus-ring"
+          className="min-h-[60px] max-h-32 resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           rows={2}
         />
         <Button

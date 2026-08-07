@@ -36,6 +36,49 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Custom scale values, declared to Tailwind rather than hand-written as CSS.
+   `--shadow-*` and `--animate-*` are theme namespaces, so Tailwind generates
+   `shadow-soft`, `animate-aurora-drift` and friends as first-class utilities —
+   which means they compose with variants (`hover:`, `print:`, `motion-reduce:`)
+   the way any other utility does. Hand-written classes never could. */
+@theme {
+  /* Softer than Tailwind's defaults: this UI is mostly white cards on a light
+     background, where the stock shadows read as heavy. */
+  --shadow-soft:
+    0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-soft-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-soft-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+
+  --animate-aurora-drift: aurora-drift 18s ease-in-out infinite;
+  --animate-caret-blink: caret-blink 1s steps(2) infinite;
+
+  @keyframes aurora-drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(40px, -30px) scale(1.1);
+    }
+    66% {
+      transform: translate(-30px, 20px) scale(0.95);
+    }
+  }
+
+  @keyframes caret-blink {
+    0%,
+    50% {
+      opacity: 1;
+    }
+    50.01%,
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -71,141 +114,26 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    scroll-behavior: smooth;
-  }
   body {
     @apply bg-background text-foreground antialiased;
   }
 }
 
-/* Enhanced transitions and animations for polish */
-@layer utilities {
+/* The only hand-written CSS left, because none of it has a utility equivalent.
+   `print-color-adjust` has no Tailwind class at all, and both rules here target
+   the universal selector and <body> — global overrides that a per-element
+   utility cannot express. Interactive chrome opts out with `print:hidden`.
 
-  /* Hover lift effect for cards */
-  .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-
-  /* Refined shadows for depth */
-  .shadow-soft {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  }
-
-  .shadow-soft-md {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06),
-      0 2px 4px -2px rgb(0 0 0 / 0.06);
-  }
-
-  .shadow-soft-lg {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08),
-      0 4px 6px -4px rgb(0 0 0 / 0.08);
-  }
-
-  /* Focus ring improvements */
-  .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
-  }
-
-  /* Gradient text utility */
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
-  }
-
-  /* Scroll-reveal: elements start hidden + nudged down, then ease in when the
-     `.reveal-visible` class is added by an IntersectionObserver. */
-  .reveal {
-    opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
-      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: opacity, transform;
-  }
-
-  .reveal-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Drifting aurora blobs for the hero background. */
-  .aurora-blob {
-    position: absolute;
-    border-radius: 9999px;
-    filter: blur(64px);
-    opacity: 0.5;
-    animation: aurora-drift 18s ease-in-out infinite;
-  }
-
-  @keyframes aurora-drift {
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(40px, -30px) scale(1.1);
-    }
-    66% {
-      transform: translate(-30px, 20px) scale(0.95);
-    }
-  }
-
-  /* Blinking caret for the typewriter demo. */
-  .typing-caret::after {
-    content: "";
-    display: inline-block;
-    width: 2px;
-    height: 1em;
-    margin-left: 2px;
-    vertical-align: text-bottom;
-    background-color: currentColor;
-    animation: caret-blink 1s steps(2) infinite;
-  }
-
-  @keyframes caret-blink {
-    0%,
-    50% {
-      opacity: 1;
-    }
-    50.01%,
-    100% {
-      opacity: 0;
-    }
-  }
-
-  /* Honor users who prefer reduced motion. */
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-    .reveal {
-      opacity: 1;
-      transform: none;
-      transition: none;
-    }
-    .aurora-blob,
-    .typing-caret::after {
-      animation: none;
-    }
-  }
-}
-
-/* Print: keep colors, drop shadows, and let content flow onto white pages.
-   Interactive chrome opts out with Tailwind's `print:hidden`. */
+   The shadow reset is a wildcard on purpose: `print:shadow-none` would
+   otherwise have to be hand-added to 91 call sites across 32 files, and any
+   future card would silently print with a shadow. */
 @media print {
   * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    box-shadow: none !important;
   }
   body {
     background: #fff !important;
-  }
-  .shadow-soft,
-  .shadow-soft-md,
-  .shadow-soft-lg {
-    box-shadow: none !important;
   }
 }

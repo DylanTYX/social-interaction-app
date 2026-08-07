@@ -140,13 +140,13 @@ export default function LandingPage() {
       {/* Hero with aurora background + live demo */}
       <section className="relative flex min-h-[calc(100vh-4rem)] items-center overflow-hidden py-12">
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="aurora-blob left-[-6rem] top-[-4rem] h-72 w-72 bg-blue-300/50" />
+          <div className="absolute left-[-6rem] top-[-4rem] h-72 w-72 rounded-full bg-blue-300/50 opacity-50 blur-3xl animate-aurora-drift motion-reduce:animate-none" />
           <div
-            className="aurora-blob right-[-4rem] top-[6rem] h-80 w-80 bg-purple-300/50"
+            className="absolute right-[-4rem] top-[6rem] h-80 w-80 rounded-full bg-purple-300/50 opacity-50 blur-3xl animate-aurora-drift motion-reduce:animate-none"
             style={{ animationDelay: "-6s" }}
           />
           <div
-            className="aurora-blob bottom-[-6rem] left-[30%] h-72 w-72 bg-indigo-300/40"
+            className="absolute bottom-[-6rem] left-[30%] h-72 w-72 rounded-full bg-indigo-300/40 opacity-50 blur-3xl animate-aurora-drift motion-reduce:animate-none"
             style={{ animationDelay: "-12s" }}
           />
         </div>
@@ -163,7 +163,9 @@ export default function LandingPage() {
                 <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
                   Practice interviews.
                   <br />
-                  <span className="gradient-text">Get hired.</span>
+                  <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Get hired.
+                  </span>
                 </h1>
                 <p className="max-w-xl text-lg leading-relaxed text-gray-600">
                   Rehearse real interview questions with an AI that adapts to
@@ -233,7 +235,7 @@ export default function LandingPage() {
               return (
                 <Reveal key={feature.title} delay={(index % 3) * 80}>
                   <Card
-                    className={`h-full border border-gray-200/60 transition-all duration-200 hover-lift hover:shadow-soft-md ${TILE_BORDERS[feature.color]}`}
+                    className={`h-full border border-gray-200/60 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:shadow-soft-md ${TILE_BORDERS[feature.color]}`}
                   >
                     <CardHeader>
                       <div
