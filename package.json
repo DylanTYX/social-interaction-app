@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-eval.ts"
+    "eval": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-eval.ts",
+    "eval:persona": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-persona-eval.ts",
+    "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",
