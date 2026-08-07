@@ -143,7 +143,7 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
       <PageHeader
         eyebrow="Home"
         title={`Welcome back, ${firstName}`}

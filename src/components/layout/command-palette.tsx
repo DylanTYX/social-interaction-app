@@ -12,15 +12,13 @@ import {
   Mic,
   Search,
   Settings,
+  FileUser,
+  BookOpen,
   Sparkles,
   Users,
 } from "lucide-react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface Command {
@@ -33,16 +31,91 @@ interface Command {
 }
 
 const COMMANDS: Command[] = [
-  { id: "text", label: "Start a text interview", icon: MessageSquare, href: "/simulate/setup?mode=text", keywords: "practice chat new" },
-  { id: "voice", label: "Start a voice interview", icon: Mic, href: "/simulate/setup?mode=voice", keywords: "practice speak new" },
-  { id: "drill", label: "Quick drill", hint: "One question", icon: Dumbbell, href: "/dashboard/drills", keywords: "practice question" },
-  { id: "dashboard", label: "Go to dashboard", icon: LayoutDashboard, href: "/dashboard", keywords: "home" },
-  { id: "sessions", label: "Your sessions", icon: History, href: "/dashboard/sessions", keywords: "history transcripts" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, href: "/dashboard/analytics", keywords: "stats progress trends" },
-  { id: "personas", label: "Personas", icon: Users, href: "/dashboard/personas", keywords: "interviewer style" },
-  { id: "jds", label: "Job descriptions", icon: FileText, href: "/dashboard/job-descriptions", keywords: "jd role upload" },
-  { id: "setup", label: "Interview setup", icon: Sparkles, href: "/simulate/setup", keywords: "configure" },
-  { id: "settings", label: "Settings", icon: Settings, href: "/dashboard/settings", keywords: "account preferences" },
+  {
+    id: "text",
+    label: "Start a text interview",
+    icon: MessageSquare,
+    href: "/simulate/setup?mode=text",
+    keywords: "practice chat new",
+  },
+  {
+    id: "voice",
+    label: "Start a voice interview",
+    icon: Mic,
+    href: "/simulate/setup?mode=voice",
+    keywords: "practice speak new",
+  },
+  {
+    id: "drill",
+    label: "Quick drill",
+    hint: "One question",
+    icon: Dumbbell,
+    href: "/dashboard/drills",
+    keywords: "practice question",
+  },
+  {
+    id: "dashboard",
+    label: "Go to dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard",
+    keywords: "home",
+  },
+  {
+    id: "sessions",
+    label: "Your sessions",
+    icon: History,
+    href: "/dashboard/sessions",
+    keywords: "history transcripts",
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    href: "/dashboard/analytics",
+    keywords: "stats progress trends",
+  },
+  {
+    id: "personas",
+    label: "Personas",
+    icon: Users,
+    href: "/dashboard/personas",
+    keywords: "interviewer style",
+  },
+  {
+    id: "jds",
+    label: "Job descriptions",
+    icon: FileText,
+    href: "/dashboard/job-descriptions",
+    keywords: "jd role upload",
+  },
+  {
+    id: "setup",
+    label: "Interview setup",
+    icon: Sparkles,
+    href: "/simulate/setup",
+    keywords: "configure",
+  },
+  {
+    id: "resumes",
+    label: "Resumes",
+    icon: FileUser,
+    href: "/dashboard/resumes",
+    keywords: "cv upload experience",
+  },
+  {
+    id: "help",
+    label: "Tips & guides",
+    icon: BookOpen,
+    href: "/dashboard/help",
+    keywords: "guides star framework learn",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: "/dashboard/settings",
+    keywords: "account preferences",
+  },
 ];
 
 /**
