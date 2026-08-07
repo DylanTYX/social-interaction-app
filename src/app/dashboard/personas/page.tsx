@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PersonaGridSkeleton } from "@/components/dashboard/page-skeletons";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import {
@@ -51,6 +52,7 @@ export default function PersonasPage() {
     library,
     status,
     error,
+    refresh,
     createEntry,
     deleteEntry,
     resetLibrary,
@@ -154,14 +156,19 @@ export default function PersonasPage() {
         }
       />
 
-      {status === "error" && error && (
-        <Card className="border-red-200 bg-red-50 text-red-900">
-          <CardContent className="py-4 text-sm">{error}</CardContent>
-        </Card>
-      )}
-
       {isLoading ? (
         <PersonaGridSkeleton count={6} />
+      ) : status === "error" ? (
+        // Ahead of the empty check, and now the shared component. This was a
+        // bare red banner *above* the content, so a failed load rendered the
+        // banner and "Build your interviewer roster" at the same time — telling
+        // the user both that something broke and that they own no personas.
+        // It also had no retry, though the hook has always exported one.
+        <ErrorStateCard
+          title="Couldn't load your personas"
+          description={error ?? "Something went wrong."}
+          onRetry={() => void refresh()}
+        />
       ) : sortedLibrary.length === 0 ? (
         <EmptyStateCard
           icon={<Users className="h-6 w-6" />}
@@ -225,17 +232,15 @@ export default function PersonasPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">
-                  {entry.config.personalityTraits
-                    .slice(0, 3)
-                    .map((trait) => (
-                      <Badge
-                        key={trait}
-                        variant="outline"
-                        className="bg-gray-50/80"
-                      >
-                        {trait}
-                      </Badge>
-                    ))}
+                  {entry.config.personalityTraits.slice(0, 3).map((trait) => (
+                    <Badge
+                      key={trait}
+                      variant="outline"
+                      className="bg-gray-50/80"
+                    >
+                      {trait}
+                    </Badge>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 pt-1">
@@ -351,7 +356,6 @@ export default function PersonasPage() {
           setPendingDelete(null);
         }}
       />
-
     </div>
   );
 }

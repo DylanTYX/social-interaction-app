@@ -17,6 +17,28 @@ import type { InterviewSessionSummary } from "@/hooks/use-interview-history";
  * `Math.round`.
  */
 
+/**
+ * How many sessions the headline figures are computed over.
+ *
+ * Home fetched 25 and captioned the result "All time"; analytics fetched 50 and
+ * captioned it "Across N days". The same three metrics, two different windows,
+ * both described as totals. 100 is the server's own cap
+ * (`api/sessions/route.ts`, `parseLimit … max: 100`), so this is as close to
+ * "all" as the endpoint permits — and `describeStatsWindow` below stops the
+ * caption claiming more than that.
+ */
+export const STATS_WINDOW = 100;
+
+/**
+ * An honest label for the window the figures cover.
+ *
+ * Self-correcting: while a user is under the cap "All time" is simply true, and
+ * the moment they saturate it the caption stops saying so.
+ */
+export function describeStatsWindow(total: number): string {
+  return total >= STATS_WINDOW ? `Last ${STATS_WINDOW} sessions` : "All time";
+}
+
 export interface SessionStats {
   total: number;
   /** Sessions carrying a numeric score, i.e. ones that were actually graded. */

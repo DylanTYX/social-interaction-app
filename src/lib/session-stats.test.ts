@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { InterviewSessionSummary } from "@/hooks/use-interview-history";
 import {
   computeSessionStats,
+  describeStatsWindow,
   formatAverageScore,
   formatPracticeMinutes,
+  STATS_WINDOW,
 } from "@/lib/session-stats";
 
 function session(
@@ -123,5 +125,20 @@ describe("formatAverageScore", () => {
     expect(formatAverageScore(null)).toBe("—");
     expect(formatAverageScore(0)).toBe("0%");
     expect(formatAverageScore(70.4)).toBe("70%");
+  });
+});
+
+describe("describeStatsWindow", () => {
+  it("says 'All time' only while that is actually true", () => {
+    // The bug this replaces: home fetched 25 sessions and captioned the total
+    // "All time" regardless.
+    expect(describeStatsWindow(0)).toBe("All time");
+    expect(describeStatsWindow(STATS_WINDOW - 1)).toBe("All time");
+  });
+
+  it("stops claiming 'All time' once the window is saturated", () => {
+    expect(describeStatsWindow(STATS_WINDOW)).toBe(
+      `Last ${STATS_WINDOW} sessions`,
+    );
   });
 });
