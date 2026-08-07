@@ -253,7 +253,7 @@ export function PersonaStep({
                         initials avatar makes each one recognisable at a glance;
                         the colour is derived from the name so it survives the
                         library re-sorting itself after every save. */}
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 pr-8">
                         <div
                           className={cn(
                             "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
@@ -299,24 +299,27 @@ export function PersonaStep({
                           {buildPresetSummary(entry.config)}
                         </p>
 
+                        {/* Traits and dislikes are the same *kind* of thing —
+                          a short descriptive list drawn from a ~20-string pool —
+                          so they get the same treatment. Traits were briefly
+                          badges, which was wrong twice over: it made two
+                          equivalent fields look unequal, and it put five pills
+                          on a 293px card when the only two that had earned pill
+                          shape were the ones above.
+
+                          The rule, applied consistently: a pill means a value
+                          from a small closed set you could filter by — "Preset"
+                          or "Yours", one of four communication styles. Anything
+                          free-text is text. */}
                         {entry.config.personalityTraits.length > 0 && (
-                          // Badges rather than a comma-joined sentence — the
-                          // treatment /dashboard/personas already uses for this
-                          // same field, and three short chips are read at a
-                          // glance where three clauses of grey text are not.
-                          <div className="flex flex-wrap gap-1">
+                          <p className="text-xs leading-5 text-muted-foreground">
+                            <span className="font-medium text-foreground">
+                              Traits:
+                            </span>{" "}
                             {entry.config.personalityTraits
                               .slice(0, 3)
-                              .map((trait) => (
-                                <Badge
-                                  key={trait}
-                                  variant="secondary"
-                                  className="font-normal"
-                                >
-                                  {trait}
-                                </Badge>
-                              ))}
-                          </div>
+                              .join(", ")}
+                          </p>
                         )}
 
                         {entry.config.boundaries.length > 0 && (
@@ -338,39 +341,48 @@ export function PersonaStep({
                         `mt-auto` pins them to the bottom, so across a row of
                         cards the dials line up regardless of how long anyone's
                         traits are. */}
-                      <dl className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs tabular-nums">
-                        {[
-                          ["Strict", entry.config.strictness],
-                          ["Warm", entry.config.warmth],
-                          ["Pace", entry.config.pace ?? 5],
-                          ["Pushback", entry.config.pushback ?? 5],
-                        ].map(([label, value]) => (
-                          <div
-                            key={label}
-                            className="flex items-baseline gap-1"
-                          >
-                            <dt className="text-muted-foreground">{label}</dt>
-                            <dd className="font-medium text-foreground">
-                              {value}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </button>
-
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <span className="text-xs text-emerald-700">
+                      <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                        <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums">
+                          {[
+                            ["Strict", entry.config.strictness],
+                            ["Warm", entry.config.warmth],
+                            ["Pace", entry.config.pace ?? 5],
+                            ["Pushback", entry.config.pushback ?? 5],
+                          ].map(([label, value]) => (
+                            <div
+                              key={label}
+                              className="flex items-baseline gap-1"
+                            >
+                              <dt className="text-muted-foreground">{label}</dt>
+                              <dd className="font-medium text-foreground">
+                                {value}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {/* Shares the dial row rather than owning a row of its
+                          own. The ring already carries selection visually; this
+                          is the text an assistive reader needs, and as its own
+                          footer it cost a whole row to say one word. */}
                         {isActive && (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-emerald-700">
                             <CheckCircle2 className="h-3 w-3" />
                             Selected
                           </span>
                         )}
-                      </span>
-                      {/* Three ghost icon buttons per card meant eighteen of them
-                      on a six-preset library. One menu each. The old "Edit"
-                      pencil also just re-picked the entry — the same thing
-                      clicking the card body does — so it is gone. */}
+                      </div>
+                    </button>
+
+                    {/* Top right, absolutely positioned, because that is where
+                      `CardAction` puts an overflow menu everywhere else in this
+                      app — the persona editor, the round card, the document
+                      pickers. At the bottom it sat beside a *status*, which read
+                      as though the two were related.
+
+                      Outside the card's <button> so it is not a button in a
+                      button; `stopPropagation` keeps opening the menu from also
+                      selecting the persona. */}
+                    <div className="absolute right-2 top-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
