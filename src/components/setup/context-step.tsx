@@ -1,11 +1,10 @@
 "use client";
 
-import { MessageSquare, Mic } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { ModeCards } from "@/components/setup/mode-cards";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
 import { ResumePicker } from "@/components/setup/resume-picker";
 import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
@@ -26,27 +25,14 @@ import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
  * twice: once as a container label with nothing to type into, and again as the
  * heading above the actual textarea. The first one looked broken because it
  * was labelling a box, not asking anything.
+ *
+ * Spacing follows the wizard's scale: 8px inside a field, 24px between fields,
+ * 32px between concerns. The two document pickers used to share one "Documents"
+ * card 16px apart — the same 16px that separated a textarea from a chip row one
+ * card above — so two multi-field subsystems read as a single list. They are one
+ * card each now, and each card's header *is* its on/off row, which removes the
+ * bordered strip that made an enabled picker a box inside a box inside a card.
  */
-
-const MODES: Array<{
-  value: PracticeMode;
-  label: string;
-  hint: string;
-  icon: typeof MessageSquare;
-}> = [
-  {
-    value: "text",
-    label: "Text",
-    hint: "Type your answers",
-    icon: MessageSquare,
-  },
-  {
-    value: "voice",
-    label: "Voice",
-    hint: "Speak, and hear the interviewer",
-    icon: Mic,
-  },
-];
 
 export function ContextStep({
   setup,
@@ -75,23 +61,7 @@ export function ContextStep({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {MODES.map((option) => {
-              const Icon = option.icon;
-              const isActive = setup.practiceMode === option.value;
-              return (
-                <ChoiceChip
-                  key={option.value}
-                  selected={isActive}
-                  onClick={() => onModeChange(option.value)}
-                  icon={<Icon className="h-4 w-4 shrink-0" />}
-                  hint={option.hint}
-                >
-                  {option.label}
-                </ChoiceChip>
-              );
-            })}
-          </div>
+          <ModeCards value={setup.practiceMode} onChange={onModeChange} />
         </CardContent>
       </Card>
 
@@ -99,68 +69,67 @@ export function ContextStep({
         <CardHeader>
           <CardTitle className="text-base">Describe the role</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        {/* 24px between the two, not 16. The brief and the quick-starts are
+            separate moves — write your own, or take a template — and at 16px
+            the chip row read as a continuation of the counter above it. */}
+        <CardContent className="space-y-6">
+          <Field
+            label="What are you preparing for?"
+            htmlFor="interview-brief"
+            aside={
+              // The one hint that survives here: it states a bar you have to
+              // clear, which nothing else on screen tells you.
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {charCount}/20 minimum
+              </span>
+            }
+          >
             <Textarea
               id="interview-brief"
               value={brief}
               onChange={(event) =>
                 onUpdate({ customScenarioBrief: event.target.value })
               }
-              aria-label="Describe the role you are preparing for"
               placeholder='e.g. "Senior data analyst at a mid-size SaaS company. Expecting questions on SQL, dashboards, stakeholder communication, and a behavioural round on cross-team conflict."'
               className="min-h-32 resize-y leading-6"
             />
-            {/* The one hint that survives here: it states a bar you have to
-                clear, which nothing else on screen tells you. */}
-            <p className="text-xs text-muted-foreground">
-              {charCount}/20 characters minimum
+          </Field>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Or start from a template
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">
-              Or start from
-            </span>
-            {quickStarts.map((chip) => {
-              const isActive = brief.trim() === chip.template.trim();
-              return (
-                <ChoiceChip
-                  key={chip.id}
-                  selected={isActive}
-                  onClick={() =>
-                    onUpdate({ customScenarioBrief: chip.template })
-                  }
-                >
-                  {chip.label}
-                </ChoiceChip>
-              );
-            })}
+            <div className="flex flex-wrap gap-2">
+              {quickStarts.map((chip) => {
+                const isActive = brief.trim() === chip.template.trim();
+                return (
+                  <ChoiceChip
+                    key={chip.id}
+                    selected={isActive}
+                    onClick={() =>
+                      onUpdate({ customScenarioBrief: chip.template })
+                    }
+                  >
+                    {chip.label}
+                  </ChoiceChip>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border border-border shadow-soft">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            Documents
-            <Badge variant="outline" className="font-normal">
-              Optional
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <JobDescriptionPicker
-            value={setup.jobDescription}
-            onChange={(next) => onUpdate({ jobDescription: next })}
-          />
+      {/* One card each. They are separate decisions with separate storage and
+          separate API routes; sharing a card only made them look like one. */}
+      <JobDescriptionPicker
+        value={setup.jobDescription}
+        onChange={(next) => onUpdate({ jobDescription: next })}
+      />
 
-          <ResumePicker
-            value={setup.resume}
-            onChange={(next) => onUpdate({ resume: next })}
-          />
-        </CardContent>
-      </Card>
+      <ResumePicker
+        value={setup.resume}
+        onChange={(next) => onUpdate({ resume: next })}
+      />
     </>
   );
 }

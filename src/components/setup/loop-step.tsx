@@ -21,6 +21,7 @@ import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldSection } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -151,7 +152,7 @@ export function LoopStep({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">
           Start from
@@ -240,7 +241,9 @@ export function LoopStep({
         </div>
       )}
 
-      <div className="space-y-3">
+      {/* 24px. They used to be 12px apart — closer together than the 16px
+          separating two fields inside one of them. */}
+      <div className="space-y-6">
         {rounds.map((round, index) => (
           <RoundCard
             key={round.id}
@@ -357,14 +360,36 @@ function RoundCard({
           shape (length) wedged between, and because it was a single
           `sm:grid-cols-2`, Title sat beside Type on desktop but beside Length
           on mobile — the grouping was a side-effect of the column count. */}
-      <CardContent className="space-y-6">
-        <section className="space-y-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            What kind of round
-          </h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={ids.type}>Type</Label>
+      {/* 32px between sections, 24px between fields, 8px inside a field. The
+          three ratios used to be 24 / 16 / 8 with the `h4` sitting in the same
+          `space-y-4` as the fields — so a heading was bound no more tightly to
+          the group it named than the fields were to each other, and the whole
+          card read as one column of evenly-spaced lines. */}
+      <CardContent className="space-y-8">
+        <FieldSection title="What kind of round">
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Field
+              label="Type"
+              htmlFor={ids.type}
+              hint={
+                // The rubric was one grey comma-joined sentence, which read as
+                // filler. The same words as chips are scannable, and they are
+                // the actual criteria the analyzer scores against. As the
+                // field's hint they sit 6px below the Select rather than the
+                // 8px that separates the Select from its own label.
+                <div className="flex flex-wrap gap-1.5">
+                  {rubricCriteria(round.type).map((criterion) => (
+                    <Badge
+                      key={criterion}
+                      variant="secondary"
+                      className="font-normal"
+                    >
+                      {criterion}
+                    </Badge>
+                  ))}
+                </div>
+              }
+            >
               <Select
                 value={round.type}
                 onValueChange={(next) =>
@@ -382,30 +407,15 @@ function RoundCard({
                   ))}
                 </SelectContent>
               </Select>
-              {/* The rubric was one grey comma-joined sentence, which read as
-                  filler. The same words as chips are scannable, and they are
-                  the actual criteria the analyzer scores against. */}
-              <div className="flex flex-wrap gap-1.5" aria-label="Scored on">
-                {rubricCriteria(round.type).map((criterion) => (
-                  <Badge
-                    key={criterion}
-                    variant="secondary"
-                    className="font-normal"
-                  >
-                    {criterion}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            </Field>
 
-            <div className="space-y-2">
-              <Label htmlFor={ids.title}>Title</Label>
+            <Field label="Title" htmlFor={ids.title}>
               <Input
                 id={ids.title}
                 value={round.title}
                 onChange={(event) => onChange({ title: event.target.value })}
               />
-            </div>
+            </Field>
           </div>
 
           {/* What the round is actually like.
@@ -417,7 +427,7 @@ function RoundCard({
               playbook gives the interviewer, so the preview cannot drift from
               what the session does. */}
           {(example || playbook) && (
-            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+            <div className="space-y-4 rounded-lg border border-border bg-muted/40 p-4">
               {example && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground">
@@ -440,19 +450,18 @@ function RoundCard({
               )}
             </div>
           )}
-        </section>
+        </FieldSection>
 
-        <section className="space-y-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Shape
-          </h4>
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <Label htmlFor={ids.length}>Length</Label>
+        <FieldSection title="Shape">
+          <Field
+            label="Length"
+            htmlFor={ids.length}
+            aside={
               <span className="text-xs tabular-nums text-muted-foreground">
                 {describeRoundLength(round.durationMinutes)}
               </span>
-            </div>
+            }
+          >
             {/* Boxed to 36px so the slider shares a baseline with the inputs
                 above it — a bare range is ~19px tall. */}
             <div className="flex h-9 items-center">
@@ -469,7 +478,7 @@ function RoundCard({
                 className="w-full accent-blue-600"
               />
             </div>
-          </div>
+          </Field>
 
           {supportsCodeEditor(round.type) && round.practiceMode === "text" && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
@@ -483,27 +492,22 @@ function RoundCard({
               />
             </div>
           )}
-        </section>
+        </FieldSection>
 
-        <section className="space-y-4">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Content
-          </h4>
-          <div className="space-y-2">
-            <Label htmlFor={ids.focus}>Focus</Label>
+        <FieldSection title="Content">
+          <Field label="Focus" htmlFor={ids.focus}>
             <Input
               id={ids.focus}
               value={round.focus}
               onChange={(event) => onChange({ focus: event.target.value })}
               placeholder="What this round should dig into"
             />
-          </div>
+          </Field>
 
           {/* A different interviewer per round is only a concept in a loop — a
               single round already has the Interviewer step. */}
           {isLoop && (
-            <div className="space-y-2">
-              <Label htmlFor={ids.persona}>Asked by</Label>
+            <Field label="Asked by" htmlFor={ids.persona}>
               <Select
                 value={round.personaLibraryId ?? "default"}
                 onValueChange={(next) =>
@@ -524,9 +528,9 @@ function RoundCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           )}
-        </section>
+        </FieldSection>
       </CardContent>
     </Card>
   );

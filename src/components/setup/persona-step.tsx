@@ -35,6 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Field, FieldSection } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -186,8 +187,8 @@ export function PersonaStep({
             </div>
           </CardAction>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
             {isLoading && sortedLibrary.length === 0
               ? [0, 1, 2, 3].map((index) => (
                   <div
@@ -388,12 +389,20 @@ export function PersonaStep({
             </div>
           </CardAction>
         </CardHeader>
-        <CardContent className="space-y-4">
+        {/* 32px between the two field groups. It used to be `mt-4` = 16px —
+            the exact same 16px as `gap-4` *inside* each group, so the boundary
+            between "who they are" and "how they interview" was numerically
+            identical to the boundary between two adjacent inputs. (The `mt-4`
+            was also a no-op: it collapsed against the parent's existing 16px.) */}
+        <CardContent className="space-y-8">
           {showSaveAsNew && (
-            <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted p-3">
-              <div className="flex-1 min-w-[200px] space-y-1">
-                <Label className="text-xs">Name your persona</Label>
+            <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted p-3">
+              <div className="flex-1 min-w-[200px] space-y-2">
+                <Label htmlFor="persona-save-name" className="text-xs">
+                  Name your persona
+                </Label>
                 <Input
+                  id="persona-save-name"
                   value={renameDraft}
                   onChange={(event) => setRenameDraft(event.target.value)}
                   placeholder={value.name}
@@ -415,98 +424,109 @@ export function PersonaStep({
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Display name</Label>
-              <Input
-                value={value.name}
-                onChange={(event) => onPatch({ name: event.target.value })}
-                placeholder="e.g. Adaptive Interviewer"
-              />
+          {/* These eight fields were two unlabelled grids. Every `Label` here
+              was also unwired — no `htmlFor`, no `id` — so clicking a label did
+              nothing and a screen reader announced eight bare inputs. */}
+          <FieldSection title="Who they are">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field label="Display name" htmlFor="persona-name">
+                <Input
+                  id="persona-name"
+                  value={value.name}
+                  onChange={(event) => onPatch({ name: event.target.value })}
+                  placeholder="e.g. Adaptive Interviewer"
+                />
+              </Field>
+              <Field label="Nationality" htmlFor="persona-nationality">
+                <Input
+                  id="persona-nationality"
+                  value={value.nationality}
+                  onChange={(event) =>
+                    onPatch({ nationality: event.target.value })
+                  }
+                  placeholder="e.g. Japanese"
+                />
+              </Field>
+              <Field label="Industry" htmlFor="persona-industry">
+                <Input
+                  id="persona-industry"
+                  value={value.industry}
+                  onChange={(event) =>
+                    onPatch({ industry: event.target.value })
+                  }
+                  placeholder="e.g. Healthcare"
+                />
+              </Field>
+              <Field label="Seniority" htmlFor="persona-seniority">
+                <Input
+                  id="persona-seniority"
+                  value={value.seniority}
+                  onChange={(event) =>
+                    onPatch({ seniority: event.target.value })
+                  }
+                  placeholder="e.g. Director of Product"
+                />
+              </Field>
             </div>
-            <div className="space-y-2">
-              <Label>Nationality</Label>
-              <Input
-                value={value.nationality}
-                onChange={(event) =>
-                  onPatch({ nationality: event.target.value })
-                }
-                placeholder="e.g. Japanese"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Industry</Label>
-              <Input
-                value={value.industry}
-                onChange={(event) => onPatch({ industry: event.target.value })}
-                placeholder="e.g. Healthcare"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Seniority</Label>
-              <Input
-                value={value.seniority}
-                onChange={(event) => onPatch({ seniority: event.target.value })}
-                placeholder="e.g. Director of Product"
-              />
-            </div>
-          </div>
+          </FieldSection>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Communication style</Label>
-              <Select
-                value={value.communicationStyle}
-                onValueChange={(nextStyle) =>
-                  onPatch({
-                    communicationStyle: nextStyle as CommunicationStyle,
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COMMUNICATION_STYLE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {
+          <FieldSection title="How they interview">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field
+                label="Communication style"
+                htmlFor="persona-style"
+                hint={
                   COMMUNICATION_STYLE_OPTIONS.find(
                     (option) => option.value === value.communicationStyle,
                   )?.description
                 }
-              </p>
-            </div>
+              >
+                <Select
+                  value={value.communicationStyle}
+                  onValueChange={(nextStyle) =>
+                    onPatch({
+                      communicationStyle: nextStyle as CommunicationStyle,
+                    })
+                  }
+                >
+                  <SelectTrigger id="persona-style" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMUNICATION_STYLE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
 
-            <div className="space-y-2">
-              <Label>Years of experience</Label>
-              <Input
-                type="number"
-                min={1}
-                max={40}
-                value={value.yearsExperience}
-                onChange={(event) =>
-                  onPatch({
-                    yearsExperience: Math.max(
-                      1,
-                      Math.min(40, Number(event.target.value) || 1),
-                    ),
-                  })
-                }
-              />
+              <Field label="Years of experience" htmlFor="persona-years">
+                <Input
+                  id="persona-years"
+                  type="number"
+                  min={1}
+                  max={40}
+                  value={value.yearsExperience}
+                  onChange={(event) =>
+                    onPatch({
+                      yearsExperience: Math.max(
+                        1,
+                        Math.min(40, Number(event.target.value) || 1),
+                      ),
+                    })
+                  }
+                />
+              </Field>
             </div>
-          </div>
+          </FieldSection>
 
           {/* Four sliders that default to a neutral 5 and that most people never
             touch. Collapsed, so the step ends at the fields that actually
             need answering. The summary line on each library card and the
             review step both still show the values. */}
-          <details className="group mt-5 rounded-lg border border-border bg-muted p-3">
+          <details className="group rounded-lg border border-border bg-muted p-3">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-foreground">
               <span>
                 Fine-tune interviewer style
@@ -517,7 +537,7 @@ export function PersonaStep({
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
-            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
               <SliderField
                 label="Strictness"
                 value={value.strictness}
