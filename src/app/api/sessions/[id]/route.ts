@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
+  deleteSession,
   getSession,
   updateSession,
   type SessionStatus,
@@ -126,5 +127,32 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     return NextResponse.json({ session });
   } catch (error) {
     return handleRouteError("PATCH /api/sessions/[id]", error);
+  }
+}
+
+/**
+ * Delete one session.
+ *
+ * Until now the only way to remove a single bad session was "Delete all
+ * sessions" in Settings — an all-or-nothing wipe for a single mistake.
+ *
+ * Same shape as the personas, job-description and resume deletes: authenticate,
+ * hand the id to the db helper, let RLS decide ownership. No existence check,
+ * so a foreign or already-deleted id returns ok — consistent with the other
+ * three, and it means a double-click cannot produce a spurious error.
+ */
+export async function DELETE(_request: Request, ctx: RouteParams) {
+  try {
+    const { supabase, user } = await getCurrentUser();
+    if (!user) {
+      return unauthorized();
+    }
+
+    const { id } = await ctx.params;
+    await deleteSession(supabase, id);
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return serverError("DELETE /api/sessions/[id]", error);
   }
 }
