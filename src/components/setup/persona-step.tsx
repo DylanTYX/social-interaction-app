@@ -224,20 +224,26 @@ export function PersonaStep({
                 return (
                   <div
                     key={entry.id}
-                    className={`group relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all duration-200 ${
+                    className={cn(
+                      "group relative flex flex-col gap-3 rounded-lg border p-4 text-left transition-all duration-200",
+                      // A ring as well as a border colour. Across two rows of
+                      // six, a 1px colour swap is easy to miss; the ring reads
+                      // from across a room, which matters when this is on a
+                      // projector.
                       isActive
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-border hover:border-blue-300 hover:bg-accent"
-                    }`}
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
+                        : "border-border hover:border-blue-300 hover:bg-accent",
+                    )}
                   >
-                    {/* Name on its own line. It used to sit inline with the
-                      "Preset" badge, which in a ~200px column wrapped every
-                      name mid-flex — "Sarah / Chen", "Isabella / Rodriguez" —
-                      and shoved the style badge against the card's top edge. */}
+                    {/* Grouped, then spaced. This was six blocks at one flat
+                      6px pitch — avatar row, badges, summary, traits, dislikes,
+                      dials — so the card ran together as a single paragraph in
+                      exactly the way the wizard's fields used to. Now three
+                      groups 12px apart, tight within each. */}
                     <button
                       type="button"
                       onClick={() => handlePickEntry(entry)}
-                      className="flex h-full flex-col gap-1.5 text-left"
+                      className="flex h-full flex-col gap-3 text-left"
                     >
                       {/* Six presets rendered as six near-identical blocks of
                         grey text, so telling them apart meant reading. An
@@ -279,37 +285,74 @@ export function PersonaStep({
                           {entry.config.communicationStyle}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {buildPresetSummary(entry.config)}
-                      </p>
-                      {/* Traits and boundaries are already sent to the model —
+                      {/* Third group: what this interviewer is actually like.
+                        Traits and boundaries are already sent to the model —
                         `buildBoundaries` tells the interviewer to be vocal when
                         one comes up — but the person choosing had no way to
                         know that. Knowing Sarah Chen is impatient with vagueness
                         is exactly what makes the choice meaningful. */}
-                      {entry.config.personalityTraits.length > 0 && (
-                        <p className="text-xs leading-5 text-muted-foreground">
-                          <span className="font-medium text-foreground">
-                            Traits:
-                          </span>{" "}
-                          {entry.config.personalityTraits
-                            .slice(0, 3)
-                            .join(", ")}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          {buildPresetSummary(entry.config)}
                         </p>
-                      )}
-                      {entry.config.boundaries.length > 0 && (
-                        <p className="text-xs leading-5 text-muted-foreground">
-                          <span className="font-medium text-foreground">
-                            Dislikes:
-                          </span>{" "}
-                          {entry.config.boundaries.slice(0, 3).join(", ")}
-                        </p>
-                      )}
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        Strict {entry.config.strictness} · Warm{" "}
-                        {entry.config.warmth} · Pace {entry.config.pace ?? 5} ·
-                        Pushback {entry.config.pushback ?? 5}
-                      </p>
+
+                        {entry.config.personalityTraits.length > 0 && (
+                          // Badges rather than a comma-joined sentence — the
+                          // treatment /dashboard/personas already uses for this
+                          // same field, and three short chips are read at a
+                          // glance where three clauses of grey text are not.
+                          <div className="flex flex-wrap gap-1">
+                            {entry.config.personalityTraits
+                              .slice(0, 3)
+                              .map((trait) => (
+                                <Badge
+                                  key={trait}
+                                  variant="secondary"
+                                  className="font-normal"
+                                >
+                                  {trait}
+                                </Badge>
+                              ))}
+                          </div>
+                        )}
+
+                        {entry.config.boundaries.length > 0 && (
+                          <p className="text-xs leading-5 text-muted-foreground">
+                            <span className="font-medium text-foreground">
+                              Dislikes:
+                            </span>{" "}
+                            {entry.config.boundaries.slice(0, 3).join(", ")}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* The dials, as data rather than a fourth sentence. They
+                        are the fields that actually drive behaviour — strictness
+                        and warmth reach `estimateFollowupDifficulty`, pace sets
+                        the speaking rate — so they get their own row at the foot
+                        of the card instead of trailing the prose.
+
+                        `mt-auto` pins them to the bottom, so across a row of
+                        cards the dials line up regardless of how long anyone's
+                        traits are. */}
+                      <dl className="mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-xs tabular-nums">
+                        {[
+                          ["Strict", entry.config.strictness],
+                          ["Warm", entry.config.warmth],
+                          ["Pace", entry.config.pace ?? 5],
+                          ["Pushback", entry.config.pushback ?? 5],
+                        ].map(([label, value]) => (
+                          <div
+                            key={label}
+                            className="flex items-baseline gap-1"
+                          >
+                            <dt className="text-muted-foreground">{label}</dt>
+                            <dd className="font-medium text-foreground">
+                              {value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
                     </button>
 
                     <div className="flex items-center justify-between gap-2 pt-1">
