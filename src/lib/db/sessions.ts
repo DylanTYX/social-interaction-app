@@ -143,19 +143,67 @@ function rowToMessage(row: MessageRow): MessageRecord {
   };
 }
 
+export interface ListSessionsOptions {
+  limit?: number;
+  offset?: number;
+  /** Free text matched against the scenario title and the persona name. */
+  query?: string;
+  mode?: "text" | "voice";
+  status?: SessionStatus;
+}
+
+export interface ListSessionsResult {
+  sessions: SessionRecord[];
+  /** Rows matching the filters, ignoring limit/offset. */
+  total: number;
+}
+
+/**
+ * A page of sessions, filtered in the database.
+ *
+ * Filtering used to happen client-side over whatever had been fetched, which
+ * meant search reported "no matching sessions" whenever the match sat past the
+ * fetch limit — it was answering "not in the first 50" while appearing to
+ * answer "you don't have one". Paging without moving the filter down here would
+ * have made that worse, not better.
+ *
+ * `count: "exact"` gives the caller the real total so it can say how much of it
+ * is on screen. The same option is used by `countJobDescriptionChunks`.
+ */
 export async function listSessions(
   supabase: SupabaseClient,
-  options: { limit?: number } = {},
-): Promise<SessionRecord[]> {
-  const { limit = 25 } = options;
-  const { data, error } = await supabase
+  options: ListSessionsOptions = {},
+): Promise<ListSessionsResult> {
+  const { limit = 25, offset = 0, query, mode, status } = options;
+
+  let request = supabase
     .from("interview_sessions")
-    .select(SESSION_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .select(SESSION_COLUMNS, { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (mode) request = request.eq("practice_mode", mode);
+  if (status) request = request.eq("status", status);
+
+  const trimmed = query?.trim();
+  if (trimmed) {
+    // Matches what the client-side filter matched: scenario title or persona.
+    // `%` and `,` would otherwise break out of the `or` filter's own syntax.
+    const safe = trimmed.replace(/[%,()]/g, " ");
+    request = request.or(
+      `scenario_title.ilike.%${safe}%,persona_name.ilike.%${safe}%`,
+    );
+  }
+
+  const { data, error, count } = await request.range(
+    offset,
+    offset + limit - 1,
+  );
 
   if (error) throw error;
-  return (data ?? []).map((row) => rowToSession(row as SessionRow));
+  return {
+    sessions: (data ?? []).map((row) => rowToSession(row as SessionRow)),
+    total: count ?? 0,
+  };
 }
 
 /**

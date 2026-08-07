@@ -1,8 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  PRESET_PERSONAS,
-  type PersonaConfig,
-} from "@/lib/persona-engine";
+import { PRESET_PERSONAS, type PersonaConfig } from "@/lib/persona-engine";
 
 export type PersonaKind = "preset" | "user";
 
@@ -65,7 +62,11 @@ async function selectPersonas(
   const { data, error } = await supabase
     .from("personas")
     .select(PERSONA_COLUMNS)
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    // Bounded. Personas are one-click creatable ("Random persona",
+    // "Duplicate"), so an unbounded select grows with the account and is
+    // fetched whole on every dashboard load.
+    .limit(200);
 
   if (error) throw error;
   return (data ?? []).map((row) => rowToRecord(row as PersonaRow));

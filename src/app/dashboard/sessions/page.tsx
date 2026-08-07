@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   History,
@@ -61,12 +61,36 @@ const STATUS_LABEL: Record<InterviewSessionSummary["status"], string> = {
   abandoned: "Abandoned",
 };
 
-export default function SessionsLibraryPage() {
-  const { sessions, status, error, refresh } = useInterviewHistory(50);
+const PAGE_SIZE = 25;
 
+export default function SessionsLibraryPage() {
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  // Debounced so a refetch does not fire on every keystroke. The filter runs in
+  // Postgres now, so each change is a request rather than an array pass.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const {
+    sessions,
+    status,
+    error,
+    refresh,
+    loadMore,
+    total,
+    hasMore,
+    loadingMore,
+  } = useInterviewHistory(PAGE_SIZE, {
+    query: debouncedQuery,
+    mode: modeFilter === "all" ? undefined : modeFilter,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
+
   const [pendingDelete, setPendingDelete] =
     useState<InterviewSessionSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -91,21 +115,12 @@ export default function SessionsLibraryPage() {
     }
   };
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return sessions.filter((session) => {
-      if (modeFilter !== "all" && session.practiceMode !== modeFilter) {
-        return false;
-      }
-      if (statusFilter !== "all" && session.status !== statusFilter) {
-        return false;
-      }
-      if (!normalized) return true;
-      const haystack =
-        `${session.scenarioTitle ?? session.scenarioValue} ${session.personaName}`.toLowerCase();
-      return haystack.includes(normalized);
-    });
-  }, [sessions, query, modeFilter, statusFilter]);
+  // `sessions` is already the filtered page — the server did it.
+  const filtered = sessions;
+  const hasFilters =
+    debouncedQuery.trim() !== "" ||
+    modeFilter !== "all" ||
+    statusFilter !== "all";
 
   const isLoading = status === "loading" && sessions.length === 0;
 
@@ -181,7 +196,10 @@ export default function SessionsLibraryPage() {
           onRetry={() => void refresh()}
         />
       ) : filtered.length === 0 ? (
-        sessions.length === 0 ? (
+        // `sessions.length` used to tell these two apart, but the server now
+        // returns only matching rows, so an empty list looks identical in both
+        // cases. Whether any filter is set is the honest signal.
+        !hasFilters ? (
           <EmptyStateCard
             icon={<History className="h-6 w-6" />}
             title="Your first session will show up here"
@@ -222,6 +240,13 @@ export default function SessionsLibraryPage() {
         )
       ) : (
         <div className="space-y-2">
+          {/* Say how much of the result is on screen. The list used to cap at
+              50 with no indication, so session 51 simply did not exist as far
+              as the UI was concerned. */}
+          <p className="px-1 text-sm text-muted-foreground">
+            Showing {filtered.length} of {total}
+            {hasFilters ? " matching" : ""} session{total === 1 ? "" : "s"}
+          </p>
           {filtered.map((session) => {
             const ModeIcon =
               session.practiceMode === "voice" ? Mic : MessageSquare;
@@ -303,6 +328,18 @@ export default function SessionsLibraryPage() {
               </div>
             );
           })}
+
+          {hasMore && (
+            <div className="pt-2 text-center">
+              <Button
+                variant="outline"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+              >
+                {loadingMore ? "Loading…" : `Load ${PAGE_SIZE} more`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -25,6 +25,20 @@ export function parseLimit(
 }
 
 /**
+ * Parse an `offset` query parameter.
+ *
+ * The companion `parseLimit` has always existed; this did not, which is why
+ * every list endpoint returned page one and nothing else. Unlike `limit` there
+ * is no cap to apply — an offset past the end simply returns no rows — but it
+ * must still refuse negatives, which Postgres rejects outright.
+ */
+export function parseOffset(searchParams: URLSearchParams): number {
+  const raw = Number(searchParams.get("offset"));
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return Math.floor(raw);
+}
+
+/**
  * Parse a client-supplied string, rejecting anything over `max` characters.
  *
  * Document uploads were capped (30k for a JD, `MAX_RESUME_CHARS` for a CV) but
