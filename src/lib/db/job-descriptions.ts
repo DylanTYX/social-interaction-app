@@ -93,24 +93,43 @@ export async function createJobDescription(input: {
 
   if (jdError) throw jdError;
 
-  const embeddings = await createEmbeddings(
-    chunks.map((chunk) => chunk.content),
-    input.usage,
-  );
-  const chunkRows = chunks.map((chunk, index) => ({
-    user_id: input.userId,
-    job_description_id: jd.id,
-    chunk_index: index,
-    content: chunk.content,
-    token_estimate: chunk.tokenEstimate,
-    embedding: embeddings[index],
-  }));
+  // Three writes with no transaction available through PostgREST, so the parent
+  // row can outlive a failure in the two steps after it. That mattered more
+  // than it looks: a JD row with zero chunks is not obviously broken anywhere.
+  // The route 500s, so the user believes the upload failed — but the row
+  // persists, appears in the library and in the setup wizard's picker, and any
+  // interview that selects it runs with **no job-description context at all**.
+  // `loadJobDescriptionContext` sees `chunkCount === 0` and returns null, which
+  // is indistinguishable from "no JD attached". No error, no log, no signal
+  // that the document the user carefully uploaded is inert.
+  //
+  // Compensating delete instead: if we cannot finish, leave nothing behind, so
+  // the 500 the user sees is the truth.
+  try {
+    const embeddings = await createEmbeddings(
+      chunks.map((chunk) => chunk.content),
+      input.usage,
+    );
+    const chunkRows = chunks.map((chunk, index) => ({
+      user_id: input.userId,
+      job_description_id: jd.id,
+      chunk_index: index,
+      content: chunk.content,
+      token_estimate: chunk.tokenEstimate,
+      embedding: embeddings[index],
+    }));
 
-  const { error: chunksError } = await input.supabase
-    .from("job_description_chunks")
-    .insert(chunkRows);
+    const { error: chunksError } = await input.supabase
+      .from("job_description_chunks")
+      .insert(chunkRows);
 
-  if (chunksError) throw chunksError;
+    if (chunksError) throw chunksError;
+  } catch (error) {
+    // Best-effort: if the cleanup itself fails there is nothing further to try,
+    // and the original error is the one worth surfacing.
+    await input.supabase.from("job_descriptions").delete().eq("id", jd.id);
+    throw error;
+  }
 
   return rowToJobDescription(jd as JobDescriptionRow);
 }
@@ -152,7 +171,10 @@ export async function deleteJobDescription(
 ): Promise<void> {
   // Cascading FK on job_description_chunks deletes chunks automatically.
   // Sessions referencing this JD have ON DELETE SET NULL, so they survive.
-  const { error } = await supabase.from("job_descriptions").delete().eq("id", id);
+  const { error } = await supabase
+    .from("job_descriptions")
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 
