@@ -853,7 +853,10 @@ function VoiceSimulateInner() {
 
       if (applied.isComplete) {
         sessionCompleteRef.current = true;
-        await turn.endSession();
+        // No `endSession()` here. `applyTurn` has already persisted the
+        // completion including this turn; calling it again from a callback
+        // closed over pre-turn state overwrote that with the mean over one
+        // fewer analysis. The manual End-session button still calls it.
         setTimeout(() => {
           if (isMountedRef.current) {
             router.push(
