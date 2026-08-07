@@ -3,146 +3,115 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   TrendingUp,
   Clock,
   Target,
-  ChevronRight,
-  Sparkles,
+  Award,
   Mic,
   MessageSquare,
   ArrowRight,
   PlayCircle,
-  Dumbbell,
 } from "lucide-react";
-import {
-  useInterviewHistory,
-  type InterviewSessionSummary,
-} from "@/hooks/use-interview-history";
+import { useInterviewHistory } from "@/hooks/use-interview-history";
 import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
 import { getSuggestedNextSession } from "@/lib/recommendations";
 import { OnboardingDialog } from "@/components/dashboard/onboarding-dialog";
 import { OnboardingTour } from "@/components/dashboard/onboarding-tour";
 import { GoalsCard } from "@/components/dashboard/goals-card";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
-import { TILE_BORDERS, TILE_COLORS, TILE_COLORS_INTERACTIVE } from "@/lib/tile-colors";
+import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { formatRelativeDate, initialsFromName } from "@/lib/format";
+import {
+  computeSessionStats,
+  formatAverageScore,
+  formatPracticeMinutes,
+} from "@/lib/session-stats";
 
-interface DashboardStats {
-  total: number;
-  averageScore: number | null;
-  totalMinutes: number;
-}
+/**
+ * The dashboard home.
+ *
+ * This was nine card surfaces, seventeen counting nested panels, and six accent
+ * colours at once — and the real problem was not arrangement. **Four sections
+ * were answering the same question**, so none of them was allowed to be the
+ * answer:
+ *
+ *   - "Suggested next", "In progress" and a row of "Recent sessions" could all
+ *     render the *same in-progress session*, in three different colours.
+ *   - "Latest result" was normally row 1 of "Recent sessions", 250px away.
+ *   - Three "Start practicing" tiles restated sidebar links, under a comment
+ *     claiming they didn't.
+ *   - "At a glance" duplicated all three Analytics tiles, computed by a second
+ *     function that had already drifted on rounding and on printing zero.
+ *
+ * And with all that, there was **no primary call to action**: the only `Button`
+ * in the populated state was `variant="outline" size="sm"` — "View all".
+ *
+ * One question per section now. Anything that answered a question another page
+ * owns was deleted rather than rearranged.
+ *
+ *   1. What do I do now?     → one card, one primary button
+ *   2. Am I improving?       → four metrics, linking to Analytics
+ *   3. What have I done?     → five rows, linking to Sessions
+ *   4. Am I being consistent? → streak and goal, which live nowhere else
+ */
 
-function computeStats(sessions: InterviewSessionSummary[]): DashboardStats {
-  const total = sessions.length;
-  const scored = sessions.filter(
-    (entry): entry is InterviewSessionSummary & { averageScore: number } =>
-      typeof entry.averageScore === "number",
-  );
-  const averageScore =
-    scored.length > 0
-      ? Math.round(
-          scored.reduce((sum, entry) => sum + entry.averageScore, 0) /
-            scored.length,
-        )
-      : null;
-
-  const totalMinutes = sessions.reduce(
-    (sum, entry) => sum + (entry.durationMinutes ?? 0),
-    0,
-  );
-
-  return { total, averageScore, totalMinutes };
-}
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 5) return "Up late";
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 22) return "Good evening";
-  return "Up late";
-}
-
-interface StatRowProps {
+function MetricTile({
+  icon,
+  color,
+  label,
+  value,
+  caption,
+}: {
   icon: React.ReactNode;
-  iconColor: "blue" | "purple" | "teal" | "orange";
+  color: TileColor;
   label: string;
   value: string;
-  helper: string;
-}
-
-function StatRow({ icon, iconColor, label, value, helper }: StatRowProps) {
+  caption: string;
+}) {
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TILE_COLORS[iconColor]}`}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-700">{label}</p>
-        <p className="text-xs text-gray-400">{helper}</p>
-      </div>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
-    </div>
-  );
-}
-
-interface QuickActionProps {
-  href: string;
-  icon: React.ReactNode;
-  iconColor: "blue" | "purple" | "indigo" | "green" | "orange" | "pink";
-  title: string;
-  description: string;
-}
-
-function QuickAction({
-  href,
-  icon,
-  iconColor,
-  title,
-  description,
-}: QuickActionProps) {
-  return (
-    <Link
-      href={href}
-      className={`group flex items-start gap-3 rounded-xl border border-gray-200/70 bg-white p-4 transition-all duration-200 hover:shadow-soft-md hover-lift ${TILE_BORDERS[iconColor]}`}
-    >
-      <div
-        className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 transition-colors ${TILE_COLORS_INTERACTIVE[iconColor]}`}
-      >
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900">{title}</p>
-        <p className="mt-0.5 text-xs text-gray-500 leading-relaxed">
-          {description}
+    <Card className="border border-border shadow-soft">
+      <CardContent className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={`flex h-7 w-7 items-center justify-center rounded-lg ${TILE_COLORS[color]}`}
+            aria-hidden
+          >
+            {icon}
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {label}
+          </span>
+        </div>
+        <p className="text-2xl font-bold tabular-nums text-foreground">
+          {value}
         </p>
-      </div>
-      <ArrowRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-gray-600 group-hover:translate-x-0.5 transition-all" />
-    </Link>
+        <p className="text-xs text-muted-foreground">{caption}</p>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function DashboardPage() {
   const { sessions, status, error, refresh } = useInterviewHistory();
   const { user } = useCurrentUser();
+  // Fetches the whole library to derive one boolean, which is wasteful. Kept
+  // deliberately: dropping it would silently remove the JD-aware branch of the
+  // recommendation. Fixing it properly means a count endpoint.
   const { items: jobDescriptions } = useJobDescriptions();
 
   const recentSessions = useMemo(() => sessions.slice(0, 5), [sessions]);
-  const stats = useMemo(() => computeStats(sessions), [sessions]);
+  const stats = useMemo(() => computeSessionStats(sessions), [sessions]);
+
+  const inProgress = useMemo(
+    () => sessions.find((session) => session.status === "in_progress") ?? null,
+    [sessions],
+  );
+
   const suggestion = useMemo(
     () =>
       getSuggestedNextSession(sessions, {
@@ -150,21 +119,6 @@ export default function DashboardPage() {
         hasVoiceSessions: sessions.some((s) => s.practiceMode === "voice"),
       }),
     [sessions, jobDescriptions.length],
-  );
-
-  const inProgress = useMemo(
-    () => sessions.find((session) => session.status === "in_progress") ?? null,
-    [sessions],
-  );
-
-  const lastCompleted = useMemo(
-    () =>
-      sessions.find(
-        (session) =>
-          session.status === "completed" &&
-          typeof session.averageScore === "number",
-      ) ?? null,
-    [sessions],
   );
 
   const isLoading = status === "loading";
@@ -176,197 +130,154 @@ export default function DashboardPage() {
     return display.split(/\s+/)[0] ?? display;
   }, [user]);
 
+  // Resuming beats starting: an abandoned session is the one thing on this page
+  // with a deadline attached to it.
+  const resumeHref = inProgress
+    ? inProgress.practiceMode === "voice"
+      ? `/simulate/voice?session=${inProgress.id}`
+      : `/simulate/chat?session=${inProgress.id}`
+    : null;
+
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
-      {/* Hero / greeting */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-          {getGreeting()}
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-          Welcome back, <span className="gradient-text">{firstName}</span>
-        </h1>
-        <p className="mt-1 text-gray-600 max-w-2xl">
-          Pick a quick action below or continue where you left off.
-        </p>
-      </div>
+    <div className="p-8 space-y-8">
+      <PageHeader
+        eyebrow="Home"
+        title={`Welcome back, ${firstName}`}
+        description="Pick up where you left off, or start something new."
+        icon={<Target className="h-6 w-6" />}
+        iconColor="blue"
+      />
 
-      {/* Start practicing — the primary entry points (the rest of the nav lives
-          in the sidebar, so we don't duplicate it here). */}
-      <div className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Start practicing
-          </h2>
-          <p className="text-sm text-gray-500">
-            Pick a mode and jump straight in.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <QuickAction
-            href="/simulate/setup?mode=text"
-            icon={<MessageSquare className="h-5 w-5" />}
-            iconColor="blue"
-            title="Text interview"
-            description="Type replies, get inline feedback in real time"
-          />
-          <QuickAction
-            href="/simulate/setup?mode=voice"
-            icon={<Mic className="h-5 w-5" />}
-            iconColor="indigo"
-            title="Voice interview"
-            description="Speak out loud with a live interviewer"
-          />
-          <QuickAction
-            href="/dashboard/drills"
-            icon={<Dumbbell className="h-5 w-5" />}
-            iconColor="orange"
-            title="Quick drills"
-            description="One question, instant model-answer feedback"
-          />
-        </div>
-      </div>
+      {/* 1. What do I do now?
+          This one card replaces five: the three mode tiles, the "Suggested
+          next" card and the "In progress" card. The recommendation is now the
+          *label on the action* rather than a separate surface competing with
+          it, and an in-progress session appears here or in the list below —
+          never in three places at once.
 
-      {/* Main column + right rail */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-        {/* Main column: what to do next + history */}
-        <div className="space-y-6 lg:col-span-2">
-          {suggestion && (
-            <Link href={suggestion.href} className="block group">
-              <Card className="border border-blue-200/70 bg-linear-to-br from-blue-50 via-white to-indigo-50/50 hover:border-blue-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
-                <CardContent className="flex items-start gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600 shrink-0">
-                    <Sparkles className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-                      Suggested next
-                    </p>
-                    <p className="mt-1 font-semibold text-gray-900 group-hover:text-blue-700">
-                      {suggestion.title}
-                    </p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      {suggestion.description}
-                    </p>
-                    <p className="mt-2 text-xs text-gray-500">
-                      {suggestion.reason}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 shrink-0" />
-                </CardContent>
-              </Card>
+          The mode tiles are gone because the wizard's first step now asks that
+          question properly, with the consequences attached: voice needs a
+          microphone and has no code editor. A dashboard tile skipped all that. */}
+      <Card className="border border-border shadow-soft">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-foreground">
+              {resumeHref
+                ? "You have an interview in progress"
+                : (suggestion?.title ?? "Start a practice interview")}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {resumeHref
+                ? `${inProgress?.scenarioTitle ?? inProgress?.scenarioValue} · ${inProgress?.personaName}`
+                : (suggestion?.reason ??
+                  "Set up a round, pick an interviewer, and go.")}
+            </p>
+          </div>
+          <Button asChild size="lg" className="gap-2">
+            <Link href={resumeHref ?? suggestion?.href ?? "/simulate/setup"}>
+              {resumeHref ? (
+                <>
+                  <PlayCircle className="h-4 w-4" />
+                  Resume interview
+                </>
+              ) : (
+                <>
+                  Start interview
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </Link>
-          )}
+          </Button>
+        </CardContent>
+      </Card>
 
-          {(inProgress || lastCompleted) && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {inProgress && (
-                <Link
-                  href={
-                    inProgress.practiceMode === "voice"
-                      ? `/simulate/voice?session=${inProgress.id}`
-                      : `/simulate/chat?session=${inProgress.id}`
-                  }
-                  className="group block"
-                >
-                  <Card className="h-full border border-orange-200/70 bg-linear-to-br from-orange-50 via-white to-amber-50/40 hover:border-orange-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-orange-600 shrink-0">
-                        <PlayCircle className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <Badge
-                          variant="outline"
-                          className="border-orange-200 bg-orange-100/70 text-orange-700 mb-1"
-                        >
-                          In progress
-                        </Badge>
-                        <p className="font-semibold text-gray-900 truncate">
-                          {inProgress.scenarioTitle ?? inProgress.scenarioValue}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          with {inProgress.personaName}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-0.5 transition-all" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              )}
+      {/* 2. Am I improving?
+          These four numbers come from `computeSessionStats`, the same function
+          Analytics uses — they used to be computed twice, differently. The
+          section links to the page that owns them instead of pretending to be
+          that page. */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-foreground">
+            Your progress
+          </h2>
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/dashboard/analytics">
+              View analytics
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <MetricTile
+            icon={<Target className="h-4 w-4" />}
+            color="blue"
+            label="Sessions"
+            value={hasError ? "—" : String(stats.total)}
+            caption={hasError ? "Couldn't load" : `${stats.completed} scored`}
+          />
+          <MetricTile
+            icon={<TrendingUp className="h-4 w-4" />}
+            color="purple"
+            label="Average score"
+            value={hasError ? "—" : formatAverageScore(stats.averageScore)}
+            caption={
+              hasError
+                ? "Couldn't load"
+                : stats.bestScore === null
+                  ? "No scores yet"
+                  : `Best ${Math.round(stats.bestScore)}%`
+            }
+          />
+          <MetricTile
+            icon={<Clock className="h-4 w-4" />}
+            color="teal"
+            label="Practice time"
+            value={hasError ? "—" : formatPracticeMinutes(stats.totalMinutes)}
+            caption={hasError ? "Couldn't load" : "All time"}
+          />
+          <MetricTile
+            icon={<Award className="h-4 w-4" />}
+            color="orange"
+            label="Mode mix"
+            value={hasError ? "—" : `${stats.voiceCount}/${stats.textCount}`}
+            caption={hasError ? "Couldn't load" : "Voice / text"}
+          />
+        </div>
+      </section>
 
-              {lastCompleted && (
-                <Link
-                  href={`/simulate/report/${lastCompleted.id}`}
-                  className="group block"
-                >
-                  <Card className="h-full border border-emerald-200/70 bg-linear-to-br from-emerald-50 via-white to-teal-50/40 hover:border-emerald-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 shrink-0">
-                        <TrendingUp className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <Badge
-                          variant="outline"
-                          className="border-emerald-200 bg-emerald-100/70 text-emerald-700 mb-1"
-                        >
-                          Latest result · {lastCompleted.averageScore}%
-                        </Badge>
-                        <p className="font-semibold text-gray-900 truncate">
-                          {lastCompleted.scenarioTitle ??
-                            lastCompleted.scenarioValue}
-                        </p>
-                        <p className="text-sm text-gray-600 truncate">
-                          Review feedback and scores
-                        </p>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Recent sessions */}
-          <Card className="border border-gray-200/80 shadow-soft">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Recent sessions</CardTitle>
-                  <CardDescription>
-                    Your latest practice conversations
-                  </CardDescription>
-                </div>
-                <Link href="/dashboard/sessions">
-                  <Button variant="outline" size="sm">
-                    View all
-                  </Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {isLoading ? (
-                <SessionListSkeleton rows={3} />
-              ) : hasError ? (
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* 3. What have I done? */}
+        <section className="space-y-3 lg:col-span-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              Recent sessions
+            </h2>
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/dashboard/sessions">
+                View all
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+          <Card className="border border-border shadow-soft">
+            <CardContent>
+              {hasError ? (
                 <ErrorStateCard
                   title="Couldn't load your sessions"
-                  description={error}
-                  onRetry={() => void refresh()}
+                  description={error ?? "Something went wrong."}
+                  onRetry={refresh}
                 />
+              ) : isLoading ? (
+                // Five rows, because five will render. It was three, so the
+                // card grew every time the fetch settled.
+                <SessionListSkeleton rows={5} />
               ) : recentSessions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                    <Sparkles className="h-6 w-6" />
-                  </div>
-                  <p className="mt-3 font-semibold text-gray-900">
-                    No sessions yet
+                <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                  <p className="font-medium text-foreground">No sessions yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Your first interview will show up here.
                   </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Start your first interview to see it here.
-                  </p>
-                  <Link href="/simulate/setup" className="mt-4 inline-block">
-                    <Button>Start practicing</Button>
-                  </Link>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -383,17 +294,17 @@ export default function DashboardPage() {
                               : `/simulate/chat?session=${session.id}`
                             : `/simulate/report/${session.id}`
                         }
-                        className="flex items-center gap-4 p-4 rounded-xl bg-gray-50/70 hover:bg-gray-100 transition-colors duration-150 group"
+                        className="group flex items-center gap-4 rounded-xl p-4 transition-colors duration-150 hover:bg-accent"
                       >
-                        <div className="h-10 w-10 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-sm font-semibold text-white">
                           {initialsFromName(session.personaName)}
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-foreground transition-colors group-hover:text-blue-700">
                             {session.scenarioTitle ?? session.scenarioValue}
                           </p>
-                          <p className="text-sm text-gray-500 flex items-center gap-2">
+                          <p className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>{session.personaName}</span>
                             <span>·</span>
                             <span>{formatRelativeDate(session.createdAt)}</span>
@@ -407,13 +318,13 @@ export default function DashboardPage() {
                           </p>
                         </div>
 
-                        <div className="text-right shrink-0">
-                          <div className="text-lg font-bold text-blue-600">
+                        <div className="shrink-0 text-right">
+                          <div className="text-lg font-bold tabular-nums text-blue-600">
                             {session.averageScore === null
                               ? "—"
                               : `${session.averageScore}%`}
                           </div>
-                          <p className="text-xs text-gray-400">score</p>
+                          <p className="text-xs text-muted-foreground">score</p>
                         </div>
                       </Link>
                     );
@@ -422,61 +333,19 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </section>
 
-        {/* Right rail: at-a-glance stats + weekly goals */}
-        <div className="space-y-6">
-          <Card className="border border-gray-200/80 shadow-soft">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">At a glance</CardTitle>
-            </CardHeader>
-            <CardContent className="divide-y divide-gray-100 pt-0">
-              <StatRow
-                icon={<Target className="h-5 w-5" />}
-                iconColor="blue"
-                label="Total sessions"
-                value={hasError ? "—" : String(stats.total)}
-                helper={
-                  hasError
-                    ? "Couldn't load"
-                    : stats.total === 0
-                      ? "Start your first"
-                      : "All-time"
-                }
-              />
-              <StatRow
-                icon={<TrendingUp className="h-5 w-5" />}
-                iconColor="purple"
-                label="Average score"
-                value={
-                  hasError || stats.averageScore === null
-                    ? "—"
-                    : `${stats.averageScore}%`
-                }
-                helper={hasError ? "Couldn't load" : "Across scored sessions"}
-              />
-              <StatRow
-                icon={<Clock className="h-5 w-5" />}
-                iconColor="teal"
-                label="Practice time"
-                value={
-                  hasError
-                    ? "—"
-                    : stats.totalMinutes >= 60
-                      ? `${(stats.totalMinutes / 60).toFixed(1)}h`
-                      : `${stats.totalMinutes}m`
-                }
-                helper={hasError ? "Couldn't load" : "Time on interviews"}
-              />
-            </CardContent>
-          </Card>
-
-          {!isLoading && !hasError && (
-            <div data-tour="goals">
-              <GoalsCard sessions={sessions} />
-            </div>
-          )}
-        </div>
+        {/* 4. Am I being consistent?
+            The streak, the weekly goal and the badges are the only numbers on
+            this page that exist nowhere else, which is exactly why this section
+            survived the cut. */}
+        {/* `GoalsCard` supplies its own "Your week" heading, so this section
+            deliberately has none — two would be a duplicate, and the other
+            three sections need their heading because their card does not
+            carry one. */}
+        <section>
+          {!isLoading && !hasError && <GoalsCard sessions={sessions} />}
+        </section>
       </div>
 
       <OnboardingDialog />

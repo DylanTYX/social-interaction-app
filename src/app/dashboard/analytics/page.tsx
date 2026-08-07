@@ -19,6 +19,10 @@ import {
   BarChart3,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  computeSessionStats,
+  formatPracticeMinutes,
+} from "@/lib/session-stats";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
   parseSessionMetrics,
@@ -60,41 +64,29 @@ interface AnalyticsModel {
 }
 
 function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
-  const total = sessions.length;
-  const completed = sessions.filter(
-    (entry) => entry.averageScore !== null,
-  ).length;
+  // The headline figures come from the shared function. This page used to
+  // recompute total / average / best / minutes / mode-mix itself, alongside an
+  // identical copy on the dashboard home — same numbers, same icons, same
+  // accent colours, two implementations that had already drifted on rounding
+  // and on how they printed zero.
+  const {
+    total,
+    completed,
+    averageScore,
+    bestScore,
+    totalMinutes,
+    voiceCount,
+    textCount,
+  } = computeSessionStats(sessions);
 
+  // Everything below is analytics-only: the trend line, per-scenario buckets
+  // and skill dimensions have no second home to drift from.
   const scoredSessions = sessions
     .filter(
       (entry): entry is InterviewSessionSummary & { averageScore: number } =>
         typeof entry.averageScore === "number",
     )
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-
-  const averageScore =
-    scoredSessions.length > 0
-      ? scoredSessions.reduce((sum, entry) => sum + entry.averageScore, 0) /
-        scoredSessions.length
-      : null;
-
-  const bestScore =
-    scoredSessions.length > 0
-      ? scoredSessions.reduce(
-          (max, entry) => Math.max(max, entry.averageScore),
-          0,
-        )
-      : null;
-
-  const totalMinutes = sessions.reduce(
-    (sum, entry) => sum + (entry.durationMinutes ?? 0),
-    0,
-  );
-
-  const voiceCount = sessions.filter(
-    (entry) => entry.practiceMode === "voice",
-  ).length;
-  const textCount = sessions.length - voiceCount;
 
   const trend = scoredSessions.slice(-15).map((entry) => ({
     id: entry.id,
@@ -112,9 +104,7 @@ function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
     scenarioMap.set(key, bucket);
   }
 
-  const scenarioBuckets: ScenarioBucket[] = Array.from(
-    scenarioMap.entries(),
-  )
+  const scenarioBuckets: ScenarioBucket[] = Array.from(scenarioMap.entries())
     .map(([title, bucket]) => ({
       title,
       count: bucket.count,
@@ -141,9 +131,7 @@ function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
       dimensionSnapshots.push(...metrics.dimensionSnapshots);
     }
   }
-  dimensionSnapshots.sort((a, b) =>
-    a.recordedAt.localeCompare(b.recordedAt),
-  );
+  dimensionSnapshots.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
   const recentDimensions = dimensionSnapshots.slice(-20);
 
   const dimensionDefs: Omit<DimensionSeries, "values">[] = [
@@ -320,12 +308,6 @@ function DimensionSparkline({ series }: { series: DimensionSeries }) {
   );
 }
 
-function formatMinutes(total: number): string {
-  if (total <= 0) return "0 min";
-  if (total < 60) return `${Math.round(total)} min`;
-  return `${(total / 60).toFixed(1)}h`;
-}
-
 export default function AnalyticsPage() {
   const { sessions, status, error, refresh } = useInterviewHistory(50);
   const model = useMemo(() => buildModel(sessions), [sessions]);
@@ -431,7 +413,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold text-gray-900">
-                {formatMinutes(model.totalMinutes)}
+                {formatPracticeMinutes(model.totalMinutes)}
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 Across {model.daysActive} day
@@ -488,8 +470,8 @@ export default function AnalyticsPage() {
         <CardContent>
           {model.dimensionSeries.every((series) => series.values.length < 2) ? (
             <p className="text-sm text-gray-500">
-              Complete a few more scored answers in text mode to see per-dimension
-              trends.
+              Complete a few more scored answers in text mode to see
+              per-dimension trends.
             </p>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2">
