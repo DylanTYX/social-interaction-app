@@ -50,7 +50,10 @@ export function useJobDescriptions(): UseJobDescriptions {
     setStatus("loading");
     setError(null);
     try {
-      const response = await fetch("/api/job-descriptions", {
+      // Explicit, because omitting it silently took the route's fallback of 20
+      // while the cap is 50 — so a 21st saved item was unreachable from both
+      // this page and the setup wizard's picker.
+      const response = await fetch("/api/job-descriptions?limit=50", {
         cache: "no-store",
       });
       if (!response.ok) {
@@ -61,9 +64,9 @@ export function useJobDescriptions(): UseJobDescriptions {
         if (response.status === 401) {
           throw new Error("Your session expired. Sign in again to continue.");
         }
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(
           detail?.error ??
             `Failed to load job descriptions (HTTP ${response.status}).`,
@@ -95,7 +98,10 @@ export function useJobDescriptions(): UseJobDescriptions {
   const uploadText = useCallback<UseJobDescriptions["uploadText"]>(
     async ({ rawText, roleTitle }) => {
       try {
-        const response = await fetch("/api/job-descriptions", {
+        // Explicit, because omitting it silently took the route's fallback of 20
+        // while the cap is 50 — so a 21st saved item was unreachable from both
+        // this page and the setup wizard's picker.
+        const response = await fetch("/api/job-descriptions?limit=50", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rawText, roleTitle: roleTitle ?? null }),
@@ -126,7 +132,10 @@ export function useJobDescriptions(): UseJobDescriptions {
           formData.append("roleTitle", roleTitle.trim());
         }
 
-        const response = await fetch("/api/job-descriptions", {
+        // Explicit, because omitting it silently took the route's fallback of 20
+        // while the cap is 50 — so a 21st saved item was unreachable from both
+        // this page and the setup wizard's picker.
+        const response = await fetch("/api/job-descriptions?limit=50", {
           method: "POST",
           body: formData,
         });
@@ -136,11 +145,7 @@ export function useJobDescriptions(): UseJobDescriptions {
         setItems((current) => [jd, ...current]);
         return jd;
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to upload PDF.",
-        );
+        setError(err instanceof Error ? err.message : "Failed to upload PDF.");
         return null;
       }
     },
@@ -157,7 +162,9 @@ export function useJobDescriptions(): UseJobDescriptions {
       return true;
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to delete job description.",
+        err instanceof Error
+          ? err.message
+          : "Failed to delete job description.",
       );
       return false;
     }

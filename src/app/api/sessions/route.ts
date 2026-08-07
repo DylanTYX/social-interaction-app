@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { parseBoundedString, parseLimit } from "@/lib/api/query";
+import { parseBoundedString, parseLimit, parseOffset } from "@/lib/api/query";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
@@ -28,9 +28,30 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 25, max: 100 });
+    const offset = parseOffset(searchParams);
+    // Filters are applied in Postgres now. They used to be a `useMemo` on the
+    // client over whatever had been fetched, so search silently only ever
+    // covered the first page.
+    const query = searchParams.get("q") ?? undefined;
+    const modeParam = searchParams.get("mode");
+    const statusParam = searchParams.get("status");
+    const mode =
+      modeParam === "text" || modeParam === "voice" ? modeParam : undefined;
+    const status =
+      statusParam === "in_progress" ||
+      statusParam === "completed" ||
+      statusParam === "abandoned"
+        ? statusParam
+        : undefined;
 
-    const sessions = await listSessions(supabase, { limit });
-    return NextResponse.json({ sessions });
+    const { sessions, total } = await listSessions(supabase, {
+      limit,
+      offset,
+      query,
+      mode,
+      status,
+    });
+    return NextResponse.json({ sessions, total });
   } catch (error) {
     return handleRouteError("GET /api/sessions", error);
   }
@@ -95,7 +116,9 @@ export async function POST(request: Request) {
       }),
       personaId: typeof body.personaId === "string" ? body.personaId : null,
       jobDescriptionId:
-        typeof body.jobDescriptionId === "string" ? body.jobDescriptionId : null,
+        typeof body.jobDescriptionId === "string"
+          ? body.jobDescriptionId
+          : null,
       resumeId: typeof body.resumeId === "string" ? body.resumeId : null,
       personaName: personaConfig.name,
       personaConfig,

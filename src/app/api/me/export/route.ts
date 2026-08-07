@@ -28,7 +28,7 @@ export async function GET() {
     );
     if (limited) return limited;
 
-    const [sessions, personas, jobDescriptions] = await Promise.all([
+    const [sessionPage, personas, jobDescriptions] = await Promise.all([
       listSessions(supabase, { limit: 500 }),
       listPersonas(supabase, user.id),
       listJobDescriptions(supabase, { limit: 200 }),
@@ -36,7 +36,7 @@ export async function GET() {
 
     // Inline messages alongside each session so the export is self-contained.
     const sessionsWithMessages = await Promise.all(
-      sessions.map(async (session) => {
+      sessionPage.sessions.map(async (session) => {
         // Bounded per session: an export is a convenience, not an archive
         // guarantee, and one query per session over 500 sessions is already
         // the most expensive read in the app.

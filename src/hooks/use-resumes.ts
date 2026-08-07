@@ -46,7 +46,12 @@ export function useResumes(): UseResumes {
     setStatus("loading");
     setError(null);
     try {
-      const response = await fetch("/api/resumes", { cache: "no-store" });
+      // Explicit, because omitting it silently took the route's fallback of 20
+      // while the cap is 50 — so a 21st saved item was unreachable from both
+      // this page and the setup wizard's picker.
+      const response = await fetch("/api/resumes?limit=50", {
+        cache: "no-store",
+      });
       if (!response.ok) {
         // A 401 is an error, not an empty library. Swallowing it here made a
         // signed-out user see the cheerful "add your first one" empty state —
@@ -55,9 +60,9 @@ export function useResumes(): UseResumes {
         if (response.status === 401) {
           throw new Error("Your session expired. Sign in again to continue.");
         }
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(
           detail?.error ?? `Failed to load resumes (HTTP ${response.status}).`,
         );
@@ -86,7 +91,10 @@ export function useResumes(): UseResumes {
   const uploadText = useCallback<UseResumes["uploadText"]>(
     async ({ rawText, title }) => {
       try {
-        const response = await fetch("/api/resumes", {
+        // Explicit, because omitting it silently took the route's fallback of 20
+        // while the cap is 50 — so a 21st saved item was unreachable from both
+        // this page and the setup wizard's picker.
+        const response = await fetch("/api/resumes?limit=50", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rawText, title: title ?? null }),
@@ -113,7 +121,10 @@ export function useResumes(): UseResumes {
           formData.append("title", title.trim());
         }
 
-        const response = await fetch("/api/resumes", {
+        // Explicit, because omitting it silently took the route's fallback of 20
+        // while the cap is 50 — so a 21st saved item was unreachable from both
+        // this page and the setup wizard's picker.
+        const response = await fetch("/api/resumes?limit=50", {
           method: "POST",
           body: formData,
         });
