@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { isNavItemActive } from "@/lib/nav";
+import { Button } from "@/components/ui/button";
 import { useSidebar } from "./sidebar-context";
-import { useCurrentUser, getDisplayName, getInitials } from "@/hooks/use-current-user";
+import {
+  useCurrentUser,
+  getDisplayName,
+  getInitials,
+} from "@/hooks/use-current-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   MessageSquare,
@@ -13,7 +19,7 @@ import {
   FileText,
   Users,
   Settings,
-  Sparkles,
+  Plus,
   PanelLeftClose,
   PanelLeft,
   LogOut,
@@ -29,16 +35,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+/**
+ * Destinations only.
+ *
+ * "Interview practice" used to sit second here, which weighted the app's whole
+ * purpose the same as Settings and made a verb look like a place. It is now a
+ * pinned action above the list.
+ */
 const navigation = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-  },
-  {
-    name: "Interview practice",
-    href: "/simulate/setup",
-    icon: Sparkles,
   },
   {
     name: "Quick drills",
@@ -223,13 +231,10 @@ export function Sidebar() {
   const displayName = getDisplayName(user);
   const subline = user?.email ?? "Signed in";
 
-  const isNavItemActive = (href: string) => {
-    if (pathname === href) {
-      return true;
-    }
-
-    return pathname.startsWith(`${href}/`);
-  };
+  // Shared with the mobile nav, and tested. The local copy this replaced lit
+  // "Dashboard" on every dashboard sub-page, because `/dashboard` is a prefix
+  // of all of them — two items active at once.
+  const isActive = (href: string) => isNavItemActive(pathname, href);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -274,6 +279,29 @@ export function Sidebar() {
           )}
         </div>
 
+        {/* The one thing this app is for.
+
+            A sidebar lists places you go and return to with state; starting an
+            interview is a verb that produces a session. Pinning it as an action
+            above the destinations is the Linear/Notion pattern for creation.
+
+            The mobile bar keeps its Practice tab. The sidebar is `hidden
+            lg:flex`, so dropping it there too would leave no way to start an
+            interview below `lg` — which is exactly the regression an earlier
+            attempt at this shipped. */}
+        <div className="p-2 pb-0">
+          <Button
+            asChild
+            className="w-full gap-2"
+            size={isCollapsed ? "icon" : "default"}
+          >
+            <Link href="/simulate/setup" aria-label="Start a new interview">
+              <Plus className="h-4 w-4 shrink-0" />
+              {!isCollapsed && <span>New interview</span>}
+            </Link>
+          </Button>
+        </div>
+
         {/* Command palette trigger */}
         <div className="p-2 pb-0">
           <button
@@ -311,7 +339,7 @@ export function Sidebar() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={isNavItemActive(item.href)}
+              isActive={isActive(item.href)}
               isCollapsed={isCollapsed}
             />
           ))}
@@ -323,7 +351,7 @@ export function Sidebar() {
             <NavItem
               key={item.href}
               item={item}
-              isActive={isNavItemActive(item.href)}
+              isActive={isActive(item.href)}
               isCollapsed={isCollapsed}
             />
           ))}
