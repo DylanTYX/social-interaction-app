@@ -332,7 +332,10 @@ export default function SessionReportPage({
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="border-slate-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+            <CardTitle
+              as="div"
+              className="text-xs uppercase tracking-[0.16em] text-slate-500"
+            >
               Overall score
             </CardTitle>
           </CardHeader>
@@ -350,7 +353,10 @@ export default function SessionReportPage({
 
         <Card className="border-slate-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+            <CardTitle
+              as="div"
+              className="text-xs uppercase tracking-[0.16em] text-slate-500"
+            >
               Communication
             </CardTitle>
           </CardHeader>
@@ -365,7 +371,10 @@ export default function SessionReportPage({
 
         <Card className="border-slate-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+            <CardTitle
+              as="div"
+              className="text-xs uppercase tracking-[0.16em] text-slate-500"
+            >
               {usesTechnicalRubric ? "Technical rubric" : "STAR average"}
             </CardTitle>
           </CardHeader>
@@ -378,7 +387,10 @@ export default function SessionReportPage({
 
         <Card className="border-slate-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+            <CardTitle
+              as="div"
+              className="text-xs uppercase tracking-[0.16em] text-slate-500"
+            >
               Duration
             </CardTitle>
           </CardHeader>
