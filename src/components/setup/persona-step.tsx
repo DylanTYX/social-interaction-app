@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  CheckCircle2,
+  Check,
   ChevronDown,
   Dice5,
   HelpCircle,
@@ -87,10 +87,6 @@ const COMMUNICATION_STYLE_OPTIONS: Array<{
     description: "Structured, evidence-driven, and precise",
   },
 ];
-
-function buildPresetSummary(persona: PersonaConfig): string {
-  return `${persona.seniority} • ${persona.industry}`;
-}
 
 export function PersonaStep({
   value,
@@ -248,30 +244,55 @@ export function PersonaStep({
                       // the four blocks still read as one column of lines.
                       className="flex h-full flex-col gap-4 text-left"
                     >
-                      {/* Six presets rendered as six near-identical blocks of
-                        grey text, so telling them apart meant reading. An
-                        initials avatar makes each one recognisable at a glance;
-                        the colour is derived from the name so it survives the
-                        library re-sorting itself after every save. */}
-                      <div className="flex items-center gap-2.5 pr-8">
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                            TILE_COLORS[tileColorForKey(entry.config.name)],
+                      {/* Identity: every fact about *who they are*, in one
+                        cluster attached to the avatar, descending in weight as
+                        it gets less identifying — name, role, then context.
+
+                        Seniority and industry used to sit down in the behaviour
+                        block one line above "Traits:", which rendered a
+                        credential and a personality trait at the same size,
+                        colour and weight. The card read as five equivalent grey
+                        lines with no seam between who someone is and how they
+                        interview.
+
+                        The initials avatar is what makes six presets tellable
+                        apart without reading; its colour derives from the name,
+                        so it survives the library re-sorting after every save. */}
+                      <div className="flex items-center gap-3 pr-8">
+                        <div className="relative shrink-0">
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold",
+                              TILE_COLORS[tileColorForKey(entry.config.name)],
+                            )}
+                            aria-hidden
+                          >
+                            {initialsFromName(entry.config.name)}
+                          </div>
+                          {/* Selection lands on the avatar rather than in the
+                            dial row below, where it stole ~70px and made the
+                            four dials reflow the moment you picked a persona. */}
+                          {isActive && (
+                            <span
+                              className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white"
+                              aria-hidden
+                            >
+                              <Check className="h-2.5 w-2.5 text-white" />
+                            </span>
                           )}
-                          aria-hidden
-                        >
-                          {initialsFromName(entry.config.name)}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-foreground">
+                          <p className="truncate text-sm font-medium text-foreground">
                             {entry.config.name}
+                            {isActive && (
+                              <span className="sr-only"> (selected)</span>
+                            )}
                           </p>
-                          {/* Nationality rides with the name rather than leading
-                            the numeric line below, which was five values wide
-                            and wrapped to three lines at the old width. */}
-                          <p className="truncate text-xs text-muted-foreground">
-                            {entry.config.nationality}
+                          <p className="truncate text-xs text-foreground/70">
+                            {entry.config.seniority}
+                          </p>
+                          <p className="truncate text-[11px] leading-4 tracking-wide text-muted-foreground">
+                            {entry.config.nationality} · {entry.config.industry}
                           </p>
                         </div>
                       </div>
@@ -295,10 +316,6 @@ export function PersonaStep({
                         know that. Knowing Sarah Chen is impatient with vagueness
                         is exactly what makes the choice meaningful. */}
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          {buildPresetSummary(entry.config)}
-                        </p>
-
                         {/* Traits and dislikes are the same *kind* of thing —
                           a short descriptive list drawn from a ~20-string pool —
                           so they get the same treatment. Traits were briefly
@@ -341,7 +358,13 @@ export function PersonaStep({
                         `mt-auto` pins them to the bottom, so across a row of
                         cards the dials line up regardless of how long anyone's
                         traits are. */}
-                      <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                      {/* Full width, always. Sharing this row with a "Selected"
+                        label meant the four dials reflowed and wrapped the
+                        instant a card was picked — the layout moved as a
+                        side-effect of selecting, which is exactly when you are
+                        looking at it. Selection is the ring plus the avatar
+                        check now, neither of which occupies flow. */}
+                      <div className="mt-auto pt-2">
                         <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums">
                           {[
                             ["Strict", entry.config.strictness],
@@ -360,16 +383,6 @@ export function PersonaStep({
                             </div>
                           ))}
                         </dl>
-                        {/* Shares the dial row rather than owning a row of its
-                          own. The ring already carries selection visually; this
-                          is the text an assistive reader needs, and as its own
-                          footer it cost a whole row to say one word. */}
-                        {isActive && (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-emerald-700">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Selected
-                          </span>
-                        )}
                       </div>
                     </button>
 
