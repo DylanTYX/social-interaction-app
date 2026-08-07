@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { History, MessageSquare, Mic, Search, Sparkles } from "lucide-react";
+import {
+  History,
+  MessageSquare,
+  Mic,
+  MoreHorizontal,
+  Search,
+  Sparkles,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,6 +19,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,6 +43,7 @@ import {
   type InterviewSessionSummary,
 } from "@/hooks/use-interview-history";
 import { formatRelativeDate } from "@/lib/format";
+import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
 type ModeFilter = "all" | "text" | "voice";
@@ -52,6 +67,29 @@ export default function SessionsLibraryPage() {
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [pendingDelete, setPendingDelete] =
+    useState<InterviewSessionSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/sessions/${pendingDelete.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete the session.");
+      toast.success("Session deleted");
+      // `refresh` sets status to "loading", but the page only shows a skeleton
+      // when the list is empty — so the rows stay put while it refetches.
+      await refresh();
+    } catch {
+      toast.error("Could not delete that session. Try again.");
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -188,56 +226,108 @@ export default function SessionsLibraryPage() {
             const ModeIcon =
               session.practiceMode === "voice" ? Mic : MessageSquare;
             return (
-              <Link
-                key={session.id}
-                href={
-                  session.status === "in_progress"
-                    ? session.practiceMode === "voice"
-                      ? `/simulate/voice?session=${session.id}`
-                      : `/simulate/chat?session=${session.id}`
-                    : `/simulate/report/${session.id}`
-                }
-                className="block rounded-xl border border-border p-4 transition-colors duration-150 hover:bg-accent"
-              >
-                <div className="flex items-center gap-4">
-                  <InitialsAvatar name={session.personaName} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 truncate">
-                        {session.scenarioTitle ?? session.scenarioValue}
+              // The row is a Link, so the menu cannot live inside it — a button
+              // nested in an anchor is invalid markup and the anchor swallows
+              // the click. The wrapper is the positioning context; the Link
+              // fills it and the menu sits on top.
+              <div key={session.id} className="group relative">
+                <Link
+                  href={
+                    session.status === "in_progress"
+                      ? session.practiceMode === "voice"
+                        ? `/simulate/voice?session=${session.id}`
+                        : `/simulate/chat?session=${session.id}`
+                      : `/simulate/report/${session.id}`
+                  }
+                  className="block rounded-xl border border-border p-4 pr-14 transition-colors duration-150 hover:bg-accent"
+                >
+                  <div className="flex items-center gap-4">
+                    <InitialsAvatar name={session.personaName} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-900 truncate">
+                          {session.scenarioTitle ?? session.scenarioValue}
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className={STATUS_TONE[session.status]}
+                        >
+                          {STATUS_LABEL[session.status]}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                        <span>{session.personaName}</span>
+                        <span>·</span>
+                        <span>{formatRelativeDate(session.createdAt)}</span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <ModeIcon className="h-3 w-3" />
+                          {session.practiceMode === "voice" ? "Voice" : "Text"}
+                        </span>
                       </p>
-                      <Badge
-                        variant="outline"
-                        className={STATUS_TONE[session.status]}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-lg font-bold text-blue-600">
+                        {session.averageScore === null
+                          ? "—"
+                          : `${session.averageScore}%`}
+                      </div>
+                      <p className="text-xs text-muted-foreground">score</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        aria-label={`Actions for ${session.scenarioTitle ?? session.scenarioValue}`}
                       >
-                        {STATUS_LABEL[session.status]}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500 flex items-center gap-2 flex-wrap">
-                      <span>{session.personaName}</span>
-                      <span>·</span>
-                      <span>{formatRelativeDate(session.createdAt)}</span>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1">
-                        <ModeIcon className="h-3 w-3" />
-                        {session.practiceMode === "voice" ? "Voice" : "Text"}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-lg font-bold text-blue-600">
-                      {session.averageScore === null
-                        ? "—"
-                        : `${session.averageScore}%`}
-                    </div>
-                    <p className="text-xs text-muted-foreground">score</p>
-                  </div>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => setPendingDelete(session)}
+                      >
+                        Delete session
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+        title="Delete this session?"
+        description={
+          pendingDelete
+            ? `The transcript, every score and any coaching answers for "${
+                pendingDelete.scenarioTitle ?? pendingDelete.scenarioValue
+              }" are removed permanently.${
+                // A loop is N sessions sharing a loop_id, so removing one round
+                // silently changes the loop report's first-to-last improvement
+                // figure. Worth saying before, not discovering after.
+                pendingDelete.status === "completed"
+                  ? " If it was part of an interview loop, that loop's report will lose this round."
+                  : ""
+              }`
+            : ""
+        }
+        onConfirm={() => void handleDelete()}
+      />
     </div>
   );
 }

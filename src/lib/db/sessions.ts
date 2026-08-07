@@ -179,6 +179,89 @@ export async function listSessionsInLoop(
   return (data ?? []).map((row) => rowToSession(row as SessionRow));
 }
 
+/**
+ * Remove one session and everything hanging off it.
+ *
+ * The cascades already do the work and need no migration: `interview_messages`,
+ * `interview_turn_analyses` and `coach_answers` are all `on delete cascade`,
+ * and `llm_usage.session_id` is `on delete set null` — deliberately, because
+ * the tokens were still spent and cost reporting must keep counting them.
+ *
+ * Ownership is left to the `sessions_owner_all` RLS policy, matching
+ * `deletePersona` and friends. A foreign or missing id therefore deletes zero
+ * rows and reports success rather than erroring, which is the existing contract
+ * for every other delete in this codebase.
+ *
+ * The one thing no cascade can do is `loop_progress.completedSessionIds`. A
+ * loop is N sessions sharing a `loop_id` with no parent row, and each later
+ * round stores the ids of the rounds before it — a plain JSONB array with no
+ * foreign key, so deleting round 2 leaves its uuid dangling inside rounds 3 and
+ * 4. Nothing reads it back today, which makes it a latent bug rather than a
+ * live one; it is pruned here so it stays that way.
+ */
+export async function deleteSession(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<void> {
+  // Read the loop id before the row is gone.
+  const { data: target } = await supabase
+    .from("interview_sessions")
+    .select("id, loop_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("interview_sessions")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+
+  const loopId = (target as { loop_id?: string | null } | null)?.loop_id;
+  if (!loopId) return;
+
+  await pruneLoopProgressReferences(supabase, loopId, id);
+}
+
+/**
+ * Drop a deleted session's id from its siblings' `completedSessionIds`.
+ *
+ * Best-effort: a failure here leaves a stale uuid in a JSONB array nothing
+ * currently reads, which is not worth failing the delete over. The session is
+ * already gone by the time this runs.
+ */
+async function pruneLoopProgressReferences(
+  supabase: SupabaseClient,
+  loopId: string,
+  deletedId: string,
+): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from("interview_sessions")
+      .select("id, loop_progress")
+      .eq("loop_id", loopId);
+
+    for (const row of (data ?? []) as Array<{
+      id: string;
+      loop_progress: { completedSessionIds?: string[] } | null;
+    }>) {
+      const completed = row.loop_progress?.completedSessionIds;
+      if (!completed?.includes(deletedId)) continue;
+
+      await supabase
+        .from("interview_sessions")
+        .update({
+          loop_progress: {
+            ...row.loop_progress,
+            completedSessionIds: completed.filter((sid) => sid !== deletedId),
+          },
+        })
+        .eq("id", row.id);
+    }
+  } catch (error) {
+    console.warn("[deleteSession] could not prune loop progress:", error);
+  }
+}
+
 export async function getSession(
   supabase: SupabaseClient,
   id: string,
@@ -267,7 +350,8 @@ export async function updateSession(
   if (input.metrics !== undefined) patch.metrics = input.metrics;
   if (input.launchMeta !== undefined) patch.launch_meta = input.launchMeta;
   if (input.loopId !== undefined) patch.loop_id = input.loopId;
-  if (input.loopProgress !== undefined) patch.loop_progress = input.loopProgress;
+  if (input.loopProgress !== undefined)
+    patch.loop_progress = input.loopProgress;
   if (input.competencyCoverage !== undefined) {
     patch.competency_coverage = input.competencyCoverage;
   }
