@@ -1,5 +1,15 @@
 import type { AnswerFormat, InterviewRoundType } from "@/lib/interview-rounds";
 import type { CodeLanguage } from "@/lib/code-answer";
+import type { TileColor } from "@/lib/tile-colors";
+import {
+  Code2,
+  Heart,
+  Lightbulb,
+  MessageSquare,
+  Network,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
  * The single description of what each round type *is*.
@@ -30,6 +40,18 @@ import type { CodeLanguage } from "@/lib/code-answer";
 
 export interface RoundTypeSpec {
   label: string;
+  /**
+   * Identity, not decoration. The wizard was one accent colour throughout, so
+   * three rounds in a loop rendered as three identical white cards and the type
+   * picker changed nothing you could see. An icon and an accent make the type
+   * legible at a glance — and because the colour maps to *which kind of round
+   * this is*, it still answers a question rather than ornamenting.
+   *
+   * `accent` indexes `TILE_COLORS`, the same per-section system the dashboard
+   * already uses for its page headers.
+   */
+  icon: LucideIcon;
+  accent: TileColor;
   /** Shown under the type picker, and sent to the analyzer as the rubric. */
   rubric: string;
   /**
@@ -63,6 +85,8 @@ export interface RoundTypeSpec {
 
 export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
   screening: {
+    icon: MessageSquare,
+    accent: "teal",
     label: "Intro / screening",
     rubric: "Clarity, motivation, fit, concision",
     family: "behavioural",
@@ -75,6 +99,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     },
   },
   behavioral: {
+    icon: Users,
+    accent: "purple",
     label: "Behavioral",
     rubric: "STAR, clarity, specificity",
     family: "behavioural",
@@ -87,6 +113,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     },
   },
   hr: {
+    icon: Heart,
+    accent: "pink",
     label: "HR / People",
     rubric: "Motivation, values fit, logistics, questions for us",
     family: "behavioural",
@@ -101,6 +129,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     },
   },
   technical_swe: {
+    icon: Code2,
+    accent: "blue",
     label: "Technical SWE",
     rubric:
       "Problem framing, approach, correctness, complexity, communication, edge cases, code quality",
@@ -117,6 +147,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     },
   },
   system_design: {
+    icon: Network,
+    accent: "indigo",
     label: "System design",
     rubric:
       "Requirements, architecture, depth, tradeoffs, scalability, communication",
@@ -132,6 +164,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     },
   },
   case: {
+    icon: Lightbulb,
+    accent: "orange",
     label: "Case / problem solving",
     rubric: "Problem framing, structure, tradeoffs, depth, communication",
     family: "technical",
@@ -173,4 +207,18 @@ export function supportsCodeEditor(
  */
 export function defaultAnswerFormat(type: InterviewRoundType): AnswerFormat {
   return ROUND_TYPE_SPECS[type].supports.codeEditor ? "code" : "prose";
+}
+
+/**
+ * The rubric as discrete criteria rather than one comma-joined sentence.
+ *
+ * "Scored on requirements, architecture, depth, tradeoffs…" rendered as a grey
+ * fragment; the same words as chips are scannable and give the card structure
+ * instead of prose.
+ */
+export function rubricCriteria(type: InterviewRoundType): string[] {
+  return ROUND_TYPE_SPECS[type].rubric
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
 }

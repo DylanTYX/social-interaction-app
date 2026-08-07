@@ -42,6 +42,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { initialsFromName } from "@/lib/format";
+import { TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
+import { cn } from "@/lib/utils";
 import type { CommunicationStyle, PersonaConfig } from "@/lib/persona-engine";
 import {
   findEntryMatchingConfig,
@@ -216,9 +219,25 @@ export function PersonaStep({
                     onClick={() => handlePickEntry(entry)}
                     className="flex flex-col gap-1.5 text-left"
                   >
-                    <p className="truncate font-medium text-foreground">
-                      {entry.config.name}
-                    </p>
+                    {/* Six presets rendered as six near-identical blocks of
+                        grey text, so telling them apart meant reading. An
+                        initials avatar makes each one recognisable at a glance;
+                        the colour is derived from the name so it survives the
+                        library re-sorting itself after every save. */}
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={cn(
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                          TILE_COLORS[tileColorForKey(entry.config.name)],
+                        )}
+                        aria-hidden
+                      >
+                        {initialsFromName(entry.config.name)}
+                      </div>
+                      <p className="truncate font-medium text-foreground">
+                        {entry.config.name}
+                      </p>
+                    </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Badge
                         variant={entry.kind === "user" ? "default" : "outline"}
@@ -233,6 +252,27 @@ export function PersonaStep({
                     <p className="text-xs text-muted-foreground">
                       {buildPresetSummary(entry.config)}
                     </p>
+                    {/* Traits and boundaries are already sent to the model —
+                        `buildBoundaries` tells the interviewer to be vocal when
+                        one comes up — but the person choosing had no way to
+                        know that. Knowing Sarah Chen is impatient with vagueness
+                        is exactly what makes the choice meaningful. */}
+                    {entry.config.personalityTraits.length > 0 && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          Traits:
+                        </span>{" "}
+                        {entry.config.personalityTraits.slice(0, 3).join(", ")}
+                      </p>
+                    )}
+                    {entry.config.boundaries.length > 0 && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          Dislikes:
+                        </span>{" "}
+                        {entry.config.boundaries.slice(0, 2).join(", ")}
+                      </p>
+                    )}
                     <p className="text-xs leading-5 text-muted-foreground">
                       {entry.config.nationality} · Strict{" "}
                       {entry.config.strictness} · Warm {entry.config.warmth} ·

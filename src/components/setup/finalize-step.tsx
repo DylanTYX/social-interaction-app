@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckCircle2, Mic, Volume2 } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  Mic,
+  MessageSquare,
+  TrendingUp,
+  Volume2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +28,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { getCurrentRound, ROUND_TYPE_LABELS } from "@/lib/interview-rounds";
 import { getScenarioByValue } from "@/lib/scenarios";
-import { describeRoundLength } from "@/lib/interview-progress";
+import {
+  describeRoundLength,
+  targetTurnsForRound,
+} from "@/lib/interview-progress";
 import type { InterviewSetupState } from "@/lib/interview-setup";
 import type { SpeechVoiceOption } from "@/lib/speech-voices";
 
@@ -60,6 +70,21 @@ export function FinalizeStep({
     setup.customScenarioBrief,
   );
   const activeRound = getCurrentRound(setup.interviewLoop);
+
+  // What you are about to sit through, counted rather than described. Both
+  // numbers come from the same helper the live session uses to decide when a
+  // round is over, so the estimate cannot drift from the real thing.
+  const rounds = setup.interviewLoop.enabled
+    ? setup.interviewLoop.rounds
+    : [activeRound];
+  const totalQuestions = rounds.reduce(
+    (sum, round) => sum + targetTurnsForRound(round),
+    0,
+  );
+  const totalMinutes = rounds.reduce(
+    (sum, round) => sum + round.durationMinutes,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -121,6 +146,48 @@ export function FinalizeStep({
                 ? `Pasted text (${length} chars)`
                 : "Pending paste";
             })()}
+          />
+        </CardContent>
+      </Card>
+
+      {/* The adaptive loop is what this project actually does differently, and
+          until now nothing in the flow said so — you pressed Start and found
+          out. Static copy would have been marketing; every line here is
+          derived from the config you just built. */}
+      <Card className="border border-border shadow-soft">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">What happens next</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <NextStep
+            icon={MessageSquare}
+            title={`~${totalQuestions} questions over about ${totalMinutes} minutes`}
+            detail={
+              setup.practiceMode === "voice"
+                ? "You speak your answers; the interviewer replies out loud."
+                : "You type your answers; the interviewer replies in the chat."
+            }
+          />
+          <NextStep
+            icon={TrendingUp}
+            title="Each answer is scored, then the next question adapts"
+            detail="Strong answers earn harder follow-ups. Vague ones get pushed on for a specific example or number."
+          />
+          <NextStep
+            icon={CheckCircle2}
+            title={
+              setup.interviewLoop.enabled
+                ? `${rounds.length} rounds run back to back, with a short break between each`
+                : "One round, run start to finish"
+            }
+            detail={rounds
+              .map((round) => ROUND_TYPE_LABELS[round.type])
+              .join(" → ")}
+          />
+          <NextStep
+            icon={FileText}
+            title="A full report at the end"
+            detail="Transcript, per-answer scores, strengths and gaps, and a model answer for any question you want to compare against."
           />
         </CardContent>
       </Card>
@@ -324,6 +391,28 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="text-sm font-medium text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function NextStep({
+  icon: Icon,
+  title,
+  detail,
+}: {
+  icon: typeof MessageSquare;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium leading-5 text-foreground">{title}</p>
+        <p className="text-xs leading-5 text-muted-foreground">{detail}</p>
+      </div>
     </div>
   );
 }

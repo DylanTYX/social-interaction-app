@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { ROUND_TYPES, applyRoundType, type InterviewRoundConfig } from "@/lib/interview-rounds";
+import {
+  ROUND_TYPES,
+  applyRoundType,
+  type InterviewRoundConfig,
+} from "@/lib/interview-rounds";
 import {
   isTechnicalRound,
   ROUND_TYPE_SPECS,
+  rubricCriteria,
   supportsCodeEditor,
 } from "@/lib/round-types";
+import { exampleQuestionForRoundType } from "@/lib/question-bank";
+import { TILE_COLOR_NAMES, tileColorForKey } from "@/lib/tile-colors";
 
 describe("the round-type registry", () => {
   it("describes every round type completely", () => {
@@ -109,18 +116,76 @@ describe("drill coverage", () => {
   it("has questions for every round type", async () => {
     // `hr` shipped with no drill category and no questions — the same gap the
     // registry exists to make visible.
-    const { DRILL_CATEGORIES, DRILL_QUESTIONS } = await import(
-      "@/lib/question-bank"
-    );
+    const { DRILL_CATEGORIES, DRILL_QUESTIONS } =
+      await import("@/lib/question-bank");
 
     for (const type of ROUND_TYPES) {
       const categories = DRILL_CATEGORIES.filter((c) => c.roundType === type);
-      expect(categories.length, `no drill category for ${type}`).toBeGreaterThan(0);
+      expect(
+        categories.length,
+        `no drill category for ${type}`,
+      ).toBeGreaterThan(0);
 
       const questions = DRILL_QUESTIONS.filter((q) =>
         categories.some((c) => c.id === q.category),
       );
-      expect(questions.length, `no drill questions for ${type}`).toBeGreaterThan(0);
+      expect(
+        questions.length,
+        `no drill questions for ${type}`,
+      ).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("round type identity", () => {
+  it("gives every round type an icon and an accent", () => {
+    // The wizard renders `spec.icon` and indexes `TILE_COLORS[spec.accent]`
+    // directly, so a missing entry is a crash, not a blank card.
+    for (const type of ROUND_TYPES) {
+      const spec = ROUND_TYPE_SPECS[type];
+      expect(spec.icon, `no icon for ${type}`).toBeTruthy();
+      expect(TILE_COLOR_NAMES, `bad accent for ${type}`).toContain(spec.accent);
+    }
+  });
+
+  it("splits the rubric into criteria the card can list", () => {
+    for (const type of ROUND_TYPES) {
+      const criteria = rubricCriteria(type);
+      expect(criteria.length, `no criteria for ${type}`).toBeGreaterThan(0);
+      // Chips, not a sentence — a trailing empty string from the split would
+      // render an empty badge.
+      expect(criteria.every((c) => c.length > 0)).toBe(true);
+    }
+  });
+
+  it("returns a real example question for every round type", () => {
+    for (const type of ROUND_TYPES) {
+      expect(
+        exampleQuestionForRoundType(type),
+        `no example for ${type}`,
+      ).toBeTruthy();
+    }
+  });
+
+  it("keeps the example stable for a given seed and varies it across rounds", () => {
+    // It renders inside a controlled form, so re-picking on every keystroke
+    // would make the card flicker as you type.
+    expect(exampleQuestionForRoundType("behavioral", 0)).toBe(
+      exampleQuestionForRoundType("behavioral", 0),
+    );
+    expect(exampleQuestionForRoundType("behavioral", 0)).not.toBe(
+      exampleQuestionForRoundType("behavioral", 1),
+    );
+  });
+});
+
+describe("tileColorForKey", () => {
+  it("is stable for a name, so a persona keeps its colour when the library re-sorts", () => {
+    expect(tileColorForKey("Sarah Chen")).toBe(tileColorForKey("Sarah Chen"));
+    expect(TILE_COLOR_NAMES).toContain(tileColorForKey("Sarah Chen"));
+  });
+
+  it("handles an empty name rather than indexing out of range", () => {
+    expect(TILE_COLOR_NAMES).toContain(tileColorForKey(""));
   });
 });

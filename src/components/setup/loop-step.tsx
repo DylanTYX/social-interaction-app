@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Plus, Sparkles } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Plus, Sparkles } from "lucide-react";
 
 import {
   Card,
@@ -29,7 +29,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { describeRoundLength } from "@/lib/interview-progress";
-import { supportsCodeEditor } from "@/lib/round-types";
+import {
+  roundTypeSpec,
+  rubricCriteria,
+  supportsCodeEditor,
+} from "@/lib/round-types";
+import { exampleQuestionForRoundType } from "@/lib/question-bank";
+import { selectRoundPlaybook } from "@/lib/interviewer-playbooks";
+import { TILE_COLORS } from "@/lib/tile-colors";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   appendRoundToLoop,
   createLoopFromTemplate,
@@ -37,7 +46,6 @@ import {
   applyRoundType,
   SINGLE_ROUND,
   resolveAnswerFormat,
-  ROUND_RUBRIC_LABELS,
   ROUND_TYPE_LABELS,
   suggestLoopFromJobDescription,
   type InterviewLoopConfig,
@@ -192,6 +200,46 @@ export function LoopStep({
         }}
       />
 
+      {/* The shape of the interview day, above the cards that configure it.
+          A three-round loop was three stacked cards you had to scroll and read
+          to see what you had built; this says it in one line, and the accents
+          match the card headers below. */}
+      {isLoop && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-3">
+          {rounds.map((round, index) => {
+            const spec = roundTypeSpec(round.type);
+            const Icon = spec.icon;
+            return (
+              <div key={round.id} className="flex items-center gap-1.5">
+                {index > 0 && (
+                  <ChevronRight
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    aria-hidden
+                  />
+                )}
+                <div className="flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 shadow-soft">
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-full",
+                      TILE_COLORS[spec.accent],
+                    )}
+                    aria-hidden
+                  >
+                    <Icon className="h-3 w-3" />
+                  </span>
+                  <span className="text-xs font-medium text-foreground">
+                    {spec.label}
+                  </span>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {round.durationMinutes}m
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="space-y-3">
         {rounds.map((round, index) => (
           <RoundCard
@@ -240,6 +288,12 @@ function RoundCard({
   onRemove: (() => void) | null;
 }) {
   const isLoop = total > 1;
+  const spec = roundTypeSpec(round.type);
+  const TypeIcon = spec.icon;
+  // Seeded by position so each round in a loop shows a different example, and
+  // so the example does not reshuffle on every keystroke in a controlled form.
+  const example = exampleQuestionForRoundType(round.type, index);
+  const playbook = selectRoundPlaybook(round.type);
 
   const ids = {
     type: `round-${round.id}-type`,
@@ -253,8 +307,25 @@ function RoundCard({
   return (
     <Card className="border border-border shadow-soft">
       <CardHeader>
+        {/* The accent tile is the same shape the dashboard's `PageHeader` uses
+            per section, so the wizard finally participates in a system the rest
+            of the app already runs on. Three rounds in a loop used to render as
+            three identical white cards; now the type is legible before you read
+            a word. */}
+        <div
+          className={cn(
+            "flex h-9 w-9 items-center justify-center rounded-lg",
+            TILE_COLORS[spec.accent],
+          )}
+          aria-hidden
+        >
+          <TypeIcon className="h-4.5 w-4.5" />
+        </div>
         <CardTitle className="text-base">
           {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
+          <span className="ml-2 font-normal text-muted-foreground">
+            {spec.label}
+          </span>
         </CardTitle>
         {onRemove && (
           <CardAction>
@@ -311,9 +382,20 @@ function RoundCard({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs leading-4 text-muted-foreground">
-                Scored on {ROUND_RUBRIC_LABELS[round.type].toLowerCase()}.
-              </p>
+              {/* The rubric was one grey comma-joined sentence, which read as
+                  filler. The same words as chips are scannable, and they are
+                  the actual criteria the analyzer scores against. */}
+              <div className="flex flex-wrap gap-1.5" aria-label="Scored on">
+                {rubricCriteria(round.type).map((criterion) => (
+                  <Badge
+                    key={criterion}
+                    variant="secondary"
+                    className="font-normal"
+                  >
+                    {criterion}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -325,6 +407,39 @@ function RoundCard({
               />
             </div>
           </div>
+
+          {/* What the round is actually like.
+              Picking a type used to change one grey sentence, which made the
+              most consequential decision in the flow feel abstract — you chose
+              "System design" and nothing on screen told you what that meant.
+              Both halves are existing data: the question comes from the drill
+              bank, and the second line is verbatim the instruction this round's
+              playbook gives the interviewer, so the preview cannot drift from
+              what the session does. */}
+          {(example || playbook) && (
+            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+              {example && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    A question this round might ask
+                  </p>
+                  <p className="text-sm leading-6 text-foreground">
+                    &ldquo;{example}&rdquo;
+                  </p>
+                </div>
+              )}
+              {playbook && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    How the interviewer runs it
+                  </p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {playbook.content}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">
