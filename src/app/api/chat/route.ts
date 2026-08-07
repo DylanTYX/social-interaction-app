@@ -26,6 +26,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
 import { MAX_USER_MESSAGE_CHARS } from "@/lib/api/input-limits";
 import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
+import { TurnTimer } from "@/lib/api/turn-timing";
 import { generatePersonaPrompt } from "@/lib/persona-engine";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
@@ -85,6 +86,24 @@ export const runtime = "nodejs";
  * INTERVIEWER_MODEL if the trade is worth revisiting.
  */
 const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
+
+/**
+ * How long the reply will wait for the candidate's answer to be scored.
+ *
+ * Scoring is a full model round-trip and it sits between the candidate pressing
+ * send and their first token, because the verdict steers the question that
+ * follows — deliberately, since scoring an answer against the question it did
+ * not respond to was a real bug once.
+ *
+ * The deadline keeps that behaviour in the common case and bounds the bad one.
+ * Past it the reply starts unsteered; the verdict still lands in the transcript
+ * via the same `appendTurn` transaction, still reaches the report, and still
+ * shapes the next turn through `getPreviousTurnSignal`. What is lost is one
+ * turn of steering freshness, and only when the scorer was slow anyway.
+ *
+ * Set `STEER_DEADLINE_MS=0` to wait indefinitely, which is the old behaviour.
+ */
+const STEER_DEADLINE_MS = Number(process.env.STEER_DEADLINE_MS ?? 4000);
 // Enforces the "2-5 sentences" guidance and bounds cost per turn.
 const INTERVIEWER_MAX_TOKENS = 320;
 // Below this, an answer is treated as trivial ("yes", "ready") and skipped by
@@ -125,6 +144,28 @@ interface ChatRequestBody {
    * paired user message. We support that via `mode: "opening"`.
    */
   mode?: unknown;
+}
+
+/**
+ * Resolve to `null` once `ms` has passed, without abandoning `promise` — the
+ * caller still holds it, so a late result is used rather than discarded. The
+ * timer is cleared either way so a slow scorer cannot hold the process open.
+ */
+async function raceDeadline<T>(
+  promise: Promise<T>,
+  ms: number,
+): Promise<T | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 function shouldStreamResponse(value: unknown): boolean {
@@ -575,6 +616,7 @@ export async function POST(request: Request) {
     // One collector per request; the turn's 2-3 model calls record into it and
     // it is flushed once at the end as a single insert.
     const usage = new UsageCollector();
+    const timer = new TurnTimer();
 
     const body = (await request.json()) as ChatRequestBody;
     const sessionId =
@@ -654,19 +696,24 @@ export async function POST(request: Request) {
         ? `${previousSignal.nextFocus}\n${userMessage}`
         : userMessage;
 
-    const [jobDescription, resumeRecord] = await Promise.all([
-      session.jobDescriptionId
-        ? loadJobDescriptionContext({
-            supabase,
-            jobDescriptionId: session.jobDescriptionId,
-            query: retrievalQuery,
-            usage,
-          })
-        : Promise.resolve({ context: null, stable: false }),
-      session.resumeId
-        ? getResume(supabase, session.resumeId)
-        : Promise.resolve(null),
-    ]);
+    const [jobDescription, resumeRecord] = await timer.time(
+      "retrieval",
+      true,
+      () =>
+        Promise.all([
+          session.jobDescriptionId
+            ? loadJobDescriptionContext({
+                supabase,
+                jobDescriptionId: session.jobDescriptionId,
+                query: retrievalQuery,
+                usage,
+              })
+            : Promise.resolve({ context: null, stable: false }),
+          session.resumeId
+            ? getResume(supabase, session.resumeId)
+            : Promise.resolve(null),
+        ]),
+    );
 
     // Pass the record so the compact profile is preferred over the raw text.
     const resumeContext = formatResumeForPrompt(resumeRecord);
@@ -683,6 +730,7 @@ export async function POST(request: Request) {
       Boolean(process.env.OPENAI_API_KEY);
 
     let analysis: AnalysisResult | null = null;
+    let steeringMissedDeadline = false;
     let strategy: InterviewStrategy | null = null;
     let decisionReason: string | null = null;
     let confidence: number | null = null;
@@ -692,26 +740,53 @@ export async function POST(request: Request) {
     let microFeedback: MicroFeedbackResult | null = null;
     let steeringContext: string | null = null;
 
+    const decisionContextFor = () => ({
+      personaName: session.personaName,
+      strictness: session.personaConfig.strictness,
+      warmth: session.personaConfig.warmth,
+      previousStrategy: isInterviewStrategy(previousSignal?.strategy)
+        ? previousSignal.strategy
+        : undefined,
+    });
+
+    // Kicked off, not awaited — the wait is bounded below.
+    const analysisPromise: Promise<AnalysisResult | null> =
+      shouldAnalyze && priorQuestion
+        ? timer
+            .time("analysis", true, () =>
+              analyzeResponse(
+                userMessage,
+                priorQuestion,
+                process.env.OPENAI_API_KEY as string,
+                { jobContext: jobDescription.context, roundType, usage },
+              ),
+            )
+            .catch((analysisError) => {
+              // Scoring is best-effort; a failure must not block the reply. We
+              // fall back to the round-type playbooks below.
+              console.warn("Inline analysis failed:", analysisError);
+              return null;
+            })
+        : Promise.resolve(null);
+
     if (shouldAnalyze && priorQuestion) {
-      try {
-        analysis = await analyzeResponse(
-          userMessage,
-          priorQuestion,
-          process.env.OPENAI_API_KEY as string,
-          { jobContext: jobDescription.context, roundType, usage },
-        );
+      analysis =
+        STEER_DEADLINE_MS > 0
+          ? await raceDeadline(analysisPromise, STEER_DEADLINE_MS)
+          : await analysisPromise;
+
+      if (!analysis) {
+        steeringMissedDeadline = true;
+      }
+    }
+
+    if (analysis) {
+      {
         // Supplying `previousStrategy` is what activates the anti-repetition
         // path: `decideInterviewAction` escalates when it is about to pick the
         // same strategy twice running. Nothing ever passed it before, so
         // `repeatedStrategy` was permanently false.
-        const decisionContext = {
-          personaName: session.personaName,
-          strictness: session.personaConfig.strictness,
-          warmth: session.personaConfig.warmth,
-          previousStrategy: isInterviewStrategy(previousSignal?.strategy)
-            ? previousSignal.strategy
-            : undefined,
-        };
+        const decisionContext = decisionContextFor();
         const decision = decideInterviewAction(analysis, decisionContext);
         const difficulty = estimateFollowupDifficulty(
           analysis,
@@ -733,10 +808,6 @@ export async function POST(request: Request) {
           decision.shouldEscalate,
           decision.shouldSlowDown,
         );
-      } catch (analysisError) {
-        // Scoring is best-effort; a failure must not block the reply. We fall
-        // back to the round-type playbooks below.
-        console.warn("Inline analysis failed:", analysisError);
       }
     }
 
@@ -801,12 +872,24 @@ export async function POST(request: Request) {
     const buildResult = async (
       onChunk?: (chunk: string) => void,
     ): Promise<ChatTurnResponse> => {
-      const aiMessage = await requestOpenAI(
-        promptMessages,
-        promptCacheKey,
-        interviewerModel,
-        usage,
-        onChunk,
+      const requestedAt = Date.now();
+      let sawFirstToken = false;
+
+      const aiMessage = await timer.time("interviewer_total", false, () =>
+        requestOpenAI(
+          promptMessages,
+          promptCacheKey,
+          interviewerModel,
+          usage,
+          (chunk) => {
+            if (!sawFirstToken) {
+              sawFirstToken = true;
+              // The number the candidate actually feels.
+              timer.markSince("interviewer_ttft", requestedAt);
+            }
+            onChunk?.(chunk);
+          },
+        ),
       );
 
       let turnCount = session.turnCount;
@@ -821,18 +904,42 @@ export async function POST(request: Request) {
         // was previously generated, used to steer this reply, returned to the
         // client, and then dropped — so the report could only ever show
         // aggregates and there was nothing to evaluate scoring against.
+        // If the verdict missed the steering deadline it is almost certainly
+        // ready by now — the interviewer stream takes far longer than the
+        // scorer. Collect it so the turn is still scored in the transcript and
+        // the report, and derive its strategy locally (that part is free) so
+        // the next turn's anti-repetition still has something to work with.
+        let persistedAnalysis = analysis;
+        let persistedStrategy = strategy;
+        let persistedConfidence = confidence;
+
+        if (!persistedAnalysis && steeringMissedDeadline) {
+          persistedAnalysis = await analysisPromise;
+          if (persistedAnalysis) {
+            const late = decideInterviewAction(
+              persistedAnalysis,
+              decisionContextFor(),
+            );
+            persistedStrategy = late.strategy;
+            persistedConfidence = late.confidence;
+          }
+        }
+
         const result = await appendTurn(
           supabase,
           sessionId,
           userMessage,
           aiMessage,
-          analysis
+          persistedAnalysis
             ? {
-                analysis: analysis as unknown as Record<string, unknown>,
-                roundType: analysis.roundType ?? roundType ?? null,
-                overallScore: analysis.overallScore,
-                strategy,
-                confidence,
+                analysis: persistedAnalysis as unknown as Record<
+                  string,
+                  unknown
+                >,
+                roundType: persistedAnalysis.roundType ?? roundType ?? null,
+                overallScore: persistedAnalysis.overallScore,
+                strategy: persistedStrategy,
+                confidence: persistedConfidence,
               }
             : null,
         );
@@ -896,6 +1003,7 @@ export async function POST(request: Request) {
       // path — which runs this inside the ReadableStream — is covered too.
       // Best-effort by construction; it cannot throw.
       await usage.flush(supabase, { userId: user.id, sessionId });
+      timer.log({ sessionId, roundType });
 
       return {
         aiMessage,
