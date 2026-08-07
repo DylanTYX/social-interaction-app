@@ -82,7 +82,9 @@ function getVaguenessWeight(analysis: AnalysisResult): number {
   const rubricPenalty = usesTechnicalRubric(analysis)
     ? 10 -
       Math.round(
-        analysis.technicalScores ? averageTechnical(analysis.technicalScores) : 5,
+        analysis.technicalScores
+          ? averageTechnical(analysis.technicalScores)
+          : 5,
       )
     : 10 - Math.round(averageStar(analysis.starAnalysis));
 
@@ -93,25 +95,30 @@ function getVaguenessWeight(analysis: AnalysisResult): number {
  * Behavioural / screening rounds: walk the STAR elements in dependency order.
  */
 function chooseBehavioralStrategy(analysis: AnalysisResult): InterviewStrategy {
+  // Optional chaining throughout, matching `averageStar` above, which has
+  // always used `star?.situation?.quality`. `analyzeResponse` now guarantees a
+  // complete block, but this also runs against analyses stored *before* that
+  // guarantee existed — and a TypeError here is swallowed by the chat route,
+  // so the failure mode is a turn that silently loses its score.
   const { starAnalysis, specificityMetrics } = analysis;
 
-  if (!starAnalysis.situation.present || !starAnalysis.task.present) {
+  if (!starAnalysis?.situation?.present || !starAnalysis?.task?.present) {
     return "CLARIFY_SITUATION";
   }
 
-  if (starAnalysis.action.specificity < 4) {
+  if ((starAnalysis?.action?.specificity ?? 0) < 4) {
     return "DRILL_SPECIFICITY";
   }
 
-  if (starAnalysis.action.ownership < 5) {
+  if ((starAnalysis?.action?.ownership ?? 0) < 5) {
     return "CHALLENGE_OWNERSHIP";
   }
 
-  if (!starAnalysis.result.present || !starAnalysis.result.quantified) {
+  if (!starAnalysis?.result?.present || !starAnalysis?.result?.quantified) {
     return "EXPLORE_RESULT";
   }
 
-  if (specificityMetrics.vaguenessScore > 6) {
+  if ((specificityMetrics?.vaguenessScore ?? 5) > 6) {
     return "DRILL_SPECIFICITY";
   }
 
@@ -243,10 +250,15 @@ export function decideInterviewAction(
     20,
     Math.min(
       95,
+      // `?? 5` on the two judged inputs. A single `undefined` here made the
+      // whole expression NaN, and `Math.max(20, Math.min(95, NaN))` is NaN —
+      // which flowed into `appendTurn`'s `Math.round(NaN)` and was stored as
+      // null. Confidence then read as "unknown" for the rest of the session
+      // with nothing indicating why.
       Math.round(
         analysis.overallScore * 0.55 +
-          (10 - analysis.specificityMetrics.vaguenessScore) * 3 +
-          analysis.confidenceIndicators.assertivenessScore * 2 +
+          (10 - (analysis.specificityMetrics?.vaguenessScore ?? 5)) * 3 +
+          (analysis.confidenceIndicators?.assertivenessScore ?? 5) * 2 +
           strictness * 1.5 +
           (10 - warmth) * 0.5,
       ),
@@ -258,9 +270,10 @@ export function decideInterviewAction(
   const shouldSlowDown =
     analysis.overallScore > 78 && warmth >= 7 && !repeatedStrategy;
 
-  let reason = REASONS[usesTechnicalRubric(analysis) ? "technical" : "behavioral"][
-    strategy
-  ];
+  let reason =
+    REASONS[usesTechnicalRubric(analysis) ? "technical" : "behavioral"][
+      strategy
+    ];
 
   if (repeatedStrategy) {
     reason +=
@@ -303,7 +316,8 @@ export function estimateFollowupDifficulty(
   // which is not what "repetition" means; it was masked because
   // `previousStrategy` was never actually supplied in production.
   const repetitionBoost =
-    context.previousStrategy && context.previousStrategy === chooseStrategy(analysis)
+    context.previousStrategy &&
+    context.previousStrategy === chooseStrategy(analysis)
       ? 1
       : 0;
 
