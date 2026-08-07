@@ -12,6 +12,8 @@ import {
   Mic,
   Search,
   Settings,
+  ShieldCheck,
+  Database,
   FileUser,
   BookOpen,
   Sparkles,
@@ -115,6 +117,22 @@ const COMMANDS: Command[] = [
     icon: Settings,
     href: "/dashboard/settings",
     keywords: "account preferences",
+  },
+  // Reachable now that tab state lives in the URL. Password and the data
+  // controls were four levels down and unaddressable before.
+  {
+    id: "account",
+    label: "Account & security",
+    icon: ShieldCheck,
+    href: "/dashboard/settings?tab=account",
+    keywords: "password sign out session",
+  },
+  {
+    id: "data",
+    label: "Export or delete your data",
+    icon: Database,
+    href: "/dashboard/settings?tab=data",
+    keywords: "download backup wipe sessions",
   },
 ];
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -36,6 +36,7 @@ import {
   SlidersHorizontal,
   Mic,
   ShieldCheck,
+  Database,
   Download,
   LogOut,
   LogIn,
@@ -66,9 +67,50 @@ type SaveState =
   | { kind: "saved" }
   | { kind: "error"; message: string };
 
-export default function SettingsPage() {
+const SETTINGS_TABS = [
+  "profile",
+  "account",
+  "defaults",
+  "voice",
+  "data",
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+function SettingsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, status, error: authError } = useCurrentUser();
+
+  /**
+   * Which tab is open, mirrored in `?tab=`.
+   *
+   * It was local state with `defaultValue="profile"`, so the page always landed
+   * on Profile: "Delete all sessions" was four levels down and unaddressable,
+   * the back button did not move between tabs, and neither the sidebar nor the
+   * command palette could link to anything but the first one.
+   *
+   * Read in a lazy initialiser against an allowlist — the shape
+   * `simulate/setup/page.tsx` uses for `?mode=` — so an unrecognised value
+   * falls back rather than rendering an empty tab.
+   */
+  const [tab, setTab] = useState<SettingsTab>(() => {
+    const requested = searchParams.get("tab");
+    return SETTINGS_TABS.includes(requested as SettingsTab)
+      ? (requested as SettingsTab)
+      : "profile";
+  });
+
+  const handleTabChange = (next: string) => {
+    setTab(next as SettingsTab);
+    // `replace`, not `push`: flipping tabs should not fill the history stack,
+    // but the URL still has to be copyable. `scroll: false` stops a long tab
+    // from jumping to the top.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.replace(`/dashboard/settings?${params.toString()}`, {
+      scroll: false,
+    });
+  };
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -349,11 +391,15 @@ export default function SettingsPage() {
         iconColor="blue"
       />
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="profile" className="gap-2" aria-label="Profile">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="account" className="gap-2" aria-label="Account">
+            <ShieldCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Account</span>
           </TabsTrigger>
           <TabsTrigger value="defaults" className="gap-2" aria-label="Defaults">
             <SlidersHorizontal className="h-4 w-4" />
@@ -364,7 +410,7 @@ export default function SettingsPage() {
             <span className="hidden sm:inline">Voice</span>
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-2" aria-label="Data">
-            <ShieldCheck className="h-4 w-4" />
+            <Database className="h-4 w-4" />
             <span className="hidden sm:inline">Data</span>
           </TabsTrigger>
         </TabsList>
@@ -658,7 +704,9 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="data" className="space-y-6">
+        {/* Password and sign-out used to live under "Data", behind a shield
+            icon, which is not where anyone looks for their password. */}
+        <TabsContent value="account" className="space-y-6">
           <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Account & security</CardTitle>
@@ -708,7 +756,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
+        <TabsContent value="data" className="space-y-6">
           <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Your data</CardTitle>
@@ -801,5 +851,24 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * `useSearchParams` opts a page into client-side rendering, and Next requires a
+ * Suspense boundary for it. `simulate/setup/page.tsx` wraps its wizard the same
+ * way for the same reason.
+ */
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 max-w-5xl">
+          <div className="h-32 rounded-xl bg-gray-100 animate-pulse" />
+        </div>
+      }
+    >
+      <SettingsPageInner />
+    </Suspense>
   );
 }
