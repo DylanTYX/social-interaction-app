@@ -77,10 +77,7 @@ export function GoalsCard({
     return () => window.clearTimeout(id);
   }, []);
 
-  const progress = useMemo(
-    () => computePracticeProgress(sessions),
-    [sessions],
-  );
+  const progress = useMemo(() => computePracticeProgress(sessions), [sessions]);
   const badges = useMemo(
     () => computeBadges(sessions, progress),
     [sessions, progress],
@@ -124,7 +121,7 @@ export function GoalsCard({
             <ProgressRing value={progress.thisWeek} max={effectiveGoal}>
               <span className="text-xl font-bold text-gray-900">
                 {progress.thisWeek}
-                <span className="text-sm font-medium text-gray-400">
+                <span className="text-sm font-medium text-muted-foreground">
                   /{effectiveGoal}
                 </span>
               </span>
@@ -182,7 +179,7 @@ export function GoalsCard({
                 <Award className="h-3.5 w-3.5" />
                 Badges
               </p>
-              <span className="text-xs font-medium text-gray-400">
+              <span className="text-xs font-medium text-muted-foreground">
                 {earnedCount}/{badges.length}
               </span>
             </div>
@@ -194,7 +191,7 @@ export function GoalsCard({
                     "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
                     badge.earned
                       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-gray-200 bg-white text-gray-400",
+                      : "border-gray-200 bg-white text-muted-foreground",
                   )}
                   title={badge.earned ? "Earned" : "Not yet earned"}
                 >

@@ -135,7 +135,6 @@ export function ChatMessage({
 }: ChatMessageProps) {
   const isUser = role === "user";
 
-
   const displayName = isUser ? "You" : personaName;
   const initials = isUser ? "You" : initialsFromName(personaName);
 
@@ -163,7 +162,9 @@ export function ChatMessage({
             {displayName}
           </span>
           {timestamp && (
-            <span className="text-[10px] text-gray-400">{timestamp}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {timestamp}
+            </span>
           )}
         </div>
 

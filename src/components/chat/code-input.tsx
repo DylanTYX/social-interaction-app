@@ -132,7 +132,7 @@ export function CodeInput({
       />
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           Reviewed by the interviewer, not executed.
         </p>
         <Button onClick={handleSend} disabled={!canSend} className="gap-2">

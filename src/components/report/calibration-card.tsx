@@ -100,7 +100,7 @@ export function CalibrationCard({
                 </p>
                 <p className="text-2xl font-bold text-slate-900">{guess}%</p>
               </div>
-              <div className="text-slate-300">vs</div>
+              <div className="text-muted-foreground">vs</div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   Actual

@@ -74,7 +74,7 @@ export function ScoreComparison({
       ? "text-emerald-600"
       : delta < 0
         ? "text-rose-600"
-        : "text-slate-400";
+        : "text-muted-foreground";
   const label =
     delta > 0
       ? `+${delta} vs last session`

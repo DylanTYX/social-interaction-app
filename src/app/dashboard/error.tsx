@@ -40,7 +40,7 @@ export default function DashboardError({
           Try again, or head back to the dashboard.
         </p>
         {error.digest && (
-          <p className="mt-3 font-mono text-xs text-gray-400">
+          <p className="mt-3 font-mono text-xs text-muted-foreground">
             Reference: {error.digest}
           </p>
         )}
