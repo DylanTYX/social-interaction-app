@@ -204,7 +204,7 @@ export function PersonaStep({
               existed. Two rows of cards come to ~656px so the shipped six never
               scroll; it only engages once "Save as new" and "Duplicate" have
               grown a library past that, which nothing caps. */}
-          <div className="max-h-[44rem] overflow-y-auto pr-1">
+          <div className="max-h-[52rem] overflow-y-auto pr-1">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading && sortedLibrary.length === 0
                 ? [0, 1, 2, 3, 4, 5].map((index) => (
@@ -225,7 +225,7 @@ export function PersonaStep({
                   <div
                     key={entry.id}
                     className={cn(
-                      "group relative flex flex-col gap-3 rounded-lg border p-4 text-left transition-all duration-200",
+                      "group relative flex flex-col gap-4 rounded-lg border p-4 text-left transition-all duration-200",
                       // A ring as well as a border colour. Across two rows of
                       // six, a 1px colour swap is easy to miss; the ring reads
                       // from across a room, which matters when this is on a
@@ -243,7 +243,10 @@ export function PersonaStep({
                     <button
                       type="button"
                       onClick={() => handlePickEntry(entry)}
-                      className="flex h-full flex-col gap-3 text-left"
+                      // 16px between sections against 8px inside one — the same
+                      // 2:1 the rest of the wizard uses at field scale. At 12px
+                      // the four blocks still read as one column of lines.
+                      className="flex h-full flex-col gap-4 text-left"
                     >
                       {/* Six presets rendered as six near-identical blocks of
                         grey text, so telling them apart meant reading. An
@@ -335,7 +338,7 @@ export function PersonaStep({
                         `mt-auto` pins them to the bottom, so across a row of
                         cards the dials line up regardless of how long anyone's
                         traits are. */}
-                      <dl className="mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-1 text-xs tabular-nums">
+                      <dl className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs tabular-nums">
                         {[
                           ["Strict", entry.config.strictness],
                           ["Warm", entry.config.warmth],
