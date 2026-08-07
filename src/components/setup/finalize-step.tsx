@@ -89,7 +89,7 @@ export function FinalizeStep({
   return (
     <div className="space-y-6">
       <Card className="border border-border shadow-soft">
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="text-base">Your session</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -155,10 +155,10 @@ export function FinalizeStep({
           out. Static copy would have been marketing; every line here is
           derived from the config you just built. */}
       <Card className="border border-border shadow-soft">
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="text-base">What happens next</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-6 sm:grid-cols-2">
           <NextStep
             icon={MessageSquare}
             title={`~${totalQuestions} questions over about ${totalMinutes} minutes`}
@@ -195,16 +195,19 @@ export function FinalizeStep({
       {/* Two identical single-toggle panels became one card. The dashboard's
           settings page groups its switches the same way. */}
       <Card className="border border-border shadow-soft">
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="text-base">During the interview</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
-            <div>
-              <Label htmlFor="stream-responses" className="text-sm font-medium">
-                Live response streaming
-              </Label>
-              <p className="text-xs text-muted-foreground">
+            {/* `space-y-1`: these two were previously wrapped in a bare
+                `<div>` with no spacing class of any kind, so the gap was the
+                browser's default `<p>` margin — the only unmanaged spacing in
+                the wizard. `text-sm font-medium` on the Label is also already
+                the `Label` default. */}
+            <div className="space-y-1">
+              <Label htmlFor="stream-responses">Live response streaming</Label>
+              <p className="text-xs leading-5 text-muted-foreground">
                 Stream the interviewer&apos;s reply token-by-token as it&apos;s
                 generated.
               </p>
@@ -219,11 +222,14 @@ export function FinalizeStep({
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
-            <div>
-              <Label htmlFor="live-coaching" className="text-sm font-medium">
-                Live coaching tips
-              </Label>
-              <p className="text-xs text-muted-foreground">
+            {/* `space-y-1`: these two were previously wrapped in a bare
+                `<div>` with no spacing class of any kind, so the gap was the
+                browser's default `<p>` margin — the only unmanaged spacing in
+                the wizard. `text-sm font-medium` on the Label is also already
+                the `Label` default. */}
+            <div className="space-y-1">
+              <Label htmlFor="live-coaching">Live coaching tips</Label>
+              <p className="text-xs leading-5 text-muted-foreground">
                 Show short notes after each answer, including what you did well.
               </p>
             </div>
@@ -240,7 +246,7 @@ export function FinalizeStep({
 
       {setup.practiceMode === "voice" && (
         <Card className="border border-border shadow-soft">
-          <CardHeader className="pb-3">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Mic className="h-4 w-4 text-blue-600" />
               Voice readiness
@@ -249,7 +255,7 @@ export function FinalizeStep({
               Confirm the interviewer can talk to you and you can talk back.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border bg-white p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
@@ -299,7 +305,7 @@ export function FinalizeStep({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Voice choice</Label>
+              <Label htmlFor="voice-choice">Voice choice</Label>
               <Select
                 value={setup.voiceConfig.selectedVoiceUri || "default"}
                 onValueChange={(selectedValue) => {
@@ -318,7 +324,7 @@ export function FinalizeStep({
                   });
                 }}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="voice-choice" className="w-full">
                   <SelectValue placeholder="Choose a voice" />
                 </SelectTrigger>
                 <SelectContent>
