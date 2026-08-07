@@ -15,6 +15,170 @@ Two rules underneath all of it:
 
 ---
 
+## How it works
+
+Read this before the runbook. The commands below prove things; this is *what*
+they prove and *why the proof holds*. Every claim ends at a file you can open.
+
+### A. How a persona changes the interview
+
+A persona reaches the model down **two independent paths**, and they are worth
+separating because only one of them can be demonstrated without an API call.
+
+```
+PersonaConfig { strictness, warmth, pace, pushback, communicationStyle }
+      │
+      ├── TEXTUAL path ────────────────────────────────────────────────
+      │     generatePersonaPrompt()                persona-engine.ts:154
+      │     each dial → a sentence, by threshold (>=8 / >=5 / else)
+      │          ↓
+      │     stablePrompt, position 2               chat/route.ts:185-213
+      │          ↓
+      │     system message 1 of 2 → the model
+      │
+      │     Provable only by measuring the output. Prompt text has no
+      │     effect you can compute; you have to look at what comes back.
+      │
+      └── NUMERIC path ────────────────────────────────────────────────
+            DecisionContext { strictness, warmth }  chat/route.ts:664-672
+                 ↓
+            estimateFollowupDifficulty()          decision-engine.ts:291-316
+            base + repetitionBoost + (strictness − warmth) / 4, clamped 1..10
+                 ↓
+            "Aim for difficulty N/10"               chat/route.ts:269
+                 ↓
+            injected back into the prompt as an explicit instruction
+
+            Pure arithmetic. Reproduces exactly, every time, offline.
+```
+
+**This is the thing to lead with.** "Yuki 7/10, Isabella 5/10 on an identical
+answer" is not a sample from a stochastic model — it is a computation. Your
+examiner can read `estimateFollowupDifficulty`, do the arithmetic by hand, and
+get the same number. That is a far stronger position than "look, the questions
+feel different."
+
+The textual path is what the empirical layer (`--live`) exists to measure, using
+a blind judge, precisely because prompt text cannot be evaluated by inspection.
+
+**What persona does *not* touch:** scoring. `analyzeResponse` takes no persona
+argument and its cache key is `analyzer:${roundType}`. Persona changes what gets
+asked next; it never changes what an answer was worth.
+
+### B. How prompt layering becomes a measured cost
+
+```
+OpenAI caches a prompt PREFIX of >=1024 tokens, byte-identical, per model
+      ↓
+buildPromptLayers() emits two system messages     chat/route.ts:159-232
+   stable   → persona, scenario, round guidance, inlined JD, resume profile
+   volatile → retrieved JD excerpts, coaching signal, rolling summary
+      ↓
+prompt_cache_key pins routing to the same cache   chat/route.ts:404
+      ↓
+the response carries usage.prompt_tokens_details.cached_tokens
+   (streamed calls need stream_options.include_usage — chat/route.ts:401,
+    otherwise the streaming path reports no usage at all)
+      ↓
+UsageCollector.record() … .flush()                token-usage.ts:51, 86
+      ↓
+one row per model call in llm_usage               migration 0007
+      ↓
+npm run cost-report → costOf() / costWithoutCaching()      pricing.ts
+      ↓
+dollars, cache hit rate, and the counterfactual
+```
+
+Two design consequences fall straight out of the mechanism, and both are good
+answers to "why did you do it that way":
+
+- **The JD appears in both layers, conditionally.** A small job description is
+  inlined whole and identical every turn, so it belongs in the cacheable prefix.
+  Retrieved excerpts differ per question, so putting them in the prefix would
+  poison it. `jobDescriptionIsStable` decides which.
+- **One model for every interviewer turn.** The opening turn used to run on a
+  stronger model. A different model is a different cache, so turn 2 could never
+  reuse turn 1's prefix — the session paid full price twice and hit cache
+  neither time.
+
+**The negative result is the strongest moment in the demo.** The stable prefix
+on a bare session is ~590 tokens, under the 1,024 floor, so nothing caches at
+all. `cost-report` says so in words rather than printing a zero for you to
+interpret. The claim to make is not "this app uses prompt caching" — it is:
+
+> The prompt is *ordered* so caching engages whenever the prompt is large
+> enough to be worth caching. On small prompts it does not fire, and on small
+> prompts it does not matter. Here is the measurement telling you which case
+> you are in.
+
+### C. What counts as proof, strongest first
+
+This ordering is itself part of the contribution — worth saying out loud.
+
+| | Kind of evidence | Example here |
+|---|---|---|
+| 1 | **Deterministic computation** — reproduces exactly | `npm run eval:persona`, the difficulty numbers |
+| 2 | **A test that fails when the claim stops being true** | `persona-engine.test.ts` fails if Yuki and Isabella's dials converge; `pricing.test.ts` fails if cached tokens are ever billed as extra input |
+| 3 | **Measured rows, nothing sampled** | `llm_usage` — one row per model call |
+| 4 | **Blind measurement** | the judge is never told which persona produced the text, so it cannot agree with the label |
+| 5 | **Committed artifacts** | `docs/artifacts/`, so a network failure costs nothing |
+
+Note what is *absent*: no claim rests on a single generated example, and no
+figure in this document was estimated.
+
+---
+
+## Who can see what
+
+Asked directly: are these tools reachable by end users? Almost entirely no — and
+the exception is worth presenting rather than glossing.
+
+| Concern | Where the boundary actually sits | Enforced? |
+|---|---|---|
+| The tooling (`eval`, `eval:persona`, `cost-report`, `pricing.ts`) | Import graph — nothing under `src/app`, `src/components`, `src/hooks` or `src/lib` imports them, so Next bundles none of it | Yes — now a lint rule (`eslint.config.mjs`), so a future import fails CI rather than silently shipping |
+| `SUPABASE_SERVICE_ROLE_KEY` | One CLI script, no `NEXT_PUBLIC_` prefix | Yes — Next only inlines `NEXT_PUBLIC_*`, so it evaluates to `undefined` in a browser even if imported wrongly |
+| Another user's data | Row-level security on every table, `user_id = auth.uid()` | Yes, in the database |
+| `docs/` and `docs/artifacts/` | Not in `public/`, no file-serving route, no rewrites | Yes — no URL returns them |
+| **A user's own `llm_usage` rows** | **Nothing. The UI simply never renders them** | **No** |
+
+**The last row, stated plainly.** Migration `0007` grants `select, insert` on
+`llm_usage` to `authenticated`, and Supabase exposes every granted table over
+PostgREST. A logged-in user can open devtools and read all of *their own* usage
+rows — model names, token counts, session ids — using the publishable key
+already in their browser. They can also insert forged rows attributed to
+themselves.
+
+What they cannot do: read anyone else's rows (RLS blocks it), update or delete
+any row (no grant), or derive dollar cost (the price table is not in the
+browser).
+
+**Why it is that way, and why it is a trade-off rather than an oversight:**
+usage is written by the server using the *user's own* cookie-bound session, not
+a privileged one. Revoking `insert` from `authenticated` would stop recording
+entirely. Fixing it properly means a service-role write path — real work, not
+demo-blocking, and recorded here rather than discovered by someone else.
+
+**The line to use if asked:** *"The absence of a UI is not access control. The
+enforced boundaries are the import graph, the service-role key and RLS. A user
+can see their own token counts if they go looking; they cannot see anyone
+else's, and they cannot see what it cost."*
+
+### Why each command is developer-only
+
+| Command | What stops an end user | 
+|---|---|
+| `npm run eval` | Needs `OPENAI_API_KEY`; in no bundle; spends money |
+| `npm run eval:persona` | Same, plus it imports test-support fixtures |
+| `npm run cost-report` | Needs `SUPABASE_SERVICE_ROLE_KEY`, which exists only in a developer's `.env.local` |
+
+**No developer dashboard was built, deliberately.** The app has no admin or role
+concept at all — every authenticated user is exactly equal — so a privileged
+route would mean inventing the first one shortly before a demo, which is a new
+auth surface to get wrong. The CLI is also better evidence: reproducible,
+scriptable, and its output can be committed.
+
+---
+
 ## Pre-flight — do this the day before, not on the day
 
 | # | Check | Command | Must see |

@@ -126,10 +126,36 @@ npm run dev
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit tests — pure logic only, no network |
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
+| `npm run eval:persona` | **Persona differentiation harness** — free and offline by default; `--live` makes billed calls |
+| `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
 
-`npm test` currently runs 186 tests, including route-handler tests that
+`npm test` currently runs 257 tests, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
 and tests on every push and pull request (`.github/workflows/ci.yml`).
+
+The last three are **operator tooling, not product features**. They are not
+imported by any route, so Next bundles none of them, and a lint rule in
+`eslint.config.mjs` fails the build if anything under `src/app` or
+`src/components` tries. See `docs/DEMO.md` → "Who can see what".
+
+### Persona differentiation and cost
+
+```bash
+npm run eval:persona                # prompt diff + difficulty curve, no API calls
+npm run eval:persona -- --live      # + real follow-ups, scored by a blind judge
+npm run cost-report                 # tokens, cache hit rate, cost, counterfactual
+npm run cost-report -- --session=<id>
+```
+
+`eval:persona` exists because "different personas behave differently" was
+asserted throughout this project and never measured. Its deterministic half is
+pure arithmetic — `estimateFollowupDifficulty` on an identical answer — so it
+reproduces exactly; its `--live` half measures whether the prompt differences
+reach the output, using a judge that is never told which persona wrote the text.
+
+`cost-report` is the only thing in this project that multiplies tokens by a
+rate. It also reports what the same traffic *would* have cost with no cache
+hits, which is the only honest way to state a caching saving.
 
 ### The evaluation harness
 
@@ -219,6 +245,13 @@ Two design decisions worth knowing:
   short-lived token minted by `/api/speech-token`.
 - Errors are logged server-side and returned generically, so Postgres and
   OpenAI internals don't reach clients.
+- **`llm_usage` is readable by its owner over PostgREST.** Migration `0007`
+  grants `select, insert` to `authenticated`, so a logged-in user can read their
+  own token counts from devtools even though no UI renders them. RLS blocks
+  every other user's rows, there is no update or delete grant, and the price
+  table is not in the browser, so cost cannot be derived. Recording is written
+  with the user's own session rather than a privileged one, so revoking the
+  grant would stop recording — a documented trade-off, not an oversight.
 - Security headers (HSTS, `X-Frame-Options`, `Permissions-Policy`) in
   `next.config.ts`. CSP is deliberately deferred until the Azure Speech
   websocket origins are inventoried — see the comment there.
@@ -231,6 +264,8 @@ before scaling out.
 
 ## Documentation
 
+- `docs/DEMO.md` — **how the persona and cost mechanisms work, how to prove
+  them, and where the developer/end-user boundary sits**
 - `docs/FEATURES.md` — **what the app does, written for the end user**
 - `docs/TOKEN-COST.md` — **token cost and prompt-caching design, and how to
   verify it**
