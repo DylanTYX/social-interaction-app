@@ -351,19 +351,19 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="profile" className="gap-2">
+          <TabsTrigger value="profile" className="gap-2" aria-label="Profile">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="defaults" className="gap-2">
+          <TabsTrigger value="defaults" className="gap-2" aria-label="Defaults">
             <SlidersHorizontal className="h-4 w-4" />
             <span className="hidden sm:inline">Defaults</span>
           </TabsTrigger>
-          <TabsTrigger value="voice" className="gap-2">
+          <TabsTrigger value="voice" className="gap-2" aria-label="Voice">
             <Mic className="h-4 w-4" />
             <span className="hidden sm:inline">Voice</span>
           </TabsTrigger>
-          <TabsTrigger value="data" className="gap-2">
+          <TabsTrigger value="data" className="gap-2" aria-label="Data">
             <ShieldCheck className="h-4 w-4" />
             <span className="hidden sm:inline">Data</span>
           </TabsTrigger>
@@ -461,14 +461,14 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>Default mode</Label>
+                <Label htmlFor="settings-default-mode">Default mode</Label>
                 <Select
                   value={practiceMode}
                   onValueChange={(value) =>
                     setPracticeMode(value as PracticeMode)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="settings-default-mode">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -480,19 +480,29 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
                 <div>
-                  <Label className="text-sm font-medium">
+                  <Label
+                    htmlFor="settings-stream-responses-by-default"
+                    className="text-sm font-medium"
+                  >
                     Stream responses by default
                   </Label>
                   <p className="text-xs text-gray-500">
                     Replies appear token-by-token as they&apos;re generated.
                   </p>
                 </div>
-                <Switch checked={streaming} onCheckedChange={setStreaming} />
+                <Switch
+                  id="settings-stream-responses-by-default"
+                  checked={streaming}
+                  onCheckedChange={setStreaming}
+                />
               </div>
 
               <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
                 <div>
-                  <Label className="text-sm font-medium">
+                  <Label
+                    htmlFor="settings-live-coaching-by-default"
+                    className="text-sm font-medium"
+                  >
                     Live coaching by default
                   </Label>
                   <p className="text-xs text-gray-500">
@@ -500,6 +510,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <Switch
+                  id="settings-live-coaching-by-default"
                   checked={liveCoaching}
                   onCheckedChange={setLiveCoaching}
                 />
@@ -535,7 +546,10 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
                 <div>
-                  <Label className="text-sm font-medium">
+                  <Label
+                    htmlFor="settings-text-to-speech-enabled"
+                    className="text-sm font-medium"
+                  >
                     Text-to-speech enabled
                   </Label>
                   <p className="text-xs text-gray-500">
@@ -543,6 +557,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <Switch
+                  id="settings-text-to-speech-enabled"
                   checked={voiceConfig.ttsEnabled}
                   onCheckedChange={(checked) =>
                     setVoiceConfig((current) => ({
@@ -555,7 +570,10 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
                 <div>
-                  <Label className="text-sm font-medium">
+                  <Label
+                    htmlFor="settings-speech-to-text-enabled"
+                    className="text-sm font-medium"
+                  >
                     Speech-to-text enabled
                   </Label>
                   <p className="text-xs text-gray-500">
@@ -563,6 +581,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <Switch
+                  id="settings-speech-to-text-enabled"
                   checked={voiceConfig.sttEnabled}
                   onCheckedChange={(checked) =>
                     setVoiceConfig((current) => ({
@@ -574,7 +593,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Default voice</Label>
+                <Label htmlFor="settings-default-voice">Default voice</Label>
                 {voiceOptions.length === 0 ? (
                   <p className="text-xs text-gray-500">
                     No voices available in this browser. The wizard will fall
@@ -603,7 +622,7 @@ export default function SettingsPage() {
                       })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="settings-default-voice">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -677,7 +696,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={() => void handleSignOut()}
-                  className="text-red-600 hover:text-red-700"
+                  className="gap-2"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out

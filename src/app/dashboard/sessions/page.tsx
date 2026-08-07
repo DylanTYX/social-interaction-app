@@ -158,12 +158,27 @@ export default function SessionsLibraryPage() {
             }}
           />
         ) : (
+          // Told the user to "clear your filters" and gave them no way to do
+          // it — three controls to reset by hand, from a state whose whole
+          // point is that the user is stuck.
           <Card className="border-dashed">
-            <CardHeader className="text-center">
+            <CardHeader className="items-center text-center">
               <CardTitle className="text-lg">No matching sessions</CardTitle>
               <CardDescription>
-                Try a different search or clear your filters.
+                Nothing matches the filters you have set.
               </CardDescription>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  setQuery("");
+                  setModeFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Clear filters
+              </Button>
             </CardHeader>
           </Card>
         )

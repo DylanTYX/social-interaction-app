@@ -12,6 +12,8 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
   CardContent,
@@ -63,6 +65,9 @@ export default function DrillsPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ModelAnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<{
+    category?: DrillCategory | "all";
+  } | null>(null);
 
   const nextQuestion = (nextCategory?: DrillCategory | "all") => {
     const targetPool =
@@ -73,9 +78,28 @@ export default function DrillsPage() {
     setError(null);
   };
 
+  /**
+   * Both paths to a new question throw away whatever is in the textarea, which
+   * is correct — an answer to a question you can no longer see is noise — but
+   * it used to happen silently, and the category chips *look* like a filter.
+   * Typing three paragraphs and then narrowing to "System design" destroyed
+   * them with no warning and no undo.
+   *
+   * Only confirms once there is something worth losing. Below the 10-character
+   * submit threshold there is nothing to protect and a dialog would just be in
+   * the way.
+   */
+  const requestNewQuestion = (nextCategory?: DrillCategory | "all") => {
+    if (answer.trim().length >= 10) {
+      setPendingSwitch({ category: nextCategory });
+      return;
+    }
+    if (nextCategory !== undefined) setCategory(nextCategory);
+    nextQuestion(nextCategory);
+  };
+
   const handleCategory = (next: DrillCategory | "all") => {
-    setCategory(next);
-    nextQuestion(next);
+    requestNewQuestion(next);
   };
 
   const handleSubmit = async () => {
@@ -127,30 +151,25 @@ export default function DrillsPage() {
         iconColor="pink"
       />
 
-      {/* Category filter */}
+      {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
+          `aria-pressed` and no focus-visible ring, so selection was conveyed by
+          colour alone and a keyboard user got nothing. The shared component has
+          existed for exactly this and was only used in the setup wizard. */}
       <div className="flex flex-wrap gap-2">
-        <button
+        <ChoiceChip
+          selected={category === "all"}
           onClick={() => handleCategory("all")}
-          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-            category === "all"
-              ? "border-blue-200 bg-blue-50 text-blue-700"
-              : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-          }`}
         >
           All
-        </button>
+        </ChoiceChip>
         {DRILL_CATEGORIES.map((cat) => (
-          <button
+          <ChoiceChip
             key={cat.id}
+            selected={category === cat.id}
             onClick={() => handleCategory(cat.id)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-              category === cat.id
-                ? "border-blue-200 bg-blue-50 text-blue-700"
-                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-            }`}
           >
             {cat.label}
-          </button>
+          </ChoiceChip>
         ))}
       </div>
 
@@ -165,7 +184,7 @@ export default function DrillsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => nextQuestion()}
+                onClick={() => requestNewQuestion()}
                 className="gap-1.5 text-gray-500"
               >
                 <Shuffle className="h-3.5 w-3.5" />
@@ -291,6 +310,23 @@ export default function DrillsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDeleteDialog
+        open={pendingSwitch !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSwitch(null);
+        }}
+        title="Discard your answer?"
+        description="Moving to a new question clears what you have written. Get feedback first if you want to keep it."
+        confirmLabel="Discard and continue"
+        onConfirm={() => {
+          if (pendingSwitch?.category !== undefined) {
+            setCategory(pendingSwitch.category);
+          }
+          nextQuestion(pendingSwitch?.category);
+          setPendingSwitch(null);
+        }}
+      />
     </div>
   );
 }

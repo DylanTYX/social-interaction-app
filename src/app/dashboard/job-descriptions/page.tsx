@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FileText, Trash2, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
@@ -106,29 +107,23 @@ export default function JobDescriptionsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* The last hand-rolled chips. These were ~34px with no
+              `aria-pressed` and no focus ring, so selection was colour-only —
+              and each page picked a different accent (indigo here) that
+              matched neither its own header tile nor the other page. */}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
+            <ChoiceChip
+              selected={mode === "paste"}
               onClick={() => setMode("paste")}
-              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                mode === "paste"
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              }`}
             >
               Paste text
-            </button>
-            <button
-              type="button"
+            </ChoiceChip>
+            <ChoiceChip
+              selected={mode === "upload"}
               onClick={() => setMode("upload")}
-              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                mode === "upload"
-                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              }`}
             >
               Upload PDF
-            </button>
+            </ChoiceChip>
           </div>
 
           <div className="space-y-2">
