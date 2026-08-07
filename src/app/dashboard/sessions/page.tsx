@@ -230,7 +230,7 @@ export default function SessionsLibraryPage() {
                         ? "—"
                         : `${session.averageScore}%`}
                     </div>
-                    <p className="text-xs text-gray-400">score</p>
+                    <p className="text-xs text-muted-foreground">score</p>
                   </div>
                 </div>
               </Link>

@@ -84,7 +84,7 @@ export function TryQuestion() {
 
         {!feedback ? (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {answer.trim().length < 10
                 ? "Write a sentence or two to get a score"
                 : `${answer.trim().split(/\s+/).length} words`}

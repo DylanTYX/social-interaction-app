@@ -229,16 +229,16 @@ export function CommandPalette() {
             }}
             onKeyDown={onListKeyDown}
             placeholder="Search actions…"
-            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 sm:inline">
+          <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">
             esc
           </kbd>
         </div>
 
         <div className="max-h-80 overflow-y-auto p-2">
           {results.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-gray-400">
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
               No matching actions.
             </p>
           ) : (
@@ -264,7 +264,7 @@ export function CommandPalette() {
                   />
                   <span className="flex-1 font-medium">{command.label}</span>
                   {command.hint && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-muted-foreground">
                       {command.hint}
                     </span>
                   )}

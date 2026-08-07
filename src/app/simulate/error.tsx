@@ -41,7 +41,7 @@ export default function SimulateError({
           off.
         </p>
         {error.digest && (
-          <p className="mt-3 font-mono text-xs text-gray-400">
+          <p className="mt-3 font-mono text-xs text-muted-foreground">
             Reference: {error.digest}
           </p>
         )}

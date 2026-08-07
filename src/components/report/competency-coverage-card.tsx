@@ -72,7 +72,7 @@ export function CompetencyCoverageCard({
               <li
                 key={competency.id}
                 className={`flex items-start gap-2 text-sm ${
-                  isCovered ? "text-slate-900" : "text-slate-400"
+                  isCovered ? "text-slate-900" : "text-muted-foreground"
                 }`}
                 title={competency.summary}
               >

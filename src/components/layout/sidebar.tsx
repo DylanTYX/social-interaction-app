@@ -321,7 +321,7 @@ export function Sidebar() {
             {!isCollapsed && (
               <>
                 <span className="flex-1 text-left">Search…</span>
-                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   ⌘K
                 </kbd>
               </>
@@ -398,7 +398,7 @@ export function Sidebar() {
                       onClick={() => void handleSignOut()}
                       className={cn(
                         "p-1.5 rounded-md",
-                        "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
+                        "text-muted-foreground hover:text-foreground hover:bg-gray-100",
                         "transition-colors duration-150",
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                       )}

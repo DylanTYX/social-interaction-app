@@ -206,7 +206,7 @@ export default function DrillsPage() {
               className="resize-none"
             />
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {answer.trim().length < 10
                   ? "Write a bit more to get feedback"
                   : `${answer.trim().split(/\s+/).length} words`}

@@ -286,7 +286,7 @@ export function LiveFeedbackSidebar({
                   </span>
                 </div>
                 {metric.value === null ? (
-                  <div className="flex h-7 items-center justify-center rounded-md border border-dashed border-slate-200/70 text-[10px] text-slate-400">
+                  <div className="flex h-7 items-center justify-center rounded-md border border-dashed border-slate-200/70 text-[10px] text-muted-foreground">
                     No samples yet
                   </div>
                 ) : (
@@ -348,9 +348,7 @@ export function LiveFeedbackSidebar({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-xs leading-5 text-slate-600">
-                {item.body}
-              </p>
+              <p className="text-xs leading-5 text-slate-600">{item.body}</p>
             </CardContent>
           </Card>
         ))}
