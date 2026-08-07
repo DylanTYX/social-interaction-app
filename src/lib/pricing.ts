@@ -115,7 +115,11 @@ export interface CostSummary {
   unpricedModels: string[];
 }
 
-export function summariseCost(records: UsageRecord[]): CostSummary {
+export function summariseCost(
+  // `readonly` because `UsageCollector.all()` returns a readonly view and this
+  // only reads.
+  records: readonly UsageRecord[],
+): CostSummary {
   let totalUsd = 0;
   let withoutCachingUsd = 0;
   let promptTokens = 0;

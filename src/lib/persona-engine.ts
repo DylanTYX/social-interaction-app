@@ -173,7 +173,12 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
   );
 
   const parts = [
-    `You are ${config.name}, a ${config.seniority} from ${config.nationality} working in ${config.industry}. You have ${config.yearsExperience} years of experience in this field.`,
+    // "a Plant Director from Japanese" — `nationality` holds a demonym
+    // ("Japanese", "Spanish"), not a country, so `from X` was ungrammatical for
+    // all six presets and every generated persona, on every turn. As an
+    // adjective it reads correctly and, usefully, frames nationality as a
+    // descriptor of the person rather than a place they act on behalf of.
+    `You are ${config.name}, a ${config.nationality} ${config.seniority} working in ${config.industry}. You have ${config.yearsExperience} years of experience in this field.`,
     // Placed immediately after the only sentence that names a nationality, so
     // the constraint sits next to the thing it constrains.
     //
