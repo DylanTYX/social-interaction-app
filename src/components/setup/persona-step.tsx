@@ -43,8 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { initialsFromName } from "@/lib/format";
-import { TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { cn } from "@/lib/utils";
 import type { CommunicationStyle, PersonaConfig } from "@/lib/persona-engine";
 import {
@@ -260,15 +259,7 @@ export function PersonaStep({
                         so it survives the library re-sorting after every save. */}
                       <div className="flex items-center gap-3 pr-8">
                         <div className="relative shrink-0">
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold",
-                              TILE_COLORS[tileColorForKey(entry.config.name)],
-                            )}
-                            aria-hidden
-                          >
-                            {initialsFromName(entry.config.name)}
-                          </div>
+                          <InitialsAvatar name={entry.config.name} />
                           {/* Selection lands on the avatar rather than in the
                             dial row below, where it stole ~70px and made the
                             four dials reflow the moment you picked a persona. */}

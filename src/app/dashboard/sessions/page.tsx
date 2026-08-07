@@ -28,7 +28,8 @@ import {
   useInterviewHistory,
   type InterviewSessionSummary,
 } from "@/hooks/use-interview-history";
-import { formatRelativeDate, initialsFromName } from "@/lib/format";
+import { formatRelativeDate } from "@/lib/format";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
 type ModeFilter = "all" | "text" | "voice";
 type StatusFilter = "all" | "in_progress" | "completed" | "abandoned";
@@ -184,9 +185,7 @@ export default function SessionsLibraryPage() {
                 className="block rounded-xl border border-border p-4 transition-colors duration-150 hover:bg-accent"
               >
                 <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                    {initialsFromName(session.personaName)}
-                  </div>
+                  <InitialsAvatar name={session.personaName} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-gray-900 truncate">
