@@ -443,12 +443,12 @@ function ChatSimulateInner() {
 
       // Trivial answers ("yes", "ready") come back with no analysis — the
       // hook returns null for those and there is no bookkeeping to do.
-      const applied = turn.applyTurn(data);
-      if (!applied) return;
-
-      if (applied.isComplete) {
-        await turn.endSession();
-      }
+      // `applyTurn` persists the completion itself when this turn finishes the
+      // round — deliberately, per its own comment, because calling
+      // `endSession` here too would write a *second* time from a callback
+      // closed over pre-turn state and overwrite this turn's score with the
+      // previous mean. That second call used to be right here.
+      turn.applyTurn(data);
     } catch (requestError) {
       const messageText =
         requestError instanceof Error

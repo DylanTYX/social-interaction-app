@@ -137,7 +137,14 @@ export function useInterviewTurnState(input: {
   // — and since the session id is now always in the URL, that happened on
   // every refresh, not just an explicit resume.
   const restoredTurns = input.initialAnalyses?.length ?? 0;
-  const scoredTurns = Math.max(sessionState.turnCount, restoredTurns);
+  // Addition, not `Math.max`. `sessionState` is seeded fresh on every mount, so
+  // `turnCount` counts only the turns taken *since* the resume — the two
+  // numbers are disjoint. Taking the larger of them meant that after resuming a
+  // 6-of-8 session the total sat at 6, then 6, then 6… while the user answered,
+  // so the progress display froze and the completion check never fired until
+  // this mount's own counter independently reached the target. A resumed
+  // interview ran its full length again.
+  const scoredTurns = restoredTurns + sessionState.turnCount;
   const [analyses, setAnalyses] = useState<AnalysisResult[]>(
     input.initialAnalyses ?? [],
   );
@@ -228,7 +235,7 @@ export function useInterviewTurnState(input: {
       // tick: `endSession` would still be closed over the *pre-turn* state and
       // would overwrite this turn's score with the previous mean.
       const complete = isInterviewComplete(
-        Math.max(nextState.turnCount, restoredTurns + 1),
+        restoredTurns + nextState.turnCount,
         targetTurns,
       );
       if (sessionId) {
@@ -264,6 +271,14 @@ export function useInterviewTurnState(input: {
       ? Math.round(finalMetrics.averageOverallScore)
       : null;
 
+    // Only the manual "End session" button reaches this. The auto-complete
+    // path must NOT call it: `applyTurn` already wrote the completion with the
+    // turn included, and this callback is the one from the render *before*
+    // `applyTurn`'s setState — closed over `effectiveAnalyses` and
+    // `sessionState` that are missing the final turn. Calling both in one tick
+    // sent the correct values fire-and-forget and the stale ones awaited, so
+    // whichever landed last was genuinely nondeterministic and the report's
+    // headline score wobbled between reloads.
     if (sessionId) {
       await persistTurn(sessionId, {
         metrics: finalMetrics,
@@ -279,7 +294,10 @@ export function useInterviewTurnState(input: {
     sessionState,
     targetTurns,
     scoredTurns,
-    stage: interviewStage({ ...sessionState, turnCount: scoredTurns }, targetTurns),
+    stage: interviewStage(
+      { ...sessionState, turnCount: scoredTurns },
+      targetTurns,
+    ),
     analyses: effectiveAnalyses,
     metrics,
     lastFollowupPrompt,
