@@ -260,8 +260,23 @@ function VoiceSimulateInner() {
     setTokenStatus("fetching");
     const speechService = speechServiceRef.current;
     let cancelled = false;
+    let renewalTimer: ReturnType<typeof setTimeout> | undefined;
 
-    void (async () => {
+    /**
+     * Mint a token, then schedule the next mint before this one expires.
+     *
+     * The token lasts nine minutes and this used to run exactly once, while the
+     * default round is fifteen. At T+9:00 `isInitialized()` started returning
+     * false, and the two things that check it both fail *silently*:
+     * `tryAutoStartRecording` returns early, and `speak()` throws into a
+     * `console.warn`. The result was an interview where, nine minutes in, the
+     * interviewer stopped talking and the microphone stopped opening — with no
+     * error on screen and no recovery short of a reload.
+     *
+     * Renewing at 80% of the advertised lifetime leaves headroom for a slow
+     * mint without ever letting the current token lapse first.
+     */
+    const mintToken = async () => {
       try {
         const tokenResponse = await fetchSpeechToken();
         if (cancelled) return;
@@ -271,6 +286,12 @@ function VoiceSimulateInner() {
           expiresAt: Date.now() + tokenResponse.expiresInSeconds * 1000,
         });
         setTokenStatus("ready");
+
+        const renewInMs = Math.max(
+          30_000,
+          tokenResponse.expiresInSeconds * 1000 * 0.8,
+        );
+        renewalTimer = setTimeout(() => void mintToken(), renewInMs);
       } catch (error) {
         if (cancelled) return;
         const message =
@@ -279,11 +300,17 @@ function VoiceSimulateInner() {
             : "Failed to initialize speech service.";
         setTokenError(message);
         setTokenStatus("error");
+        // A failed *renewal* is as fatal as a failed first mint — the mic and
+        // TTS both stop — so it surfaces the same way rather than being
+        // swallowed. The user sees the error instead of a dead interview.
       }
-    })();
+    };
+
+    void mintToken();
 
     return () => {
       cancelled = true;
+      if (renewalTimer) clearTimeout(renewalTimer);
     };
   }, [bootstrap.status]);
 
@@ -589,7 +616,9 @@ function VoiceSimulateInner() {
         combinedTranscript,
         phraseTimingsRef.current,
       );
-      const deliveryNote = combinedTranscript ? describeDelivery(delivery) : null;
+      const deliveryNote = combinedTranscript
+        ? describeDelivery(delivery)
+        : null;
 
       transcriptBufferRef.current = "";
       phraseTimingsRef.current = [];
@@ -1064,10 +1093,7 @@ function VoiceSimulateInner() {
                   </>
                 )}
                 {isRecording && (
-                  <Badge
-                    variant="destructive"
-                    className="h-8 gap-1.5 px-3"
-                  >
+                  <Badge variant="destructive" className="h-8 gap-1.5 px-3">
                     <span className="relative flex h-2 w-2 items-center justify-center">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70 opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
@@ -1076,9 +1102,8 @@ function VoiceSimulateInner() {
                   </Badge>
                 )}
                 <Badge variant="outline" className="h-8 px-3 tabular-nums">
-                  Question{" "}
-                  {Math.min(turn.scoredTurns + 1, turn.targetTurns)}{" "}
-                  of ~{turn.targetTurns}
+                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of
+                  ~{turn.targetTurns}
                 </Badge>
                 <Badge variant="outline" className="h-8 px-3">
                   {metricTone}
@@ -1110,9 +1135,7 @@ function VoiceSimulateInner() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800">
-                      {error}
-                    </p>
+                    <p className="text-sm text-amber-800">{error}</p>
                   </CardContent>
                 </Card>
               )}
@@ -1184,8 +1207,8 @@ function VoiceSimulateInner() {
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>
-              Internal interview strategy and decision context for debugging
-              and optimization.
+              Internal interview strategy and decision context for debugging and
+              optimization.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto pr-1">
