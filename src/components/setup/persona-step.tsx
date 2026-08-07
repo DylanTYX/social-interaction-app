@@ -152,13 +152,21 @@ export function PersonaStep({
   };
 
   return (
-    // Library beside editor above `lg`, stacked below.
+    // Picker above editor, both full width.
     //
-    // This first shipped with `lg:items-start`, which let each column size to
-    // its own content — six persona cards against a short form gave a ~3x
-    // height mismatch and a large dead area. Letting them stretch and scrolling
-    // the library inside its own card keeps the two the same height.
-    <div className="grid gap-6 lg:grid-cols-2">
+    // This was `lg:grid-cols-2`, which halved the page and then let the persona
+    // grid halve it again — so on a 1440px screen one persona card came out at
+    // 201px while the *same card* was 319px at 768px, where `lg:` is off. The
+    // narrowest tile in the app, on the widest screens, carrying the most text.
+    //
+    // Picking an interviewer is this step's job; editing one is refinement, so
+    // the split was giving half the width to the secondary task. Stacking also
+    // ends the height mismatch the columns created — roughly 1096px of library
+    // against 504px of editor, leaving ~590px of dead space — which an earlier
+    // comment here claimed was solved by scrolling the library inside its card.
+    // It was not: there was no `overflow` or `max-h` anywhere in this file. See
+    // the picker grid below, where that now actually exists.
+    <div className="space-y-6">
       <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">Pick an interviewer</CardTitle>
@@ -188,144 +196,167 @@ export function PersonaStep({
           </CardAction>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {isLoading && sortedLibrary.length === 0
-              ? [0, 1, 2, 3].map((index) => (
-                  <div
-                    key={index}
-                    className="h-24 animate-pulse rounded-lg bg-muted"
-                  />
-                ))
-              : null}
-            {sortedLibrary.map((entry) => {
-              const isActive =
-                activeLibraryId === entry.id ||
-                (!activeLibraryId && matchedEntryId === entry.id);
+          {/* Three across, matching `/dashboard/personas`, which renders this
+              same `PersonaConfig` data. 293px per card against 201px before —
+              enough that "Isabella Rodriguez" stops truncating.
 
-              return (
-                <div
-                  key={entry.id}
-                  className={`group relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all duration-200 ${
-                    isActive
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-border hover:border-blue-300 hover:bg-accent"
-                  }`}
-                >
-                  {/* Name on its own line. It used to sit inline with the
+              The height cap is what the old root-level comment claimed already
+              existed. Two rows of cards come to ~656px so the shipped six never
+              scroll; it only engages once "Save as new" and "Duplicate" have
+              grown a library past that, which nothing caps. */}
+          <div className="max-h-[44rem] overflow-y-auto pr-1">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {isLoading && sortedLibrary.length === 0
+                ? [0, 1, 2, 3, 4, 5].map((index) => (
+                    <div
+                      key={index}
+                      // 288px, roughly a real card. This was `h-24` (96px), so
+                      // the step jumped hard when the library resolved.
+                      className="h-72 animate-pulse rounded-lg bg-muted"
+                    />
+                  ))
+                : null}
+              {sortedLibrary.map((entry) => {
+                const isActive =
+                  activeLibraryId === entry.id ||
+                  (!activeLibraryId && matchedEntryId === entry.id);
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={`group relative flex flex-col gap-2 rounded-lg border p-3 text-left transition-all duration-200 ${
+                      isActive
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-border hover:border-blue-300 hover:bg-accent"
+                    }`}
+                  >
+                    {/* Name on its own line. It used to sit inline with the
                       "Preset" badge, which in a ~200px column wrapped every
                       name mid-flex — "Sarah / Chen", "Isabella / Rodriguez" —
                       and shoved the style badge against the card's top edge. */}
-                  <button
-                    type="button"
-                    onClick={() => handlePickEntry(entry)}
-                    className="flex flex-col gap-1.5 text-left"
-                  >
-                    {/* Six presets rendered as six near-identical blocks of
+                    <button
+                      type="button"
+                      onClick={() => handlePickEntry(entry)}
+                      className="flex h-full flex-col gap-1.5 text-left"
+                    >
+                      {/* Six presets rendered as six near-identical blocks of
                         grey text, so telling them apart meant reading. An
                         initials avatar makes each one recognisable at a glance;
                         the colour is derived from the name so it survives the
                         library re-sorting itself after every save. */}
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                          TILE_COLORS[tileColorForKey(entry.config.name)],
-                        )}
-                        aria-hidden
-                      >
-                        {initialsFromName(entry.config.name)}
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={cn(
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                            TILE_COLORS[tileColorForKey(entry.config.name)],
+                          )}
+                          aria-hidden
+                        >
+                          {initialsFromName(entry.config.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">
+                            {entry.config.name}
+                          </p>
+                          {/* Nationality rides with the name rather than leading
+                            the numeric line below, which was five values wide
+                            and wrapped to three lines at the old width. */}
+                          <p className="truncate text-xs text-muted-foreground">
+                            {entry.config.nationality}
+                          </p>
+                        </div>
                       </div>
-                      <p className="truncate font-medium text-foreground">
-                        {entry.config.name}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant={
+                            entry.kind === "user" ? "default" : "outline"
+                          }
+                          className="capitalize"
+                        >
+                          {entry.kind === "user" ? "Yours" : "Preset"}
+                        </Badge>
+                        <Badge variant="secondary" className="capitalize">
+                          {entry.config.communicationStyle}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {buildPresetSummary(entry.config)}
                       </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge
-                        variant={entry.kind === "user" ? "default" : "outline"}
-                        className="capitalize"
-                      >
-                        {entry.kind === "user" ? "Yours" : "Preset"}
-                      </Badge>
-                      <Badge variant="secondary" className="capitalize">
-                        {entry.config.communicationStyle}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {buildPresetSummary(entry.config)}
-                    </p>
-                    {/* Traits and boundaries are already sent to the model —
+                      {/* Traits and boundaries are already sent to the model —
                         `buildBoundaries` tells the interviewer to be vocal when
                         one comes up — but the person choosing had no way to
                         know that. Knowing Sarah Chen is impatient with vagueness
                         is exactly what makes the choice meaningful. */}
-                    {entry.config.personalityTraits.length > 0 && (
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        <span className="font-medium text-foreground">
-                          Traits:
-                        </span>{" "}
-                        {entry.config.personalityTraits.slice(0, 3).join(", ")}
-                      </p>
-                    )}
-                    {entry.config.boundaries.length > 0 && (
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        <span className="font-medium text-foreground">
-                          Dislikes:
-                        </span>{" "}
-                        {entry.config.boundaries.slice(0, 2).join(", ")}
-                      </p>
-                    )}
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {entry.config.nationality} · Strict{" "}
-                      {entry.config.strictness} · Warm {entry.config.warmth} ·
-                      Pace {entry.config.pace ?? 5} · Pushback{" "}
-                      {entry.config.pushback ?? 5}
-                    </p>
-                  </button>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="text-xs text-emerald-700">
-                      {isActive && (
-                        <span className="inline-flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Selected
-                        </span>
+                      {entry.config.personalityTraits.length > 0 && (
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            Traits:
+                          </span>{" "}
+                          {entry.config.personalityTraits
+                            .slice(0, 3)
+                            .join(", ")}
+                        </p>
                       )}
-                    </span>
-                    {/* Three ghost icon buttons per card meant eighteen of them
+                      {entry.config.boundaries.length > 0 && (
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            Dislikes:
+                          </span>{" "}
+                          {entry.config.boundaries.slice(0, 3).join(", ")}
+                        </p>
+                      )}
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Strict {entry.config.strictness} · Warm{" "}
+                        {entry.config.warmth} · Pace {entry.config.pace ?? 5} ·
+                        Pushback {entry.config.pushback ?? 5}
+                      </p>
+                    </button>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="text-xs text-emerald-700">
+                        {isActive && (
+                          <span className="inline-flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Selected
+                          </span>
+                        )}
+                      </span>
+                      {/* Three ghost icon buttons per card meant eighteen of them
                       on a six-preset library. One menu each. The old "Edit"
                       pencil also just re-picked the entry — the same thing
                       clicking the card body does — so it is gone. */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground"
-                          aria-label={`Actions for ${entry.config.name}`}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() => onDuplicate(entry.id)}
-                        >
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => setPendingDeleteId(entry.id)}
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            aria-label={`Actions for ${entry.config.name}`}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onSelect={() => onDuplicate(entry.id)}
+                          >
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setPendingDeleteId(entry.id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
           <ConfirmDeleteDialog
             open={pendingDeleteId !== null}
@@ -427,8 +458,10 @@ export function PersonaStep({
           {/* These eight fields were two unlabelled grids. Every `Label` here
               was also unwired — no `htmlFor`, no `id` — so clicking a label did
               nothing and a screen reader announced eight bare inputs. */}
+          {/* Four across at `lg`. At the full 910px, `sm:grid-cols-2` would give
+              a 440px input for "Nationality". */}
           <FieldSection title="Who they are">
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Display name" htmlFor="persona-name">
                 <Input
                   id="persona-name"
@@ -471,8 +504,12 @@ export function PersonaStep({
           </FieldSection>
 
           <FieldSection title="How they interview">
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <Field
+                // 3 of 4: it carries the style description as its hint and
+                // needs the room. Years of experience takes the last column —
+                // a number input has no business being 440px wide.
+                className="lg:col-span-3"
                 label="Communication style"
                 htmlFor="persona-style"
                 hint={
@@ -537,7 +574,7 @@ export function PersonaStep({
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <SliderField
                 label="Strictness"
                 value={value.strictness}
