@@ -7,14 +7,17 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Code2,
   FileText,
+  MessageSquare,
   Settings2,
 } from "lucide-react";
 
 import { ChatInput } from "@/components/chat/chat-input";
+import { ChoiceChip } from "@/components/ui/choice-chip";
 import { CodeInput } from "@/components/chat/code-input";
 import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
-import { ROUND_TYPE_SPECS } from "@/lib/round-types";
+import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
@@ -56,7 +59,7 @@ import {
 } from "@/lib/interview-stage-labels";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
-import { resolveAnswerFormat } from "@/lib/interview-rounds";
+import { resolveAnswerFormat, type AnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
   id: string;
@@ -182,7 +185,31 @@ function ChatSimulateInner() {
   // no way to accept code.
   const activeRound =
     bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
-  const answerFormat = resolveAnswerFormat(activeRound);
+
+  /**
+   * How this *turn* is answered, not how the whole round is.
+   *
+   * The round's configured format was previously a lock: a technical round was
+   * all code or all prose from the first question to the last. That fights the
+   * round's own rubric, which scores "problem framing, approach, communication"
+   * alongside "correctness, complexity, code quality" — and you cannot frame a
+   * problem or talk through a tradeoff inside a code editor. A real technical
+   * interview alternates, so the interface has to as well.
+   *
+   * `resolveAnswerFormat` still decides the *default*, so a Technical SWE round
+   * still opens with the editor and everything else opens with prose. This only
+   * makes it changeable mid-round.
+   */
+  const roundDefaultFormat = resolveAnswerFormat(activeRound);
+  const canSwitchFormat =
+    activeRound?.practiceMode !== "voice" &&
+    supportsCodeEditor(activeRound?.type);
+  const [formatOverride, setFormatOverride] = useState<AnswerFormat | null>(
+    null,
+  );
+  const answerFormat: AnswerFormat = canSwitchFormat
+    ? (formatOverride ?? roundDefaultFormat)
+    : roundDefaultFormat;
 
   // Round-level, not per-answer: CodeInput is remounted after every turn to
   // clear the editor, so local state there reset the language each question.
@@ -669,6 +696,24 @@ function ChatSimulateInner() {
           </div>
 
           <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
+            {canSwitchFormat && (
+              <div className="mb-3 flex items-center gap-2">
+                <ChoiceChip
+                  selected={answerFormat === "prose"}
+                  onClick={() => setFormatOverride("prose")}
+                  icon={<MessageSquare className="h-3.5 w-3.5 shrink-0" />}
+                >
+                  Talk it through
+                </ChoiceChip>
+                <ChoiceChip
+                  selected={answerFormat === "code"}
+                  onClick={() => setFormatOverride("code")}
+                  icon={<Code2 className="h-3.5 w-3.5 shrink-0" />}
+                >
+                  Write code
+                </ChoiceChip>
+              </div>
+            )}
             {answerFormat === "code" ? (
               <CodeInput
                 key={userTurnKey}
@@ -676,6 +721,8 @@ function ChatSimulateInner() {
                 onLanguageChange={setCodeLanguage}
                 onSend={handleSend}
                 disabled={isSending}
+                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+                timeoutFallbackMessage="[No response submitted before time expired.]"
               />
             ) : (
               <ChatInput
