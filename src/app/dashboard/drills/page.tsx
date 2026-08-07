@@ -124,7 +124,7 @@ export default function DrillsPage() {
         title="One question. Instant feedback."
         description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
         icon={<Dumbbell className="h-6 w-6" />}
-        iconColor="orange"
+        iconColor="pink"
       />
 
       {/* Category filter */}

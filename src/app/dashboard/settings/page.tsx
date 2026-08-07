@@ -43,8 +43,9 @@ import {
   KeyRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
-import { useCurrentUser, getInitials } from "@/hooks/use-current-user";
+import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   createDefaultInterviewSetup,
@@ -336,7 +337,7 @@ export default function SettingsPage() {
     );
   }
 
-  const initials = getInitials(user);
+  const displayName = getDisplayName(user);
 
   return (
     <div className="p-8 space-y-8 max-w-5xl">
@@ -378,9 +379,15 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 mb-6">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 text-white text-lg font-semibold shadow-soft-md">
-                  {initials}
-                </div>
+                {/* Your own avatar, derived from your name like every other
+                    one. It used to be the same fixed purple gradient the
+                    persona cards used, so "this is you" and "this is a persona
+                    you built" were indistinguishable. */}
+                <InitialsAvatar
+                  name={`${firstName} ${lastName}`.trim() || displayName}
+                  size="lg"
+                  shape="square"
+                />
                 <div>
                   <p className="font-semibold text-gray-900">
                     {`${firstName} ${lastName}`.trim() || user.email}

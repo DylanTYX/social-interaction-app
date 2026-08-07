@@ -80,7 +80,7 @@ export default function ResumesPage() {
         title="Resumes"
         description="Upload or paste your resume so the interviewer can ask targeted questions about your real experience and pressure-test the claims on it."
         icon={<FileUser className="h-6 w-6" />}
-        iconColor="purple"
+        iconColor="teal"
         actions={
           <Button asChild>
             <Link href="/simulate/setup">

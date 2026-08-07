@@ -25,7 +25,8 @@ import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
-import { formatRelativeDate, initialsFromName } from "@/lib/format";
+import { formatRelativeDate } from "@/lib/format";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import {
   computeSessionStats,
   describeStatsWindow,
@@ -301,9 +302,7 @@ export default function DashboardPage() {
                         }
                         className="group flex items-center gap-4 rounded-xl p-4 transition-colors duration-150 hover:bg-accent"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-sm font-semibold text-white">
-                          {initialsFromName(session.personaName)}
-                        </div>
+                        <InitialsAvatar name={session.personaName} />
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-foreground transition-colors group-hover:text-blue-700">

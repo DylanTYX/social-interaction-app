@@ -6,8 +6,7 @@ import {
   Dice5,
   Globe,
   RotateCcw,
-  Pencil,
-  Trash2,
+  MoreHorizontal,
   Users,
 } from "lucide-react";
 import {
@@ -18,6 +17,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,7 +45,7 @@ import {
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import { toast } from "sonner";
-import { initialsFromName } from "@/lib/format";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
 const KIND_BADGE: Record<PersonaLibraryEntry["kind"], string> = {
   preset: "Preset",
@@ -186,15 +191,63 @@ export default function PersonasPage() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedLibrary.map((entry) => (
+            // Editing *is* what this page is for, so the card body does it.
+            // Before, the card was inert: the only affordances were two 32px
+            // ghost icon buttons in a corner, and with six presets that meant
+            // twelve tiny targets and a large dead area on every card.
+            //
+            // Delete moves to a top-right overflow menu, which is where every
+            // other card in this app puts one — the round card, the document
+            // pickers, and the persona picker in the setup wizard, which shows
+            // these same six people.
             <Card
               key={entry.id}
-              className="group shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(entry)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openEdit(entry);
+                }
+              }}
+              aria-label={`Edit ${entry.config.name}`}
+              className="group relative cursor-pointer shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
+              <div className="absolute right-2 top-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      aria-label={`Actions for ${entry.config.name}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => openEdit(entry)}>
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setPendingDelete(entry.id)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <CardHeader>
-                <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-base font-semibold shadow-soft-md shrink-0">
-                    {initialsFromName(entry.config.name)}
-                  </div>
+                <div className="flex items-start gap-4 pr-8">
+                  <InitialsAvatar
+                    name={entry.config.name}
+                    size="lg"
+                    shape="square"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-lg truncate">
@@ -243,30 +296,18 @@ export default function PersonasPage() {
                   ))}
                 </div>
 
+                {entry.config.boundaries.length > 0 && (
+                  <p className="text-xs leading-5 text-gray-500">
+                    <span className="font-medium text-gray-900">Dislikes:</span>{" "}
+                    {entry.config.boundaries.slice(0, 3).join(", ")}
+                  </p>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 pt-1">
                   <span>Strict {entry.config.strictness}/10</span>
                   <span>Warm {entry.config.warmth}/10</span>
                   <span>Pace {entry.config.pace ?? 5}/10</span>
                   <span>Pushback {entry.config.pushback ?? 5}/10</span>
-                </div>
-
-                <div className="flex items-center justify-end gap-1 pt-1 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEdit(entry)}
-                    aria-label="Edit persona"
-                  >
-                    <Pencil className="h-4 w-4 text-gray-500" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setPendingDelete(entry.id)}
-                    aria-label="Delete persona"
-                  >
-                    <Trash2 className="h-4 w-4 text-gray-500" />
-                  </Button>
                 </div>
               </CardContent>
             </Card>
