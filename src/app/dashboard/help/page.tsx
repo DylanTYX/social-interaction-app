@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -109,8 +110,7 @@ const GUIDES: Guide[] = [
     icon: Mic,
     color: "bg-indigo-100 text-indigo-600",
     title: "Voice delivery",
-    description:
-      "Voice mode measures how you sound, not just what you say.",
+    description: "Voice mode measures how you sound, not just what you say.",
     points: [
       {
         label: "Pace",
@@ -135,19 +135,17 @@ const GUIDES: Guide[] = [
 export default function HelpPage() {
   return (
     <div className="space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
-      <div>
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-          <BookOpen className="h-3.5 w-3.5" />
-          Tips & guides
-        </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900">
-          Interview better, faster
-        </h1>
-        <p className="mt-1 max-w-2xl text-gray-600">
-          The frameworks behind the feedback. Skim these before a session to get
-          more out of every answer.
-        </p>
-      </div>
+      {/* Was a hand-rolled copy of PageHeader's exact eyebrow and h1 classes,
+          minus `leading-relaxed` on the description and with the icon crammed
+          into the eyebrow instead of its own tile. The only dashboard page not
+          using the shared header. */}
+      <PageHeader
+        eyebrow="Tips & guides"
+        title="Interview better, faster"
+        description="The frameworks behind the feedback. Skim these before a session to get more out of every answer."
+        icon={<BookOpen className="h-6 w-6" />}
+        iconColor="teal"
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {GUIDES.map((guide) => {
@@ -182,7 +180,7 @@ export default function HelpPage() {
         })}
       </div>
 
-      <Card className="border-gray-200/80 bg-gradient-to-br from-blue-50 via-white to-indigo-50/40">
+      <Card className="shadow-soft bg-linear-to-br from-blue-50 via-white to-indigo-50/40">
         <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-700 shadow-soft">

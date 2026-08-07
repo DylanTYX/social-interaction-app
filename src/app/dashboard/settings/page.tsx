@@ -171,8 +171,7 @@ export default function SettingsPage() {
     saveInterviewSetup({
       ...current,
       practiceMode: updates.practiceMode ?? current.practiceMode,
-      streamResponses:
-        updates.streamResponses ?? current.streamResponses,
+      streamResponses: updates.streamResponses ?? current.streamResponses,
       liveCoachingEnabled:
         updates.liveCoachingEnabled ?? current.liveCoachingEnabled,
       voiceConfig: updates.voiceConfig ?? current.voiceConfig,
@@ -256,10 +255,12 @@ export default function SettingsPage() {
     try {
       const response = await fetch("/api/me/export");
       if (!response.ok) {
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
-        throw new Error(detail?.error ?? `Export failed (HTTP ${response.status}).`);
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(
+          detail?.error ?? `Export failed (HTTP ${response.status}).`,
+        );
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -286,9 +287,9 @@ export default function SettingsPage() {
     try {
       const response = await fetch("/api/me/sessions", { method: "DELETE" });
       if (!response.ok) {
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(
           detail?.error ?? `Delete failed (HTTP ${response.status}).`,
         );
@@ -322,7 +323,9 @@ export default function SettingsPage() {
       <div className="p-8 max-w-5xl">
         <EmptyStateCard
           icon={<LogIn className="h-6 w-6" />}
-          title={authError ? "We couldn't verify your session" : "You're signed out"}
+          title={
+            authError ? "We couldn't verify your session" : "You're signed out"
+          }
           description={
             authError ??
             "Sign in to change your practice defaults, manage your voice, or export your data."
@@ -366,7 +369,7 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
-          <Card className="border border-gray-200/80 shadow-soft">
+          <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Profile</CardTitle>
               <CardDescription>
@@ -375,7 +378,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 mb-6">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white text-lg font-semibold shadow-soft-md">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 text-white text-lg font-semibold shadow-soft-md">
                   {initials}
                 </div>
                 <div>
@@ -442,7 +445,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="defaults" className="space-y-6">
-          <Card className="border border-gray-200/80 shadow-soft">
+          <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Interview defaults</CardTitle>
               <CardDescription>
@@ -515,7 +518,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="voice" className="space-y-6">
-          <Card className="border border-gray-200/80 shadow-soft">
+          <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Voice & speech</CardTitle>
               <CardDescription>
@@ -630,7 +633,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">
-          <Card className="border border-gray-200/80 shadow-soft">
+          <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Account & security</CardTitle>
               <CardDescription>
@@ -673,13 +676,14 @@ export default function SettingsPage() {
                   Sign out
                 </Button>
                 <p className="text-sm text-gray-500">
-                  Signs you out of this browser. Your data stays in your account.
+                  Signs you out of this browser. Your data stays in your
+                  account.
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/80 shadow-soft">
+          <Card className="shadow-soft">
             <CardHeader>
               <CardTitle>Your data</CardTitle>
               <CardDescription>

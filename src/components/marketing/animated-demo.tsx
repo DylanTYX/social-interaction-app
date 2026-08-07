@@ -158,7 +158,7 @@ export function AnimatedDemo() {
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-soft-lg">
       {/* Header bar */}
-      <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50/60 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50/60 px-5 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
             <Mic className="h-4 w-4 text-white" />

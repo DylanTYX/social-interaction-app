@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Lightbulb, RefreshCw, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Lightbulb,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +65,7 @@ export function TryQuestion() {
 
   return (
     <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-soft-lg">
-      <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50/60 px-6 py-4">
+      <div className="border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50/60 px-6 py-4">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
           <Sparkles className="h-3.5 w-3.5" />
           Try it now — no sign-up
@@ -155,11 +161,7 @@ export function TryQuestion() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={handleReset} className="gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Try another
               </Button>

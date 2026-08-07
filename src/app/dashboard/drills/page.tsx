@@ -66,9 +66,7 @@ export default function DrillsPage() {
 
   const nextQuestion = (nextCategory?: DrillCategory | "all") => {
     const targetPool =
-      nextCategory !== undefined
-        ? getQuestionsForCategory(nextCategory)
-        : pool;
+      nextCategory !== undefined ? getQuestionsForCategory(nextCategory) : pool;
     setQuestion(pickRandom(targetPool, question.id));
     setAnswer("");
     setResult(null);
@@ -89,9 +87,7 @@ export default function DrillsPage() {
     setResult(null);
     try {
       const roundType =
-        question.category === "leadership"
-          ? "behavioral"
-          : question.category;
+        question.category === "leadership" ? "behavioral" : question.category;
       const response = await fetch("/api/coach/model-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -160,7 +156,7 @@ export default function DrillsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Question + answer */}
-        <Card className="border-gray-200/80">
+        <Card className="shadow-soft">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
               <Badge variant="outline" className="capitalize">
@@ -218,7 +214,7 @@ export default function DrillsPage() {
         </Card>
 
         {/* Feedback */}
-        <Card className="border-gray-200/80">
+        <Card className="shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Sparkles className="h-5 w-5 text-amber-500" />

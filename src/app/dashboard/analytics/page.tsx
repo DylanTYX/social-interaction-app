@@ -324,9 +324,9 @@ export default function AnalyticsPage() {
       icon={<BarChart3 className="h-6 w-6" />}
       iconColor="orange"
       actions={
-        <Link href="/simulate/setup">
-          <Button>Start a session</Button>
-        </Link>
+        <Button asChild>
+          <Link href="/simulate/setup">Start a session</Link>
+        </Button>
       }
     />
   );
@@ -362,7 +362,7 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+          <Card className="shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Sessions</p>
@@ -379,7 +379,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+          <Card className="shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Avg score</p>
@@ -401,7 +401,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+          <Card className="shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">
@@ -423,7 +423,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
+          <Card className="shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Mode mix</p>
@@ -448,7 +448,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle>Score trend</CardTitle>
           <CardDescription>
@@ -460,7 +460,7 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle>Skill dimensions</CardTitle>
           <CardDescription>
@@ -484,7 +484,7 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle>Scenarios</CardTitle>
           <CardDescription>
@@ -519,7 +519,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="h-2 rounded-full bg-gray-100">
                       <div
-                        className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                        className="h-2 rounded-full bg-linear-to-r from-blue-500 to-indigo-500"
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>

@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  History,
-  MessageSquare,
-  Mic,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { History, MessageSquare, Mic, Search, Sparkles } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -85,16 +79,16 @@ export default function SessionsLibraryPage() {
         icon={<History className="h-6 w-6" />}
         iconColor="indigo"
         actions={
-          <Link href="/simulate/setup">
-            <Button>
+          <Button asChild>
+            <Link href="/simulate/setup">
               <Sparkles className="mr-2 h-4 w-4" />
               New session
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
-      <Card className="border border-gray-200/80 shadow-soft">
+      <Card className="shadow-soft">
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -187,10 +181,10 @@ export default function SessionsLibraryPage() {
                       : `/simulate/chat?session=${session.id}`
                     : `/simulate/report/${session.id}`
                 }
-                className="block rounded-xl border border-gray-200/70 bg-white p-4 transition-all duration-200 hover:border-indigo-200 hover:shadow-soft-md"
+                className="block rounded-xl border border-border p-4 transition-colors duration-150 hover:bg-accent"
               >
                 <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                  <div className="h-11 w-11 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
                     {initialsFromName(session.personaName)}
                   </div>
                   <div className="flex-1 min-w-0">

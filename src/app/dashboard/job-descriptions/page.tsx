@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
-import { JobDescriptionRowSkeleton } from "@/components/dashboard/page-skeletons";
+import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { formatDateTime } from "@/lib/format";
 
@@ -85,16 +85,16 @@ export default function JobDescriptionsPage() {
         icon={<FileText className="h-6 w-6" />}
         iconColor="green"
         actions={
-          <Link href="/simulate/setup">
-            <Button>
+          <Button asChild>
+            <Link href="/simulate/setup">
               <Sparkles className="mr-2 h-4 w-4" />
               Start an interview
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4 text-indigo-600" />
@@ -208,7 +208,7 @@ export default function JobDescriptionsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">Saved job descriptions</CardTitle>
           <CardDescription>
@@ -217,11 +217,7 @@ export default function JobDescriptionsPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {status === "loading" && sortedItems.length === 0 ? (
-            <div className="space-y-2">
-              <JobDescriptionRowSkeleton />
-              <JobDescriptionRowSkeleton />
-              <JobDescriptionRowSkeleton />
-            </div>
+            <DocumentListSkeleton />
           ) : status === "error" ? (
             // Ahead of the empty check on purpose. This chain used to run
             // loading -> length === 0, so a failed fetch produced the cheerful
@@ -246,7 +242,7 @@ export default function JobDescriptionsPage() {
             sortedItems.map((item) => (
               <div
                 key={item.id}
-                className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 transition-all duration-150 hover:border-green-200 hover:shadow-soft"
+                className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors duration-150 hover:bg-accent"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-100 text-green-600 shrink-0">
                   <FileText className="h-4 w-4" />
@@ -263,10 +259,11 @@ export default function JobDescriptionsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                   onClick={() => setPendingDelete(item.id)}
                   aria-label="Delete job description"
                 >
-                  <Trash2 className="h-4 w-4 text-gray-500" />
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
             ))

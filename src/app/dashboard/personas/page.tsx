@@ -188,11 +188,11 @@ export default function PersonasPage() {
           {sortedLibrary.map((entry) => (
             <Card
               key={entry.id}
-              className="group border border-gray-200/60 hover:border-purple-200 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
+              className="group shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
             >
               <CardHeader>
                 <div className="flex items-start gap-4">
-                  <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-base font-semibold shadow-soft-md shrink-0">
+                  <div className="h-14 w-14 rounded-xl bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-base font-semibold shadow-soft-md shrink-0">
                     {initialsFromName(entry.config.name)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -250,7 +250,7 @@ export default function PersonasPage() {
                   <span>Pushback {entry.config.pushback ?? 5}/10</span>
                 </div>
 
-                <div className="flex items-center justify-end gap-1 pt-1">
+                <div className="flex items-center justify-end gap-1 pt-1 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100">
                   <Button
                     variant="ghost"
                     size="icon"
