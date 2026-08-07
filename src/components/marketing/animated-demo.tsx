@@ -192,10 +192,7 @@ export function AnimatedDemo() {
           <DemoBubble key={`done-${index}`} turn={turn} />
         ))}
         {partial && (
-          <DemoBubble
-            turn={{ ...typingTurn, content: partial }}
-            typing
-          />
+          <DemoBubble turn={{ ...typingTurn, content: partial }} typing />
         )}
       </div>
     </div>
@@ -213,7 +210,13 @@ function DemoBubble({ turn, typing }: { turn: DemoTurn; typing?: boolean }) {
             : "rounded-tl-sm border border-gray-200/80 bg-gray-50 text-gray-800"
         }`}
       >
-        <span className={typing ? "typing-caret" : undefined}>
+        <span
+          className={
+            typing
+              ? "after:ml-0.5 after:inline-block after:h-[1em] after:w-0.5 after:animate-caret-blink after:bg-current after:align-text-bottom after:content-[''] motion-reduce:after:animate-none"
+              : undefined
+          }
+        >
           {turn.content}
         </span>
       </div>

@@ -56,7 +56,18 @@ export function Reveal({
   return (
     <Tag
       ref={ref as React.Ref<HTMLDivElement & HTMLLIElement>}
-      className={cn("reveal", visible && "reveal-visible", className)}
+      className={cn(
+        // The old `.reveal` / `.reveal-visible` pair, as utilities. Every
+        // declaration it carried has an equivalent: the 0.6s duration and the
+        // easing curve as arbitrary values, and `motion-reduce:` doing the job
+        // the `prefers-reduced-motion` media query used to do by hand.
+        "transition-[opacity,transform] duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[opacity,transform]",
+        "motion-reduce:transition-none",
+        visible
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-6 motion-reduce:opacity-100 motion-reduce:translate-y-0",
+        className,
+      )}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}

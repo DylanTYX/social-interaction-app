@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
+          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Sessions</p>
@@ -376,7 +376,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
+          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Avg score</p>
@@ -400,7 +400,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
+          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">
@@ -422,7 +422,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover-lift">
+          <Card className="border border-gray-200/60 hover:border-gray-300 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Mode mix</p>

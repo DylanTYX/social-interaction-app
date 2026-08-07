@@ -181,7 +181,7 @@ export default function PersonasPage() {
           {sortedLibrary.map((entry) => (
             <Card
               key={entry.id}
-              className="group border border-gray-200/60 hover:border-purple-200 hover:shadow-soft-md transition-all duration-200 hover-lift"
+              className="group border border-gray-200/60 hover:border-purple-200 hover:shadow-soft-md transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0"
             >
               <CardHeader>
                 <div className="flex items-start gap-4">
