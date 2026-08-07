@@ -211,8 +211,8 @@ export class SpeechService {
   private isSpeakingFlag = false;
 
   // Streaming TTS queue: utterances are fed to one persistent synthesizer as
-  // soon as each is synthesized (Azure queues speaker playback). We only wait
-  // for onAudioEnd once per burst, not between every sentence.
+  // soon as each is synthesized (Azure queues speaker playback), and the whole
+  // burst is waited on exactly once, in `waitForQueuedPlayback`.
   private speechGeneration = 0;
   private pendingSpeakCount = 0;
   private pendingUtterances: Array<{
@@ -224,15 +224,43 @@ export class SpeechService {
     reject: (error: Error) => void;
   }> = [];
   private queueWorkerRunning = false;
-  private queuePlaybackSettled: Promise<void> = Promise.resolve();
+  /** Resolves when the worker has finished *synthesizing*, not playing. */
+  private queueSynthesisSettled: Promise<void> = Promise.resolve();
+  /**
+   * Force-settles the synthesis request currently in flight. The SDK does not
+   * invoke a pending `speakTextAsync` callback when the synthesizer is closed
+   * underneath it, so without this a `stopSpeaking()` landing mid-sentence
+   * strands the worker forever and the interviewer never speaks again.
+   */
+  private abortActiveFeed: (() => void) | null = null;
   private queuePlayback: {
     synthesizer: SpeechSDK.SpeechSynthesizer;
     speakerDestination: SpeechSDK.SpeakerAudioDestination;
     audioConfig: SpeechSDK.AudioConfig;
     voiceName: string;
+    /** Characters handed to Azure, used to size the playback-wait ceiling. */
+    queuedChars: number;
   } | null = null;
 
+  /**
+   * Where a TTS failure goes. Every failure in this path used to end at a
+   * `console.warn` — so "the interviewer did not speak" was indistinguishable
+   * from "the interviewer had nothing to say", both to the user and to the UI,
+   * which shows a "Speaking…" badge driven purely by optimism.
+   */
+  private playbackErrorHandler: ((message: string) => void) | null = null;
+
   private constructor() {}
+
+  /** Register (or clear, with `null`) the sink for TTS failures. */
+  onPlaybackError(handler: ((message: string) => void) | null): void {
+    this.playbackErrorHandler = handler;
+  }
+
+  private reportPlaybackFailure(message: string): void {
+    console.warn("TTS playback:", message);
+    this.playbackErrorHandler?.(message);
+  }
 
   static getInstance(): SpeechService {
     if (!SpeechService.instance) {
@@ -253,7 +281,10 @@ export class SpeechService {
     if (!this.config) return false;
     if (!this.config.authorizationToken) return false;
     if (!this.config.region) return false;
-    if (Number.isFinite(this.config.expiresAt) && Date.now() > this.config.expiresAt) {
+    if (
+      Number.isFinite(this.config.expiresAt) &&
+      Date.now() > this.config.expiresAt
+    ) {
       return false;
     }
     return true;
@@ -267,9 +298,34 @@ export class SpeechService {
     );
   }
 
-  /** Resolves when all queued streaming utterances have finished playing. */
-  waitForQueuedPlayback(): Promise<void> {
-    return this.queuePlaybackSettled;
+  /**
+   * Resolves when every queued streaming utterance has actually finished
+   * playing. Call it once, after the last `speakQueued` for a turn — it is what
+   * closes the audio stream, so nothing may be enqueued after it.
+   *
+   * This used to return a promise the worker settled between sentences, which
+   * is why the interviewer's audio arrived minutes late; see
+   * `waitForQueuePlaybackEnd` for the mechanism.
+   */
+  async waitForQueuedPlayback(): Promise<void> {
+    // Synthesis first. Re-read the promise each pass: the worker replaces it
+    // when it re-kicks itself for utterances that landed as it was exiting.
+    while (this.queueWorkerRunning || this.pendingUtterances.length > 0) {
+      await this.queueSynthesisSettled;
+    }
+
+    const playback = this.queuePlayback;
+    if (!playback) {
+      this.isSpeakingFlag = false;
+      return;
+    }
+
+    try {
+      await this.waitForQueuePlaybackEnd(playback);
+    } finally {
+      this.disposeQueuePlayback();
+      this.isSpeakingFlag = false;
+    }
   }
 
   /**
@@ -389,8 +445,9 @@ export class SpeechService {
       const phraseList = options?.phraseList?.filter(Boolean) ?? [];
       if (phraseList.length > 0) {
         try {
-          const phraseListGrammar =
-            SpeechSDK.PhraseListGrammar.fromRecognizer(this.recognizer);
+          const phraseListGrammar = SpeechSDK.PhraseListGrammar.fromRecognizer(
+            this.recognizer,
+          );
           phraseList.forEach((phrase) => phraseListGrammar.addPhrase(phrase));
         } catch (error) {
           console.warn("Failed to apply phrase list:", error);
@@ -545,6 +602,11 @@ export class SpeechService {
     prosody?: ProsodyOptions,
   ): Promise<void> {
     if (!this.isInitialized()) {
+      // A lapsed or missing token. Silently resolving here is what made a
+      // dead session look like a quiet interviewer.
+      this.reportPlaybackFailure(
+        "Speech credentials are not available, so the interviewer could not be voiced.",
+      );
       return Promise.resolve();
     }
     const trimmed = text.trim();
@@ -576,23 +638,24 @@ export class SpeechService {
     this.isSpeakingFlag = true;
 
     let resolveSettled!: () => void;
-    this.queuePlaybackSettled = new Promise<void>((resolve) => {
+    this.queueSynthesisSettled = new Promise<void>((resolve) => {
       resolveSettled = resolve;
     });
 
     void (async () => {
       try {
-        while (true) {
-          const fed = await this.feedPendingUtterances();
-          if (!fed) break;
-          await this.waitForQueuePlaybackEnd();
-          if (this.pendingUtterances.length === 0) break;
-        }
+        // Drain synthesis and nothing else. The worker used to `await
+        // waitForQueuePlaybackEnd()` between batches, which was both
+        // unresolvable (see there) and unnecessary: every utterance is appended
+        // to the *same* MediaSource buffer, so the browser already plays them
+        // back-to-back. Feeding sentence N+1 while N is audible is the point of
+        // the shared synthesizer, and is what keeps the gaps out.
+        await this.feedPendingUtterances();
       } finally {
-        this.disposeQueuePlayback();
         this.queueWorkerRunning = false;
-        this.isSpeakingFlag = false;
         resolveSettled();
+        // Something may have been enqueued between the last drain check and
+        // clearing the flag.
         if (this.pendingUtterances.length > 0) {
           this.kickQueueWorker();
         }
@@ -617,16 +680,16 @@ export class SpeechService {
         item.resolve();
         fed = true;
       } catch (error) {
-        item.reject(
-          error instanceof Error ? error : new Error(String(error)),
-        );
+        item.reject(error instanceof Error ? error : new Error(String(error)));
       }
     }
 
     return fed;
   }
 
-  private ensureQueuePlayback(voiceUri: string | undefined): NonNullable<typeof this.queuePlayback> {
+  private ensureQueuePlayback(
+    voiceUri: string | undefined,
+  ): NonNullable<typeof this.queuePlayback> {
     const voiceName = voiceUri || "en-US-AriaNeural";
 
     if (this.queuePlayback && this.queuePlayback.voiceName === voiceName) {
@@ -650,6 +713,7 @@ export class SpeechService {
       speakerDestination,
       audioConfig,
       voiceName,
+      queuedChars: 0,
     };
 
     this.synthesizer = synthesizer;
@@ -681,31 +745,50 @@ export class SpeechService {
       ? buildProsodySsml(trimmed, voiceName, item.prosody as ProsodyOptions)
       : null;
 
+    playback.queuedChars += trimmed.length;
+
     return new Promise<void>((resolve, reject) => {
       let settled = false;
+      // Collected rather than held in `let`s, because `finish` is defined
+      // before the timers it has to clear.
+      const cleanups: Array<() => void> = [];
+
       const finish = (action: () => void) => {
         if (settled) return;
         settled = true;
+        for (const cleanup of cleanups) cleanup();
+        if (this.abortActiveFeed === abort) this.abortActiveFeed = null;
         action();
       };
+
+      // Closing a synthesizer does not invoke the pending request's callbacks,
+      // so a `stopSpeaking()` that lands mid-sentence would otherwise leave
+      // this promise permanently unsettled — and with it `queueWorkerRunning`,
+      // which gates every future utterance for the life of the page.
+      const abort = () => finish(resolve);
+      this.abortActiveFeed = abort;
+
+      // Independent backstop for a synthesis that neither completes, cancels
+      // nor errors — a dropped websocket, most likely.
+      const synthesisTimeout = setTimeout(
+        () => finish(() => reject(new Error("Speech synthesis timed out"))),
+        30_000,
+      );
+      cleanups.push(() => clearTimeout(synthesisTimeout));
 
       const onResult = (result: SpeechSDK.SpeechSynthesisResult) => {
         if (settled) return;
 
         if (
-          result.reason ===
-          SpeechSDK.ResultReason.SynthesizingAudioCompleted
+          result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted
         ) {
           finish(resolve);
           return;
         }
 
         if (result.reason === SpeechSDK.ResultReason.Canceled) {
-          const cancellation =
-            SpeechSDK.CancellationDetails.fromResult(result);
-          if (
-            cancellation.reason === SpeechSDK.CancellationReason.Error
-          ) {
+          const cancellation = SpeechSDK.CancellationDetails.fromResult(result);
+          if (cancellation.reason === SpeechSDK.CancellationReason.Error) {
             finish(() =>
               reject(
                 new Error(
@@ -731,32 +814,97 @@ export class SpeechService {
     });
   }
 
-  private waitForQueuePlaybackEnd(): Promise<void> {
-    const destination = this.queuePlayback?.speakerDestination;
-    if (!destination) {
-      return Promise.resolve();
-    }
+  /**
+   * Wait for the burst that has been fed to `playback` to finish playing.
+   *
+   * **This is the fix for the minutes-long TTS delay.** The old version armed
+   * `destination.onAudioEnd` and a 120-second safety timer, and the timer was
+   * always what fired — `onAudioEnd` was unreachable by construction:
+   *
+   *   `onAudioEnd` is only invoked from `privAudio.onended`
+   *   (`SpeakerAudioDestination.js:149-151`). `onended` on a MediaSource-backed
+   *   element needs `MediaSource.endOfStream()`, reached only via
+   *   `canEndStream()`, which requires `privIsClosed` — set exclusively by
+   *   `close()`. The SDK calls `close()` on adapter dispose, never per
+   *   utterance, and the queue path deliberately keeps one destination alive
+   *   across a burst. The media duration is also pinned at 1800s, so the
+   *   element never ends on its own.
+   *
+   * So: close the destination ourselves. That drives `endOfStream()`, the
+   * element plays out its real buffered length, and `onended` fires for real.
+   * Closing is safe here because this runs only after synthesis has drained,
+   * and nothing may be enqueued afterwards.
+   */
+  private waitForQueuePlaybackEnd(
+    playback: NonNullable<typeof this.queuePlayback>,
+  ): Promise<void> {
+    const destination = playback.speakerDestination;
 
     return new Promise<void>((resolve) => {
       let settled = false;
-      // `finish` closes over this and clears it, so it cannot be assigned at
-      // declaration — it is set on the line after `finish` exists.
-      // eslint-disable-next-line prefer-const
-      let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
+      const cleanups: Array<() => void> = [];
 
       const finish = () => {
         if (settled) return;
         settled = true;
-        if (safetyTimeout) clearTimeout(safetyTimeout);
+        for (const cleanup of cleanups) cleanup();
         resolve();
       };
 
       destination.onAudioEnd = finish;
-      safetyTimeout = setTimeout(finish, 120_000);
+
+      try {
+        destination.close();
+      } catch {
+        // A destination that will not close will never report an end either.
+        finish();
+        return;
+      }
+
+      const audio = destination.internalAudio as HTMLAudioElement | undefined;
+
+      // Belt and braces around `onended`: if the element has already finished
+      // by the time we look, or ends without the handler firing, this catches
+      // it within a tick. It also catches the autoplay case — a document with
+      // no sticky user activation rejects `play()` inside the SDK with no
+      // `.catch`, leaving a paused element at time zero that will never end.
+      let sawProgress = false;
+      const poll = setInterval(() => {
+        if (!audio) return;
+        if (audio.ended) return finish();
+        if (audio.currentTime > 0) {
+          sawProgress = true;
+          return;
+        }
+        // Two seconds in, still at zero and not even trying: nothing is going
+        // to play. Give up rather than hold the microphone shut.
+        if (!sawProgress && audio.paused) {
+          this.reportPlaybackFailure(
+            "Audio playback did not start. The browser may be blocking autoplay.",
+          );
+          finish();
+        }
+      }, 500);
+      cleanups.push(() => clearInterval(poll));
+
+      // Last resort, sized to the audio rather than a flat two minutes: Azure
+      // neural voices run near 15 chars/second, so ~70ms per character plus
+      // slack for network and buffering.
+      const estimateMs = playback.queuedChars * 70 + 5_000;
+      const ceiling = setTimeout(
+        finish,
+        Math.min(180_000, Math.max(8_000, estimateMs)),
+      );
+      cleanups.push(() => clearTimeout(ceiling));
     });
   }
 
   private disposeQueuePlayback(): void {
+    // Settle whatever is mid-synthesis *before* tearing the synthesizer down;
+    // the SDK will not call its callbacks once it is closed.
+    this.abortActiveFeed?.();
+    this.abortActiveFeed = null;
+
     if (!this.queuePlayback) return;
 
     const { synthesizer, audioConfig, speakerDestination } = this.queuePlayback;
@@ -845,8 +993,7 @@ export class SpeechService {
           if (settled) return;
 
           if (
-            result.reason ===
-            SpeechSDK.ResultReason.SynthesizingAudioCompleted
+            result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted
           ) {
             return;
           }
@@ -854,9 +1001,7 @@ export class SpeechService {
           if (result.reason === SpeechSDK.ResultReason.Canceled) {
             const cancellation =
               SpeechSDK.CancellationDetails.fromResult(result);
-            if (
-              cancellation.reason === SpeechSDK.CancellationReason.Error
-            ) {
+            if (cancellation.reason === SpeechSDK.CancellationReason.Error) {
               finish(() =>
                 reject(
                   new Error(
@@ -1093,9 +1238,10 @@ export interface SpeechTokenResponse {
 export async function fetchSpeechToken(): Promise<SpeechTokenResponse> {
   const response = await fetch("/api/speech-token", { cache: "no-store" });
   if (!response.ok) {
-    const detail = (await response
-      .json()
-      .catch(() => null)) as { error?: string; details?: string } | null;
+    const detail = (await response.json().catch(() => null)) as {
+      error?: string;
+      details?: string;
+    } | null;
     throw new Error(
       detail?.details ||
         detail?.error ||

@@ -308,8 +308,18 @@ function VoiceSimulateInner() {
 
     void mintToken();
 
+    // Surface TTS failures instead of leaving the candidate looking at a
+    // "Speaking…" badge with no audio. These are recoverable — the interview
+    // continues in text — so they go to the inline slot rather than replacing
+    // the screen the way a token failure does.
+    speechService.onPlaybackError((message) => {
+      if (cancelled) return;
+      setRecordingError(message);
+    });
+
     return () => {
       cancelled = true;
+      speechService.onPlaybackError(null);
       if (renewalTimer) clearTimeout(renewalTimer);
     };
   }, [bootstrap.status]);

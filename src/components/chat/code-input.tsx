@@ -9,6 +9,7 @@ import { sql } from "@codemirror/lang-sql";
 import { Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useAnswerTimer } from "@/hooks/use-answer-timer";
 import {
   Select,
   SelectContent,
@@ -52,9 +53,18 @@ export function CodeInput({
   disabled,
   language,
   onLanguageChange,
+  timeLimitSeconds = 300,
+  timeoutFallbackMessage = "[No response submitted before time expired.]",
 }: {
   onSend: (message: string) => void;
   disabled?: boolean;
+  /**
+   * The same limit prose answers get. Without this, switching to the editor
+   * would quietly hand the candidate an untimed answer — the toggle is a
+   * choice of *how* to answer, not of whether the clock runs.
+   */
+  timeLimitSeconds?: number;
+  timeoutFallbackMessage?: string;
   /**
    * Owned by the caller so it survives the remount between turns.
    *
@@ -81,8 +91,36 @@ export function CodeInput({
     setNote("");
   }, [canSend, code, language, note, onSend]);
 
+  const { timerText, isWarning } = useAnswerTimer({
+    timeLimitSeconds,
+    disabled,
+    // Closes over the live draft. `useAnswerTimer` keeps this in a ref, so a
+    // new identity per keystroke does not re-arm the countdown.
+    onExpire: () => {
+      if (disabled) return false;
+      // Half-written code is still an answer, and a partial solution tells the
+      // report more than the fallback string does. Fall back only when the
+      // editor is genuinely empty.
+      onSend(
+        code.trim()
+          ? formatCodeAnswer(code, language, note)
+          : timeoutFallbackMessage,
+      );
+      setCode("");
+      setNote("");
+      return true;
+    },
+  });
+
   return (
     <div className="space-y-2">
+      <div
+        className={`text-xs font-medium ${
+          isWarning ? "text-red-600" : "text-slate-500"
+        }`}
+      >
+        Response timer: {timerText}
+      </div>
       <div className="flex items-center justify-between gap-2">
         <Select
           value={language}
