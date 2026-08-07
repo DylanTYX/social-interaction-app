@@ -251,7 +251,7 @@ export function FinalizeStep({
                   });
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Choose a voice" />
                 </SelectTrigger>
                 <SelectContent>

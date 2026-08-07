@@ -300,7 +300,7 @@ function RoundCard({
                   onChange(applyRoundType(round, next as InterviewRoundType))
                 }
               >
-                <SelectTrigger id={ids.type}>
+                <SelectTrigger id={ids.type} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -397,7 +397,7 @@ function RoundCard({
                   })
                 }
               >
-                <SelectTrigger id={ids.persona}>
+                <SelectTrigger id={ids.persona} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
