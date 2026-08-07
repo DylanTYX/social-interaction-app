@@ -5,10 +5,7 @@
  */
 
 export type CommunicationStyle =
-  | "direct"
-  | "diplomatic"
-  | "collaborative"
-  | "analytical";
+  "direct" | "diplomatic" | "collaborative" | "analytical";
 export type Strictness = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Warmth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Pace = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
@@ -151,6 +148,13 @@ function clampDial<T extends number>(value: T | undefined): T {
 /**
  * Generate a full system prompt from persona config
  */
+/**
+ * Exported so a test can assert it survives into the built prompt, and so the
+ * wording lives in one place rather than being buried in a template literal.
+ */
+export const NATIONALITY_IS_BACKGROUND =
+  "Your nationality and background are biographical detail only. Never use them to decide how direct, formal, deferential, or demanding you are, and never assume anything about the candidate from theirs. Your interviewing behaviour comes solely from the style, pace, pushback, and standards described below.";
+
 export function generatePersonaPrompt(config: PersonaConfig): string {
   const communicationProfile = buildCommunicationProfile(
     config.communicationStyle,
@@ -170,6 +174,17 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
 
   const parts = [
     `You are ${config.name}, a ${config.seniority} from ${config.nationality} working in ${config.industry}. You have ${config.yearsExperience} years of experience in this field.`,
+    // Placed immediately after the only sentence that names a nationality, so
+    // the constraint sits next to the thing it constrains.
+    //
+    // Nationality exists to make the interviewer a specific person rather than
+    // a faceless prompt — it is read nowhere else in the codebase. Without this
+    // line a model will happily infer directness, deference or formality from a
+    // demonym, which is stereotyping regardless of intent, and would make the
+    // interviewer's behaviour depend on a variable the app cannot measure or
+    // justify. Behaviour comes from the dials below, which are explicit,
+    // controllable and testable. See docs/DEMO.md.
+    NATIONALITY_IS_BACKGROUND,
     communicationProfile,
     paceExpression,
     pushbackExpression,

@@ -5,54 +5,12 @@ import {
   estimateFollowupDifficulty,
 } from "@/lib/decision-engine";
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import { makeAnalysis } from "@/lib/test-support/analysis";
 
 /**
  * A strong, fully-formed answer. Individual tests weaken one dimension at a
  * time so each assertion pins down exactly one branch of `chooseStrategy`.
  */
-function makeAnalysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
-  return {
-    overallScore: 80,
-    starAnalysis: {
-      situation: { present: true, quality: 8, context: "" },
-      task: { present: true, quality: 8, clarity: "" },
-      action: {
-        present: true,
-        quality: 8,
-        specificity: 8,
-        ownership: 8,
-        summary: "",
-      },
-      result: { present: true, quality: 8, quantified: true, impact: "" },
-    },
-    specificityMetrics: {
-      hasMetrics: true,
-      metricCount: 2,
-      hasTimeframes: true,
-      hasStakeholders: true,
-      vaguenessScore: 2,
-      concreteExamples: 2,
-    },
-    confidenceIndicators: {
-      hesitationMarkers: 0,
-      assertivenessScore: 8,
-      qualificationCount: 0,
-      revisionsCount: 0,
-      clarity: 8,
-    },
-    responseQuality: {
-      length: 120,
-      isRelevant: true,
-      addressesExplicitly: true,
-      depthLevel: "deep",
-      thinkingVisible: true,
-    },
-    strengths: ["clear ownership"],
-    gaps: [],
-    followupTopics: ["tradeoffs"],
-    ...overrides,
-  };
-}
 
 /**
  * A technical-round analysis. The analyzer deliberately emits a *zeroed* STAR
@@ -203,8 +161,9 @@ describe("decideInterviewAction — technical rounds", () => {
   it("does not apply the zeroed-STAR penalty to escalation", () => {
     // The zeroed STAR block used to add a flat +5 to `vaguenessWeight`,
     // pushing it past the escalation threshold on nearly every technical turn.
-    expect(decideInterviewAction(makeTechnicalAnalysis(), base).shouldEscalate)
-      .toBe(false);
+    expect(
+      decideInterviewAction(makeTechnicalAnalysis(), base).shouldEscalate,
+    ).toBe(false);
   });
 
   it("uses the technical rubric when the round is technical but the block is missing", () => {
@@ -310,10 +269,12 @@ describe("decideInterviewAction — confidence and focus", () => {
 
 describe("estimateFollowupDifficulty", () => {
   it("scales with the answer's score", () => {
-    expect(estimateFollowupDifficulty(makeAnalysis({ overallScore: 80 }), base))
-      .toBe(8);
-    expect(estimateFollowupDifficulty(makeAnalysis({ overallScore: 20 }), base))
-      .toBe(2);
+    expect(
+      estimateFollowupDifficulty(makeAnalysis({ overallScore: 80 }), base),
+    ).toBe(8);
+    expect(
+      estimateFollowupDifficulty(makeAnalysis({ overallScore: 20 }), base),
+    ).toBe(2);
   });
 
   it("stays within 1..10 at the extremes", () => {
