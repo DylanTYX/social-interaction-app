@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   FileText,
   Lightbulb,
   Mic,
@@ -134,11 +133,12 @@ export default function SessionReportPage({
           cache: "no-store",
         });
         if (!response.ok) {
-          const detail = (await response
-            .json()
-            .catch(() => null)) as { error?: string } | null;
+          const detail = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
           throw new Error(
-            detail?.error ?? `Failed to load session (HTTP ${response.status}).`,
+            detail?.error ??
+              `Failed to load session (HTTP ${response.status}).`,
           );
         }
         const payload = (await response.json()) as ReportPayload;
@@ -209,10 +209,7 @@ export default function SessionReportPage({
   const coverage = parseCoverage(readCompetencyCoverage(session));
   const ModeIcon = session.practiceMode === "voice" ? Mic : MessageSquare;
   const overallScore = pickNumber(session.metrics, "averageOverallScore");
-  const confidenceScore = pickNumber(
-    session.metrics,
-    "averageConfidenceScore",
-  );
+  const confidenceScore = pickNumber(session.metrics, "averageConfidenceScore");
   const starScore = pickNumber(session.metrics, "averageSTARScore");
   const usesTechnicalRubric = isTechnicalRound(currentRound?.type);
 
@@ -234,9 +231,9 @@ export default function SessionReportPage({
         method: "POST",
       });
       if (!response.ok) {
-        const detail = (await response
-          .json()
-          .catch(() => null)) as { error?: string } | null;
+        const detail = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(detail?.error ?? "Could not start the next round.");
       }
       const payload = (await response.json()) as {
@@ -275,278 +272,273 @@ export default function SessionReportPage({
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-sky-50/40 px-6 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/dashboard" aria-label="Back to dashboard">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                Session report
-              </p>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                {session.scenarioTitle ?? session.scenarioValue}
-              </h1>
-            </div>
-          </div>
+    // `AppShell` owns the scroll container and background now. The back arrow
+    // is gone with it — the sidebar is the way out, which is the whole reason
+    // this page needed chrome: you land here after every session and had one
+    // exit.
+    <div className="mx-auto max-w-5xl space-y-6 p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+            Session report
+          </p>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {session.scenarioTitle ?? session.scenarioValue}
+          </h1>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="gap-1">
-              <ModeIcon className="h-3 w-3" />
-              {session.practiceMode === "voice" ? "Voice" : "Text"}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="gap-1">
+            <ModeIcon className="h-3 w-3" />
+            {session.practiceMode === "voice" ? "Voice" : "Text"}
+          </Badge>
+          <Badge variant="outline">{session.personaName}</Badge>
+          <Badge variant="secondary">{session.turnCount} turns</Badge>
+          {jobDescription && (
+            <Badge
+              variant="outline"
+              className="border-indigo-200 bg-indigo-50 text-indigo-700"
+              title={jobDescription.title}
+            >
+              <FileText className="mr-1 h-3 w-3" />
+              <span className="max-w-[180px] truncate">
+                {jobDescription.roleTitle ?? jobDescription.title}
+              </span>
             </Badge>
-            <Badge variant="outline">{session.personaName}</Badge>
-            <Badge variant="secondary">{session.turnCount} turns</Badge>
-            {jobDescription && (
-              <Badge
-                variant="outline"
-                className="border-indigo-200 bg-indigo-50 text-indigo-700"
-                title={jobDescription.title}
-              >
-                <FileText className="mr-1 h-3 w-3" />
-                <span className="max-w-[180px] truncate">
-                  {jobDescription.roleTitle ?? jobDescription.title}
-                </span>
-              </Badge>
-            )}
-            <div className="ml-1 flex items-center gap-2 print:hidden">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={handleCopyLink}
-              >
-                <Link2 className="h-4 w-4" />
-                Copy link
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => window.print()}
-              >
-                <Printer className="h-4 w-4" />
-                Download PDF
-              </Button>
-            </div>
+          )}
+          <div className="ml-1 flex items-center gap-2 print:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleCopyLink}
+            >
+              <Link2 className="h-4 w-4" />
+              Copy link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-4 w-4" />
+              Download PDF
+            </Button>
           </div>
         </div>
+      </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                Overall score
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-slate-900">
-                {formatScore(overallScore ?? session.averageScore)}
-              </p>
-              <ScoreComparison
-                sessionId={session.id}
-                currentScore={overallScore ?? session.averageScore}
-                currentStartedAt={session.startedAt}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                Communication
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-slate-900">
-                {confidenceScore === null
-                  ? "—"
-                  : `${Math.round(confidenceScore * 10)}%`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                {usesTechnicalRubric ? "Technical rubric" : "STAR average"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-slate-900">
-                {starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                Duration
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-slate-900">
-                {formatDuration(session.durationMinutes)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <CalibrationCard
-          sessionId={session.id}
-          actualScore={overallScore ?? session.averageScore}
-        />
-
-        {loop?.enabled && currentRound && (
-          <Card className="border-indigo-200/80 bg-indigo-50/40">
-            <CardHeader>
-              <CardTitle className="text-base">
-                Round {loop.currentRoundIndex + 1} of {loop.rounds.length} complete
-              </CardTitle>
-              <CardDescription>
-                {currentRound.title} · {ROUND_TYPE_LABELS[currentRound.type]}
-              </CardDescription>
-            </CardHeader>
-            {nextRound ? (
-              <CardContent className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm text-slate-700">
-                  Next up: <strong>{nextRound.title}</strong>
-                  {suggestedBreakMinutes(currentRound.durationMinutes) > 0
-                    ? ` · suggested ${suggestedBreakMinutes(currentRound.durationMinutes)} min break`
-                    : ""}
-                </div>
-                <Button
-                  onClick={() => void handleStartNextRound()}
-                  disabled={isStartingNextRound}
-                  className="gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {isStartingNextRound ? "Starting..." : "Start next round"}
-                </Button>
-                <p className="w-full text-xs text-slate-500">
-                  Your next interviewer will see a short summary of this round.
-                </p>
-                {nextRoundError && (
-                  <p className="w-full text-sm text-red-600" role="alert">
-                    {nextRoundError}
-                  </p>
-                )}
-              </CardContent>
-            ) : (
-              <CardContent className="space-y-3">
-                <p className="text-sm text-slate-700">
-                  You finished the full loop. Nice work.
-                </p>
-                {loopId && (
-                  <Link href={`/simulate/loop/${loopId}`}>
-                    <Button variant="outline" className="gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      View combined loop report
-                    </Button>
-                  </Link>
-                )}
-              </CardContent>
-            )}
-            {nextRound && loopId && (
-              <CardContent className="pt-0">
-                <Link
-                  href={`/simulate/loop/${loopId}`}
-                  className="text-sm font-medium text-indigo-700 hover:underline"
-                >
-                  See how you are tracking across rounds so far →
-                </Link>
-              </CardContent>
-            )}
-          </Card>
-        )}
-
-        <CompetencyCoverageCard coverage={coverage} />
-
-        {session.summary && (
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Session summary</CardTitle>
-              <CardDescription>
-                Auto-generated rolling summary used during the interview.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                {session.summary}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-slate-200/80 bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              Overall score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">
+              {formatScore(overallScore ?? session.averageScore)}
+            </p>
+            <ScoreComparison
+              sessionId={session.id}
+              currentScore={overallScore ?? session.averageScore}
+              currentStartedAt={session.startedAt}
+            />
+          </CardContent>
+        </Card>
 
         <Card className="border-slate-200/80 bg-white">
-          <CardHeader>
-            <CardTitle className="text-base">Transcript</CardTitle>
-            <CardDescription>
-              {messages.length} messages ·{" "}
-              {formatTimestamp(session.startedAt)}
-              {session.endedAt ? ` → ${formatTimestamp(session.endedAt)}` : ""}
-            </CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              Communication
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {messages.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No messages were recorded for this session.
-              </p>
-            ) : (
-              (() => {
-                const visible = messages.filter(
-                  (message) => message.role !== "system",
-                );
-                let lastQuestion = "";
-                return visible.map((message) => {
-                  const isUser = message.role === "user";
-                  const questionForTurn = lastQuestion;
-                  if (!isUser) {
-                    lastQuestion = message.content;
-                  }
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex flex-col ${
-                        isUser ? "items-end" : "items-start"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-2xl rounded-2xl border px-4 py-3 ${
-                          isUser
-                            ? "border-blue-200 bg-blue-50 text-slate-900"
-                            : "border-slate-200 bg-white text-slate-800"
-                        }`}
-                      >
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                          {isUser ? "You" : session.personaName}
-                        </p>
-                        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
-                          {message.content}
-                        </p>
-                      </div>
-                      {isUser && questionForTurn && (
-                        <TurnCoaching
-                          question={questionForTurn}
-                          answer={message.content}
-                          roundType={currentRound?.type}
-                          sessionId={id}
-                          turnIndex={message.turnIndex}
-                        />
-                      )}
-                    </div>
-                  );
-                });
-              })()
-            )}
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">
+              {confidenceScore === null
+                ? "—"
+                : `${Math.round(confidenceScore * 10)}%`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200/80 bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              {usesTechnicalRubric ? "Technical rubric" : "STAR average"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">
+              {starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200/80 bg-white">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-[0.16em] text-slate-500">
+              Duration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">
+              {formatDuration(session.durationMinutes)}
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      <CalibrationCard
+        sessionId={session.id}
+        actualScore={overallScore ?? session.averageScore}
+      />
+
+      {loop?.enabled && currentRound && (
+        <Card className="border-indigo-200/80 bg-indigo-50/40">
+          <CardHeader>
+            <CardTitle className="text-base">
+              Round {loop.currentRoundIndex + 1} of {loop.rounds.length}{" "}
+              complete
+            </CardTitle>
+            <CardDescription>
+              {currentRound.title} · {ROUND_TYPE_LABELS[currentRound.type]}
+            </CardDescription>
+          </CardHeader>
+          {nextRound ? (
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-slate-700">
+                Next up: <strong>{nextRound.title}</strong>
+                {suggestedBreakMinutes(currentRound.durationMinutes) > 0
+                  ? ` · suggested ${suggestedBreakMinutes(currentRound.durationMinutes)} min break`
+                  : ""}
+              </div>
+              <Button
+                onClick={() => void handleStartNextRound()}
+                disabled={isStartingNextRound}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                {isStartingNextRound ? "Starting..." : "Start next round"}
+              </Button>
+              <p className="w-full text-xs text-slate-500">
+                Your next interviewer will see a short summary of this round.
+              </p>
+              {nextRoundError && (
+                <p className="w-full text-sm text-red-600" role="alert">
+                  {nextRoundError}
+                </p>
+              )}
+            </CardContent>
+          ) : (
+            <CardContent className="space-y-3">
+              <p className="text-sm text-slate-700">
+                You finished the full loop. Nice work.
+              </p>
+              {loopId && (
+                <Link href={`/simulate/loop/${loopId}`}>
+                  <Button variant="outline" className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    View combined loop report
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          )}
+          {nextRound && loopId && (
+            <CardContent className="pt-0">
+              <Link
+                href={`/simulate/loop/${loopId}`}
+                className="text-sm font-medium text-indigo-700 hover:underline"
+              >
+                See how you are tracking across rounds so far →
+              </Link>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      <CompetencyCoverageCard coverage={coverage} />
+
+      {session.summary && (
+        <Card className="border-slate-200/80 bg-white">
+          <CardHeader>
+            <CardTitle className="text-base">Session summary</CardTitle>
+            <CardDescription>
+              Auto-generated rolling summary used during the interview.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+              {session.summary}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-slate-200/80 bg-white">
+        <CardHeader>
+          <CardTitle className="text-base">Transcript</CardTitle>
+          <CardDescription>
+            {messages.length} messages · {formatTimestamp(session.startedAt)}
+            {session.endedAt ? ` → ${formatTimestamp(session.endedAt)}` : ""}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {messages.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No messages were recorded for this session.
+            </p>
+          ) : (
+            (() => {
+              const visible = messages.filter(
+                (message) => message.role !== "system",
+              );
+              let lastQuestion = "";
+              return visible.map((message) => {
+                const isUser = message.role === "user";
+                const questionForTurn = lastQuestion;
+                if (!isUser) {
+                  lastQuestion = message.content;
+                }
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex flex-col ${
+                      isUser ? "items-end" : "items-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-2xl rounded-2xl border px-4 py-3 ${
+                        isUser
+                          ? "border-blue-200 bg-blue-50 text-slate-900"
+                          : "border-slate-200 bg-white text-slate-800"
+                      }`}
+                    >
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {isUser ? "You" : session.personaName}
+                      </p>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
+                        {message.content}
+                      </p>
+                    </div>
+                    {isUser && questionForTurn && (
+                      <TurnCoaching
+                        question={questionForTurn}
+                        answer={message.content}
+                        roundType={currentRound?.type}
+                        sessionId={id}
+                        turnIndex={message.turnIndex}
+                      />
+                    )}
+                  </div>
+                );
+              });
+            })()
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -611,7 +603,9 @@ function TurnCoaching({
         error?: string;
       };
       if (!response.ok) {
-        throw new Error(payload.error ?? "Could not generate a stronger answer.");
+        throw new Error(
+          payload.error ?? "Could not generate a stronger answer.",
+        );
       }
       setResult(payload);
     } catch (err) {

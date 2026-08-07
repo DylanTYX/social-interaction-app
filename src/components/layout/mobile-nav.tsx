@@ -10,6 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNavItemActive } from "@/lib/nav";
 
 const ITEMS = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
@@ -30,8 +31,9 @@ export function MobileNav() {
       <div className="flex items-stretch justify-around">
         {ITEMS.map((item) => {
           const Icon = item.icon;
-          const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // Shared with the sidebar. The identical copy this replaced lit
+          // "Home" on every dashboard sub-page alongside the real one.
+          const active = isNavItemActive(pathname, item.href);
           return (
             <Link
               key={item.href}

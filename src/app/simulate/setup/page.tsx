@@ -1,10 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChevronLeft,
@@ -624,129 +622,122 @@ function SetupWizard() {
   const canProceedFromStep = blockedReason === null;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 via-white to-gray-50/50">
-      <div className="mx-auto max-w-5xl space-y-8 p-8">
-        <PageHeader
-          eyebrow="Practice"
-          title="Interview practice"
-          description="Four steps, then you are interviewing."
-          icon={<Sparkles className="h-6 w-6" />}
-          iconColor="blue"
-          actions={
-            <Button variant="outline" asChild>
-              <Link href="/dashboard" className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to dashboard
-              </Link>
-            </Button>
-          }
-        />
+    // No `min-h-screen` and no background: `AppShell`'s <main> owns the scroll
+    // container and the page background now, exactly as it does for every
+    // /dashboard page.
+    <div className="mx-auto max-w-5xl space-y-8 p-8">
+      <PageHeader
+        eyebrow="Practice"
+        title="Interview practice"
+        description="Four steps, then you are interviewing."
+        icon={<Sparkles className="h-6 w-6" />}
+        iconColor="blue"
+      />
 
-        <Stepper currentStepId={currentStep} onStepSelect={setCurrentStep} />
+      <Stepper currentStepId={currentStep} onStepSelect={setCurrentStep} />
 
-        {/* No CardHeader. The stepper already names the step, and every
+      {/* No CardHeader. The stepper already names the step, and every
             section inside carries its own CardTitle sitting directly above its
             controls — so a step-level title/description pair only restated
             what was above it and what was below it. On the first step it
             repeated the inner heading word for word. */}
-        <div className="space-y-6">
-          {currentStep === "context" && (
-            <ContextStep
-              setup={setup}
-              quickStarts={BRIEF_QUICK_STARTS}
-              onModeChange={updateMode}
-              onUpdate={(partial) =>
-                updateSetup(
-                  "customScenarioBrief" in partial
-                    ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
-                    : partial,
-                )
-              }
-            />
-          )}
+      <div className="space-y-6">
+        {currentStep === "context" && (
+          <ContextStep
+            setup={setup}
+            quickStarts={BRIEF_QUICK_STARTS}
+            onModeChange={updateMode}
+            onUpdate={(partial) =>
+              updateSetup(
+                "customScenarioBrief" in partial
+                  ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
+                  : partial,
+              )
+            }
+          />
+        )}
 
-          {currentStep === "rounds" && (
-            <LoopStep
-              value={setup.interviewLoop}
-              practiceMode={setup.practiceMode}
-              jobDescriptionText={
-                setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
-              }
-              personaLibrary={personaLibrary}
-              onChange={(interviewLoop) => updateSetup({ interviewLoop })}
-            />
-          )}
+        {currentStep === "rounds" && (
+          <LoopStep
+            value={setup.interviewLoop}
+            practiceMode={setup.practiceMode}
+            jobDescriptionText={
+              setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
+            }
+            personaLibrary={personaLibrary}
+            onChange={(interviewLoop) => updateSetup({ interviewLoop })}
+          />
+        )}
 
-          {currentStep === "persona" && (
-            <PersonaStep
-              value={setup.personaConfig}
-              activeLibraryId={setup.personaLibraryId}
-              library={personaLibrary}
-              isLoading={personaLibraryLoading}
-              onPatch={updatePersona}
-              onPick={handlePickPersona}
-              onRandomize={handleRandomizePersona}
-              onSaveAsNew={handleSavePersona}
-              onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
-              onDuplicate={handleDuplicatePersona}
-              onDelete={handleDeletePersona}
-              onResetLibrary={handleResetLibrary}
-            />
-          )}
+        {currentStep === "persona" && (
+          <PersonaStep
+            value={setup.personaConfig}
+            activeLibraryId={setup.personaLibraryId}
+            library={personaLibrary}
+            isLoading={personaLibraryLoading}
+            onPatch={updatePersona}
+            onPick={handlePickPersona}
+            onRandomize={handleRandomizePersona}
+            onSaveAsNew={handleSavePersona}
+            onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
+            onDuplicate={handleDuplicatePersona}
+            onDelete={handleDeletePersona}
+            onResetLibrary={handleResetLibrary}
+          />
+        )}
 
-          {currentStep === "review" && (
-            <FinalizeStep
-              setup={setup}
-              onUpdate={updateSetup}
-              onMicCheck={checkMicrophone}
-              microphoneStatus={microphoneStatus}
-              microphoneMessage={microphoneMessage}
-              voiceOptions={azureVoiceOptions}
-            />
-          )}
+        {currentStep === "review" && (
+          <FinalizeStep
+            setup={setup}
+            onUpdate={updateSetup}
+            onMicCheck={checkMicrophone}
+            microphoneStatus={microphoneStatus}
+            microphoneMessage={microphoneMessage}
+            voiceOptions={azureVoiceOptions}
+          />
+        )}
 
-          {(launchError || personaLibraryError) && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {launchError ?? personaLibraryError}
-            </div>
-          )}
+        {(launchError || personaLibraryError) && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {launchError ?? personaLibraryError}
+          </div>
+        )}
 
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              variant="ghost"
-              onClick={goBack}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              {isFirstStep ? "Cancel" : "Back"}
-            </Button>
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            variant="ghost"
+            onClick={goBack}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {isFirstStep ? "Cancel" : "Back"}
+          </Button>
 
-            <div className="flex items-center gap-3">
-              {/* Previously the button just went disabled with no reason
+          <div className="flex items-center gap-3">
+            {/* Previously the button just went disabled with no reason
                     given, which on a step of mostly-optional fields is a dead
                     end. */}
-              {canProceedFromStep
-                ? isLastStep && (
-                    <p className="text-xs text-muted-foreground">
-                      Saved automatically. You can come back any time.
-                    </p>
-                  )
-                : blockedReason && (
-                    <p className="text-xs text-destructive">{blockedReason}</p>
-                  )}
-              <Button
-                onClick={goNext}
-                disabled={!canProceedFromStep || isLaunching}
-                className="gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-              >
-                {isLastStep
-                  ? isLaunching
-                    ? "Starting..."
-                    : "Begin interview"
-                  : "Continue"}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
+            {canProceedFromStep
+              ? isLastStep && (
+                  <p className="text-xs text-muted-foreground">
+                    Saved automatically. You can come back any time.
+                  </p>
+                )
+              : blockedReason && (
+                  <p className="text-xs text-destructive">{blockedReason}</p>
+                )}
+            <Button
+              onClick={goNext}
+              disabled={!canProceedFromStep || isLaunching}
+              className="gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+            >
+              {isLastStep
+                ? isLaunching
+                  ? "Starting..."
+                  : "Begin interview"
+                : "Continue"}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
