@@ -160,19 +160,50 @@ export async function resetPersonaPresets(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<PersonaRecord[]> {
-  const { error: delError } = await supabase
+  // Restore before removing, never the other way round.
+  //
+  // This was DELETE-all-presets then INSERT-the-seeds, with no transaction. Any
+  // failure in the insert — a dropped connection, a timeout, an RLS hiccup —
+  // left the user with **no presets at all** and no way back: `listPersonas`
+  // only re-seeds when the table is completely empty, so anyone who had saved a
+  // single persona of their own would never get the presets again. Permanent,
+  // silent data loss from a button labelled "Restore presets".
+  //
+  // Each step below leaves a valid library if the next one fails. The worst
+  // outcome is now a stale preset that should have been pruned, which the next
+  // reset clears.
+  const seedRows = buildSeedRows(userId);
+
+  // 1. Make sure every preset exists. A concurrent reset or first-load may have
+  //    seeded already; the partial unique index turns that into a conflict
+  //    rather than duplicates.
+  const { error: seedError } = await supabase.from("personas").insert(seedRows);
+  if (seedError && !isUniqueViolation(seedError)) throw seedError;
+
+  // 2. Reset the ones that already existed back to their canonical config —
+  //    this is what "restore" means for a preset the user has edited. Six rows,
+  //    on an explicit user action, so a loop is fine. `upsert` cannot do this
+  //    in one call: the unique index is partial (`where kind = 'preset'`) and
+  //    PostgREST has no way to supply the matching predicate for inference.
+  for (const row of seedRows) {
+    const { error: updateError } = await supabase
+      .from("personas")
+      .update({ config: row.config })
+      .eq("user_id", userId)
+      .eq("kind", "preset")
+      .eq("name", row.name);
+    if (updateError) throw updateError;
+  }
+
+  // 3. Drop presets that are no longer part of the shipped set. Last, because
+  //    it is the only destructive step.
+  const { error: pruneError } = await supabase
     .from("personas")
     .delete()
     .eq("user_id", userId)
-    .eq("kind", "preset");
-  if (delError) throw delError;
-
-  const { error: seedError } = await supabase
-    .from("personas")
-    .insert(buildSeedRows(userId));
-  // A concurrent reset or first-load may have re-seeded between our delete and
-  // this insert; the unique index makes that a conflict rather than duplicates.
-  if (seedError && !isUniqueViolation(seedError)) throw seedError;
+    .eq("kind", "preset")
+    .not("name", "in", `(${seedRows.map((row) => `"${row.name}"`).join(",")})`);
+  if (pruneError) throw pruneError;
 
   return selectPersonas(supabase);
 }
