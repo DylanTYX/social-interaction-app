@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 function Pulse({ className }: { className: string }) {
-  return <div className={`animate-pulse rounded-lg bg-gray-100 ${className}`} />;
+  return (
+    <div className={`animate-pulse rounded-lg bg-gray-100 ${className}`} />
+  );
 }
 
 export function SessionRowSkeleton() {
@@ -62,15 +64,39 @@ export function PersonaGridSkeleton({ count = 6 }: { count?: number }) {
   );
 }
 
-export function JobDescriptionRowSkeleton() {
+/**
+ * A placeholder for one saved-document row.
+ *
+ * Shaped to the row it stands in for, which the previous version was not: it
+ * had no leading icon tile, three text lines where the row has two, and `p-4`
+ * against the row's `p-3` — so the list visibly resettled when the fetch
+ * landed. A skeleton that does not match its content is worse than none, since
+ * it promises a layout and then breaks it.
+ *
+ * Serves both job descriptions and resumes. They render identical rows, but
+ * only one of them used a shared component; the other hand-rolled three grey
+ * blocks.
+ */
+export function DocumentRowSkeleton() {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200/70 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
+      <Pulse className="h-9 w-9 shrink-0 rounded-lg" />
       <div className="flex-1 space-y-2">
-        <Pulse className="h-4 w-1/3 max-w-xs" />
+        <Pulse className="h-4 w-1/2 max-w-xs" />
         <Pulse className="h-3 w-2/3 max-w-md" />
-        <Pulse className="h-3 w-24" />
       </div>
-      <Pulse className="h-9 w-9 shrink-0 rounded-md" />
+      <Pulse className="h-8 w-8 shrink-0 rounded-md" />
+    </div>
+  );
+}
+
+/** Three document rows, the count both list pages were already hard-coding. */
+export function DocumentListSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }).map((_, index) => (
+        <DocumentRowSkeleton key={index} />
+      ))}
     </div>
   );
 }

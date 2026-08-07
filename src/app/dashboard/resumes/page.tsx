@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useResumes } from "@/hooks/use-resumes";
@@ -81,16 +82,16 @@ export default function ResumesPage() {
         icon={<FileUser className="h-6 w-6" />}
         iconColor="purple"
         actions={
-          <Link href="/simulate/setup">
-            <Button>
+          <Button asChild>
+            <Link href="/simulate/setup">
               <Sparkles className="mr-2 h-4 w-4" />
               Start an interview
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileUser className="h-4 w-4 text-purple-600" />
@@ -205,7 +206,7 @@ export default function ResumesPage() {
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200/80 shadow-soft bg-white">
+      <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">Saved resumes</CardTitle>
           <CardDescription>
@@ -214,14 +215,7 @@ export default function ResumesPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           {status === "loading" && sortedItems.length === 0 ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((index) => (
-                <div
-                  key={index}
-                  className="h-16 rounded-xl bg-gray-100 animate-pulse"
-                />
-              ))}
-            </div>
+            <DocumentListSkeleton />
           ) : status === "error" ? (
             // Ahead of the empty check on purpose. This chain used to run
             // loading -> length === 0, so a failed fetch produced the cheerful
@@ -246,7 +240,7 @@ export default function ResumesPage() {
             sortedItems.map((item) => (
               <div
                 key={item.id}
-                className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 transition-all duration-150 hover:border-purple-200 hover:shadow-soft"
+                className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors duration-150 hover:bg-accent"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-600 shrink-0">
                   <FileUser className="h-4 w-4" />
@@ -262,10 +256,11 @@ export default function ResumesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                   onClick={() => setPendingDelete(item.id)}
                   aria-label="Delete resume"
                 >
-                  <Trash2 className="h-4 w-4 text-gray-500" />
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
             ))

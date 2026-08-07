@@ -9,7 +9,7 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Pane - Stable Gradient Panel */}
-      <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-center items-center bg-linear-to-br from-blue-600 via-purple-600 to-indigo-700 p-12 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div

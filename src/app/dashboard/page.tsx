@@ -76,7 +76,7 @@ function MetricTile({
   caption: string;
 }) {
   return (
-    <Card className="border border-border shadow-soft">
+    <Card className="shadow-soft">
       <CardContent className="space-y-2">
         <div className="flex items-center gap-2">
           <span
@@ -99,7 +99,8 @@ function MetricTile({
 }
 
 export default function DashboardPage() {
-  const { sessions, status, error, refresh } = useInterviewHistory(STATS_WINDOW);
+  const { sessions, status, error, refresh } =
+    useInterviewHistory(STATS_WINDOW);
   const { user } = useCurrentUser();
   // Fetches the whole library to derive one boolean, which is wasteful. Kept
   // deliberately: dropping it would silently remove the JD-aware branch of the
@@ -160,7 +161,7 @@ export default function DashboardPage() {
           The mode tiles are gone because the wizard's first step now asks that
           question properly, with the consequences attached: voice needs a
           microphone and has no code editor. A dashboard tile skipped all that. */}
-      <Card className="border border-border shadow-soft">
+      <Card className="shadow-soft">
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-foreground">
@@ -236,7 +237,9 @@ export default function DashboardPage() {
             color="teal"
             label="Practice time"
             value={hasError ? "—" : formatPracticeMinutes(stats.totalMinutes)}
-            caption={hasError ? "Couldn't load" : describeStatsWindow(stats.total)}
+            caption={
+              hasError ? "Couldn't load" : describeStatsWindow(stats.total)
+            }
           />
           <MetricTile
             icon={<Award className="h-4 w-4" />}
@@ -262,7 +265,7 @@ export default function DashboardPage() {
               </Link>
             </Button>
           </div>
-          <Card className="border border-border shadow-soft">
+          <Card className="shadow-soft">
             <CardContent>
               {hasError ? (
                 <ErrorStateCard
