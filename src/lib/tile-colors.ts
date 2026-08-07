@@ -7,13 +7,7 @@
  */
 
 export type TileColor =
-  | "blue"
-  | "purple"
-  | "indigo"
-  | "green"
-  | "orange"
-  | "pink"
-  | "teal";
+  "blue" | "purple" | "indigo" | "green" | "orange" | "pink" | "teal";
 
 /** Background + foreground for a solid accent tile. */
 export const TILE_COLORS: Record<TileColor, string> = {
@@ -47,3 +41,29 @@ export const TILE_BORDERS: Record<TileColor, string> = {
   pink: "hover:border-pink-200",
   teal: "hover:border-teal-200",
 };
+
+export const TILE_COLOR_NAMES: TileColor[] = [
+  "blue",
+  "purple",
+  "indigo",
+  "green",
+  "orange",
+  "pink",
+  "teal",
+];
+
+/**
+ * A stable accent for something that has no intrinsic colour — a persona, say.
+ *
+ * Deterministic on the key rather than random or index-based, so a persona
+ * keeps the same colour after the library is re-sorted ("most recent first"
+ * reorders on every save) and across reloads. Two personas can collide; that is
+ * fine, since the colour is a recognition aid, not an identifier.
+ */
+export function tileColorForKey(key: string): TileColor {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  }
+  return TILE_COLOR_NAMES[Math.abs(hash) % TILE_COLOR_NAMES.length];
+}
