@@ -340,37 +340,44 @@ async function readSseStream(
   let output = "";
   let usage: OpenAIUsage | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line.startsWith("data:")) continue;
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith("data:")) continue;
 
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
 
-      try {
-        const parsed = JSON.parse(payload) as {
-          choices?: Array<{ delta?: { content?: string } }>;
-          usage?: OpenAIUsage;
-        };
-        if (parsed.usage) usage = parsed.usage;
+        try {
+          const parsed = JSON.parse(payload) as {
+            choices?: Array<{ delta?: { content?: string } }>;
+            usage?: OpenAIUsage;
+          };
+          if (parsed.usage) usage = parsed.usage;
 
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          output += delta;
-          onChunk?.(delta);
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) {
+            output += delta;
+            onChunk?.(delta);
+          }
+        } catch {
+          // Ignore non-JSON heartbeats.
         }
-      } catch {
-        // Ignore non-JSON heartbeats.
       }
     }
+  } finally {
+    // Without this the upstream OpenAI body stayed locked and undrained until
+    // GC whenever the loop exited early — which it does on every client
+    // disconnect, because `onChunk` throws once the response stream is gone.
+    reader.releaseLock();
   }
 
   return { text: output.trim(), usage };
@@ -470,48 +477,79 @@ function formatSseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+/**
+ * Wrap the turn in an SSE response that survives the client walking away.
+ *
+ * The bug this fixes: `onChunk` used to call `controller.enqueue` directly. Once
+ * the client disconnects — switching tabs, hitting back, a wifi blip — the
+ * controller is errored and that enqueue **throws**. The throw unwinds out of
+ * `readSseStream`, out of `requestOpenAI`, and out of `task(...)` — which is
+ * `buildResult`, and it had not reached `appendTurn` yet.
+ *
+ * So a disconnect mid-reply destroyed the whole turn. Not just the interviewer's
+ * half: `append_interview_turn` writes the user row and the assistant row in one
+ * call, so **the candidate's own answer vanished too**. They came back, reloaded,
+ * and the answer they had just spent four minutes writing was not in the
+ * transcript. `usage.flush` never ran either, so the tokens were billed by
+ * OpenAI and recorded nowhere — `llm_usage` under-reported every abandoned turn.
+ *
+ * Writing to a gone client is now a no-op instead of an exception, so the task
+ * runs to completion and persists exactly as it would have. The user gets their
+ * answer and the interviewer's reply when they return, because the work
+ * finished server-side. A `cancel` handler catches the disconnect the moment
+ * the platform reports it, rather than waiting for the next failed write.
+ */
 function createStreamingResponse(
   task: (onChunk: (chunk: string) => void) => Promise<ChatTurnResponse>,
 ): Response {
   const encoder = new TextEncoder();
+  let clientGone = false;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      /** Best-effort write. A vanished client must not abort the turn. */
+      const send = (payload: string) => {
+        if (clientGone) return;
+        try {
+          controller.enqueue(encoder.encode(payload));
+        } catch {
+          // The stream is gone. Latch it so the rest of the turn stops trying,
+          // and — critically — keep going so the turn still gets persisted.
+          clientGone = true;
+        }
+      };
+
       try {
-        controller.enqueue(
-          encoder.encode(formatSseEvent("start", { status: "streaming" })),
-        );
+        send(formatSseEvent("start", { status: "streaming" }));
 
         const result = await task((chunk) => {
-          controller.enqueue(
-            encoder.encode(formatSseEvent("delta", { chunk })),
-          );
+          send(formatSseEvent("delta", { chunk }));
         });
 
-        controller.enqueue(encoder.encode(formatSseEvent("done", result)));
+        send(formatSseEvent("done", result));
       } catch (error) {
         // The 200 and the `start` event are already on the wire, so failures
         // have to be reported in-band. Log the detail server-side and send the
         // client the same opaque message a JSON 500 would carry.
         console.error("[POST /api/chat] stream failed:", error);
-        try {
-          controller.enqueue(
-            encoder.encode(
-              formatSseEvent("error", {
-                error: "Failed to generate response.",
-              }),
-            ),
-          );
-        } catch {
-          // The client disconnected mid-stream; nothing left to report to.
-        }
+        send(
+          formatSseEvent("error", { error: "Failed to generate response." }),
+        );
       } finally {
-        try {
-          controller.close();
-        } catch {
-          // Already closed by a client disconnect.
+        if (!clientGone) {
+          try {
+            controller.close();
+          } catch {
+            // Already closed by a client disconnect.
+          }
         }
       }
+    },
+
+    // Fired by the platform when the client goes away. Without this the first
+    // notice we got was an enqueue throwing, which was already too late.
+    cancel() {
+      clientGone = true;
     },
   });
 
