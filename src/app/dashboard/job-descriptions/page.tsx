@@ -17,12 +17,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { JobDescriptionRowSkeleton } from "@/components/dashboard/page-skeletons";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { formatDateTime } from "@/lib/format";
 
 export default function JobDescriptionsPage() {
-  const { items, status, error, uploadText, uploadPdf, remove } =
+  const { items, status, error, refresh, uploadText, uploadPdf, remove } =
     useJobDescriptions();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,8 +34,14 @@ export default function JobDescriptionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // `updatedAt` desc, numerically. It was `createdAt` with `localeCompare`,
+  // which meant editing an entry never moved it — and personas, the sibling
+  // library page, has always sorted by `updatedAt`.
   const sortedItems = useMemo(
-    () => [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () =>
+      [...items].sort(
+        (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
+      ),
     [items],
   );
 
@@ -215,6 +222,16 @@ export default function JobDescriptionsPage() {
               <JobDescriptionRowSkeleton />
               <JobDescriptionRowSkeleton />
             </div>
+          ) : status === "error" ? (
+            // Ahead of the empty check on purpose. This chain used to run
+            // loading -> length === 0, so a failed fetch produced the cheerful
+            // "add your first one" state and told the user their library was
+            // empty when it was actually unreachable.
+            <ErrorStateCard
+              title="Couldn't load your job descriptions"
+              description={error ?? "Something went wrong."}
+              onRetry={() => void refresh()}
+            />
           ) : sortedItems.length === 0 ? (
             <EmptyStateCard
               icon={<FileText className="h-6 w-6" />}
@@ -269,7 +286,6 @@ export default function JobDescriptionsPage() {
           setPendingDelete(null);
         }}
       />
-
     </div>
   );
 }

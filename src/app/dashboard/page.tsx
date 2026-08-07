@@ -28,8 +28,10 @@ import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { formatRelativeDate, initialsFromName } from "@/lib/format";
 import {
   computeSessionStats,
+  describeStatsWindow,
   formatAverageScore,
   formatPracticeMinutes,
+  STATS_WINDOW,
 } from "@/lib/session-stats";
 
 /**
@@ -97,7 +99,7 @@ function MetricTile({
 }
 
 export default function DashboardPage() {
-  const { sessions, status, error, refresh } = useInterviewHistory();
+  const { sessions, status, error, refresh } = useInterviewHistory(STATS_WINDOW);
   const { user } = useCurrentUser();
   // Fetches the whole library to derive one boolean, which is wasteful. Kept
   // deliberately: dropping it would silently remove the JD-aware branch of the
@@ -234,7 +236,7 @@ export default function DashboardPage() {
             color="teal"
             label="Practice time"
             value={hasError ? "—" : formatPracticeMinutes(stats.totalMinutes)}
-            caption={hasError ? "Couldn't load" : "All time"}
+            caption={hasError ? "Couldn't load" : describeStatsWindow(stats.total)}
           />
           <MetricTile
             icon={<Award className="h-4 w-4" />}

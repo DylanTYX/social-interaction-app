@@ -48,10 +48,12 @@ export function useResumes(): UseResumes {
     try {
       const response = await fetch("/api/resumes", { cache: "no-store" });
       if (!response.ok) {
+        // A 401 is an error, not an empty library. Swallowing it here made a
+        // signed-out user see the cheerful "add your first one" empty state —
+        // and made three sibling pages behave three different ways, since
+        // `usePersonaLibrary` has always surfaced it. One policy now.
         if (response.status === 401) {
-          setItems([]);
-          setStatus("ready");
-          return;
+          throw new Error("Your session expired. Sign in again to continue.");
         }
         const detail = (await response
           .json()

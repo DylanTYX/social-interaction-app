@@ -21,7 +21,9 @@ import {
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   computeSessionStats,
+  formatAverageScore,
   formatPracticeMinutes,
+  STATS_WINDOW,
 } from "@/lib/session-stats";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
@@ -309,7 +311,8 @@ function DimensionSparkline({ series }: { series: DimensionSeries }) {
 }
 
 export default function AnalyticsPage() {
-  const { sessions, status, error, refresh } = useInterviewHistory(50);
+  const { sessions, status, error, refresh } =
+    useInterviewHistory(STATS_WINDOW);
   const model = useMemo(() => buildModel(sessions), [sessions]);
   const isLoading = status === "loading" && sessions.length === 0;
 
@@ -387,9 +390,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold text-gray-900">
-                {model.averageScore === null
-                  ? "—"
-                  : `${Math.round(model.averageScore)}%`}
+                {formatAverageScore(model.averageScore)}
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 Best:{" "}
