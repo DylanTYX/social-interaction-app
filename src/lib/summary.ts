@@ -35,7 +35,33 @@ const SUMMARY_MAX_TOKENS = 400;
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 export const RECENT_MESSAGES_KEPT = 6;
-export const SUMMARY_REFRESH_EVERY = 4;
+/**
+ * Refresh cadence, in **turns** — one turn being a user message plus the
+ * interviewer's reply.
+ *
+ * This was expressed in messages (`SUMMARY_REFRESH_EVERY = 4`) and tested with
+ * `totalMessages % 4 === 0`, which silently never fired for voice sessions.
+ * Voice opens with a single assistant greeting, so its message count is
+ * permanently odd — 1, 3, 5, 7 — and an odd number is never divisible by 4.
+ * Every voice interview therefore refreshed its summary exactly once (on the
+ * `!hasExistingSummary` branch) and never again, so from turn four onward the
+ * interviewer was steering off a frozen summary and re-asking covered ground.
+ * Text sessions have no opening row, land on even counts, and worked — which is
+ * why it went unnoticed.
+ *
+ * Counting in turns is parity-independent and is what the comment above always
+ * claimed the behaviour was.
+ */
+export const SUMMARY_REFRESH_TURNS = 2;
+
+/**
+ * The same cadence in messages, for callers sizing a transcript window.
+ *
+ * `chat/route.ts` reads a fixed window that must cover the verbatim tail plus
+ * everything that could have aged out since the last refresh — a message count,
+ * not a turn count.
+ */
+export const SUMMARY_REFRESH_MESSAGES = SUMMARY_REFRESH_TURNS * 2;
 
 interface ConversationMessage {
   role: "user" | "assistant";
@@ -190,6 +216,11 @@ export function shouldRefreshSummary(
 ): boolean {
   if (totalMessages <= RECENT_MESSAGES_KEPT) return false;
   if (!hasExistingSummary) return true;
-  // After the first summary, refresh every N turns.
-  return totalMessages % SUMMARY_REFRESH_EVERY === 0;
+
+  // Messages → turns before applying the cadence. Dividing collapses the
+  // parity difference between a voice session (odd message counts, because of
+  // the opening greeting) and a text one (even), so both refresh on the same
+  // schedule instead of one of them never refreshing at all.
+  const turns = Math.floor(totalMessages / 2);
+  return turns > 0 && turns % SUMMARY_REFRESH_TURNS === 0;
 }

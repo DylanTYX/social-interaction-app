@@ -426,17 +426,44 @@ export async function listMessages(
   options: { limit?: number; ascending?: boolean } = {},
 ): Promise<MessageRecord[]> {
   const { limit, ascending = true } = options;
-  let query = supabase
+
+  // A limit means "the most recent N", never "the first N".
+  //
+  // This combined `ascending: true` with `.limit()`, which returns the OLDEST
+  // rows — so every caller that passed a limit was reading from the wrong end.
+  // `/resume` (200), `/report` (400) and `/export` (500) all silently truncated
+  // the *recent* half of a long session.
+  //
+  // The sharpest consequence was in `recoverPersistedTurn`, which inspects the
+  // last two messages to decide whether a turn landed before a stream failed.
+  // Past the cap it compared messages 199 and 200, concluded the turn was never
+  // written, and let the client re-POST it — duplicating the answer and
+  // re-running every model call, which is the exact double-charge that module
+  // exists to prevent.
+  //
+  // `chat/route.ts` already worked around this by hand (order descending, take
+  // the limit, reverse). That workaround now lives here, once.
+  if (limit) {
+    const { data, error } = await supabase
+      .from("interview_messages")
+      .select("id, role, content, turn_index, created_at")
+      .eq("session_id", sessionId)
+      .order("turn_index", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    const tail = (data ?? []).map((row) => rowToMessage(row as MessageRow));
+    // The query had to run descending to take the tail; hand it back in the
+    // order the caller asked for.
+    return ascending ? tail.reverse() : tail;
+  }
+
+  const { data, error } = await supabase
     .from("interview_messages")
     .select("id, role, content, turn_index, created_at")
     .eq("session_id", sessionId)
     .order("turn_index", { ascending });
 
-  if (limit) {
-    query = query.limit(limit);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((row) => rowToMessage(row as MessageRow));
 }

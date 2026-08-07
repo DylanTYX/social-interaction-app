@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/sessions";
 import {
   RECENT_MESSAGES_KEPT,
-  SUMMARY_REFRESH_EVERY,
+  SUMMARY_REFRESH_MESSAGES,
   selectRecentMessages,
   shouldRefreshSummary,
   updateRollingSummary,
@@ -90,7 +90,8 @@ const INTERVIEWER_MAX_TOKENS = 320;
 // Below this, an answer is treated as trivial ("yes", "ready") and skipped by
 // the analyzer to avoid wasting a scoring call.
 const MIN_ANALYZABLE_CHARS = 10;
-const TRIVIAL_ANSWER = /^(yes|no|ok|okay|sure|ready|i'?m ready|yep|yeah|nope)\.?$/i;
+const TRIVIAL_ANSWER =
+  /^(yes|no|ok|okay|sure|ready|i'?m ready|yep|yeah|nope)\.?$/i;
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
@@ -103,13 +104,13 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
  *   - `selectRecentMessages` sends the last RECENT_MESSAGES_KEPT verbatim;
  *   - `findPriorQuestion` needs the most recent assistant turn;
  *   - the summary refresh folds in whatever aged out of the verbatim window
- *     since the last refresh — at most SUMMARY_REFRESH_EVERY messages.
+ *     since the last refresh — at most SUMMARY_REFRESH_MESSAGES messages.
  *
  * The window covers all three, plus 2 for the pair appended this turn. The
  * slack means the summariser sees a little overlap with what it already
  * folded in, which is harmless; a gap would not be.
  */
-const TRANSCRIPT_WINDOW = RECENT_MESSAGES_KEPT + SUMMARY_REFRESH_EVERY + 2;
+const TRANSCRIPT_WINDOW = RECENT_MESSAGES_KEPT + SUMMARY_REFRESH_MESSAGES + 2;
 
 type ConversationMessage = { role: "user" | "assistant"; content: string };
 type OpenAIMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -563,11 +564,12 @@ export async function POST(request: Request) {
       return notFound("Session not found.");
     }
 
+    // `listMessages` takes the tail for a limited read now, so the
+    // order-descending-then-reverse dance this used to do by hand is gone.
     const recentRows = await listMessages(supabase, sessionId, {
       limit: TRANSCRIPT_WINDOW,
-      ascending: false,
     });
-    const conversation = messagesToConversation(recentRows.reverse());
+    const conversation = messagesToConversation(recentRows);
     const recent = selectRecentMessages(conversation);
 
     const launchMeta = readLaunchMeta(session);
@@ -578,12 +580,15 @@ export async function POST(request: Request) {
     // active round regardless; a one-round loop still has rounds[0].
     const loop = launchMeta?.interviewLoop;
     const roundType = loop?.rounds?.[loop.currentRoundIndex ?? 0]?.type;
-    const coverage: CompetencyCoverage = parseCoverage(readCompetencyCoverage(session));
+    const coverage: CompetencyCoverage = parseCoverage(
+      readCompetencyCoverage(session),
+    );
 
     const personaDescription = generatePersonaPrompt(session.personaConfig);
     const scenarioContext = (() => {
       const parts: string[] = [];
-      if (session.scenarioTitle) parts.push(`Scenario: ${session.scenarioTitle}`);
+      if (session.scenarioTitle)
+        parts.push(`Scenario: ${session.scenarioTitle}`);
       if (session.scenarioDescription)
         parts.push(`Description: ${session.scenarioDescription}`);
       return parts.length > 0 ? parts.join("\n") : undefined;
@@ -670,7 +675,10 @@ export async function POST(request: Request) {
             : undefined,
         };
         const decision = decideInterviewAction(analysis, decisionContext);
-        const difficulty = estimateFollowupDifficulty(analysis, decisionContext);
+        const difficulty = estimateFollowupDifficulty(
+          analysis,
+          decisionContext,
+        );
         strategy = decision.strategy;
         decisionReason = decision.reason;
         confidence = decision.confidence;

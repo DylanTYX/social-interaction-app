@@ -108,7 +108,9 @@ const MODEL_OWNED_FIELDS = [
   ["responseQuality", "addressesExplicitly"],
   ["responseQuality", "depthLevel"],
   ["responseQuality", "thinkingVisible"],
-] as const satisfies ReadonlyArray<readonly [keyof DeepPartialAnalysis, string]>;
+] as const satisfies ReadonlyArray<
+  readonly [keyof DeepPartialAnalysis, string]
+>;
 
 type DeepPartialAnalysis = {
   specificityMetrics?: Partial<SpecificityMetrics>;
@@ -193,7 +195,7 @@ function buildAnalysisPrompt(
   const useStar = !isTechnicalRound(roundType);
 
   const technicalBlock = isTechnicalRound(roundType)
-      ? `,
+    ? `,
   "technicalScores": {
     "problemFraming": number (0-10),
     "approach": number (0-10),
@@ -203,7 +205,7 @@ function buildAnalysisPrompt(
     "edgeCases": number (0-10),
     "codeQuality": number (0-10)
   }`
-      : "";
+    : "";
 
   const starBlock = useStar
     ? `"starAnalysis": {
@@ -285,6 +287,48 @@ ${candidateResponse}`;
  * Perform STAR analysis on candidate response
  * This is the core analysis function
  */
+/**
+ * A complete STAR block, whatever the model returned.
+ *
+ * `decision-engine.ts` reads `starAnalysis.situation.present` unguarded, so a
+ * partially-returned block is a TypeError in the middle of the turn pipeline —
+ * and that throw is caught and downgraded to a warning, so the turn silently
+ * loses its score rather than failing loudly.
+ *
+ * `present: false` and `quality: 0` are the honest defaults: the model did not
+ * report that component, so treating it as absent is truthful, and it steers
+ * the interviewer to probe for it.
+ */
+function withStarDefaults(
+  star: Partial<STARAnalysis> | undefined,
+): STARAnalysis {
+  return {
+    situation: {
+      present: star?.situation?.present ?? false,
+      quality: star?.situation?.quality ?? 0,
+      context: star?.situation?.context ?? "",
+    },
+    task: {
+      present: star?.task?.present ?? false,
+      quality: star?.task?.quality ?? 0,
+      clarity: star?.task?.clarity ?? "",
+    },
+    action: {
+      present: star?.action?.present ?? false,
+      quality: star?.action?.quality ?? 0,
+      specificity: star?.action?.specificity ?? 0,
+      ownership: star?.action?.ownership ?? 0,
+      summary: star?.action?.summary ?? "",
+    },
+    result: {
+      present: star?.result?.present ?? false,
+      quality: star?.result?.quality ?? 0,
+      quantified: star?.result?.quantified ?? false,
+      impact: star?.result?.impact ?? "",
+    },
+  };
+}
+
 export async function analyzeResponse(
   candidateResponse: string,
   question: string,
@@ -354,21 +398,30 @@ export async function analyzeResponse(
     // report with no explanation, and truncation should be rare enough that
     // the extra call barely registers. If it stops being rare, `llm_usage`
     // will show it — two analyzer rows for one turn.
-    if (result.choices[0].finish_reason === "length") {
+    // `choices` can come back empty — OpenAI does this on some content-filter
+    // and abort conditions. Indexing [0] blind threw a TypeError that the chat
+    // route downgraded to a warning, so the turn silently went unscored with no
+    // indication of why.
+    const choice = result.choices?.[0];
+    if (!choice) {
+      throw new Error("Analyzer returned no choices.");
+    }
+
+    if (choice.finish_reason === "length") {
       console.warn(
         `Analyzer truncated at ${ANALYZER_MAX_TOKENS} tokens; retrying at ${ANALYZER_RETRY_MAX_TOKENS}.`,
       );
       result = await callAnalyzer(ANALYZER_RETRY_MAX_TOKENS);
       options.usage?.record("analyzer", ANALYZER_MODEL, result?.usage);
 
-      if (result.choices[0].finish_reason === "length") {
+      if (result.choices?.[0]?.finish_reason === "length") {
         throw new Error(
           `Analyzer response was truncated even at ${ANALYZER_RETRY_MAX_TOKENS} tokens (finish_reason=length).`,
         );
       }
     }
 
-    const rawAnalysis = result.choices[0].message.content;
+    const rawAnalysis = result.choices?.[0]?.message?.content;
 
     // Parse the JSON response
     let analysisData;
@@ -396,9 +449,27 @@ export async function analyzeResponse(
     ).map(([parent, leaf]) => `${parent}.${leaf}`);
 
     return {
-      overallScore: analysisData.overallScore,
+      // Neutral rather than raw. A model that omits `overallScore` used to
+      // reach `buildSteeringBlock`, which interpolates it into the interviewer's
+      // next prompt — producing the literal sentence "The candidate's last
+      // answer scored NaN/100".
+      overallScore:
+        typeof analysisData.overallScore === "number" &&
+        Number.isFinite(analysisData.overallScore)
+          ? analysisData.overallScore
+          : 50,
       roundType,
-      starAnalysis: analysisData.starAnalysis,
+      // `starAnalysis` was the one judged object passed straight through while
+      // its three siblings below were defaulted. That asymmetry was load-
+      // bearing: `decision-engine.ts` reads `starAnalysis.situation.present`
+      // with no optional chaining, so an omitted block threw a TypeError which
+      // the chat route swallowed into a `console.warn` — the turn silently lost
+      // its score, its analysis row, its micro-feedback and its steering
+      // signal, and the user saw nothing at all.
+      //
+      // Note `averageStar` in the same file already used `star?.situation?.
+      // quality`, so the absence was known about in one place and not the other.
+      starAnalysis: withStarDefaults(analysisData.starAnalysis),
       technicalScores: analysisData.technicalScores,
       // The model-owned fields carry neutral defaults, because these three
       // objects are now *always* present — the counted fields below guarantee
@@ -432,9 +503,17 @@ export async function analyzeResponse(
         thinkingVisible: judged?.responseQuality?.thinkingVisible ?? false,
         length: counted.wordCount,
       },
-      strengths: analysisData.strengths,
-      gaps: analysisData.gaps,
-      followupTopics: analysisData.followupTopics,
+      // Always arrays. Consumers iterate these without guarding —
+      // `interview-metrics.ts` does `analysis.gaps.forEach`, inside a client
+      // render path, so a missing key surfaced as a raw TypeError message in
+      // the user-visible coaching card.
+      strengths: Array.isArray(analysisData.strengths)
+        ? analysisData.strengths
+        : [],
+      gaps: Array.isArray(analysisData.gaps) ? analysisData.gaps : [],
+      followupTopics: Array.isArray(analysisData.followupTopics)
+        ? analysisData.followupTopics
+        : [],
       omittedFields,
     };
   } catch (error) {
