@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   TrendingUp,
   Clock,
@@ -354,10 +355,7 @@ export default function AnalyticsPage() {
       {isLoading ? (
         <div className="grid md:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((index) => (
-            <div
-              key={index}
-              className="h-28 rounded-lg bg-gray-100 animate-pulse"
-            />
+            <Skeleton key={index} className="h-28" />
           ))}
         </div>
       ) : (

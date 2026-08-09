@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -123,7 +124,21 @@ const markdownComponents = {
   ),
 };
 
-export function ChatMessage({
+/**
+ * One transcript bubble.
+ *
+ * Memoised, and that is load-bearing rather than housekeeping. Streaming calls
+ * `setMessages` once per SSE chunk, so without this every settled bubble in the
+ * transcript re-rendered — and re-parsed its markdown — on every token of every
+ * reply. The hoisted `markdownComponents` above cut the cost of each of those
+ * renders; this removes the renders. Every prop is a primitive, so the default
+ * shallow comparison is exactly right.
+ *
+ * It also makes the entrance animation below viable: an un-memoised bubble is
+ * fine with CSS animations (a re-render does not restart one), but the profiler
+ * work needed to keep the streaming path smooth has to happen first regardless.
+ */
+export const ChatMessage = memo(function ChatMessage({
   role,
   content,
   timestamp,
@@ -139,7 +154,17 @@ export function ChatMessage({
   const initials = isUser ? "You" : initialsFromName(personaName);
 
   return (
-    <div className={cn("flex gap-3 items-start", isUser && "flex-row-reverse")}>
+    <div
+      className={cn(
+        "flex gap-3 items-start",
+        isUser && "flex-row-reverse",
+        // Only the user's own turn animates in. It has a genuine discrete
+        // mount — you press send and it appears — whereas the interviewer's
+        // bubble mounts empty and then fills token by token, so an entrance
+        // there would play against an empty box and fight the autoscroll.
+        isUser && "animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
+      )}
+    >
       {/* Avatar */}
       <div
         className={cn(
@@ -194,18 +219,30 @@ export function ChatMessage({
 
         {isUser && (feedbackLoading || feedbackHint) && (
           <p
-            className={`mt-1.5 max-w-full rounded-lg border px-3 py-1.5 text-xs leading-relaxed ${
+            // Keyed on the state so React swaps the element rather than
+            // mutating it in place. Without the key the settled chip inherits
+            // the placeholder's DOM node, and a CSS entrance on a node that is
+            // already on screen never plays.
+            key={feedbackLoading ? "pending" : "settled"}
+            className={cn(
+              "mt-1.5 max-w-full rounded-lg border px-3 py-1.5 text-xs leading-relaxed",
               feedbackLoading
-                ? "border-slate-200 bg-slate-50 text-slate-500 animate-pulse"
-                : FEEDBACK_TONE_CLASS[feedbackTone ?? "neutral"]
-            }`}
+                ? // `animate-breathe` and `animate-in` both write the
+                  // `animation` shorthand, so they cannot be combined — the
+                  // placeholder breathes, the settled chip fades in.
+                  "animate-breathe border-slate-200 bg-slate-50 text-slate-500"
+                : cn(
+                    "animate-in fade-in-0 slide-in-from-top-1 duration-200",
+                    FEEDBACK_TONE_CLASS[feedbackTone ?? "neutral"],
+                  ),
+            )}
           >
             {feedbackLoading ? "Coach is reviewing your answer…" : feedbackHint}
           </p>
         )}
 
         {isUser && deliveryNote && (
-          <p className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800">
+          <p className="mt-1.5 flex animate-in items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 fade-in-0 slide-in-from-top-1 duration-200">
             <span aria-hidden="true">🎙️</span>
             {deliveryNote}
           </p>
@@ -213,4 +250,4 @@ export function ChatMessage({
       </div>
     </div>
   );
-}
+});

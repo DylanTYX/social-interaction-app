@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -59,6 +59,7 @@ import {
 } from "@/lib/interview-stage-labels";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
+import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import { resolveAnswerFormat, type AnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
@@ -118,7 +119,7 @@ function ChatLoadingFallback() {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <div className="flex items-center gap-3 text-sm text-gray-500">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+        <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
         Preparing chat session...
       </div>
     </div>
@@ -270,10 +271,7 @@ function ChatSimulateInner() {
 
   // Keep the newest message in view. The voice screen has always done this;
   // the text transcript did not, so replies landed below the fold.
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const messagesEndRef = useTranscriptAutoscroll(messages);
 
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
@@ -686,7 +684,7 @@ function ChatSimulateInner() {
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+                  <span className="h-2 w-2 animate-breathe rounded-full bg-sky-500" />
                   Generating interviewer response...
                 </div>
               )}

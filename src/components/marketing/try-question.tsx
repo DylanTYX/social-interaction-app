@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useCountUp } from "@/hooks/use-count-up";
 import {
   scoreAnswerHeuristically,
   type HeuristicFeedback,
@@ -26,40 +27,25 @@ export function TryQuestion() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<HeuristicFeedback | null>(null);
-  const [displayScore, setDisplayScore] = useState(0);
-  const rafRef = useRef<number | null>(null);
+  const {
+    value: displayScore,
+    start: startScoreCount,
+    reset: resetScoreCount,
+  } = useCountUp(700);
 
   const question = SAMPLE_QUESTIONS[questionIndex];
-
-  useEffect(() => {
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  const animateScore = (target: number) => {
-    const start = performance.now();
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / 700);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayScore(Math.round(eased * target));
-      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-  };
 
   const handleScore = () => {
     if (answer.trim().length < 10) return;
     const result = scoreAnswerHeuristically(answer);
     setFeedback(result);
-    setDisplayScore(0);
-    animateScore(result.score);
+    startScoreCount(result.score);
   };
 
   const handleReset = () => {
     setAnswer("");
     setFeedback(null);
-    setDisplayScore(0);
+    resetScoreCount();
     setQuestionIndex((index) => (index + 1) % SAMPLE_QUESTIONS.length);
   };
 

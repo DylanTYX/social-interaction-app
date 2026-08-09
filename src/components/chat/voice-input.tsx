@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Mic, MicOff, Square, VolumeX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AnswerCountdown } from "@/components/chat/answer-countdown";
 
 interface VoiceInputProps {
   isRecording: boolean;
@@ -20,25 +20,20 @@ interface VoiceInputProps {
   onStopTts?: () => void;
 }
 
-function formatRemainingTime(seconds: number) {
-  const safe = Math.max(0, seconds);
-  const minutes = Math.floor(safe / 60);
-  const remainder = safe % 60;
-  return `${minutes.toString().padStart(2, "0")}:${remainder
-    .toString()
-    .padStart(2, "0")}`;
-}
-
 /**
  * Bottom-of-page recording control for the voice interview. It mirrors
  * `ChatInput`'s structure (timer line + primary action bar) so the text and
  * voice pages feel like siblings.
  *
- * Timer implementation: rather than calling `Date.now()` during render (which
- * is impure) or assigning state synchronously inside an effect, we drive
- * `elapsedSeconds` from a setInterval callback. The first sample is scheduled
- * on a microtask so the effect body itself stays free of synchronous setState
- * calls.
+ * Timer implementation: the countdown is `<AnswerCountdown>`, the same leaf the
+ * text and code inputs use — previously this file carried its own ticking state
+ * and its own `formatRemainingTime`, which disagreed with the shared one on
+ * negative input. Keeping the tick out here also stops the live "Hearing…"
+ * preview, which already re-renders on every partial recognition result, from
+ * being re-rendered four more times a second on top of that.
+ *
+ * The deadline is derived from the moment recording starts rather than from
+ * component mount, because the clock only runs while the candidate is speaking.
  */
 export function VoiceInput({
   isRecording,
@@ -53,28 +48,6 @@ export function VoiceInput({
   onStop,
   onStopTts,
 }: VoiceInputProps) {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!isRecording) {
-      return;
-    }
-
-    const startTime = Date.now();
-    const update = () => {
-      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
-    };
-
-    queueMicrotask(update);
-    const id = setInterval(update, 250);
-    return () => clearInterval(id);
-  }, [isRecording]);
-
-  const remainingSeconds = isRecording
-    ? Math.max(0, timeLimitSeconds - elapsedSeconds)
-    : timeLimitSeconds;
-  const timerWarning =
-    isRecording && remainingSeconds <= Math.min(60, timeLimitSeconds * 0.15);
   const livePreview = [finalTranscript, interimTranscript]
     .filter(Boolean)
     .join(" ")
@@ -83,22 +56,24 @@ export function VoiceInput({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div
-          className={`text-xs font-medium ${
-            timerWarning ? "text-red-600" : "text-slate-500"
-          }`}
-        >
-          {isRecording ? (
-            <>Response timer: {formatRemainingTime(remainingSeconds)}</>
-          ) : autoStartRecording && !isProcessing && !isSpeakingTts ? (
-            <>
-              Response timer: {formatRemainingTime(timeLimitSeconds)} · starts
-              when the interviewer finishes
-            </>
-          ) : (
-            <>Response timer: {formatRemainingTime(remainingSeconds)}</>
-          )}
-        </div>
+        <AnswerCountdown
+          // Remounted on the recording flag so stopping resets to the full
+          // limit rather than holding at wherever the clock stopped. The
+          // countdown stamps its own deadline when it starts, which is why no
+          // deadline is passed: here the clock begins with recording, not with
+          // the component.
+          key={isRecording ? "recording" : "idle"}
+          timeLimitSeconds={timeLimitSeconds}
+          paused={!isRecording}
+          suffix={
+            !isRecording &&
+            autoStartRecording &&
+            !isProcessing &&
+            !isSpeakingTts ? (
+              <> · starts when the interviewer finishes</>
+            ) : undefined
+          }
+        />
         {isSpeakingTts && onStopTts && (
           <Button
             variant="ghost"

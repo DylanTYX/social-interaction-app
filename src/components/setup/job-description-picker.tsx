@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { CheckCircle2, FileText, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -264,10 +265,7 @@ export function JobDescriptionPicker({
               {status === "loading" && items.length === 0 ? (
                 <div className="space-y-2">
                   {[0, 1].map((index) => (
-                    <div
-                      key={index}
-                      className="h-16 rounded-lg bg-muted animate-pulse"
-                    />
+                    <Skeleton key={index} className="h-16 bg-muted" />
                   ))}
                 </div>
               ) : items.length === 0 ? (

@@ -51,8 +51,21 @@
   --shadow-soft-lg:
     0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
 
+  /* The app's one easing curve, previously hardcoded inline in reveal.tsx.
+     Declared here so it becomes `ease-soft` and composes like any utility. */
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
   --animate-aurora-drift: aurora-drift 18s ease-in-out infinite;
-  --animate-caret-blink: caret-blink 1s steps(2) infinite;
+
+  /* Named `caret`, not `caret-blink`: tw-animate-css ships its own
+     `--animate-caret-blink`, and the two were resolving purely by import
+     order. A distinct name means neither shadows the other. */
+  --animate-caret: caret 1s steps(2) infinite;
+
+  /* For status dots that mean "something is happening right now". Tailwind's
+     `animate-pulse` is tuned for large skeleton blocks and reads as a harsh
+     strobe at 2px; this bottoms out at 0.45 instead of 0.5-of-nothing. */
+  --animate-breathe: breathe 2.2s ease-in-out infinite;
 
   @keyframes aurora-drift {
     0%,
@@ -67,7 +80,7 @@
     }
   }
 
-  @keyframes caret-blink {
+  @keyframes caret {
     0%,
     50% {
       opacity: 1;
@@ -75,6 +88,16 @@
     50.01%,
     100% {
       opacity: 0;
+    }
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
     }
   }
 }
@@ -119,6 +142,38 @@
   }
 }
 
+/* One global honouring of prefers-reduced-motion, rather than a `motion-reduce:`
+   variant hand-added to every animated element. The variant approach was already
+   failing: it covered five call sites on the marketing page and nothing at all
+   under /simulate, so the recording halo and every spinner ignored the setting.
+   A blanket rule cannot be forgotten by the next component.
+
+   Two deliberate exceptions. Reduced motion means "don't move things for
+   decoration" — it does not mean "remove the only signal that the app is
+   working". A frozen spinner reads as a hung request and a frozen skeleton reads
+   as broken content, so both are slowed rather than stopped. Everything else,
+   including the aurora blobs and every enter animation, is effectively off.
+
+   JS-driven motion (the rAF count-ups, the demo typewriter) can't be reached
+   from CSS and checks matchMedia itself — see use-count-up.ts. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin {
+    animation: spin 1.5s linear infinite !important;
+  }
+  .animate-pulse {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  }
+}
+
 /* The only hand-written CSS left, because none of it has a utility equivalent.
    `print-color-adjust` has no Tailwind class at all, and both rules here target
    the universal selector and <body> — global overrides that a per-element
@@ -132,6 +187,14 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     box-shadow: none !important;
+    /* Enter animations hold their element at opacity 0 until they run, and
+       print does not run them — so an un-animated element can print blank.
+       Cancelling the animation is enough to fix that: tw-animate-css applies
+       the fade inside the keyframe and never touches the element's own
+       `opacity`, so dropping the animation returns it to fully visible without
+       flattening anything that is dimmed on purpose. */
+    animation: none !important;
+    transition: none !important;
   }
   body {
     background: #fff !important;

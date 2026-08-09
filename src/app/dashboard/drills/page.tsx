@@ -12,6 +12,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
@@ -256,10 +257,10 @@ export default function DrillsPage() {
             )}
             {loading && (
               <div className="space-y-3">
-                <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
-                <div className="h-20 animate-pulse rounded bg-gray-100" />
-                <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
-                <div className="h-20 animate-pulse rounded bg-gray-100" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-20" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-20" />
               </div>
             )}
             {error && <p className="text-sm text-red-600">{error}</p>}

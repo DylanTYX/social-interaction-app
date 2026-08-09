@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+
+import { useCountUp } from "@/hooks/use-count-up";
 
 interface StatCounterProps {
   value: number;
@@ -10,9 +12,9 @@ interface StatCounterProps {
 }
 
 /**
- * Counts up from 0 to `value` the first time it scrolls into view. Uses
- * requestAnimationFrame with an ease-out curve so the number decelerates as it
- * lands. Respects prefers-reduced-motion by snapping straight to the value.
+ * Counts up from 0 to `value` the first time it scrolls into view. The count
+ * itself — rAF, ease-out, reduced-motion handling — lives in `useCountUp`;
+ * what's left here is the "first time it scrolls into view" part.
  */
 export function StatCounter({
   value,
@@ -21,34 +23,17 @@ export function StatCounter({
   durationMs = 1200,
 }: StatCounterProps) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [display, setDisplay] = useState(0);
   const startedRef = useRef(false);
+  const { value: display, start } = useCountUp(durationMs);
 
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
 
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
     const run = () => {
       if (startedRef.current) return;
       startedRef.current = true;
-
-      if (prefersReduced) {
-        setDisplay(value);
-        return;
-      }
-
-      const start = performance.now();
-      const tick = (now: number) => {
-        const progress = Math.min(1, (now - start) / durationMs);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setDisplay(Math.round(eased * value));
-        if (progress < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
+      start(value);
     };
 
     if (typeof IntersectionObserver === "undefined") {
@@ -69,7 +54,7 @@ export function StatCounter({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [value, durationMs]);
+  }, [value, start]);
 
   return (
     <div ref={ref}>

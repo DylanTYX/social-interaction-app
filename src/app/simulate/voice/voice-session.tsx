@@ -19,6 +19,7 @@ import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
+import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import type { ChatTurnResponse } from "@/lib/chat-contract";
 import {
   formatMessageTime,
@@ -149,7 +150,6 @@ function VoiceSimulateInner() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeakingTts, setIsSpeakingTts] = useState(false);
@@ -324,10 +324,9 @@ function VoiceSimulateInner() {
     };
   }, [bootstrap.status]);
 
-  // Auto-scroll messages.
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Auto-scroll messages. See the hook for why this is not simply "scroll
+  // smoothly whenever `messages` changes".
+  const messagesEndRef = useTranscriptAutoscroll(messages);
 
   // Single unmount-only cleanup. Stops in-flight TTS and recognition so the
   // interviewer voice does not bleed into other pages. We capture the
@@ -1091,7 +1090,7 @@ function VoiceSimulateInner() {
                       variant="secondary"
                       className="h-8 gap-1.5 px-3 text-blue-700 bg-blue-100"
                     >
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                      <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
                       Interviewer speaking
                     </Badge>
                     <Button
@@ -1155,7 +1154,7 @@ function VoiceSimulateInner() {
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+                  <span className="h-2 w-2 animate-breathe rounded-full bg-sky-500" />
                   Generating interviewer response...
                 </div>
               )}

@@ -96,7 +96,7 @@ function SetupLoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+        <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
         Preparing setup...
       </div>
     </div>
