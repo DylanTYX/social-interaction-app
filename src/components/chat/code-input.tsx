@@ -10,6 +10,7 @@ import { Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAnswerTimer } from "@/hooks/use-answer-timer";
+import { AnswerCountdown } from "@/components/chat/answer-countdown";
 import {
   Select,
   SelectContent,
@@ -91,7 +92,7 @@ export function CodeInput({
     setNote("");
   }, [canSend, code, language, note, onSend]);
 
-  const { timerText, isWarning } = useAnswerTimer({
+  const { deadlineMs } = useAnswerTimer({
     timeLimitSeconds,
     disabled,
     // Closes over the live draft. `useAnswerTimer` keeps this in a ref, so a
@@ -114,13 +115,13 @@ export function CodeInput({
 
   return (
     <div className="space-y-2">
-      <div
-        className={`text-xs font-medium ${
-          isWarning ? "text-red-600" : "text-slate-500"
-        }`}
-      >
-        Response timer: {timerText}
-      </div>
+      {/* A leaf, so the 4 Hz clock does not re-render the CodeMirror instance
+          below it for the whole length of the answer. */}
+      <AnswerCountdown
+        deadlineMs={deadlineMs}
+        timeLimitSeconds={timeLimitSeconds}
+        paused={disabled}
+      />
       <div className="flex items-center justify-between gap-2">
         <Select
           value={language}

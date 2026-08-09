@@ -17,6 +17,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * chat page), so mount is exactly "this turn started" — and an absolute
  * deadline cannot drift the way a decrementing counter does when the tab is
  * backgrounded and `setInterval` is throttled.
+ *
+ * This hook deliberately holds no ticking state. It used to: a `clockMs` that
+ * advanced four times a second, which re-rendered whichever input called it —
+ * including `CodeInput`, and with it a CodeMirror instance — for the entire
+ * length of an answer. Nothing about *expiry* needs a render, only the
+ * displayed digits do, so the digits moved into `<AnswerCountdown>` and this
+ * kept the part that has to close over the draft answer.
  */
 
 export function formatRemainingTime(seconds: number) {
@@ -48,7 +55,6 @@ export function useAnswerTimer({
   const [deadlineMs] = useState<number>(
     () => Date.now() + timeLimitSeconds * 1000,
   );
-  const [clockMs, setClockMs] = useState(() => Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasExpiredRef = useRef(false);
   // Held in a ref so a caller that rebuilds `onExpire` every render — which is
@@ -76,10 +82,7 @@ export function useAnswerTimer({
     if (timerRef.current) return;
 
     timerRef.current = setInterval(() => {
-      const now = Date.now();
-      setClockMs(now);
-
-      if (now < deadlineMs || hasExpiredRef.current) return;
+      if (Date.now() < deadlineMs || hasExpiredRef.current) return;
 
       hasExpiredRef.current = true;
       if (!onExpireRef.current()) {
@@ -92,16 +95,18 @@ export function useAnswerTimer({
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  const remainingSeconds = Math.max(
-    0,
-    Math.ceil((deadlineMs - clockMs) / 1000),
-  );
+  // The deadline is all a caller needs: hand it to `<AnswerCountdown>` to
+  // render, and the ticking stays inside that leaf.
+  return { deadlineMs };
+}
 
-  return {
-    remainingSeconds,
-    timerText: formatRemainingTime(remainingSeconds),
-    // Under a minute, or the last 15% of a short limit — whichever is sooner,
-    // so a 60-second limit does not spend its whole life in the warning colour.
-    isWarning: remainingSeconds <= Math.min(60, timeLimitSeconds * 0.15),
-  };
+/**
+ * Under a minute, or the last 15% of a short limit — whichever is sooner, so a
+ * 60-second limit does not spend its whole life in the warning colour.
+ */
+export function isTimerWarning(
+  remainingSeconds: number,
+  timeLimitSeconds: number,
+) {
+  return remainingSeconds <= Math.min(60, timeLimitSeconds * 0.15);
 }

@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 
 import { useAnswerTimer } from "@/hooks/use-answer-timer";
+import { AnswerCountdown } from "@/components/chat/answer-countdown";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
@@ -32,7 +33,7 @@ export function ChatInput({
     return true;
   }, [disabled, message, onSend]);
 
-  const { timerText, isWarning } = useAnswerTimer({
+  const { deadlineMs } = useAnswerTimer({
     timeLimitSeconds,
     disabled,
     // Closes over the live draft. `useAnswerTimer` keeps this in a ref, so a
@@ -66,13 +67,11 @@ export function ChatInput({
 
   return (
     <div className="space-y-2">
-      <div
-        className={`text-xs font-medium ${
-          isWarning ? "text-red-600" : "text-slate-500"
-        }`}
-      >
-        Response timer: {timerText}
-      </div>
+      <AnswerCountdown
+        deadlineMs={deadlineMs}
+        timeLimitSeconds={timeLimitSeconds}
+        paused={disabled}
+      />
       <div className="flex gap-3 items-end">
         {/* A placeholder is not a label: it disappears on focus and screen
             readers do not reliably announce it. This is the field the entire

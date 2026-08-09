@@ -6,6 +6,7 @@ import { ArrowLeft, Minus, TrendingDown, TrendingUp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -93,7 +94,7 @@ export default function LoopReportPage({
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl p-4 sm:p-8">
-        <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     );
   }

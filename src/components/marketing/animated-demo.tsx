@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Sparkles } from "lucide-react";
 
+import { useCountUp } from "@/hooks/use-count-up";
+
 type DemoTurn = {
   role: "ai" | "user";
   content: string;
@@ -49,15 +51,15 @@ export function AnimatedDemo() {
   const [completed, setCompleted] = useState<DemoTurn[]>([]);
   const [typingIndex, setTypingIndex] = useState(0);
   const [typedChars, setTypedChars] = useState(0);
-  const [score, setScore] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  // Keeps the latest score available to the rAF closure without re-running the
-  // main animation effect.
-  const scoreRef = useRef(0);
-  useEffect(() => {
-    scoreRef.current = score;
-  }, [score]);
+  // `useCountUp` counts from wherever it currently sits, which is what makes
+  // the meter climb 0 → 78 → 88 across the script rather than restarting.
+  const {
+    value: score,
+    start: animateScore,
+    reset: resetScore,
+  } = useCountUp(700);
 
   useEffect(() => {
     const prefersReduced =
@@ -76,7 +78,7 @@ export function AnimatedDemo() {
       setCompleted([]);
       setTypingIndex(0);
       setTypedChars(0);
-      setScore(0);
+      resetScore();
       schedule(() => typeMessage(0), 400);
     };
 
@@ -118,20 +120,6 @@ export function AnimatedDemo() {
       typeMessage(index + 1);
     };
 
-    const animateScore = (target: number) => {
-      const start = performance.now();
-      const from = scoreRef.current;
-      const duration = 700;
-      const tick = (now: number) => {
-        if (cancelled) return;
-        const progress = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setScore(Math.round(from + (target - from) * eased));
-        if (progress < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    };
-
     reset();
 
     return () => {
@@ -139,8 +127,9 @@ export function AnimatedDemo() {
       timers.current.forEach(clearTimeout);
       timers.current = [];
     };
-    // Intentionally run once on mount.
-  }, []);
+    // Intentionally set up once. `animateScore` and `resetScore` are stable
+    // for the life of the component, so listing them does not restart the loop.
+  }, [animateScore, resetScore]);
 
   const typingTurn = SCRIPT[typingIndex];
   const partial =
@@ -213,7 +202,7 @@ function DemoBubble({ turn, typing }: { turn: DemoTurn; typing?: boolean }) {
         <span
           className={
             typing
-              ? "after:ml-0.5 after:inline-block after:h-[1em] after:w-0.5 after:animate-caret-blink after:bg-current after:align-text-bottom after:content-[''] motion-reduce:after:animate-none"
+              ? "after:ml-0.5 after:inline-block after:h-[1em] after:w-0.5 after:animate-caret after:bg-current after:align-text-bottom after:content-[''] motion-reduce:after:animate-none"
               : undefined
           }
         >

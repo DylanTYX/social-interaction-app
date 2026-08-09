@@ -12,6 +12,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -353,7 +354,7 @@ function SettingsPageInner() {
   if (status === "loading") {
     return (
       <div className="p-8 max-w-5xl">
-        <div className="h-32 rounded-xl bg-gray-100 animate-pulse" />
+        <Skeleton className="h-32 rounded-xl" />
       </div>
     );
   }
@@ -864,7 +865,7 @@ export default function SettingsPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-5xl">
-          <div className="h-32 rounded-xl bg-gray-100 animate-pulse" />
+          <Skeleton className="h-32 rounded-xl" />
         </div>
       }
     >

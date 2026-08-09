@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field, FieldSection } from "@/components/ui/field";
@@ -203,11 +204,11 @@ export function PersonaStep({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading && sortedLibrary.length === 0
                 ? [0, 1, 2, 3, 4, 5].map((index) => (
-                    <div
+                    <Skeleton
                       key={index}
                       // 288px, roughly a real card. This was `h-24` (96px), so
                       // the step jumped hard when the library resolved.
-                      className="h-72 animate-pulse rounded-lg bg-muted"
+                      className="h-72 bg-muted"
                     />
                   ))
                 : null}

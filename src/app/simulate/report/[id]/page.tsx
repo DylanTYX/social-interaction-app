@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -169,9 +170,9 @@ export default function SessionReportPage({
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
         <div className="mx-auto max-w-5xl space-y-4">
-          <div className="h-8 w-48 rounded bg-gray-200 animate-pulse" />
-          <div className="h-32 rounded-lg bg-gray-200 animate-pulse" />
-          <div className="h-72 rounded-lg bg-gray-200 animate-pulse" />
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-72" />
         </div>
       </div>
     );
@@ -647,7 +648,7 @@ function TurnCoaching({
         <div className="mt-2 space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
           {loading && (
             <p className="flex items-center gap-2 text-xs text-amber-700">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              <span className="h-2 w-2 animate-breathe rounded-full bg-amber-500" />
               Coaching this answer…
             </p>
           )}

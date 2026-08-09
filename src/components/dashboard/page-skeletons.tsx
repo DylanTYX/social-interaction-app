@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
+/** Local alias kept so the shaped skeletons below stay terse. The block itself
+ *  now lives in `ui/skeleton.tsx`, shared with the pages that used to hand-roll
+ *  their own. */
 function Pulse({ className }: { className: string }) {
-  return (
-    <div className={`animate-pulse rounded-lg bg-gray-100 ${className}`} />
-  );
+  return <Skeleton className={className} />;
 }
 
 export function SessionRowSkeleton() {
