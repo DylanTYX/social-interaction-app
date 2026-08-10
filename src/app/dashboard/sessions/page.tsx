@@ -49,7 +49,6 @@ import {
   ROW_ENTER,
   ROW_EXIT,
   staggerDelay,
-  waitForRowExit,
 } from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
@@ -110,14 +109,16 @@ export default function SessionsLibraryPage() {
     if (!pendingDelete) return;
     const targetId = pendingDelete.id;
     setDeleting(true);
+    // Dismiss the dialog and start the row fading before the request goes out.
+    // Both matter: the fade is the feedback, and it is behind the dialog's
+    // overlay until the dialog is gone, so leaving the dialog up until the
+    // delete resolved meant the animation was never actually seen.
+    setPendingDelete(null);
     setExitingId(targetId);
     try {
-      const [response] = await Promise.all([
-        fetch(`/api/sessions/${targetId}`, { method: "DELETE" }),
-        // Hold the refetch until the row has finished leaving; see
-        // `waitForRowExit`.
-        waitForRowExit(),
-      ]);
+      const response = await fetch(`/api/sessions/${targetId}`, {
+        method: "DELETE",
+      });
       if (!response.ok) throw new Error("Failed to delete the session.");
       toast.success("Session deleted");
       // `refresh` sets status to "loading", but the page only shows a skeleton
@@ -130,7 +131,6 @@ export default function SessionsLibraryPage() {
       toast.error("Could not delete that session. Try again.");
     } finally {
       setDeleting(false);
-      setPendingDelete(null);
     }
   };
 
