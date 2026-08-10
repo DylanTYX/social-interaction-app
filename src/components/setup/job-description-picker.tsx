@@ -216,7 +216,10 @@ export function JobDescriptionPicker({
 
               {value.savedId ? (
                 <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white p-3">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  {/* The upload row replaces the drop zone the instant the parse
+                      lands, which read as a glitch; the tick now arrives on its
+                      own so the success is legible as an event. */}
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in-50 duration-300 ease-soft" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
                       {value.savedTitle ?? "Uploaded PDF"}

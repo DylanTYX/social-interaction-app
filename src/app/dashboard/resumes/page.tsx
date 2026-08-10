@@ -22,6 +22,13 @@ import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useResumes } from "@/hooks/use-resumes";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  ROW_ENTER,
+  ROW_EXIT,
+  staggerDelay,
+  waitForRowExit,
+} from "@/lib/motion";
 
 export default function ResumesPage() {
   const { items, status, error, refresh, uploadText, uploadPdf, remove } =
@@ -30,6 +37,9 @@ export default function ResumesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // The row being animated out. Set before the request goes out, so the
+  // list responds the moment the user confirms rather than after a round trip.
+  const [exitingId, setExitingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -232,33 +242,40 @@ export default function ResumesPage() {
               }}
             />
           ) : (
-            sortedItems.map((item) => (
-              <div
-                key={item.id}
-                className="group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors duration-150 hover:bg-accent"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-600 shrink-0">
-                  <FileUser className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {formatDateTime(item.createdAt)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                  onClick={() => setPendingDelete(item.id)}
-                  aria-label="Delete resume"
+            sortedItems.map((item, index) => {
+              const isExiting = exitingId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors duration-150 hover:bg-accent",
+                    isExiting ? ROW_EXIT : ROW_ENTER,
+                  )}
+                  style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </div>
-            ))
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-600 shrink-0">
+                    <FileUser className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {formatDateTime(item.createdAt)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => setPendingDelete(item.id)}
+                    aria-label="Delete resume"
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>
@@ -271,8 +288,18 @@ export default function ResumesPage() {
         title="Delete this resume?"
         description="The extracted text is removed permanently. Interviews that already used it keep their transcripts."
         onConfirm={async () => {
-          if (pendingDelete) await remove(pendingDelete);
+          const targetId = pendingDelete;
           setPendingDelete(null);
+          if (!targetId) return;
+          setExitingId(targetId);
+          const [ok] = await Promise.all([
+            remove(targetId),
+            // Hold the list until the row has finished leaving.
+            waitForRowExit(),
+          ]);
+          // Put the row back if the delete failed; `remove` has already
+          // surfaced the error.
+          if (!ok) setExitingId(null);
         }}
       />
     </div>

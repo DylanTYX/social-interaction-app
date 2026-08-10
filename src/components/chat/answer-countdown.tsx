@@ -57,7 +57,8 @@ export function AnswerCountdown({
     if (paused) return;
 
     const deadline = deadlineMs ?? Date.now() + timeLimitSeconds * 1000;
-    const sample = () => setReading({ deadlineMs: deadline, clockMs: Date.now() });
+    const sample = () =>
+      setReading({ deadlineMs: deadline, clockMs: Date.now() });
 
     // First sample on a microtask rather than inline, so the effect body
     // itself contains no synchronous setState.

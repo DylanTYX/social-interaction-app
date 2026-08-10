@@ -21,7 +21,12 @@ function Progress({
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="bg-primary h-full w-full flex-1 transition-all"
+        // `transition-transform`, not `transition-all`: the only animated
+        // property here is the translate, and `all` also watches the
+        // background, which makes a theme change animate for no reason. The
+        // duration was unstated too, so the bar snapped across in Tailwind's
+        // 150ms default regardless of how far it had to travel.
+        className="bg-primary h-full w-full flex-1 transition-transform duration-500 ease-out"
         style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
       />
     </ProgressPrimitive.Root>

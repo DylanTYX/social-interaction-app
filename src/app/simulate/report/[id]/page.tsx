@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { CONTENT_ENTER } from "@/lib/motion";
 import {
   Card,
   CardContent,
@@ -277,7 +279,7 @@ export default function SessionReportPage({
     // is gone with it — the sidebar is the way out, which is the whole reason
     // this page needed chrome: you land here after every session and had one
     // exit.
-    <div className="mx-auto max-w-5xl space-y-6 p-8">
+    <div className={cn("mx-auto max-w-5xl space-y-6 p-8", CONTENT_ENTER)}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">

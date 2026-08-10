@@ -83,8 +83,12 @@ export function ScoreComparison({
         : "Same as last session";
 
   return (
+    // Fades in rather than appearing, because it arrives on its own schedule:
+    // the score tile has already rendered by the time this fetch lands, so
+    // without the transition a line of text simply materialises under a number
+    // the reader is in the middle of taking in.
     <span
-      className={`mt-1 inline-flex items-center gap-1 text-xs font-medium ${tone}`}
+      className={`mt-1 inline-flex animate-in items-center gap-1 text-xs font-medium fade-in-0 slide-in-from-top-1 duration-300 ease-soft ${tone}`}
     >
       <Icon className="h-3.5 w-3.5" />
       {label}

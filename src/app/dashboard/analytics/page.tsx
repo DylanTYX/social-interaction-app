@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { CONTENT_ENTER } from "@/lib/motion";
 import {
   TrendingUp,
   Clock,
@@ -359,7 +361,9 @@ export default function AnalyticsPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div
+          className={cn("grid grid-cols-2 md:grid-cols-4 gap-4", CONTENT_ENTER)}
+        >
           <Card className="shadow-soft">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">

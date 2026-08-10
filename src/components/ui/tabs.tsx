@@ -57,7 +57,15 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
+      className={cn(
+        "flex-1 outline-none",
+        // Radix exposes `data-state` here and nothing was using it, so panels
+        // swapped between frames. Opacity only: the settings page's five tabs
+        // differ enough in height that a slide would make the card jump as
+        // well as fade.
+        "data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:duration-200",
+        className
+      )}
       {...props}
     />
   );

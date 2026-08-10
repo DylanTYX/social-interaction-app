@@ -3,23 +3,16 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Settings2,
-  AlertCircle,
-} from "lucide-react";
+import { ArrowLeft, FileText, Settings2, AlertCircle } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
-import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
+import { CoachingRail } from "@/components/chat/coaching-rail";
 import type { ChatTurnResponse } from "@/lib/chat-contract";
 import {
   formatMessageTime,
@@ -1083,12 +1076,18 @@ function VoiceSimulateInner() {
                   Adaptive session in progress
                 </h2>
               </div>
+              {/* The group is right-anchored by the parent's `justify-between`,
+                  so these transient badges grow the group leftwards and the
+                  two stable badges below keep their position. All they need is
+                  to arrive rather than appear — a fade and a slight scale,
+                  with no directional slide, since which way they enter from
+                  depends on how much is already in the row. */}
               <div className="flex items-center gap-2">
                 {isSpeakingTts && (
                   <>
                     <Badge
                       variant="secondary"
-                      className="h-8 gap-1.5 px-3 text-blue-700 bg-blue-100"
+                      className="h-8 gap-1.5 px-3 text-blue-700 bg-blue-100 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
                     >
                       <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
                       Interviewer speaking
@@ -1097,7 +1096,7 @@ function VoiceSimulateInner() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8"
+                      className="h-8 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
                       onClick={() => void stopTts()}
                     >
                       Stop voice
@@ -1105,8 +1104,14 @@ function VoiceSimulateInner() {
                   </>
                 )}
                 {isRecording && (
-                  <Badge variant="destructive" className="h-8 gap-1.5 px-3">
+                  <Badge
+                    variant="destructive"
+                    className="h-8 gap-1.5 px-3 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
+                  >
                     <span className="relative flex h-2 w-2 items-center justify-center">
+                      {/* The ping is decoration on top of a red badge that
+                          already says "Recording", so losing it under reduced
+                          motion costs no information. */}
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70 opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
                     </span>
@@ -1180,38 +1185,11 @@ function VoiceSimulateInner() {
           </div>
         </div>
 
-        <div className="hidden xl:flex">
-          {showLiveCoaching ? (
-            <div className="relative h-full border-l border-slate-200/80 p-4">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute -left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setShowLiveCoaching(false)}
-                aria-label="Collapse live coaching"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <LiveFeedbackSidebar
-                metrics={turn.metrics}
-                analyses={turn.analyses}
-                followupPrompt={turn.lastFollowupPrompt}
-              />
-            </div>
-          ) : (
-            <div className="flex h-full w-12 items-center justify-center border-l border-slate-200/80 bg-white/80 shadow-soft backdrop-blur">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setShowLiveCoaching(true)}
-                aria-label="Expand live coaching"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <CoachingRail
+          open={showLiveCoaching}
+          onOpenChange={setShowLiveCoaching}
+          turn={turn}
+        />
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>

@@ -337,9 +337,15 @@ export function LiveFeedbackSidebar({
 
       <div className="mt-4 space-y-2.5 pb-2">
         {coachingItems.map((item, index) => (
+          // The stagger was here already but had nothing to stagger: this set
+          // `animationDelay` on a card with no `animation` property, so the
+          // delay was inert and the cards all appeared at once. Adding the
+          // entrance makes the existing intent real. `fill-mode-both` is what
+          // keeps a delayed card hidden until its turn instead of flashing in
+          // and restarting.
           <Card
             key={item.id}
-            className={`gap-2 border shadow-soft transition-all duration-500 ${coachingToneStyle(item.tone)}`}
+            className={`gap-2 border shadow-soft transition-all duration-500 animate-in fade-in-0 slide-in-from-right-2 ease-soft fill-mode-both ${coachingToneStyle(item.tone)}`}
             style={{ animationDelay: `${index * 80}ms` }}
           >
             <CardHeader className="pb-1.5">

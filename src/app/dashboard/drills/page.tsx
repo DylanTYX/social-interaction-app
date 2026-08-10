@@ -13,6 +13,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { CONTENT_ENTER } from "@/lib/motion";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
@@ -265,7 +267,11 @@ export default function DrillsPage() {
             )}
             {error && <p className="text-sm text-red-600">{error}</p>}
             {result && (
-              <>
+              // The coaching arrives as one block after a wait, so it fades in
+              // rather than replacing the skeleton in a single frame. A real
+              // element, not a fragment: an animation needs a box to apply to,
+              // so the parent's `space-y-4` is restated here.
+              <div className={cn("space-y-4", CONTENT_ENTER)}>
                 {result.tips.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
@@ -306,7 +312,7 @@ export default function DrillsPage() {
                   <Shuffle className="h-4 w-4" />
                   Next question
                 </Button>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>

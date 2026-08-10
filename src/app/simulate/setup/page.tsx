@@ -42,6 +42,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
 import { AZURE_VOICE_OPTIONS } from "@/lib/speech-voices";
+import { cn } from "@/lib/utils";
 import {
   buildRoundScenarioDescription,
   buildRoundScenarioTitle,
@@ -293,12 +294,29 @@ function SetupWizard() {
   const [isLaunching, setIsLaunching] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
+  /**
+   * Which way the wizard is moving, so the incoming step slides in from the
+   * side it came from. Derived from the target index rather than set by each
+   * caller, because the stepper pills can jump to any earlier step directly —
+   * hand-setting a direction in `goNext`/`goBack` alone would have left those
+   * jumps animating forwards while moving backwards.
+   */
+  const [stepDirection, setStepDirection] = useState<"forward" | "back">(
+    "forward",
+  );
+
+  const goToStep = (next: StepId) => {
+    const nextIndex = STEPS.findIndex((step) => step.id === next);
+    setStepDirection(nextIndex < stepIndex ? "back" : "forward");
+    setCurrentStep(next);
+  };
+
   const goNext = () => {
     if (isLastStep) {
       void launchInterview();
       return;
     }
-    setCurrentStep(STEPS[stepIndex + 1].id);
+    goToStep(STEPS[stepIndex + 1].id);
   };
 
   const goBack = () => {
@@ -306,7 +324,7 @@ function SetupWizard() {
       router.push("/dashboard");
       return;
     }
-    setCurrentStep(STEPS[stepIndex - 1].id);
+    goToStep(STEPS[stepIndex - 1].id);
   };
 
   const launchInterview = async () => {
@@ -634,7 +652,7 @@ function SetupWizard() {
         iconColor="blue"
       />
 
-      <Stepper currentStepId={currentStep} onStepSelect={setCurrentStep} />
+      <Stepper currentStepId={currentStep} onStepSelect={goToStep} />
 
       {/* No CardHeader. The stepper already names the step, and every
             section inside carries its own CardTitle sitting directly above its
@@ -642,60 +660,76 @@ function SetupWizard() {
             what was above it and what was below it. On the first step it
             repeated the inner heading word for word. */}
       <div className="space-y-6">
-        {currentStep === "context" && (
-          <ContextStep
-            setup={setup}
-            quickStarts={BRIEF_QUICK_STARTS}
-            onModeChange={updateMode}
-            onUpdate={(partial) =>
-              updateSetup(
-                "customScenarioBrief" in partial
-                  ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
-                  : partial,
-              )
-            }
-          />
-        )}
+        {/* Keyed on the step so React remounts this subtree and the entrance
+            animation actually replays — a class change alone would not restart
+            it. The direction is what makes the wizard feel like one surface you
+            are moving along rather than four unrelated screens; a 1rem slide
+            stays inside the container's `p-8`, so it cannot cause a horizontal
+            scrollbar mid-transition. */}
+        <div
+          key={currentStep}
+          className={cn(
+            "animate-in fade-in-0 duration-300 ease-soft",
+            stepDirection === "forward"
+              ? "slide-in-from-right-4"
+              : "slide-in-from-left-4",
+          )}
+        >
+          {currentStep === "context" && (
+            <ContextStep
+              setup={setup}
+              quickStarts={BRIEF_QUICK_STARTS}
+              onModeChange={updateMode}
+              onUpdate={(partial) =>
+                updateSetup(
+                  "customScenarioBrief" in partial
+                    ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
+                    : partial,
+                )
+              }
+            />
+          )}
 
-        {currentStep === "rounds" && (
-          <LoopStep
-            value={setup.interviewLoop}
-            practiceMode={setup.practiceMode}
-            jobDescriptionText={
-              setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
-            }
-            personaLibrary={personaLibrary}
-            onChange={(interviewLoop) => updateSetup({ interviewLoop })}
-          />
-        )}
+          {currentStep === "rounds" && (
+            <LoopStep
+              value={setup.interviewLoop}
+              practiceMode={setup.practiceMode}
+              jobDescriptionText={
+                setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
+              }
+              personaLibrary={personaLibrary}
+              onChange={(interviewLoop) => updateSetup({ interviewLoop })}
+            />
+          )}
 
-        {currentStep === "persona" && (
-          <PersonaStep
-            value={setup.personaConfig}
-            activeLibraryId={setup.personaLibraryId}
-            library={personaLibrary}
-            isLoading={personaLibraryLoading}
-            onPatch={updatePersona}
-            onPick={handlePickPersona}
-            onRandomize={handleRandomizePersona}
-            onSaveAsNew={handleSavePersona}
-            onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
-            onDuplicate={handleDuplicatePersona}
-            onDelete={handleDeletePersona}
-            onResetLibrary={handleResetLibrary}
-          />
-        )}
+          {currentStep === "persona" && (
+            <PersonaStep
+              value={setup.personaConfig}
+              activeLibraryId={setup.personaLibraryId}
+              library={personaLibrary}
+              isLoading={personaLibraryLoading}
+              onPatch={updatePersona}
+              onPick={handlePickPersona}
+              onRandomize={handleRandomizePersona}
+              onSaveAsNew={handleSavePersona}
+              onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
+              onDuplicate={handleDuplicatePersona}
+              onDelete={handleDeletePersona}
+              onResetLibrary={handleResetLibrary}
+            />
+          )}
 
-        {currentStep === "review" && (
-          <FinalizeStep
-            setup={setup}
-            onUpdate={updateSetup}
-            onMicCheck={checkMicrophone}
-            microphoneStatus={microphoneStatus}
-            microphoneMessage={microphoneMessage}
-            voiceOptions={azureVoiceOptions}
-          />
-        )}
+          {currentStep === "review" && (
+            <FinalizeStep
+              setup={setup}
+              onUpdate={updateSetup}
+              onMicCheck={checkMicrophone}
+              microphoneStatus={microphoneStatus}
+              microphoneMessage={microphoneMessage}
+              voiceOptions={azureVoiceOptions}
+            />
+          )}
+        </div>
 
         {(launchError || personaLibraryError) && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -778,7 +812,7 @@ function Stepper({
               }`}
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors duration-200 ${
                   isActive
                     ? "bg-blue-500 text-white"
                     : isCompleted
@@ -786,10 +820,16 @@ function Stepper({
                       : "bg-muted text-muted-foreground"
                 }`}
               >
+                {/* Completing a step is the one moment in this wizard worth
+                    marking, so the tick pops rather than replacing the step
+                    icon between frames. Keyed so the swap is a mount. */}
                 {isCompleted ? (
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2
+                    key="done"
+                    className="h-4 w-4 animate-in zoom-in-50 duration-200 ease-soft"
+                  />
                 ) : (
-                  <Icon className="h-4 w-4" />
+                  <Icon key="pending" className="h-4 w-4" />
                 )}
               </span>
               <p
