@@ -171,8 +171,12 @@ function NavItem({
     <Link
       href={item.href}
       className={cn(
-        // Base layout
-        "flex items-center gap-3 rounded-lg px-3 py-2.5",
+        // Base layout. `overflow-hidden` so the label has something to be
+        // clipped by as it collapses; `gap-0` when collapsed so the label's
+        // vanished width does not leave 12px of dead space beside the icon.
+        "flex items-center rounded-lg px-3 py-2.5 overflow-hidden",
+        isCollapsed ? "gap-0" : "gap-3",
+        "transition-[gap,padding] duration-300 ease-soft",
         // Typography
         "text-sm font-medium",
         // Centering when collapsed
@@ -196,7 +200,21 @@ function NavItem({
         )}
         strokeWidth={isActive ? 2.25 : 1.75}
       />
-      {!isCollapsed && <span className="truncate">{item.name}</span>}
+      {/* Always mounted, never `aria-hidden`. The sidebar animates its width
+          over 300ms but this used to unmount, so the labels vanished in one
+          frame while the panel was still moving — and a collapsed link was
+          left with no accessible name at all, since lucide icons render a bare
+          <svg> and the tooltip only contributes aria-describedby. Collapsing
+          the width instead fixes both: the text slides away with the panel, and
+          screen readers still get a name in either state. */}
+      <span
+        className={cn(
+          "truncate transition-[max-width,opacity] duration-300 ease-soft",
+          isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+        )}
+      >
+        {item.name}
+      </span>
     </Link>
   );
 
@@ -257,9 +275,9 @@ export function Sidebar() {
         {/* Logo Section */}
         <div
           className={cn(
-            "flex h-16 items-center border-b border-gray-100",
+            "flex h-16 items-center overflow-hidden border-b border-gray-100",
             "transition-all duration-300",
-            isCollapsed ? "justify-center px-2" : "gap-3 px-4",
+            isCollapsed ? "justify-center gap-0 px-2" : "gap-3 px-4",
           )}
         >
           <div
@@ -272,11 +290,15 @@ export function Sidebar() {
           >
             <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
           </div>
-          {!isCollapsed && (
-            <span className="text-lg font-bold text-gray-900 truncate">
-              ConvoTrainer
-            </span>
-          )}
+          <span
+            className={cn(
+              "truncate text-lg font-bold text-gray-900",
+              "transition-[max-width,opacity] duration-300 ease-soft",
+              isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+            )}
+          >
+            ConvoTrainer
+          </span>
         </div>
 
         {/* The one thing this app is for.
@@ -295,9 +317,20 @@ export function Sidebar() {
             className="w-full gap-2"
             size={isCollapsed ? "icon" : "default"}
           >
-            <Link href="/simulate/setup" aria-label="Start a new interview">
+            <Link
+              href="/simulate/setup"
+              aria-label="Start a new interview"
+              className="overflow-hidden"
+            >
               <Plus className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>New interview</span>}
+              <span
+                className={cn(
+                  "truncate transition-[max-width,opacity] duration-300 ease-soft",
+                  isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+                )}
+              >
+                New interview
+              </span>
             </Link>
           </Button>
         </div>

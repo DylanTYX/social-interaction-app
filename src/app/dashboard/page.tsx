@@ -26,6 +26,8 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { formatRelativeDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { CONTENT_ENTER, ROW_ENTER, staggerDelay } from "@/lib/motion";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import {
   computeSessionStats,
@@ -286,13 +288,14 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {recentSessions.map((session) => {
+                <div className={cn("space-y-2", CONTENT_ENTER)}>
+                  {recentSessions.map((session, index) => {
                     const ModeIcon =
                       session.practiceMode === "voice" ? Mic : MessageSquare;
                     return (
                       <Link
                         key={session.id}
+                        style={staggerDelay(index)}
                         href={
                           session.status === "in_progress"
                             ? session.practiceMode === "voice"
@@ -300,7 +303,10 @@ export default function DashboardPage() {
                               : `/simulate/chat?session=${session.id}`
                             : `/simulate/report/${session.id}`
                         }
-                        className="group flex items-center gap-4 rounded-xl p-4 transition-colors duration-150 hover:bg-accent"
+                        className={cn(
+                          "group flex items-center gap-4 rounded-xl p-4 transition-colors duration-150 hover:bg-accent",
+                          ROW_ENTER,
+                        )}
                       >
                         <InitialsAvatar name={session.personaName} />
 

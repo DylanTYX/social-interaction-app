@@ -44,6 +44,14 @@ import {
 } from "@/lib/persona-library";
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
 import type { PersonaConfig } from "@/lib/persona-engine";
+import { cn } from "@/lib/utils";
+import {
+  CONTENT_ENTER,
+  ROW_ENTER,
+  ROW_EXIT,
+  staggerDelay,
+  waitForRowExit,
+} from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
@@ -66,6 +74,8 @@ export default function PersonasPage() {
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  /** The card being animated out of the grid. */
+  const [exitingId, setExitingId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"random" | "reset" | null>(null);
   const [editingEntry, setEditingEntry] = useState<PersonaLibraryEntry | null>(
     null,
@@ -104,8 +114,13 @@ export default function PersonasPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const deleted = await deleteEntry(id);
+    // Marked as leaving before the request goes out, so the grid responds the
+    // moment the user confirms rather than after a round trip.
+    setExitingId(id);
+    const [deleted] = await Promise.all([deleteEntry(id), waitForRowExit()]);
     if (!deleted) {
+      // Put the card back — it is still in the library.
+      setExitingId(null);
       toast.error(error ?? "Could not delete persona.");
     }
   };
@@ -189,8 +204,13 @@ export default function PersonasPage() {
           }}
         />
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedLibrary.map((entry) => (
+        <div
+          className={cn(
+            "grid md:grid-cols-2 lg:grid-cols-3 gap-6",
+            CONTENT_ENTER,
+          )}
+        >
+          {sortedLibrary.map((entry, index) => (
             // Editing *is* what this page is for, so the card body does it.
             // Before, the card was inert: the only affordances were two 32px
             // ghost icon buttons in a corner, and with six presets that meant
@@ -212,7 +232,11 @@ export default function PersonasPage() {
                 }
               }}
               aria-label={`Edit ${entry.config.name}`}
-              className="group relative cursor-pointer shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              className={cn(
+                "group relative cursor-pointer shadow-soft transition-all duration-200 hover:shadow-soft-md hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                exitingId === entry.id ? ROW_EXIT : ROW_ENTER,
+              )}
+              style={exitingId === entry.id ? undefined : staggerDelay(index)}
             >
               <div className="absolute right-2 top-2">
                 <DropdownMenu>

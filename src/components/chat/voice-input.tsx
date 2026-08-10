@@ -99,9 +99,7 @@ export function VoiceInput({
             recordingError
           ) : (
             <>
-              <span className="mr-1 font-semibold text-slate-500">
-                Hearing
-              </span>
+              <span className="mr-1 font-semibold text-slate-500">Hearing</span>
               <span className="text-slate-700">{livePreview}</span>
             </>
           )}

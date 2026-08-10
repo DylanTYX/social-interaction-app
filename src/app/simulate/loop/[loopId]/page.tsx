@@ -7,6 +7,8 @@ import { ArrowLeft, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { CONTENT_ENTER } from "@/lib/motion";
 import {
   Card,
   CardContent,
@@ -79,7 +81,9 @@ export default function LoopReportPage({
         if (!cancelled) setReport(payload);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Something went wrong.");
+          setError(
+            err instanceof Error ? err.message : "Something went wrong.",
+          );
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -122,7 +126,9 @@ export default function LoopReportPage({
   const { rounds, totals } = report;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+    <div
+      className={cn("mx-auto max-w-4xl space-y-6 p-4 sm:p-8", CONTENT_ENTER)}
+    >
       <div className="flex items-center gap-3 print:hidden">
         <Link href="/dashboard/sessions">
           <Button variant="ghost" size="icon" aria-label="Back to sessions">

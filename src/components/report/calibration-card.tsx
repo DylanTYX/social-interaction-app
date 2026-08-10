@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useCountUp } from "@/hooks/use-count-up";
+import { cn } from "@/lib/utils";
 
 /**
  * Calibration trainer: the candidate predicts their own score before seeing how
@@ -27,7 +29,18 @@ export function CalibrationCard({
 }) {
   const storageKey = `convotrainer.calibration.${sessionId}`;
   const [guess, setGuess] = useState(70);
-  const [revealed, setRevealed] = useState(false);
+  /**
+   * Not a boolean, because the two ways of arriving at the revealed state
+   * deserve different treatment. Pressing the button is the payoff the card is
+   * built around, so it animates and counts the score up. Reopening a report
+   * you already revealed weeks ago is not a payoff — replaying the flourish on
+   * every visit would make it wallpaper — so the restored state renders
+   * settled.
+   */
+  const [revealedBy, setRevealedBy] = useState<"user" | "restored" | null>(
+    null,
+  );
+  const { value: countedScore, start: startCount } = useCountUp(900);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(storageKey);
@@ -37,16 +50,20 @@ export function CalibrationCard({
     // Deferred a tick to avoid a synchronous setState in the effect body.
     const id = window.setTimeout(() => {
       setGuess(parsed);
-      setRevealed(true);
+      setRevealedBy("restored");
     }, 0);
     return () => window.clearTimeout(id);
   }, [storageKey]);
 
   if (actualScore === null) return null;
 
+  const revealed = revealedBy !== null;
+  const finalScore = Math.round(actualScore);
+
   const handleReveal = () => {
     window.localStorage.setItem(storageKey, String(guess));
-    setRevealed(true);
+    setRevealedBy("user");
+    startCount(finalScore);
   };
 
   const gap = Math.abs(Math.round(actualScore) - guess);
@@ -92,7 +109,13 @@ export function CalibrationCard({
         </div>
 
         {revealed ? (
-          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+          <div
+            className={cn(
+              "rounded-xl border border-slate-100 bg-slate-50/70 p-4",
+              revealedBy === "user" &&
+                "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-500 ease-soft",
+            )}
+          >
             <div className="flex items-center justify-around text-center">
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -105,12 +128,25 @@ export function CalibrationCard({
                 <p className="text-xs uppercase tracking-wide text-slate-500">
                   Actual
                 </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {Math.round(actualScore)}%
+                {/* `tabular-nums` so the counting digits do not jitter the
+                    layout on their way up. */}
+                <p className="text-2xl font-bold tabular-nums text-blue-600">
+                  {revealedBy === "user" ? countedScore : finalScore}%
                 </p>
               </div>
             </div>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-700">
+            <p
+              className={cn(
+                "mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-slate-700",
+                // Held back until the count has essentially landed: the verdict
+                // is a reaction to the number, so it should not precede it.
+                // `fill-mode-both` is required — without it the delayed element
+                // shows its final state first and then snaps back to the
+                // animation's start.
+                revealedBy === "user" &&
+                  "animate-in fade-in-0 slide-in-from-bottom-1 duration-300 delay-700 fill-mode-both",
+              )}
+            >
               <Sparkles className="h-4 w-4 text-amber-500" />
               {calibrationLabel} ({gap} point gap)
             </p>

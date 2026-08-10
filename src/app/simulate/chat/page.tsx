@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
   Code2,
   FileText,
   MessageSquare,
@@ -20,7 +18,6 @@ import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
-import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +57,7 @@ import {
 import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
+import { CoachingRail } from "@/components/chat/coaching-rail";
 import { resolveAnswerFormat, type AnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
@@ -734,38 +732,11 @@ function ChatSimulateInner() {
           </div>
         </div>
 
-        <div className="hidden xl:flex">
-          {showLiveCoaching ? (
-            <div className="relative h-full border-l border-slate-200/80 p-4">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute -left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setSidebarOverride(false)}
-                aria-label="Collapse live coaching"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <LiveFeedbackSidebar
-                metrics={turn.metrics}
-                analyses={turn.analyses}
-                followupPrompt={turn.lastFollowupPrompt}
-              />
-            </div>
-          ) : (
-            <div className="flex h-full w-12 items-center justify-center border-l border-slate-200/80 bg-white/80 shadow-soft backdrop-blur">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="rounded-full border border-slate-200 bg-white shadow-soft"
-                onClick={() => setSidebarOverride(true)}
-                aria-label="Expand live coaching"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <CoachingRail
+          open={showLiveCoaching}
+          onOpenChange={setSidebarOverride}
+          turn={turn}
+        />
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>

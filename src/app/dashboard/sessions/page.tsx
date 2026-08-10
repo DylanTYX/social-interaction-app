@@ -43,6 +43,14 @@ import {
   type InterviewSessionSummary,
 } from "@/hooks/use-interview-history";
 import { formatRelativeDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import {
+  CONTENT_ENTER,
+  ROW_ENTER,
+  ROW_EXIT,
+  staggerDelay,
+  waitForRowExit,
+} from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
@@ -94,20 +102,31 @@ export default function SessionsLibraryPage() {
   const [pendingDelete, setPendingDelete] =
     useState<InterviewSessionSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // The row being animated out. Set before the request goes out, so the list
+  // responds the moment the user confirms rather than after a round trip.
+  const [exitingId, setExitingId] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
+    const targetId = pendingDelete.id;
     setDeleting(true);
+    setExitingId(targetId);
     try {
-      const response = await fetch(`/api/sessions/${pendingDelete.id}`, {
-        method: "DELETE",
-      });
+      const [response] = await Promise.all([
+        fetch(`/api/sessions/${targetId}`, { method: "DELETE" }),
+        // Hold the refetch until the row has finished leaving; see
+        // `waitForRowExit`.
+        waitForRowExit(),
+      ]);
       if (!response.ok) throw new Error("Failed to delete the session.");
       toast.success("Session deleted");
       // `refresh` sets status to "loading", but the page only shows a skeleton
       // when the list is empty — so the rows stay put while it refetches.
       await refresh();
     } catch {
+      // Put the row back. It is still in the list, so clearing the marker is
+      // enough to restore it.
+      setExitingId(null);
       toast.error("Could not delete that session. Try again.");
     } finally {
       setDeleting(false);
@@ -239,7 +258,7 @@ export default function SessionsLibraryPage() {
           </Card>
         )
       ) : (
-        <div className="space-y-2">
+        <div className={cn("space-y-2", CONTENT_ENTER)}>
           {/* Say how much of the result is on screen. The list used to cap at
               50 with no indication, so session 51 simply did not exist as far
               as the UI was concerned. */}
@@ -247,15 +266,23 @@ export default function SessionsLibraryPage() {
             Showing {filtered.length} of {total}
             {hasFilters ? " matching" : ""} session{total === 1 ? "" : "s"}
           </p>
-          {filtered.map((session) => {
+          {filtered.map((session, index) => {
             const ModeIcon =
               session.practiceMode === "voice" ? Mic : MessageSquare;
+            const isExiting = exitingId === session.id;
             return (
               // The row is a Link, so the menu cannot live inside it — a button
               // nested in an anchor is invalid markup and the anchor swallows
               // the click. The wrapper is the positioning context; the Link
               // fills it and the menu sits on top.
-              <div key={session.id} className="group relative">
+              <div
+                key={session.id}
+                className={cn(
+                  "group relative",
+                  isExiting ? ROW_EXIT : ROW_ENTER,
+                )}
+                style={isExiting ? undefined : staggerDelay(index)}
+              >
                 <Link
                   href={
                     session.status === "in_progress"
