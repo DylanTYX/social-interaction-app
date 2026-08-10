@@ -23,12 +23,7 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { useResumes } from "@/hooks/use-resumes";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  ROW_ENTER,
-  ROW_EXIT,
-  staggerDelay,
-  waitForRowExit,
-} from "@/lib/motion";
+import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 
 export default function ResumesPage() {
   const { items, status, error, refresh, uploadText, uploadPdf, remove } =
@@ -291,14 +286,11 @@ export default function ResumesPage() {
           const targetId = pendingDelete;
           setPendingDelete(null);
           if (!targetId) return;
+          // Start the fade now; `remove` drops the row from state when
+          // the request resolves, so the animation costs no extra time.
           setExitingId(targetId);
-          const [ok] = await Promise.all([
-            remove(targetId),
-            // Hold the list until the row has finished leaving.
-            waitForRowExit(),
-          ]);
-          // Put the row back if the delete failed; `remove` has already
-          // surfaced the error.
+          const ok = await remove(targetId);
+          // Put the row back if it failed; `remove` surfaced the error.
           if (!ok) setExitingId(null);
         }}
       />

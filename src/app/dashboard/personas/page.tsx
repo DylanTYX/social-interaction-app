@@ -50,7 +50,6 @@ import {
   ROW_ENTER,
   ROW_EXIT,
   staggerDelay,
-  waitForRowExit,
 } from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
@@ -115,9 +114,11 @@ export default function PersonasPage() {
 
   const handleDelete = async (id: string) => {
     // Marked as leaving before the request goes out, so the grid responds the
-    // moment the user confirms rather than after a round trip.
+    // moment the user confirms rather than after a round trip. `deleteEntry`
+    // drops the card from the library when the request resolves, so the fade
+    // runs inside time that was being spent anyway and adds nothing to it.
     setExitingId(id);
-    const [deleted] = await Promise.all([deleteEntry(id), waitForRowExit()]);
+    const deleted = await deleteEntry(id);
     if (!deleted) {
       // Put the card back — it is still in the library.
       setExitingId(null);
@@ -252,7 +253,24 @@ export default function PersonasPage() {
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  {/* The whole card is a button that opens the editor, and this
+                      menu lives inside it. Radix portals the menu to <body>, so
+                      it looks like a click here could not reach the card — but
+                      React routes synthetic events through the *component*
+                      tree, not the DOM tree, so it does. Selecting "Delete"
+                      opened the confirm dialog and then the editor on top of
+                      it; the trigger already guarded against this and the
+                      items did not.
+
+                      Stopped on the content rather than per item, so an item
+                      added later inherits the fix. `onKeyDown` matters as much
+                      as `onClick`: the card also acts on Enter and Space, which
+                      are how you pick a menu item from the keyboard. */}
+                  <DropdownMenuContent
+                    align="end"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <DropdownMenuItem onSelect={() => openEdit(entry)}>
                       Edit
                     </DropdownMenuItem>

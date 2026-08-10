@@ -34,24 +34,28 @@ export const CONTENT_ENTER =
 export const ROW_ENTER =
   "animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-soft fill-mode-both";
 
-/** For a row being removed, held on screen just long enough to be seen leaving. */
-export const ROW_EXIT_MS = 200;
-export const ROW_EXIT =
-  "pointer-events-none scale-[0.98] opacity-0 transition-all duration-200 ease-soft";
-
 /**
- * Floor on how long a delete takes, so the exit animation is always seen.
+ * For a row on its way out.
  *
- * React unmounts a removed row immediately, which is why CSS alone cannot
- * animate one out: by the time a class could apply, the element is gone. The
- * pattern these pages use instead is to mark the row as leaving *before* the
- * request goes out — the user gets instant feedback — and to hold the refetch
- * until the animation has had its 200ms. Without the floor a fast server
- * response replaces the list mid-fade and the row still vanishes abruptly.
+ * React unmounts a removed row immediately, so CSS alone cannot animate one
+ * out. The pattern these pages use instead: mark the row as leaving the instant
+ * the user confirms, fire the request, and let the row unmount when the request
+ * resolves. The fade therefore overlaps time that was being spent anyway and
+ * adds nothing to how long a delete takes.
+ *
+ * It deliberately does *not* hold the list open for a fixed duration. An
+ * earlier version did, to guarantee the animation was always seen in full, and
+ * that was the wrong trade twice over — it made a fast delete slower for no
+ * functional reason, and on the pages whose hooks drop the row from state as
+ * soon as the request resolves it did not even work. If the server answers in
+ * 40ms the row leaves in 40ms, partway through its fade. Fast is better than
+ * pretty.
+ *
+ * 150ms rather than 200: short enough that a typical round trip outlasts it, so
+ * in practice the fade usually does complete.
  */
-export function waitForRowExit() {
-  return new Promise<void>((resolve) => setTimeout(resolve, ROW_EXIT_MS));
-}
+export const ROW_EXIT =
+  "pointer-events-none scale-[0.98] opacity-0 transition-all duration-150 ease-soft";
 
 /**
  * Per-row delay for a staggered list entrance.
