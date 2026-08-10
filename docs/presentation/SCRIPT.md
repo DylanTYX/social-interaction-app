@@ -1,8 +1,11 @@
 # FYP demo — talk track and runbook
 
-Companion to `FYP-demo.pptx`. Section 1 is the five-minute talk, word for word.
-Section 2 is the demo. Section 3 is question prep. Section 4 says where every
-number on a slide came from.
+Companion to `FYP-demo.pptx` — a five-slide deck. Section 1 is the talk, word for
+word. Section 2 is the demo. Section 3 is question prep. Section 4 says where
+every number on a slide came from.
+
+The deck is 5 presented slides, then a "Thank you" card, then 6 appendix slides
+that are **not** presented and exist only to answer questions.
 
 The same two rules from [DEMO.md](../DEMO.md) apply to this deck:
 
@@ -49,151 +52,155 @@ Also fill in on slide 1: **your supervisor's name and the date**.
 
 ---
 
-# Section 1 — the five-minute talk
+# Section 1 — the talk
 
-**795 words as written — about 5:18 at a rehearsed 150 wpm.** Sentences marked
-`[cut if behind]` are safe to drop live; without them it is 738 words, about 4:55.
+**Five slides, 959 words — about 6:24 at a rehearsed 150 wpm** (nearer 6:00 if you
+speak quickly). The demo is the main event, so this stays lean.
 
 These are the same words embedded as speaker notes in the `.pptx`. Both are
 generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart.
 
-If you have to cut a whole slide, cut 2 or 3. **Never 4, 5 or 6.**
+**Slides 2, 3 and 4 carry the argument.** If you are running long, compress slide 1
+(the problem is one line — say it once) and the closing half of slide 5.
 
 ---
 
-### Slide 1 · Title — `0:00`
+### Slide 1 · What it is, and the gap — `0:00`
 
 > Good morning. My final year project is ConvoTrainer, an interview practice
-> application. The important word on this slide is "steer". Most tools score
-> you at the end of a mock interview. This one scores every answer before it
-> asks the next question, and uses that score to decide what to ask.
+> application.
 >
-> Five minutes on the problem, the architecture, the part I can prove, and
-> what isn't finished — then I'll demo it.
-
----
-
-### Slide 2 · The problem — `0:29`
-
-> There are three ways to practise today. A question bank never notices that
-> you dodged the question. A human adapts perfectly, but isn't available at
-> eleven at night. A general chatbot will role-play, but won't grade you
-> against a rubric or push back when you're weak.
+> All three ways of practising today have the same hole. A question bank asks
+> the same things in the same order; it never notices that you dodged the
+> question. A human adapts perfectly, but isn't available at eleven at night
+> and can't be repeated ten times. A general chatbot will role-play, but won't
+> grade you against a rubric or push back when you're weak. Nothing connects
+> how you answered to what you get asked next. That loop is the project.
 >
-> All three have the same hole: nothing connects how you answered to what you
-> get asked next. That loop is the project.
-
-**Short: "Question banks don't adapt, humans don't scale, chatbots don't score. Nothing closes the loop between your answer and the next question."**
-
----
-
-### Slide 3 · What it is — `0:56`
-
-> The product is four setup steps, a round, and a report. You describe the
-> role, optionally attaching the real job description and your CV — both are
-> used to ground the questions.
+> So: you describe the role, optionally attaching the real job description and
+> your CV, which are used to ground the questions. You pick the rounds and
+> shape the interviewer. Then you interview.
 >
-> Six round types, each with its own rubric: a system design answer isn't
+> Six round types, each with its own rubric — a system design answer isn't
 > judged the way a behavioural one is. Text or voice, with a code editor on
-> technical rounds. You'll see it in the demo.
+> technical rounds. Afterwards, a scored report with per-answer coaching,
+> model answers and competency coverage.
+>
+> The rest of the slides are how that works underneath.
 
-**Short: "Four setup steps, six round types each with its own rubric, text or voice, and a scored report. You'll see it in the demo."**
+**Short: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to pick the next question."**
 
 ---
 
-### Slide 4 · The turn loop — `1:23`  ★
+### Slide 2 · How a turn works — `1:11`  ★
 
 > This is the centre of the project — one turn, left to right.
 >
 > Your answer arrives at the chat endpoint. Before anything is generated, a
-> second model call scores it against that round's rubric.
+> second model call scores it against the rubric for that round type, at low
+> temperature, returning JSON.
 >
-> That verdict goes into a decision engine — ordinary deterministic code. It
-> picks one of seven questioning strategies and computes a difficulty target.
-> That becomes a private steering block inside the interviewer's prompt, which
-> the candidate never sees. Then the next question streams back.
+> That verdict goes into a decision engine — ordinary deterministic code, no
+> model involved. It picks one of seven questioning strategies: probe the
+> action, challenge ownership, drill for specificity. It also computes a
+> difficulty target. Those become a private steering block inside the
+> interviewer's prompt, which the candidate never sees. Then the next question
+> streams back.
 >
-> Scoring is bounded at four seconds, so a slow analyzer can't hold the reply
-> hostage. And both messages and the analysis commit in one Postgres
-> transaction, so a turn can't half-exist.
+> Three engineering points. Scoring is bounded at four seconds — I measured
+> the turn before changing it, rather than guessing. Past that deadline the
+> question starts unsteered, but the verdict is still collected and stored, so
+> the transcript and the report are unaffected.
+>
+> Both messages and the analysis commit in one Postgres transaction, so a turn
+> can't half-exist.
+>
+> And every interviewer turn runs on the same model. The opening turn used to
+> use a stronger one — but a different model is a different prompt cache, so
+> the session paid full price twice and hit cache neither time.
 
 ---
 
-### Slide 5 · The claim I can prove — `2:07`  ★
+### Slide 3 · What I can prove — `2:29`  ★
 
-> If you take one thing from this talk, take this slide.
+> This is the claim I can prove, and the one I'd most like you to look at.
 >
-> The persona reaches the model two ways. Textually, each dial becomes a
-> sentence in the prompt — and prompt text has no effect you can compute, so
-> you have to measure what comes back.
+> The persona reaches the model down two paths. Textually, each dial becomes a
+> sentence in the system prompt — and prompt text has no effect you can
+> compute, so you have to measure what comes back.
 >
-> The numeric path is arithmetic: strictness minus warmth, over four, clamped
-> one to ten. That number is injected as an explicit instruction — aim for
-> difficulty seven out of ten.
+> The numeric path is arithmetic: strictness minus warmth, over four, plus a
+> repetition boost, clamped one to ten. That number is injected as an explicit
+> instruction — aim for difficulty seven out of ten.
 >
-> So: identical question, identical answer, identical round type. The only
-> variable is who's asking. The strict persona targets seven; the warm one
-> targets five. That isn't a sample from a stochastic model, it's a
-> computation — you can do the arithmetic by hand and get the same two
-> numbers.
+> On the right is real output. Identical question, identical answer, identical
+> round type. The only variable is who's asking. Yuki, at strictness nine and
+> warmth four, targets seven. Isabella, at warmth nine and pushback four,
+> targets five.
 >
-> One limit, before you ask: scoring deliberately ignores persona. Grading
-> shouldn't depend on who asked. `[cut if behind]`
+> That isn't a sample from a stochastic model, it's a computation — you can do
+> the arithmetic by hand and get the same two numbers, every run, offline. And
+> a test fails if a future edit brings those two personas' dials together, so
+> the comparison can't quietly stop demonstrating anything.
+>
+> Two limits, before you ask. The dials are coarse: strictness one to ten
+> moves difficulty only five to seven. And scoring deliberately ignores
+> persona — grading shouldn't depend on who asked.
 
 ---
 
-### Slide 6 · Engineering rigour — `2:56`  ★
+### Slide 4 · What it costs — `3:51`  ★
 
 > Second — I don't estimate what this costs. I measure it.
 >
-> Every OpenAI call records its token usage into a Postgres table as it
-> happens. A command-line tool reads that table and prices it, so any cost
-> claim I make is a query you can re-run.
+> Every OpenAI call records its token usage, including how much was served
+> from cache, into a Postgres table as the call happens. A command-line tool
+> reads that table and prices it, reporting tokens per call site, cache hit
+> rate, and cost per turn. So any cost figure I give you is a query you can
+> re-run.
 >
 > The most useful result was a negative one. OpenAI only caches a prompt
-> prefix once it reaches 1,024 tokens. I'd structured the prompt in two layers
-> — stable first, volatile last — specifically so caching could engage. Then I
-> measured it: on a bare session the stable part is about 590 tokens. Under
-> the floor. It never fires.
+> prefix once it reaches 1,024 tokens. I'd deliberately structured the prompt
+> in two layers — stable part first, volatile part last — specifically so
+> caching could engage. Then I measured it: on a bare session the stable
+> prefix is about 590 tokens. Under the floor. It never fires.
 >
-> I kept the structure; it costs nothing, and it's what makes caching possible
-> once a job description is attached. `[cut if behind]` The tool reports that
-> in words, rather than printing a zero I could quietly reinterpret. The claim
-> isn't that this is cheap — it's that every call is instrumented and
-> checkable, including the optimisation that doesn't work.
+> I kept the structure, because it costs nothing and it's what makes caching
+> possible once a job description is attached — which is when the prompt is
+> big enough to matter. But the tool reports that it didn't fire, in words,
+> rather than printing a zero I could quietly reinterpret.
+>
+> That's the claim I want to make. Not that this is cheap — a ten-question
+> round is roughly a cent. It's that every model call is instrumented, priced
+> and checkable, including the optimisation that provably doesn't work.
 
 ---
 
-### Slide 7 · Where it stands — `3:53`
+### Slide 5 · Status, limits, and the demo — `5:17`
 
-> Where it honestly stands, in three columns.
+> Finally, where it honestly stands.
 >
-> Built and verified: 299 unit tests across 31 files, all passing in CI
-> alongside typecheck and lint. Ten migrations with row-level security on
-> every table. Six round types in text and voice, and grounding through
-> pgvector inside Postgres, so retrieval inherits the same access rules as
-> everything else. `[cut if behind]`
+> Built and verified: 299 unit tests across 31 files, all passing in CI on
+> every push alongside typecheck and lint. Ten migrations with row-level
+> security on every table — and retrieval runs through pgvector inside
+> Postgres, so it inherits the same access rules as everything else.
 >
-> Built but not yet measured — and I'll be direct. I wrote an evaluation
+> Built but not yet measured, and I'll be direct. I wrote an evaluation
 > harness for scoring accuracy, with eighteen hand-authored fixtures and
 > defined metrics. The results aren't collected yet. Same for user acceptance
-> testing: the plan is written, no participants yet.
+> testing: the plan, the handout and the exit criteria are written; no
+> participants have been through it.
 >
-> The rule throughout has been: never claim a number I haven't run. That's why
-> the middle column is on the slide rather than left off it.
+> Some things are deliberately out of scope — submitted code is reviewed,
+> never executed, and it's English only.
+>
+> The rule I held to throughout: never claim a number I haven't run. That's
+> why the middle column is on this slide rather than left off it.
+>
+> So, three things to show you, ordered by how much can go wrong. Starting
+> with the one that can't fail.
 
 **Short: "299 tests passing in CI, RLS everywhere, voice and text working. The eval harness and the UAT plan are written but not yet run — I'm not going to show you results I don't have."**
-
----
-
-### Slide 8 · To the demo — `4:33`
-
-> Three things, ordered by how much can go wrong. First the deterministic
-> persona proof, which can't fail — it makes no network calls. Then the cost
-> report, which reads the database. Then a live interview.
->
-> If a live part fails, I'll switch to the committed output and say so, rather
-> than watching a spinner with you.
 
 ---
 
@@ -369,19 +376,19 @@ service-role write path so the grant to authenticated users can be revoked.
 
 | Claim | Slide | Source |
 |---|---|---|
-| Six round types and their durations | 3 | `src/lib/round-types.ts` |
-| Seven questioning strategies | 4 | `src/lib/decision-engine.ts` |
-| Four-second scoring deadline | 4 | `STEER_DEADLINE_MS`, `src/app/api/chat/route.ts` |
-| Single-transaction turn append | 4 | `append_interview_turn`, migration `0005` |
-| The difficulty formula | 5 | `estimateFollowupDifficulty`, `src/lib/decision-engine.ts:304` |
-| 7/10 vs 5/10, and the dials | 5 | `docs/artifacts/persona-comparison.txt` — committed output of `npm run eval:persona` |
-| Strictness 1→10 moves difficulty 5→7 | 5 | same artifact, difficulty curve |
-| 1,024-token cache floor, ~590-token prefix | 6 | `docs/TOKEN-COST.md`, `docs/DEMO.md` |
-| ~1 cent per ten-question round | 6 (spoken) | `docs/TOKEN-COST.md` — **estimated, not yet validated against live traffic.** Say "roughly" or run `cost-report` first |
-| 299 tests, 31 files | 7 | `npm test`, run 2026-08-10. **README.md still says 257 — it is stale** |
-| 10 migrations, RLS on every table | 7 | `supabase/migrations/` |
-| 18 eval fixtures, results pending | 7 | `src/eval/fixtures.ts`, `docs/EVALUATION.md` |
-| 12 competencies | appendix | `src/lib/competencies.ts` |
+| Six round types and their durations | 1 | `src/lib/round-types.ts` |
+| Seven questioning strategies | 2 | `src/lib/decision-engine.ts` |
+| Four-second scoring deadline | 2 | `STEER_DEADLINE_MS`, `src/app/api/chat/route.ts` |
+| Single-transaction turn append | 2 | `append_interview_turn`, migration `0005` |
+| The difficulty formula | 3 | `estimateFollowupDifficulty`, `src/lib/decision-engine.ts:304` |
+| 7/10 vs 5/10, and the dials | 3 | `docs/artifacts/persona-comparison.txt` — committed output of `npm run eval:persona` |
+| Strictness 1→10 moves difficulty 5→7 | 3 | same artifact, difficulty curve |
+| 1,024-token cache floor, ~590-token prefix | 4 | `docs/TOKEN-COST.md`, `docs/DEMO.md` |
+| ~1 cent per ten-question round | 4 (spoken) | `docs/TOKEN-COST.md` — **estimated, not yet validated against live traffic.** Say "roughly" or run `cost-report` first |
+| 299 tests, 31 files | 5 | `npm test`, run 2026-08-10. **README.md still says 257 — it is stale** |
+| 10 migrations, RLS on every table | 5 | `supabase/migrations/` |
+| 18 eval fixtures, results pending | 5 | `src/eval/fixtures.ts`, `docs/EVALUATION.md` |
+| 12 competencies | 1 | `src/lib/competencies.ts` |
 | 39-question bank ≈ 800 tokens | Q&A | `docs/TOKEN-COST.md` |
 
 **One number needs care.** The ~1 cent per round figure is labelled in

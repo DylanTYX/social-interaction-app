@@ -57,134 +57,143 @@ pptx.title = "ConvoTrainer — FYP Demo";
    ========================================================================= */
 
 const TALK = {
-  s1: `[0:00]  ~72 words
+  s1: `[0:00]  ~177 words
 
 Good morning. My final year project is ConvoTrainer, an interview practice
-application. The important word on this slide is "steer". Most tools score you
-at the end of a mock interview. This one scores every answer before it asks
-the next question, and uses that score to decide what to ask.
+application.
 
-Five minutes on the problem, the architecture, the part I can prove, and what
-isn't finished — then I'll demo it.
+All three ways of practising today have the same hole. A question bank asks
+the same things in the same order; it never notices that you dodged the
+question. A human adapts perfectly, but isn't available at eleven at night and
+can't be repeated ten times. A general chatbot will role-play, but won't grade
+you against a rubric or push back when you're weak. Nothing connects how you
+answered to what you get asked next. That loop is the project.
 
-FILL IN before presenting: your supervisor's name and the date.`,
+So: you describe the role, optionally attaching the real job description and
+your CV, which are used to ground the questions. You pick the rounds and shape
+the interviewer. Then you interview.
 
-  s2: `[0:29]  ~68 words
+Six round types, each with its own rubric — a system design answer isn't
+judged the way a behavioural one is. Text or voice, with a code editor on
+technical rounds. Afterwards, a scored report with per-answer coaching, model
+answers and competency coverage.
 
-There are three ways to practise today. A question bank never notices that you
-dodged the question. A human adapts perfectly, but isn't available at eleven
-at night. A general chatbot will role-play, but won't grade you against a
-rubric or push back when you're weak.
+The rest of the slides are how that works underneath.
 
-All three have the same hole: nothing connects how you answered to what you
-get asked next. That loop is the project.
+FILL IN before presenting: your supervisor's name and the date.
 
-SHORT VERSION: "Question banks don't adapt, humans don't scale, chatbots don't score. Nothing closes the loop between your answer and the next question."`,
+SHORT VERSION: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to pick the next question."`,
 
-  s3: `[0:56]  ~68 words
-
-The product is four setup steps, a round, and a report. You describe the role,
-optionally attaching the real job description and your CV — both are used to
-ground the questions.
-
-Six round types, each with its own rubric: a system design answer isn't judged
-the way a behavioural one is. Text or voice, with a code editor on technical
-rounds. You'll see it in the demo.
-
-SHORT VERSION: "Four setup steps, six round types each with its own rubric, text or voice, and a scored report. You'll see it in the demo."`,
-
-  s4: `[1:23]  ~109 words  ★
+  s2: `[1:11]  ~196 words  ★
 
 This is the centre of the project — one turn, left to right.
 
 Your answer arrives at the chat endpoint. Before anything is generated, a
-second model call scores it against that round's rubric.
+second model call scores it against the rubric for that round type, at low
+temperature, returning JSON.
 
-That verdict goes into a decision engine — ordinary deterministic code. It
-picks one of seven questioning strategies and computes a difficulty target.
-That becomes a private steering block inside the interviewer's prompt, which
-the candidate never sees. Then the next question streams back.
+That verdict goes into a decision engine — ordinary deterministic code, no
+model involved. It picks one of seven questioning strategies: probe the
+action, challenge ownership, drill for specificity. It also computes a
+difficulty target. Those become a private steering block inside the
+interviewer's prompt, which the candidate never sees. Then the next question
+streams back.
 
-Scoring is bounded at four seconds, so a slow analyzer can't hold the reply
-hostage. And both messages and the analysis commit in one Postgres
-transaction, so a turn can't half-exist.
+Three engineering points. Scoring is bounded at four seconds — I measured the
+turn before changing it, rather than guessing. Past that deadline the question
+starts unsteered, but the verdict is still collected and stored, so the
+transcript and the report are unaffected.
 
-KEY SLIDE — do not cut.`,
+Both messages and the analysis commit in one Postgres transaction, so a turn
+can't half-exist.
 
-  s5: `[2:07]  ~124 words  ★
+And every interviewer turn runs on the same model. The opening turn used to
+use a stronger one — but a different model is a different prompt cache, so the
+session paid full price twice and hit cache neither time.
 
-If you take one thing from this talk, take this slide.
+KEY SLIDE — this is the architecture. Do not rush it.`,
 
-The persona reaches the model two ways. Textually, each dial becomes a
-sentence in the prompt — and prompt text has no effect you can compute, so you
-have to measure what comes back.
+  s3: `[2:29]  ~205 words  ★
 
-The numeric path is arithmetic: strictness minus warmth, over four, clamped
-one to ten. That number is injected as an explicit instruction — aim for
-difficulty seven out of ten.
+This is the claim I can prove, and the one I'd most like you to look at.
 
-So: identical question, identical answer, identical round type. The only
-variable is who's asking. The strict persona targets seven; the warm one
-targets five. That isn't a sample from a stochastic model, it's a computation
-— you can do the arithmetic by hand and get the same two numbers.
+The persona reaches the model down two paths. Textually, each dial becomes a
+sentence in the system prompt — and prompt text has no effect you can compute,
+so you have to measure what comes back.
 
-One limit, before you ask: scoring deliberately ignores persona. Grading
-shouldn't depend on who asked.  [cut if behind]
+The numeric path is arithmetic: strictness minus warmth, over four, plus a
+repetition boost, clamped one to ten. That number is injected as an explicit
+instruction — aim for difficulty seven out of ten.
+
+On the right is real output. Identical question, identical answer, identical
+round type. The only variable is who's asking. Yuki, at strictness nine and
+warmth four, targets seven. Isabella, at warmth nine and pushback four,
+targets five.
+
+That isn't a sample from a stochastic model, it's a computation — you can do
+the arithmetic by hand and get the same two numbers, every run, offline. And a
+test fails if a future edit brings those two personas' dials together, so the
+comparison can't quietly stop demonstrating anything.
+
+Two limits, before you ask. The dials are coarse: strictness one to ten moves
+difficulty only five to seven. And scoring deliberately ignores persona —
+grading shouldn't depend on who asked.
 
 KEY SLIDE — your strongest evidence. Slow down here.`,
 
-  s6: `[2:56]  ~141 words  ★
+  s4: `[3:51]  ~215 words  ★
 
 Second — I don't estimate what this costs. I measure it.
 
-Every OpenAI call records its token usage into a Postgres table as it happens.
-A command-line tool reads that table and prices it, so any cost claim I make
-is a query you can re-run.
+Every OpenAI call records its token usage, including how much was served from
+cache, into a Postgres table as the call happens. A command-line tool reads
+that table and prices it, reporting tokens per call site, cache hit rate, and
+cost per turn. So any cost figure I give you is a query you can re-run.
 
 The most useful result was a negative one. OpenAI only caches a prompt prefix
-once it reaches 1,024 tokens. I'd structured the prompt in two layers — stable
-first, volatile last — specifically so caching could engage. Then I measured
-it: on a bare session the stable part is about 590 tokens. Under the floor. It
-never fires.
+once it reaches 1,024 tokens. I'd deliberately structured the prompt in two
+layers — stable part first, volatile part last — specifically so caching could
+engage. Then I measured it: on a bare session the stable prefix is about 590
+tokens. Under the floor. It never fires.
 
-I kept the structure; it costs nothing, and it's what makes caching possible
-once a job description is attached.  [cut if behind] The tool reports that in
-words, rather than printing a zero I could quietly reinterpret. The claim
-isn't that this is cheap — it's that every call is instrumented and checkable,
-including the optimisation that doesn't work.
+I kept the structure, because it costs nothing and it's what makes caching
+possible once a job description is attached — which is when the prompt is big
+enough to matter. But the tool reports that it didn't fire, in words, rather
+than printing a zero I could quietly reinterpret.
 
-KEY SLIDE. The negative result is the point — don't rush past it.`,
+That's the claim I want to make. Not that this is cheap — a ten-question round
+is roughly a cent. It's that every model call is instrumented, priced and
+checkable, including the optimisation that provably doesn't work.
 
-  s7: `[3:53]  ~100 words
+KEY SLIDE — the negative result is the point, not a caveat.`,
 
-Where it honestly stands, in three columns.
+  s5: `[5:17]  ~166 words
 
-Built and verified: 299 unit tests across 31 files, all passing in CI
-alongside typecheck and lint. Ten migrations with row-level security on every
-table. Six round types in text and voice, and grounding through pgvector
-inside Postgres, so retrieval inherits the same access rules as everything
-else.  [cut if behind]
+Finally, where it honestly stands.
 
-Built but not yet measured — and I'll be direct. I wrote an evaluation harness
+Built and verified: 299 unit tests across 31 files, all passing in CI on every
+push alongside typecheck and lint. Ten migrations with row-level security on
+every table — and retrieval runs through pgvector inside Postgres, so it
+inherits the same access rules as everything else.
+
+Built but not yet measured, and I'll be direct. I wrote an evaluation harness
 for scoring accuracy, with eighteen hand-authored fixtures and defined
 metrics. The results aren't collected yet. Same for user acceptance testing:
-the plan is written, no participants yet.
+the plan, the handout and the exit criteria are written; no participants have
+been through it.
 
-The rule throughout has been: never claim a number I haven't run. That's why
-the middle column is on the slide rather than left off it.
+Some things are deliberately out of scope — submitted code is reviewed, never
+executed, and it's English only.
+
+The rule I held to throughout: never claim a number I haven't run. That's why
+the middle column is on this slide rather than left off it.
+
+So, three things to show you, ordered by how much can go wrong. Starting with
+the one that can't fail.
+
+Stop talking. Start demoing.
 
 SHORT VERSION: "299 tests passing in CI, RLS everywhere, voice and text working. The eval harness and the UAT plan are written but not yet run — I'm not going to show you results I don't have."`,
-
-  s8: `[4:33]  ~56 words
-
-Three things, ordered by how much can go wrong. First the deterministic
-persona proof, which can't fail — it makes no network calls. Then the cost
-report, which reads the database. Then a live interview.
-
-If a live part fails, I'll switch to the committed output and say so, rather
-than watching a spinner with you.
-
-Stop talking. Start demoing.`,
 };
 
 /* ---------------------------------------------------------------- helpers */
@@ -289,7 +298,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
 }
 
 /* =================================================================== SLIDE 1
-   Title
+   What it is, and the gap  (title + problem + product, merged)
    ========================================================================= */
 {
   const s = pptx.addSlide();
@@ -298,169 +307,105 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
   s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.22, h: H, fill: { color: ACCENT } });
 
   s.addText("FINAL YEAR PROJECT  ·  DEMONSTRATION", {
-    x: 1.05, y: 1.62, w: 10, h: 0.3,
-    fontFace: SANS, fontSize: 12, bold: true, color: ACCENT, charSpacing: 2.2, valign: "middle",
+    x: M + 0.24, y: 0.38, w: CW, h: 0.28,
+    fontFace: SANS, fontSize: 11, bold: true, color: ACCENT, charSpacing: 2.0, valign: "middle",
   });
 
   s.addText("ConvoTrainer", {
-    x: 1.0, y: 2.02, w: 11, h: 1.0,
-    fontFace: SANS, fontSize: 56, bold: true, color: INK, valign: "middle",
+    x: M + 0.2, y: 0.72, w: CW, h: 0.58,
+    fontFace: SANS, fontSize: 38, bold: true, color: INK, valign: "middle",
   });
 
   s.addText(
     "An AI interview partner that scores every answer — and lets that score steer the next question.",
     {
-      x: 1.05, y: 3.08, w: 10.2, h: 0.72,
-      fontFace: SANS, fontSize: 19, color: BODY, valign: "top", lineSpacing: 27,
+      x: M + 0.24, y: 1.34, w: CW - 0.5, h: 0.36,
+      fontFace: SANS, fontSize: 16, color: BODY, valign: "middle",
     },
   );
-
-  s.addShape(pptx.ShapeType.rect, { x: 1.05, y: 4.06, w: 1.5, h: 0.035, fill: { color: ACCENT } });
 
   s.addText(
     [
       { text: "Dylan Tan", options: { bold: true, color: INK } },
-      { text: " | Supervisor: «name» | «date»", options: { color: MUTED } },
+      { text: "   ·   Supervisor: «name»   ·   «date»", options: { color: MUTED } },
     ],
-    { x: 1.05, y: 4.32, w: 10, h: 0.3, fontFace: SANS, fontSize: 13, valign: "middle" },
+    { x: M + 0.24, y: 1.72, w: CW - 0.5, h: 0.26, fontFace: SANS, fontSize: 12, valign: "middle" },
   );
 
-  panel(s, { x: 1.05, y: 5.15, w: 10.6, h: 0.66, fill: PANEL });
+  // the gap, in one line — the speaker says the rest
+  panel(s, { x: M, y: 2.2, w: CW, h: 0.74, fill: ACCENT_SOFT, edge: ACCENT });
+  s.addText(
+    [
+      { text: "Question banks don't adapt. Humans don't scale. Chatbots don't score.   ", options: { color: BODY } },
+      { text: "Nothing closes the loop between how you answered and what you get asked next.", options: { bold: true, color: INK } },
+    ],
+    {
+      x: M + 0.34, y: 2.2, w: CW - 0.6, h: 0.74,
+      fontFace: SANS, fontSize: 13.5, valign: "middle", lineSpacing: 19,
+    },
+  );
+
+  steps(s, [
+    { tag: "STEP 1", title: "Context", body: "Role, job description, CV" },
+    { tag: "STEP 2", title: "Rounds", body: "One round, or a full loop" },
+    { tag: "STEP 3", title: "Interviewer", body: "Persona + four dials" },
+    { tag: "STEP 4", title: "Review", body: "Confirm and launch" },
+  ], { y: 3.1, h: 1.02 });
+
+  const factW = (CW - 0.34 * 2) / 3;
+  const facts = [
+    {
+      h: "Six round types",
+      rows: [
+        "Screening · behavioural · HR",
+        "Technical SWE · system design · case",
+        "Each with its own rubric",
+      ],
+    },
+    {
+      h: "Text or voice",
+      rows: [
+        "Streamed replies, live coaching rail",
+        "Code editor on technical rounds",
+        "Azure speech-to-text and TTS",
+      ],
+    },
+    {
+      h: "A scored report",
+      rows: [
+        "Breakdown + per-answer coaching",
+        "Model answers · competency coverage",
+        "Calibration: guess before the reveal",
+      ],
+    },
+  ];
+  facts.forEach((c, i) => {
+    const x = M + i * (factW + 0.34);
+    panel(s, { x, y: 4.3, w: factW, h: 1.28, fill: PANEL, edge: ACCENT });
+    s.addText(c.h, {
+      x: x + 0.28, y: 4.4, w: factW - 0.46, h: 0.28,
+      fontFace: SANS, fontSize: 13, bold: true, color: INK, valign: "middle",
+    });
+    s.addText(c.rows.map((r) => ({ text: r, options: { breakLine: true } })), {
+      x: x + 0.28, y: 4.7, w: factW - 0.46, h: 0.82,
+      fontFace: SANS, fontSize: 10.5, color: BODY, valign: "top", lineSpacing: 14.5,
+    });
+  });
+
+  panel(s, { x: M, y: 5.76, w: CW, h: 0.52, fill: PANEL });
   s.addText(
     "Next.js 16 · React 19 · TypeScript · Supabase (Postgres + pgvector + RLS) · OpenAI · Azure Speech",
     {
-      x: 1.25, y: 5.15, w: 10.2, h: 0.66,
-      fontFace: SANS, fontSize: 12, color: BODY, valign: "middle",
+      x: M + 0.3, y: 5.76, w: CW - 0.5, h: 0.52,
+      fontFace: SANS, fontSize: 11, color: BODY, valign: "middle",
     },
   );
 
   s.addNotes(TALK.s1);
-  chrome(s, { footer: false });
+  chrome(s);
 }
 
 /* =================================================================== SLIDE 2
-   Problem
-   ========================================================================= */
-{
-  const s = pptx.addSlide();
-  s.background = { color: WHITE };
-  head(s, "The problem", "Interview practice has three options. All three have the same hole.");
-
-  const cards = [
-    {
-      tag: "OPTION 1",
-      title: "A static question bank",
-      body: "Asks the same question in the same order no matter what you said. Never notices that you dodged the question.",
-    },
-    {
-      tag: "OPTION 2",
-      title: "A human mock interviewer",
-      body: "Adapts perfectly. Is not available at 11pm the night before, and cannot be repeated ten times.",
-    },
-    {
-      tag: "OPTION 3",
-      title: "A general-purpose chatbot",
-      body: "Will happily role-play. Does not grade you against a rubric, and does not change tack when an answer is weak.",
-    },
-  ];
-  steps(s, cards, { y: 1.86, h: 2.05 });
-
-  panel(s, { x: M, y: 4.28, w: CW, h: 1.34, fill: ACCENT_SOFT, edge: ACCENT });
-  s.addText("The gap", {
-    x: M + 0.34, y: 4.46, w: CW - 0.6, h: 0.3,
-    fontFace: SANS, fontSize: 12, bold: true, color: ACCENT, charSpacing: 1.4, valign: "middle",
-  });
-  s.addText(
-    "Nothing closes the loop between how you answered and what you get asked next. That loop is the project.",
-    {
-      x: M + 0.34, y: 4.76, w: CW - 0.7, h: 0.68,
-      fontFace: SANS, fontSize: 17, bold: true, color: INK, valign: "top", lineSpacing: 24,
-    },
-  );
-
-  s.addNotes(TALK.s2);
-  chrome(s);
-}
-
-/* =================================================================== SLIDE 3
-   What it is
-   ========================================================================= */
-{
-  const s = pptx.addSlide();
-  s.background = { color: WHITE };
-  head(s, "What it is", "Configure an interviewer, run a round, get scored.");
-
-  steps(s, [
-    { tag: "STEP 1", title: "Context", body: "Role, seniority, job description, CV" },
-    { tag: "STEP 2", title: "Rounds", body: "One round, or a full multi-round loop" },
-    { tag: "STEP 3", title: "Interviewer", body: "Persona + four behavioural dials" },
-    { tag: "STEP 4", title: "Review", body: "Confirm and launch" },
-  ], { y: 1.8, h: 1.28 });
-
-  const colW = (CW - 0.34 * 2) / 3;
-
-  const cols = [
-    {
-      h: "Six round types",
-      edge: ACCENT,
-      rows: [
-        "Intro screening · 15 min",
-        "Behavioural · 20 min",
-        "HR / people · 20 min",
-        "Technical SWE · 25 min",
-        "Case · 25 min",
-        "System design · 30 min",
-      ],
-      foot: "Each has its own rubric and its own scoring path.",
-    },
-    {
-      h: "During the round",
-      edge: ACCENT,
-      rows: [
-        "Streamed replies, text or voice",
-        "Code editor on technical rounds",
-        "Per-answer countdown timer",
-        "Live coaching rail",
-        "Resume after a disconnect",
-      ],
-      foot: "Voice is Azure STT + streaming TTS.",
-    },
-    {
-      h: "After the round",
-      edge: ACCENT,
-      rows: [
-        "Score breakdown per dimension",
-        "Per-answer coaching + model answers",
-        "Competency coverage (12)",
-        "Calibration: guess before reveal",
-        "Comparison against past sessions",
-      ],
-      foot: "Printable as a PDF.",
-    },
-  ];
-
-  cols.forEach((c, i) => {
-    const x = M + i * (colW + 0.34);
-    panel(s, { x, y: 3.32, w: colW, h: 2.42, fill: PANEL, edge: c.edge });
-    s.addText(c.h, {
-      x: x + 0.28, y: 3.44, w: colW - 0.44, h: 0.3,
-      fontFace: SANS, fontSize: 14, bold: true, color: INK, valign: "middle",
-    });
-    s.addText(c.rows.map((r) => ({ text: r, options: { breakLine: true } })), {
-      x: x + 0.28, y: 3.78, w: colW - 0.44, h: 1.5,
-      fontFace: SANS, fontSize: 11.5, color: BODY, valign: "top", lineSpacing: 17,
-    });
-    s.addText(c.foot, {
-      x: x + 0.28, y: 5.3, w: colW - 0.44, h: 0.34,
-      fontFace: SANS, fontSize: 10.5, italic: true, color: MUTED, valign: "top", lineSpacing: 14,
-    });
-  });
-
-  s.addNotes(TALK.s3);
-  chrome(s);
-}
-
-/* =================================================================== SLIDE 4
    The turn loop  ★
    ========================================================================= */
 {
@@ -540,11 +485,11 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
     { x: M, y: 5.9, w: CW, h: 0.28, fontFace: MONO, fontSize: 9.5, color: MUTED, valign: "middle" },
   );
 
-  s.addNotes(TALK.s4);
+  s.addNotes(TALK.s2);
   chrome(s);
 }
 
-/* =================================================================== SLIDE 5
+/* =================================================================== SLIDE 3
    Contribution, proven  ★
    ========================================================================= */
 {
@@ -635,11 +580,11 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
     { x: M, y: 5.94, w: CW, h: 0.62, fontFace: SANS, fontSize: 10.5, valign: "top", lineSpacing: 14.5 },
   );
 
-  s.addNotes(TALK.s5);
+  s.addNotes(TALK.s3);
   chrome(s);
 }
 
-/* =================================================================== SLIDE 6
+/* =================================================================== SLIDE 4
    Measured, not asserted  ★
    ========================================================================= */
 {
@@ -713,17 +658,17 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
     { x: M + halfW + 0.62, y: 4.94, w: halfW - 0.5, h: 0.8, fontFace: SANS, fontSize: 11.5, valign: "top", lineSpacing: 16 },
   );
 
-  s.addNotes(TALK.s6);
+  s.addNotes(TALK.s4);
   chrome(s);
 }
 
-/* =================================================================== SLIDE 7
-   Status and honest limits
+/* =================================================================== SLIDE 5
+   Status, limits, and the demo  (merged)
    ========================================================================= */
 {
   const s = pptx.addSlide();
   s.background = { color: WHITE };
-  head(s, "Where it stands", "Built, measured, and not yet — stated separately.");
+  head(s, "Where it stands", "Built, measured, and not yet — then the demo.");
 
   const colW = (CW - 0.34 * 2) / 3;
   const cols = [
@@ -737,8 +682,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
         "CI: typecheck + lint + test on every push",
         "10 migrations; RLS on every table",
         "Six round types, text and voice",
-        "Multi-round loops with handover",
-        "JD + CV grounding via pgvector",
+        "JD + CV grounding via pgvector, inside Postgres",
       ],
     },
     {
@@ -761,17 +705,17 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
         "Code is reviewed, never executed",
         "English only",
         "No CSP yet — pending an audit of the speech websocket origins",
-        "Rate limiter is in-process, so not correct across serverless instances",
+        "Rate limiter is in-process",
       ],
     },
   ];
 
   cols.forEach((c, i) => {
     const x = M + i * (colW + 0.34);
-    panel(s, { x, y: 1.8, w: colW, h: 3.4, fill: c.soft, edge: c.color });
+    panel(s, { x, y: 1.74, w: colW, h: 2.6, fill: c.soft, edge: c.color });
     s.addText(`${c.mark}  ${c.h}`, {
-      x: x + 0.28, y: 1.94, w: colW - 0.46, h: 0.32,
-      fontFace: SANS, fontSize: 13.5, bold: true, color: c.color, valign: "middle",
+      x: x + 0.28, y: 1.86, w: colW - 0.46, h: 0.3,
+      fontFace: SANS, fontSize: 13, bold: true, color: c.color, valign: "middle",
     });
     const runs = [];
     c.rows.forEach((r, j) => {
@@ -779,97 +723,48 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
       if (j < c.rows.length - 1) runs.push({ text: "", options: { breakLine: true, fontSize: 5 } });
     });
     s.addText(runs, {
-      x: x + 0.28, y: 2.34, w: colW - 0.46, h: 2.76,
-      fontFace: SANS, fontSize: 11, color: BODY, valign: "top", lineSpacing: 15,
+      x: x + 0.28, y: 2.22, w: colW - 0.46, h: 2.04,
+      fontFace: SANS, fontSize: 10.5, color: BODY, valign: "top", lineSpacing: 14.5,
     });
   });
 
-  panel(s, { x: M, y: 5.42, w: CW, h: 0.82, fill: ACCENT_SOFT, edge: ACCENT });
+  panel(s, { x: M, y: 4.46, w: CW, h: 0.6, fill: ACCENT_SOFT, edge: ACCENT });
   s.addText(
     [
       { text: "The rule I held to:  ", options: { bold: true, color: ACCENT } },
-      { text: "never claim a number I have not run. Everything on the left is a command you can execute; everything in the middle is a command I have not executed yet.", options: { color: INK } },
+      { text: "never claim a number I have not run. That is why the middle column is on this slide rather than left off it.", options: { color: INK } },
     ],
-    { x: M + 0.34, y: 5.42, w: CW - 0.6, h: 0.82, fontFace: SANS, fontSize: 13, valign: "middle", lineSpacing: 18 },
+    { x: M + 0.34, y: 4.46, w: CW - 0.6, h: 0.6, fontFace: SANS, fontSize: 12.5, valign: "middle" },
   );
 
-  s.addNotes(TALK.s7);
-  chrome(s);
-}
+  s.addText("Now the demo — three things, in increasing order of what can go wrong.", {
+    x: M, y: 5.16, w: CW, h: 0.28,
+    fontFace: SANS, fontSize: 12, bold: true, color: INK, valign: "middle",
+  });
 
-/* =================================================================== SLIDE 8
-   Demo transition
-   ========================================================================= */
-{
-  const s = pptx.addSlide();
-  s.background = { color: WHITE };
-  head(s, "Demonstration", "Three things, in increasing order of what can go wrong.");
-
-  const rows = [
-    {
-      n: "01",
-      t: "Personas actually differ",
-      cmd: "npm run eval:persona",
-      d: "Deterministic. No API calls, no network, byte-identical every run.",
-      risk: "Cannot fail",
-      riskColor: GREEN,
-      riskSoft: GREEN_SOFT,
-    },
-    {
-      n: "02",
-      t: "What it has cost",
-      cmd: "npm run cost-report",
-      d: "Reads every recorded model call and prices it. Includes the caching counterfactual.",
-      risk: "Needs the database",
-      riskColor: AMBER,
-      riskSoft: AMBER_SOFT,
-    },
-    {
-      n: "03",
-      t: "A live interview",
-      cmd: "npm run dev",
-      d: "Short round with the strict persona, so the pushback is visible. Then the report.",
-      risk: "Live model calls",
-      riskColor: AMBER,
-      riskSoft: AMBER_SOFT,
-    },
+  const demo = [
+    { n: "01", t: "Personas actually differ", cmd: "npm run eval:persona", risk: "Deterministic — cannot fail", c: GREEN, soft: GREEN_SOFT },
+    { n: "02", t: "What it has cost", cmd: "npm run cost-report", risk: "Reads llm_usage", c: AMBER, soft: AMBER_SOFT },
+    { n: "03", t: "A live interview", cmd: "npm run dev", risk: "Strict persona, short round", c: AMBER, soft: AMBER_SOFT },
   ];
-
-  rows.forEach((r, i) => {
-    const y = 1.84 + i * 1.28;
-    panel(s, { x: M, y, w: CW, h: 1.1, fill: PANEL, edge: ACCENT });
-    s.addText(r.n, {
-      x: M + 0.3, y, w: 0.7, h: 1.1,
-      fontFace: SANS, fontSize: 24, bold: true, color: ACCENT, valign: "middle",
+  demo.forEach((d, i) => {
+    const x = M + i * (colW + 0.34);
+    panel(s, { x, y: 5.5, w: colW, h: 0.94, fill: d.soft, edge: d.c });
+    s.addText(`${d.n}  ·  ${d.t}`, {
+      x: x + 0.28, y: 5.6, w: colW - 0.46, h: 0.26,
+      fontFace: SANS, fontSize: 12, bold: true, color: INK, valign: "middle",
     });
-    s.addText(r.t, {
-      x: M + 1.05, y: y + 0.18, w: 4.2, h: 0.36,
-      fontFace: SANS, fontSize: 15.5, bold: true, color: INK, valign: "middle",
+    s.addText(d.cmd, {
+      x: x + 0.28, y: 5.88, w: colW - 0.46, h: 0.24,
+      fontFace: MONO, fontSize: 10, color: ACCENT, valign: "middle",
     });
-    s.addText(r.cmd, {
-      x: M + 1.05, y: y + 0.56, w: 4.2, h: 0.32,
-      fontFace: MONO, fontSize: 11.5, color: ACCENT, valign: "middle",
-    });
-    s.addText(r.d, {
-      x: M + 5.45, y: y + 0.2, w: 4.6, h: 0.7,
-      fontFace: SANS, fontSize: 11.5, color: BODY, valign: "middle", lineSpacing: 16,
-    });
-    s.addShape(pptx.ShapeType.rect, {
-      x: M + 10.25, y: y + 0.36, w: 1.6, h: 0.38,
-      fill: { color: r.riskSoft }, line: { color: r.riskColor, width: 1 },
-    });
-    s.addText(r.risk, {
-      x: M + 10.25, y: y + 0.36, w: 1.6, h: 0.38,
-      fontFace: SANS, fontSize: 9.5, bold: true, color: r.riskColor, align: "center", valign: "middle",
+    s.addText(d.risk, {
+      x: x + 0.28, y: 6.12, w: colW - 0.46, h: 0.24,
+      fontFace: SANS, fontSize: 9.5, italic: true, color: d.c, valign: "middle",
     });
   });
 
-  s.addText(
-    "If anything live fails I will switch to the committed output in docs/artifacts/ and say so.",
-    { x: M, y: 5.82, w: CW, h: 0.36, fontFace: SANS, fontSize: 12, italic: true, color: MUTED, valign: "middle" },
-  );
-
-  s.addNotes(TALK.s8);
+  s.addNotes(TALK.s5);
   chrome(s);
 }
 
@@ -880,12 +775,12 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
 function appendixDivider() {
   const s = pptx.addSlide();
   s.background = { color: INK };
-  s.addText("Appendix", {
-    x: M, y: 3.0, w: CW, h: 0.8,
+  s.addText("Thank you", {
+    x: M, y: 2.9, w: CW, h: 0.8,
     fontFace: SANS, fontSize: 40, bold: true, color: WHITE, valign: "middle",
   });
-  s.addText("Not presented — held for questions.", {
-    x: M, y: 3.86, w: CW, h: 0.4,
+  s.addText("Questions. Supporting material follows — not presented.", {
+    x: M, y: 3.76, w: CW, h: 0.4,
     fontFace: SANS, fontSize: 15, color: "9AA5B4", valign: "middle",
   });
   pageNo += 1;
