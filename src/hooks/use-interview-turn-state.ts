@@ -132,6 +132,29 @@ export function useInterviewTurnState(input: {
   const [sessionState, setSessionState] = useState<InterviewSessionState>(() =>
     createInterviewSessionState(sessionId ?? "local", personaName),
   );
+
+  /**
+   * The state with its real identity, derived rather than stored.
+   *
+   * The seed above runs on the *first* render, when bootstrap is still loading
+   * — so the stored `sessionId` is always the `"local"` placeholder and the
+   * stored `personaName` is always the pre-load default, for the whole life of
+   * the session. Nothing updated them, and `buildInterviewMetrics` copies both
+   * into the persisted `metrics` blob, so every session on record claimed to be
+   * `"local"` with the default interviewer.
+   *
+   * Overlaid here rather than written back, because that is what it is:
+   * identity is a function of the props, and only the counters and timestamps
+   * are genuinely state.
+   */
+  const identifiedState = useMemo(
+    () => ({
+      ...sessionState,
+      sessionId: sessionId ?? sessionState.sessionId,
+      personaName,
+    }),
+    [sessionState, sessionId, personaName],
+  );
   // Restored turns count toward the round's length. Without this a reload
   // restarted the counter at zero, so the interview ran its full length again
   // — and since the session id is now always in the URL, that happened on
@@ -189,7 +212,7 @@ export function useInterviewTurnState(input: {
       const strategy = turn.strategy;
       const confidence = turn.confidence ?? 50;
 
-      const advanced = recordInterviewTurn(sessionState, {
+      const advanced = recordInterviewTurn(identifiedState, {
         question: turn.aiMessage,
         analysis,
         decision: {
@@ -253,13 +276,13 @@ export function useInterviewTurnState(input: {
       effectiveSnapshots,
       restoredTurns,
       sessionId,
-      sessionState,
+      identifiedState,
       targetTurns,
     ],
   );
 
   const endSession = useCallback(async () => {
-    const completedState = sessionState;
+    const completedState = identifiedState;
     const finalMetrics = {
       ...buildInterviewMetrics({
         analyses: effectiveAnalyses,
@@ -288,14 +311,14 @@ export function useInterviewTurnState(input: {
     }
 
     return averageScore;
-  }, [effectiveAnalyses, effectiveSnapshots, sessionId, sessionState]);
+  }, [effectiveAnalyses, effectiveSnapshots, sessionId, identifiedState]);
 
   return {
-    sessionState,
+    sessionState: identifiedState,
     targetTurns,
     scoredTurns,
     stage: interviewStage(
-      { ...sessionState, turnCount: scoredTurns },
+      { ...identifiedState, turnCount: scoredTurns },
       targetTurns,
     ),
     analyses: effectiveAnalyses,

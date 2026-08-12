@@ -180,6 +180,8 @@ function ChatSimulateInner() {
   // Synchronous companion: `handleSend` needs to refuse a submit that races the
   // completion, and state is not readable in the same tick it is set.
   const sessionCompleteRef = useRef(false);
+  // Latches the opening request so a re-run cannot produce a second greeting.
+  const openingGeneratedRef = useRef(false);
 
   const handleEndSession = async () => {
     /**
@@ -279,6 +281,8 @@ function ChatSimulateInner() {
         : [buildWelcomeMessage(activeScenario, bootstrap.personaConfig.name)],
     );
     setMessagesHydrated(true);
+    // A resumed transcript already contains its opening turn.
+    if (restored.length > 0) openingGeneratedRef.current = true;
   }, [
     bootstrap.status,
     bootstrap.personaConfig.name,
@@ -287,6 +291,58 @@ function ChatSimulateInner() {
     resumed.status,
     resumed.messages,
   ]);
+
+  /**
+   * Ask the interviewer to open, exactly as the voice screen does.
+   *
+   * The welcome above is written on the client and never persisted, so the
+   * transcript began with no assistant row — and `findPriorQuestion` returns
+   * null without one, which makes `shouldAnalyze` false. **The first answer of
+   * every text interview was therefore never scored**, and it is usually the
+   * most prepared one. It was also absent from the report, so a five-question
+   * round was reported on four.
+   *
+   * The canned welcome stays visible until the real greeting lands, and stays
+   * for good if it never does — an unscored first turn is a far better outcome
+   * than an empty screen.
+   */
+  useEffect(() => {
+    if (!messagesHydrated || bootstrap.status !== "ready") return;
+    if (!bootstrap.sessionId || openingGeneratedRef.current) return;
+
+    openingGeneratedRef.current = true;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: bootstrap.sessionId,
+            mode: "opening",
+            streamResponse: false,
+          }),
+        });
+        if (!response.ok) throw new Error("Opening turn failed.");
+
+        const data = (await response.json()) as ChatTurnResponse;
+        if (!data.aiMessage?.trim()) return;
+
+        setMessages([
+          {
+            id: "opening",
+            role: "ai",
+            content: data.aiMessage,
+            timestamp: formatMessageTime(),
+          },
+        ]);
+      } catch (openingError) {
+        // Deliberately quiet: the placeholder welcome is already on screen and
+        // the interview works without this, it just scores one turn fewer.
+        console.warn("Could not generate the opening turn:", openingError);
+      }
+    })();
+  }, [messagesHydrated, bootstrap.status, bootstrap.sessionId]);
 
   // Keep the newest message in view. The voice screen has always done this;
   // the text transcript did not, so replies landed below the fold.
