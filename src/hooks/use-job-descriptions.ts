@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useLibraryList } from "@/hooks/use-library-list";
+import { useCallback } from "react";
 import { readJson } from "@/lib/api/fetch-json";
 
 export interface JobDescriptionSummary {
@@ -36,64 +37,43 @@ export interface UseJobDescriptions {
 }
 
 /**
+ * `limit=50` is explicit because omitting it silently took the route's fallback
+ * of 20 while the cap is 50 — so a 21st saved item was unreachable from both
+ * this page and the setup wizard's picker.
+ */
+async function loadJobDescriptions(): Promise<JobDescriptionSummary[]> {
+  const response = await fetch("/api/job-descriptions?limit=50", {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    // A 401 is an error, not an empty library. Swallowing it made a signed-out
+    // user see the cheerful "add your first one" empty state.
+    if (response.status === 401) {
+      throw new Error("Your session expired. Sign in again to continue.");
+    }
+    const detail = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(
+      detail?.error ??
+        `Failed to load job descriptions (HTTP ${response.status}).`,
+    );
+  }
+
+  const payload = await readJson<ApiPayload>(response);
+  return payload.jobDescriptions ?? [];
+}
+
+/**
  * Manages the user's job description library. Mirrors the persona library
  * hook so callers in the wizard can treat both consistently.
  */
 export function useJobDescriptions(): UseJobDescriptions {
-  const [items, setItems] = useState<JobDescriptionSummary[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
+  const { items, status, error, refresh, setItems, setError } = useLibraryList(
+    loadJobDescriptions,
+    "Failed to load job descriptions.",
   );
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    try {
-      // Explicit, because omitting it silently took the route's fallback of 20
-      // while the cap is 50 — so a 21st saved item was unreachable from both
-      // this page and the setup wizard's picker.
-      const response = await fetch("/api/job-descriptions?limit=50", {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        // A 401 is an error, not an empty library. Swallowing it here made a
-        // signed-out user see the cheerful "add your first one" empty state —
-        // and made three sibling pages behave three different ways, since
-        // `usePersonaLibrary` has always surfaced it. One policy now.
-        if (response.status === 401) {
-          throw new Error("Your session expired. Sign in again to continue.");
-        }
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ??
-            `Failed to load job descriptions (HTTP ${response.status}).`,
-        );
-      }
-      const payload = await readJson<ApiPayload>(response);
-      setItems(payload.jobDescriptions ?? []);
-      setStatus("ready");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load job descriptions.",
-      );
-      setStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void refresh();
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
 
   const uploadText = useCallback<UseJobDescriptions["uploadText"]>(
     async ({ rawText, roleTitle }) => {
@@ -120,7 +100,7 @@ export function useJobDescriptions(): UseJobDescriptions {
         return null;
       }
     },
-    [],
+    [setItems, setError],
   );
 
   const uploadPdf = useCallback<UseJobDescriptions["uploadPdf"]>(
@@ -149,26 +129,29 @@ export function useJobDescriptions(): UseJobDescriptions {
         return null;
       }
     },
-    [],
+    [setItems, setError],
   );
 
-  const remove = useCallback<UseJobDescriptions["remove"]>(async (id) => {
-    try {
-      const response = await fetch(`/api/job-descriptions/${id}`, {
-        method: "DELETE",
-      });
-      await readJson<ApiPayload>(response);
-      setItems((current) => current.filter((item) => item.id !== id));
-      return true;
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete job description.",
-      );
-      return false;
-    }
-  }, []);
+  const remove = useCallback<UseJobDescriptions["remove"]>(
+    async (id) => {
+      try {
+        const response = await fetch(`/api/job-descriptions/${id}`, {
+          method: "DELETE",
+        });
+        await readJson<ApiPayload>(response);
+        setItems((current) => current.filter((item) => item.id !== id));
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to delete job description.",
+        );
+        return false;
+      }
+    },
+    [setItems, setError],
+  );
 
   return {
     items,
