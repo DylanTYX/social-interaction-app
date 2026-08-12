@@ -126,6 +126,48 @@ run that produced them is in the repository.
 
 ---
 
+## Reading the metrics
+
+The harness reports six things. They answer different questions and the first
+two are easy to confuse:
+
+| Metric             | Question it answers                                                |
+| ------------------ | ------------------------------------------------------------------ |
+| **Separation**     | Does it tell a strong answer from a weak one _at all_?             |
+| **Band accuracy**  | Does it agree with the hand-assigned label?                        |
+| **Std dev**        | Does it give the same answer twice? (reliability)                  |
+| **By round type**  | Where does it agree, and where does it not?                        |
+| **Miss direction** | Is it systematically lenient or harsh?                             |
+| **Band spread**    | Is the band itself coherent, or does it hold two different things? |
+
+**Separation leads, and that is a deliberate choice.** Band accuracy buckets a
+0-100 judgement into three classes and throws the magnitude away — and the
+middle band is wide (40-72), so a scorer that clusters everything near 60
+collects hits it has not earned. The keyword heuristic does precisely that: it
+lands **55.6%** of fixtures in the right band while pulling strong and weak
+apart by only **13 points**, against the analyzer's **36.4**.
+
+Judged on band accuracy the analyzer looks 7 points better than a regex.
+Judged on separation it is nearly three times better. The second reading is the
+correct one, and the fixtures' own docstring agrees: the claim under test is
+"this separates a strong answer from a weak one", not "this predicts 73".
+
+## Known limits of this harness
+
+State these rather than let a reader find them:
+
+- **18 fixtures**, roughly six per band and two to four per round type. One
+  fixture flipping moves band accuracy by 5.6 points, so any change smaller
+  than about 11 points is inside the noise.
+- **The labels are one person's judgement and have not been validated.** Band
+  accuracy therefore measures _agreement with the author_, not accuracy. An
+  inter-rater pass — two or three people banding the fixtures blind — is the
+  cheapest thing that would fix this.
+- **It tests the analyzer only.** Not the interviewer's questions, not persona
+  behaviour, not follow-up adaptivity, not the summariser, not the coach.
+- **The answers, the labels and the rubric all come from the same author**, so
+  this measures internal consistency more than external validity.
+
 ## Results
 
 ### Before / after: moving counting out of the LLM
