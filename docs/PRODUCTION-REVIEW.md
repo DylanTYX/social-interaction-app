@@ -14,15 +14,17 @@ party to harm.
 **Verification.** Everything below was checked against the source. From
 `fa50c21` onwards the toolchain also runs a real `next build` — earlier work in
 the sequence was verified by typecheck, lint and tests only, because the app
-could not be built on the Node 18 that was on `PATH`. Current state: `tsc`
-clean, lint clean (one pre-existing warning in a docs script), 331 tests across
-37 files, production build succeeds.
+could not be built on the Node 18 that was on `PATH`. (Node 22 was available
+under nvm the whole time; the build failure that suggested otherwise was a stale
+`.next` cache.) Current state: `tsc` clean, lint clean apart from one
+pre-existing warning in a docs script, **336 tests across 38 files**, production
+build succeeds.
 
 ---
 
 ## Fixed
 
-Six commits, in dependency order.
+Nine commits, in dependency order.
 
 | Commit                | What                                                                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- |
@@ -32,6 +34,9 @@ Six commits, in dependency order.
 | `95bd3fd`             | First-answer scoring, greeting recovery, session identity, duration                             |
 | `4c293ee`             | Playback, privacy, fan-out, stale reads                                                         |
 | `fa50c21` · `33c8802` | Toolchain, log hygiene, hook deduplication                                                      |
+| `98c5a9c`             | Seven bugs that were reported but never fixed — timer, metrics, guards, resume, dashboard       |
+| `1884627`             | Two payloads that were asserted rather than validated                                           |
+| `24487f6`             | JSON responses read through the one helper that handles them                                    |
 
 The three worth singling out, because each was invisible rather than noisy:
 
@@ -132,6 +137,85 @@ batched.
 `resetPersonaPresets`, a user who names a persona after a shipped preset can
 lose it on "Restore presets". Self-scoped data loss on an explicitly destructive
 button; noted, not fixed.
+
+### 6. The two document pages remain near-identical
+
+`dashboard/resumes/page.tsx` and `dashboard/job-descriptions/page.tsx` are ~600
+lines that differ, after normalising the noun, by ~110.
+
+**Considered and declined.** The differences are domain, not accident: different
+field names (`title` vs `roleTitle`), and different copy because the two
+documents genuinely behave differently — a resume is stored as plain text, a job
+description is chunked and embedded. A shared component would need the noun,
+icon, accent, description, field label, placeholder, field name, hook and
+explanatory copy as props: a template with ten holes, harder to read and to
+change than two explicit files.
+
+The half of that duplication which actually carried a _bug_ — three copies of
+the list-fetch, each writing state after unmount and racing overlapping
+refreshes — is deduplicated in `33c8802` as `useLibraryList`.
+
+---
+
+## Full finding checklist
+
+Every finding from the review, with where it ended up. Recorded as a checklist
+because the first pass through this work silently dropped ten of them: they were
+in the report, never fixed, and never listed as deferred.
+
+| #   | Finding                                              | Status            |
+| --- | ---------------------------------------------------- | ----------------- |
+| 1   | Silence auto-submit pinned to one render             | `7652b1f`         |
+| 2   | Both mic-reopen paths dead code                      | `7652b1f`         |
+| 3   | Text mode never auto-completed                       | `7652b1f`         |
+| 4   | End session raced an in-flight turn                  | `7652b1f`         |
+| 5   | Deadline miss discarded the turn client-side         | `7652b1f`         |
+| 6   | `usage.flush` lost when the turn threw               | `7652b1f`         |
+| 7   | Unbounded PDF parsing                                | `1dd5b35`         |
+| 8   | Chunked-upload size bypass                           | `1dd5b35`         |
+| 9   | No JSON body limit on any route                      | `1dd5b35`         |
+| 10  | No UUID validation anywhere                          | `1dd5b35`         |
+| 11  | 14 routes flattened `ClientVisibleError` into 500    | `1dd5b35`         |
+| 12  | `parseOffset` uncapped                               | `1dd5b35`         |
+| 13  | Missing CHECK constraints and indexes                | `1dd5b35`         |
+| 14  | Analyzer notes reached a system message unsanitized  | `26a42c1`         |
+| 15  | Completed sessions still accepted turns              | `26a42c1`         |
+| 16  | `mode: "opening"` replayable                         | `26a42c1`         |
+| 17  | Stream drain had no deadline or lock release         | `26a42c1`         |
+| 18  | Text mode never scored its first answer              | `95bd3fd`         |
+| 19  | Failed greeting bricked the voice session            | `95bd3fd`         |
+| 20  | Session identity always the pre-bootstrap default    | `95bd3fd`         |
+| 21  | Resumed sessions undercounted duration               | `95bd3fd`         |
+| 22  | Barge-in stranded the next turn's playback           | `4c293ee`         |
+| 23  | Synthesis rejections unhandled                       | `4c293ee`         |
+| 24  | "Speaking" state unreachable while speaking          | `4c293ee`         |
+| 25  | Timeout placeholder scored as a real answer          | `4c293ee`         |
+| 26  | Document text survived deletion                      | `4c293ee`         |
+| 27  | `/api/me/export` 500-way fan-out                     | `4c293ee`         |
+| 28  | `next-round` had no idempotency                      | `4c293ee`         |
+| 29  | Sessions list showed stale filter results            | `4c293ee`         |
+| 30  | Turn timing over-reported the analyzer ~7×           | `4c293ee`         |
+| 31  | CI never built                                       | `fa50c21`         |
+| 32  | No `engines` field                                   | `fa50c21`         |
+| 33  | Vitest could not collect `.test.tsx`                 | `fa50c21`         |
+| 34  | Two log sites carried user content                   | `fa50c21`         |
+| 35  | Three library hooks duplicated, all racing           | `33c8802`         |
+| 36  | Failed send could auto-submit the next answer        | `98c5a9c`         |
+| 37  | Answer timer never stopped after expiry              | `98c5a9c`         |
+| 38  | Resumed sessions recorded the wrong turn count       | `98c5a9c`         |
+| 39  | Resume lost the interviewer's last decision          | `98c5a9c`         |
+| 40  | `score-comparison` set state after unmount           | `98c5a9c`         |
+| 41  | Lost update in the chat page                         | `98c5a9c`         |
+| 42  | Dashboard confused "no JDs" with "failed to load"    | `98c5a9c`         |
+| 43  | `voiceConfig` cast rather than validated             | `1884627`         |
+| 44  | `coach_answers.turnIndex` unbounded                  | `1884627`         |
+| 45  | 10 files hand-rolled JSON reading                    | `24487f6`         |
+| 46  | Table grants make API validation advisory            | **deferred** (§1) |
+| 47  | Rate limiting in-process, absent from 9 of 18 routes | **deferred** (§2) |
+| 48  | No error reporting                                   | **deferred** (§3) |
+| 49  | `listSessionsInLoop` / `listTurnAnalyses` unbounded  | **deferred** (§4) |
+| 50  | Persona `kind` client-settable                       | **deferred** (§5) |
+| 51  | Two document pages near-identical                    | **declined** (§6) |
 
 ---
 
