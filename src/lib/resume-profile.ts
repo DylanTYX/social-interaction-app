@@ -64,11 +64,10 @@ export async function buildResumeProfile(
     });
 
     if (!response.ok) {
-      console.warn(
-        "[resume-profile] summarisation failed:",
-        response.status,
-        (await response.text().catch(() => "")).slice(0, 300),
-      );
+      // Status only. This call's input is the candidate's CV, and OpenAI echoes
+      // the offending input in a content-filter error body — so 300 characters
+      // of it was 300 characters of someone's employment history in the logs.
+      console.warn("[resume-profile] summarisation failed:", response.status);
       return null;
     }
 

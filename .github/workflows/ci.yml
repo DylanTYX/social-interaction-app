@@ -40,3 +40,13 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # `tsc --noEmit` does not catch everything a build does. A missing
+      # `Suspense` boundary around `useSearchParams` is a build failure and not
+      # a type error, and this repo has six such call sites — all correct today,
+      # with nothing else that would catch the seventh.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
