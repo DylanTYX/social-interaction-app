@@ -624,6 +624,21 @@ function SetupWizard() {
         return `Give the interviewer ${missing.map(([, label]) => label).join(", ")}.`;
       }
     }
+    /**
+     * A voice interview may not start on an unverified microphone.
+     *
+     * `microphoneChecked` existed but only ever rendered a label — it gated
+     * nothing — and `requestMicrophoneAccess()` was written and never called.
+     * So the launch button was live with the panel reading "Microphone has not
+     * been checked yet", and the failure surfaced *after* the interviewer had
+     * already greeted the candidate out loud. The check itself is one click and
+     * already implemented; it just was not required.
+     */
+    if (currentStep === "review" && setup.practiceMode === "voice") {
+      if (!setup.voiceConfig.microphoneChecked) {
+        return "Run the microphone check before starting a voice interview.";
+      }
+    }
     return null;
   })();
 

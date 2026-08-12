@@ -1,5 +1,6 @@
 "use client";
 
+import { describeDifficulty } from "@/lib/interview-difficulty";
 import { readJson } from "@/lib/api/fetch-json";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -399,6 +400,24 @@ export default function SessionReportPage({
               currentScore={overallScore ?? session.averageScore}
               currentStartedAt={session.startedAt}
             />
+            {/* The rubric is persona-blind, but the *questions* are not:
+                difficulty folds in (strictness - warmth), so easier questions
+                get better answers. Two scores from different interviewers are
+                not the same achievement, and nothing used to say so. */}
+            {(() => {
+              const difficulty = describeDifficulty(
+                session.personaConfig?.strictness,
+                session.personaConfig?.warmth,
+              );
+              return (
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                  <span className="font-medium text-slate-600">
+                    {difficulty.label}.
+                  </span>{" "}
+                  {difficulty.note}
+                </p>
+              );
+            })()}
           </CardContent>
         </Card>
 
