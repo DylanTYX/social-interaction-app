@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,6 @@ export async function DELETE() {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverError("DELETE /api/me/sessions", error);
+    return handleRouteError("DELETE /api/me/sessions", error);
   }
 }

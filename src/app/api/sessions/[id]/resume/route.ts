@@ -1,13 +1,10 @@
+import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import {
-  getSession,
-  listMessages,
-  listTurnAnalyses,
-} from "@/lib/db/sessions";
+import { getSession, listMessages, listTurnAnalyses } from "@/lib/db/sessions";
 import { readLaunchMeta } from "@/lib/session-launch-meta";
 import { getJobDescription } from "@/lib/db/job-descriptions";
-import { notFound, serverError, unauthorized } from "@/lib/api/errors";
+import { notFound, unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -31,7 +28,8 @@ export async function GET(
       return unauthorized();
     }
 
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuid(rawId, "session id");
     const session = await getSession(supabase, id);
     if (!session) {
       return notFound("Session not found.");
@@ -67,6 +65,6 @@ export async function GET(
       jobDescription,
     });
   } catch (error) {
-    return serverError("GET /api/sessions/[id]/resume", error);
+    return handleRouteError("GET /api/sessions/[id]/resume", error);
   }
 }

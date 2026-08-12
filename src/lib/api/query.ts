@@ -35,7 +35,44 @@ export function parseLimit(
 export function parseOffset(searchParams: URLSearchParams): number {
   const raw = Number(searchParams.get("offset"));
   if (!Number.isFinite(raw) || raw <= 0) return 0;
-  return Math.floor(raw);
+  // Capped after all. An offset past the end does return no rows, but Postgres
+  // still walks and discards every skipped one — so an unbounded value is a
+  // free full scan on a route with no rate limit.
+  return Math.min(Math.floor(raw), MAX_OFFSET);
+}
+
+/** Far past any real library; a user is paging, not scraping. */
+export const MAX_OFFSET = 10_000;
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Validate an id before it reaches a `uuid` column.
+ *
+ * Nothing did this, and Postgres is unforgiving about it: `.eq("id", "abc")`
+ * raises `22P02`, which surfaced as a **500 with a full stack in the logs**
+ * where the honest answer is 404. That made real 500s hard to find, and it was
+ * reachable by anyone typing a wrong URL.
+ *
+ * It also closes a smaller hole. Foreign-key validation triggers run with the
+ * referenced table's privileges and **bypass RLS**, so posting another user's
+ * job-description id returned 201 while a random uuid returned 500 — an
+ * existence oracle across the tenant boundary. Rejecting malformed input does
+ * not close that on its own, but it removes the signal that made it legible.
+ */
+export function parseUuid(value: unknown, field = "id"): string {
+  if (typeof value === "string" && UUID_PATTERN.test(value)) return value;
+  throw new ClientVisibleError(`Invalid ${field}.`, 404);
+}
+
+/** Optional variant: absent stays absent, present must be well-formed. */
+export function parseOptionalUuid(
+  value: unknown,
+  field = "id",
+): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return parseUuid(value, field);
 }
 
 /**

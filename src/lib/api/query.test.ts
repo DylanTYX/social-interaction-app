@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseLimit, parseOffset } from "@/lib/api/query";
+import { MAX_OFFSET, parseLimit, parseOffset } from "@/lib/api/query";
 
 describe("parseLimit", () => {
   const parse = (value: string | null) =>
@@ -52,8 +52,17 @@ describe("parseOffset", () => {
     expect(parseOffset(new URLSearchParams("offset=12.9"))).toBe(12);
   });
 
-  it("has no cap, unlike parseLimit", () => {
-    // An offset past the end just returns no rows; there is nothing to bound.
-    expect(parseOffset(new URLSearchParams("offset=100000"))).toBe(100000);
+  it("caps a runaway offset", () => {
+    // This assertion used to say the opposite, on the reasoning that an offset
+    // past the end simply returns no rows. True of the *result*, false of the
+    // cost: Postgres still walks and discards every skipped row, so an
+    // unbounded offset is a free full scan on a route with no rate limit.
+    expect(parseOffset(new URLSearchParams("offset=100000000"))).toBe(
+      MAX_OFFSET,
+    );
+  });
+
+  it("leaves a realistic offset alone", () => {
+    expect(parseOffset(new URLSearchParams("offset=100"))).toBe(100);
   });
 });

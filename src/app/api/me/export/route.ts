@@ -4,7 +4,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { listSessions, listMessages } from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { listJobDescriptions } from "@/lib/db/job-descriptions";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -69,6 +69,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return serverError("GET /api/me/export", error);
+    return handleRouteError("GET /api/me/export", error);
   }
 }

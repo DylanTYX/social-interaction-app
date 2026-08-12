@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { resetPersonaPresets } from "@/lib/db/personas";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -15,6 +15,6 @@ export async function POST() {
     const personas = await resetPersonaPresets(supabase, user.id);
     return NextResponse.json({ personas });
   } catch (error) {
-    return serverError("POST /api/personas/reset", error);
+    return handleRouteError("POST /api/personas/reset", error);
   }
 }

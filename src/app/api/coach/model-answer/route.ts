@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
 
@@ -9,12 +10,7 @@ import {
   ROUND_RUBRIC_LABELS,
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
-import {
-  badRequest,
-  handleRouteError,
-  serverError,
-  unauthorized,
-} from "@/lib/api/errors";
+import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
 import { isTechnicalRound } from "@/lib/round-types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
@@ -62,7 +58,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const limited = enforceRateLimit(`coach:${user.id}`, RATE_LIMITS.coach);
     if (limited) return limited;
 
-    const body = (await request.json()) as Record<string, unknown>;
+    const body = await readJsonBody<Record<string, unknown>>(request);
     const question =
       parseBoundedString(body.question, {
         field: "question",
@@ -105,7 +101,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return serverError(
+      return handleRouteError(
         "POST /api/coach/model-answer",
         new Error("OPENAI_API_KEY is not configured."),
       );
@@ -191,7 +187,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const tips = Array.isArray(parsed.tips)
-      ? parsed.tips.filter((t): t is string => typeof t === "string").slice(0, 4)
+      ? parsed.tips
+          .filter((t): t is string => typeof t === "string")
+          .slice(0, 4)
       : [];
 
     const result: ModelAnswerResult = {
