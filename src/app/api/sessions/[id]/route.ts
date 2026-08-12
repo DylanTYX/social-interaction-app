@@ -135,8 +135,26 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       const startedAtMs = existing
         ? Date.parse(existing.startedAt)
         : Number.NaN;
+      /**
+       * Clamped through the same helper as the client path.
+       *
+       * This derived value had no upper bound while `parseDurationMinutes`
+       * capped the client's at 24h — and `0011` adds
+       * `check (duration_minutes <= 1440)`. So a session left open overnight
+       * did not merely record ~600 minutes of "practice time": past 24 hours it
+       * violated the constraint and the completion write failed outright,
+       * leaving the interview permanently unfinishable.
+       *
+       * `Math.max(1, …)` stays inside the clamp: a session that really did take
+       * under a minute still reads as one, and one that ran for a week reads as
+       * a day rather than failing.
+       */
+      const elapsedMinutes = Math.max(
+        1,
+        Math.round((Date.now() - startedAtMs) / 60000),
+      );
       durationMinutes = Number.isFinite(startedAtMs)
-        ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
+        ? parseDurationMinutes(elapsedMinutes)
         : durationMinutes;
     }
 

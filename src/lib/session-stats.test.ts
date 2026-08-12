@@ -7,6 +7,7 @@ import {
   formatAverageScore,
   formatPracticeMinutes,
   STATS_WINDOW,
+  MIN_TURNS_TO_SCORE,
 } from "@/lib/session-stats";
 
 function session(
@@ -19,6 +20,9 @@ function session(
     scenarioValue: "custom",
     personaName: "Sarah Chen",
     status: "completed",
+    // Comfortably past `MIN_TURNS_TO_SCORE`, so the default fixture is a real
+    // session; tests that care about short ones set it explicitly.
+    turnCount: 12,
     averageScore: 70,
     durationMinutes: 20,
     startedAt: "2026-01-01T00:00:00Z",
@@ -41,6 +45,42 @@ describe("computeSessionStats", () => {
     expect(stats.total).toBe(3);
     expect(stats.completed).toBe(2);
     expect(stats.averageScore).toBe(70);
+  });
+
+  it("ignores a session too short to mean anything", () => {
+    // The loophole this closes: "End session" is available from turn one, so
+    // answering one question well and ending — repeatedly — used to pull the
+    // headline average up and unlock the score badges. A two-message session is
+    // one answer; it is practice, but it is not evidence.
+    const stats = computeSessionStats([
+      session({ averageScore: 60, turnCount: 12 }),
+      session({ averageScore: 100, turnCount: 2 }),
+    ]);
+
+    expect(stats.averageScore).toBe(60);
+    expect(stats.bestScore).toBe(60);
+    // Still counted as practice, and still listed.
+    expect(stats.total).toBe(2);
+    expect(stats.scoredSessions).toBe(1);
+  });
+
+  it("ignores an in-progress session that already carries a score", () => {
+    // `persistTurn` writes `averageScore` on every turn, so an abandoned
+    // interview has one long before it is finished. It used to count.
+    const stats = computeSessionStats([
+      session({ averageScore: 60, status: "completed" }),
+      session({ averageScore: 95, status: "in_progress" }),
+    ]);
+
+    expect(stats.averageScore).toBe(60);
+    expect(stats.scoredSessions).toBe(1);
+  });
+
+  it("counts a session exactly at the threshold", () => {
+    const stats = computeSessionStats([
+      session({ averageScore: 80, turnCount: MIN_TURNS_TO_SCORE }),
+    ]);
+    expect(stats.averageScore).toBe(80);
   });
 
   it("does not round the average", () => {
@@ -88,6 +128,7 @@ describe("computeSessionStats", () => {
     expect(stats).toEqual({
       total: 0,
       completed: 0,
+      scoredSessions: 0,
       averageScore: null,
       bestScore: null,
       totalMinutes: 0,

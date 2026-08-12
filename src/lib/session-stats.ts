@@ -43,6 +43,11 @@ export interface SessionStats {
   total: number;
   /** Sessions carrying a numeric score, i.e. ones that were actually graded. */
   completed: number;
+  /**
+   * How many sessions the average is actually over. Surfaced so the UI can say
+   * so rather than presenting a mean of one as a verdict.
+   */
+  scoredSessions: number;
   /** Unrounded mean of scored sessions, or `null` when nothing is scored. */
   averageScore: number | null;
   bestScore: number | null;
@@ -51,12 +56,33 @@ export interface SessionStats {
   textCount: number;
 }
 
+/**
+ * Messages a session needs before its score counts toward the average.
+ *
+ * `turn_count` is a *message* count: one opening greeting plus two per
+ * exchange, so six is three answered questions. Below that a score is a sample
+ * of one or two answers, and averaging it with a full interview flatters
+ * whichever it was.
+ *
+ * This is the number that made the headline average gameable. "End session" is
+ * available from turn one, so answering a single question well and ending —
+ * repeatedly — pushed the average up, lifted the trend line and unlocked the
+ * score badges. Short sessions still count as practice and still appear in the
+ * list; they just do not vote on how good you are.
+ */
+export const MIN_TURNS_TO_SCORE = 6;
+
 function scoredOnly(
   sessions: readonly InterviewSessionSummary[],
 ): Array<InterviewSessionSummary & { averageScore: number }> {
   return sessions.filter(
     (entry): entry is InterviewSessionSummary & { averageScore: number } =>
-      typeof entry.averageScore === "number",
+      typeof entry.averageScore === "number" &&
+      // Finished, not merely in progress. `persistTurn` writes `averageScore`
+      // on every turn, so an abandoned session already carries one and used to
+      // be counted here.
+      entry.status === "completed" &&
+      entry.turnCount >= MIN_TURNS_TO_SCORE,
   );
 }
 
@@ -71,6 +97,7 @@ export function computeSessionStats(
   return {
     total: sessions.length,
     completed: scored.length,
+    scoredSessions: scored.length,
     averageScore:
       scored.length > 0
         ? scored.reduce((sum, entry) => sum + entry.averageScore, 0) /
