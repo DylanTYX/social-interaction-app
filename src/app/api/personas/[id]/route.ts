@@ -1,8 +1,10 @@
+import { parseUuid } from "@/lib/api/query";
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import { deletePersona, updatePersona } from "@/lib/db/personas";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -17,11 +19,12 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
-    const body = (await request.json()) as {
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
+    const body = await readJsonBody<{
       name?: string;
       config?: unknown;
-    };
+    }>(request);
     const config = parsePersonaConfig(body.config);
     const name =
       typeof body.name === "string" && body.name.trim()
@@ -44,7 +47,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ persona });
   } catch (error) {
-    return serverError("PATCH /api/personas/[id]", error);
+    return handleRouteError("PATCH /api/personas/[id]", error);
   }
 }
 
@@ -55,10 +58,11 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
     await deletePersona(supabase, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverError("DELETE /api/personas/[id]", error);
+    return handleRouteError("DELETE /api/personas/[id]", error);
   }
 }

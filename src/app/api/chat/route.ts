@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -665,7 +666,7 @@ export async function POST(request: Request) {
     const usage = new UsageCollector();
     const timer = new TurnTimer();
 
-    const body = (await request.json()) as ChatRequestBody;
+    const body = await readJsonBody<ChatRequestBody>(request);
     const sessionId =
       typeof body.sessionId === "string" ? body.sessionId.trim() : "";
     // Bounded: this one field reaches the interviewer, the analyzer and an

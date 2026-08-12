@@ -19,7 +19,10 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/db/sessions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/db/sessions")>();
-  return { ...actual, createSession: (...args: unknown[]) => createSession(...args) };
+  return {
+    ...actual,
+    createSession: (...args: unknown[]) => createSession(...args),
+  };
 });
 
 const { POST } = await import("@/app/api/sessions/route");

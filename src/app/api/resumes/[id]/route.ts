@@ -1,7 +1,8 @@
+import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { deleteResume, getResume } from "@/lib/db/resumes";
-import { notFound, serverError, unauthorized } from "@/lib/api/errors";
+import { notFound, unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,8 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
     const resume = await getResume(supabase, id);
     if (!resume) {
       return notFound();
@@ -24,7 +26,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ resume });
   } catch (error) {
-    return serverError("GET /api/resumes/[id]", error);
+    return handleRouteError("GET /api/resumes/[id]", error);
   }
 }
 
@@ -35,10 +37,11 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
     await deleteResume(supabase, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverError("DELETE /api/resumes/[id]", error);
+    return handleRouteError("DELETE /api/resumes/[id]", error);
   }
 }

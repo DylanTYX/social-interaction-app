@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/supabase/server";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
@@ -42,7 +42,7 @@ export async function GET() {
     const region = process.env.AZURE_SPEECH_REGION;
 
     if (!subscriptionKey || !region) {
-      return serverError(
+      return handleRouteError(
         "GET /api/speech-token",
         new Error(
           "AZURE_SPEECH_KEY and/or AZURE_SPEECH_REGION are not set in the server environment.",
@@ -92,6 +92,6 @@ export async function GET() {
       },
     );
   } catch (error) {
-    return serverError("GET /api/speech-token", error);
+    return handleRouteError("GET /api/speech-token", error);
   }
 }

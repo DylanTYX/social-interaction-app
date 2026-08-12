@@ -1,6 +1,12 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { parseBoundedString, parseLimit, parseOffset } from "@/lib/api/query";
+import {
+  parseBoundedString,
+  parseLimit,
+  parseOffset,
+  parseOptionalUuid,
+} from "@/lib/api/query";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
@@ -64,7 +70,7 @@ export async function POST(request: Request) {
       return unauthorized();
     }
 
-    const body = (await request.json()) as {
+    const body = await readJsonBody<{
       practiceMode?: string;
       scenarioValue?: string;
       scenarioTitle?: string;
@@ -76,7 +82,7 @@ export async function POST(request: Request) {
       // Deliberately `unknown`: it is client-supplied and must go through
       // `sanitizeLaunchMeta` rather than be trusted at its declared type.
       launchMeta?: unknown;
-    };
+    }>(request);
 
     const practiceMode: PracticeMode =
       body.practiceMode === "voice" ? "voice" : "text";
@@ -114,12 +120,16 @@ export async function POST(request: Request) {
         field: "scenarioDescription",
         max: MAX_SCENARIO_DESCRIPTION_CHARS,
       }),
-      personaId: typeof body.personaId === "string" ? body.personaId : null,
+      // Validated rather than merely type-checked. These are `uuid` FK columns,
+      // and a malformed value reaches Postgres as `22P02` — a 500 with a stack
+      // where 404 is correct. A *well-formed* id belonging to someone else is a
+      // separate matter: FK triggers bypass RLS, so it inserts cleanly and the
+      // interview then runs with no context, which `loadJobDescriptionContext`
+      // cannot distinguish from "none attached".
+      personaId: parseOptionalUuid(body.personaId, "personaId") ?? null,
       jobDescriptionId:
-        typeof body.jobDescriptionId === "string"
-          ? body.jobDescriptionId
-          : null,
-      resumeId: typeof body.resumeId === "string" ? body.resumeId : null,
+        parseOptionalUuid(body.jobDescriptionId, "jobDescriptionId") ?? null,
+      resumeId: parseOptionalUuid(body.resumeId, "resumeId") ?? null,
       personaName: personaConfig.name,
       personaConfig,
       launchMeta,

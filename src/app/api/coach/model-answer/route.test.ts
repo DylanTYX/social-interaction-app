@@ -41,7 +41,10 @@ function openAiReply(payload: object) {
     ok: true,
     json: async () => ({
       choices: [
-        { message: { content: JSON.stringify(payload) }, finish_reason: "stop" },
+        {
+          message: { content: JSON.stringify(payload) },
+          finish_reason: "stop",
+        },
       ],
       usage: { prompt_tokens: 100, completion_tokens: 50 },
     }),
@@ -136,7 +139,11 @@ describe("POST /api/coach/model-answer", () => {
     expect(response.status).toBe(200);
     expect(saveCoachAnswer).toHaveBeenCalledWith(
       SUPABASE,
-      expect.objectContaining({ sessionId: "s1", turnIndex: 4, roundType: "hr" }),
+      expect.objectContaining({
+        sessionId: "s1",
+        turnIndex: 4,
+        roundType: "hr",
+      }),
     );
   });
 
@@ -145,7 +152,10 @@ describe("POST /api/coach/model-answer", () => {
       ok: true,
       json: async () => ({
         choices: [
-          { message: { content: '{"modelAnswer": "half a sen' }, finish_reason: "length" },
+          {
+            message: { content: '{"modelAnswer": "half a sen' },
+            finish_reason: "length",
+          },
         ],
       }),
     } as Response);
@@ -161,7 +171,9 @@ describe("POST /api/coach/model-answer", () => {
   it("falls back to an invalid round type rather than trusting it", async () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(openAiReply({ modelAnswer: "m", rewrite: "r", tips: [] }));
+      .mockResolvedValue(
+        openAiReply({ modelAnswer: "m", rewrite: "r", tips: [] }),
+      );
 
     await POST(
       request({ question: "Q", answer: "A", roundType: "../../etc/passwd" }),

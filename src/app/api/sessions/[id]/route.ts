@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
@@ -6,13 +7,8 @@ import {
   updateSession,
   type SessionStatus,
 } from "@/lib/db/sessions";
-import {
-  handleRouteError,
-  notFound,
-  serverError,
-  unauthorized,
-} from "@/lib/api/errors";
-import { parseBoundedString } from "@/lib/api/query";
+import { handleRouteError, notFound, unauthorized } from "@/lib/api/errors";
+import { parseBoundedString, parseUuid } from "@/lib/api/query";
 import { MAX_SUMMARY_CHARS } from "@/lib/api/input-limits";
 
 export const runtime = "nodejs";
@@ -28,7 +24,8 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "session id");
     const session = await getSession(supabase, id);
     if (!session) {
       return notFound();
@@ -36,7 +33,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ session });
   } catch (error) {
-    return serverError("GET /api/sessions/[id]", error);
+    return handleRouteError("GET /api/sessions/[id]", error);
   }
 }
 
@@ -90,15 +87,16 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
-    const body = (await request.json()) as {
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "session id");
+    const body = await readJsonBody<{
       status?: string;
       summary?: unknown;
       metrics?: Record<string, unknown> | null;
       averageScore?: unknown;
       durationMinutes?: unknown;
       endedAt?: unknown;
-    };
+    }>(request);
 
     const status: SessionStatus | undefined =
       body.status === "completed" ||
@@ -148,11 +146,12 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "session id");
     await deleteSession(supabase, id);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverError("DELETE /api/sessions/[id]", error);
+    return handleRouteError("DELETE /api/sessions/[id]", error);
   }
 }

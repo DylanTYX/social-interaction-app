@@ -1,13 +1,11 @@
+import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/supabase/server";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { listSessionsInLoop, listTurnAnalyses } from "@/lib/db/sessions";
-import {
-  readLaunchMeta,
-  readLoopProgress,
-} from "@/lib/session-launch-meta";
-import { notFound, serverError, unauthorized } from "@/lib/api/errors";
+import { readLaunchMeta, readLoopProgress } from "@/lib/session-launch-meta";
+import { notFound, unauthorized, handleRouteError } from "@/lib/api/errors";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 
 export const runtime = "nodejs";
@@ -55,7 +53,8 @@ export async function GET(_request: Request, ctx: RouteParams) {
     const limited = enforceRateLimit(`loop:${user.id}`, RATE_LIMITS.heavyRead);
     if (limited) return limited;
 
-    const { loopId } = await ctx.params;
+    const { loopId: rawLoopId } = await ctx.params;
+    const loopId = parseUuid(rawLoopId, "loop id");
 
     // Indexed lookup on `loop_id`. This used to load 200 full session rows and
     // filter them in JavaScript, because the id lived inside a JSONB blob and
@@ -111,7 +110,8 @@ export async function GET(_request: Request, ctx: RouteParams) {
         roundsTotal: rounds.length,
         averageScore: scored.length
           ? Math.round(
-              scored.reduce((sum, r) => sum + r.averageScore, 0) / scored.length,
+              scored.reduce((sum, r) => sum + r.averageScore, 0) /
+                scored.length,
             )
           : null,
         // Improvement across the loop is the headline number: did the
@@ -130,7 +130,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
       },
     });
   } catch (error) {
-    return serverError("GET /api/loops/[loopId]", error);
+    return handleRouteError("GET /api/loops/[loopId]", error);
   }
 }
 

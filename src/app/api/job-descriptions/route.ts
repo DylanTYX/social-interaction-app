@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { parseLimit } from "@/lib/api/query";
@@ -57,10 +58,10 @@ async function parsePayload(
     return { rawText, roleTitle: fields.roleTitle ?? null };
   }
 
-  const body = (await request.json()) as {
+  const body = await readJsonBody<{
     rawText?: unknown;
     roleTitle?: unknown;
-  };
+  }>(request);
 
   const rawText = typeof body.rawText === "string" ? body.rawText.trim() : "";
   const roleTitle =

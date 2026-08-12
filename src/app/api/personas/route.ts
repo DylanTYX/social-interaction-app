@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { parsePersonaConfig } from "@/lib/persona-schema";
@@ -6,7 +7,7 @@ import {
   listPersonas,
   type PersonaKind,
 } from "@/lib/db/personas";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ export async function GET() {
     const personas = await listPersonas(supabase, user.id);
     return NextResponse.json({ personas });
   } catch (error) {
-    return serverError("GET /api/personas", error);
+    return handleRouteError("GET /api/personas", error);
   }
 }
 
@@ -31,11 +32,11 @@ export async function POST(request: Request) {
       return unauthorized();
     }
 
-    const body = (await request.json()) as {
+    const body = await readJsonBody<{
       name?: string;
       config?: unknown;
       kind?: string;
-    };
+    }>(request);
     const config = parsePersonaConfig(body.config);
     const name =
       typeof body.name === "string" && body.name.trim()
@@ -62,6 +63,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ persona }, { status: 201 });
   } catch (error) {
-    return serverError("POST /api/personas", error);
+    return handleRouteError("POST /api/personas", error);
   }
 }

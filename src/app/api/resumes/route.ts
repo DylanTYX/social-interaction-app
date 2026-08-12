@@ -1,3 +1,4 @@
+import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { UsageCollector } from "@/lib/api/token-usage";
@@ -49,10 +50,10 @@ async function parsePayload(request: Request): Promise<ParsedResumePayload> {
     return { rawText, title: fields.title ?? null };
   }
 
-  const body = (await request.json()) as {
+  const body = await readJsonBody<{
     rawText?: unknown;
     title?: unknown;
-  };
+  }>(request);
   const rawText = typeof body.rawText === "string" ? body.rawText : "";
   const title = typeof body.title === "string" ? body.title : null;
   return { rawText, title };

@@ -17,13 +17,20 @@ export interface PdfUploadPayload {
   fields: Record<string, string | null>;
 }
 
+const TOO_LARGE_MESSAGE = `Upload is too large. Keep PDFs under ${
+  MAX_PDF_BYTES / (1024 * 1024)
+} MB.`;
+
 /**
  * Reject an oversized request *before* materializing the body.
  *
  * `request.formData()` buffers the entire upload into memory, so checking
  * `file.size` afterwards is too late — a 500 MB POST is already resident by
- * then. `Content-Length` is client-supplied and therefore only an early,
- * cheap reject; the authoritative check is still `file.size` below.
+ * then. `Content-Length` is client-supplied and therefore only an early, cheap
+ * reject; it is also **absent entirely** on a `Transfer-Encoding: chunked`
+ * request, where `Number(null ?? 0)` is 0 and this check waves the upload
+ * through — which is precisely the case it exists to stop. `readCappedBody`
+ * below is the check that actually holds.
  */
 export function assertDeclaredSizeWithinLimit(request: Request): void {
   const declared = Number(request.headers.get("content-length") ?? 0);
@@ -31,11 +38,55 @@ export function assertDeclaredSizeWithinLimit(request: Request): void {
     Number.isFinite(declared) &&
     declared > MAX_PDF_BYTES + MULTIPART_OVERHEAD_BYTES
   ) {
-    throw new ClientVisibleError(
-      `Upload is too large. Keep PDFs under ${MAX_PDF_BYTES / (1024 * 1024)} MB.`,
-      413,
-    );
+    throw new ClientVisibleError(TOO_LARGE_MESSAGE, 413);
   }
+}
+
+/**
+ * Buffer the body while counting it, aborting the moment it exceeds the cap.
+ *
+ * Returns a `Request` reconstructed from the bytes actually read, so the
+ * caller's `formData()` parse is unchanged — it just cannot be handed more than
+ * the limit.
+ */
+async function readCappedBody(request: Request): Promise<Request> {
+  const limit = MAX_PDF_BYTES + MULTIPART_OVERHEAD_BYTES;
+  const body = request.body;
+  if (!body) return request;
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      received += value.byteLength;
+      if (received > limit) {
+        await reader.cancel().catch(() => {});
+        throw new ClientVisibleError(TOO_LARGE_MESSAGE, 413);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const merged = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body: merged,
+  });
 }
 
 /**
@@ -57,7 +108,7 @@ export async function parsePdfUpload(
 ): Promise<PdfUploadPayload> {
   assertDeclaredSizeWithinLimit(request);
 
-  const form = await request.formData();
+  const form = await (await readCappedBody(request)).formData();
   const file = form.get("file");
 
   const fields: Record<string, string | null> = {};

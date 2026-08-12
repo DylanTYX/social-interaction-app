@@ -1,10 +1,11 @@
+import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   deleteJobDescription,
   getJobDescription,
 } from "@/lib/db/job-descriptions";
-import { notFound, serverError, unauthorized } from "@/lib/api/errors";
+import { notFound, unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,8 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
     const jobDescription = await getJobDescription(supabase, id);
     if (!jobDescription) {
       return notFound();
@@ -27,7 +29,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ jobDescription });
   } catch (error) {
-    return serverError("GET /api/job-descriptions/[id]", error);
+    return handleRouteError("GET /api/job-descriptions/[id]", error);
   }
 }
 
@@ -38,10 +40,11 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "id");
     await deleteJobDescription(supabase, id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverError("DELETE /api/job-descriptions/[id]", error);
+    return handleRouteError("DELETE /api/job-descriptions/[id]", error);
   }
 }

@@ -1,11 +1,8 @@
+import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import {
-  createSession,
-  getSession,
-  listTurnAnalyses,
-} from "@/lib/db/sessions";
+import { createSession, getSession, listTurnAnalyses } from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { buildLoopBrief } from "@/lib/loop-brief";
 import type { AnalysisResult } from "@/lib/response-analyzer";
@@ -28,7 +25,7 @@ import {
   createDefaultResumeConfig,
   type InterviewSetupState,
 } from "@/lib/interview-setup";
-import { serverError, unauthorized } from "@/lib/api/errors";
+import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
 
@@ -74,10 +71,14 @@ export async function POST(_request: Request, ctx: RouteParams) {
     );
     if (limited) return limited;
 
-    const { id } = await ctx.params;
+    const { id: rawId } = await ctx.params;
+    const id = parseUuid(rawId, "session id");
     const previous = await getSession(supabase, id);
     if (!previous) {
-      return NextResponse.json({ error: "Session not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Session not found." },
+        { status: 404 },
+      );
     }
 
     const launch = readLaunchMeta(previous);
@@ -124,7 +125,8 @@ export async function POST(_request: Request, ctx: RouteParams) {
     const launchMeta = {
       ...buildLaunchMetaFromSetup(setup),
       // Carry forward what earlier rounds already said, plus this round's note.
-      loopBrief: [launch.loopBrief, loopBrief].filter(Boolean).join("\n\n") || undefined,
+      loopBrief:
+        [launch.loopBrief, loopBrief].filter(Boolean).join("\n\n") || undefined,
     };
     const completedSessionIds = Array.from(
       new Set([
@@ -164,6 +166,6 @@ export async function POST(_request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ session, launchMeta }, { status: 201 });
   } catch (error) {
-    return serverError("POST /api/sessions/[id]/next-round", error);
+    return handleRouteError("POST /api/sessions/[id]/next-round", error);
   }
 }
