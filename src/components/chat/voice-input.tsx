@@ -1,9 +1,11 @@
 "use client";
 
-import { Mic, MicOff, Square, VolumeX } from "lucide-react";
+import { Loader2, Mic, Square, VolumeX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AnswerCountdown } from "@/components/chat/answer-countdown";
+import { SilenceIndicator } from "@/components/chat/silence-indicator";
+import { cn } from "@/lib/utils";
 
 interface VoiceInputProps {
   isRecording: boolean;
@@ -13,6 +15,14 @@ interface VoiceInputProps {
   finalTranscript: string;
   recordingError: string | null;
   timeLimitSeconds: number;
+  /**
+   * The deadline the page's timeout will actually fire on. Passing it is what
+   * makes the digits and the cutoff the same clock; without it the countdown
+   * stamps its own on mount and the two only agree by luck.
+   */
+  deadlineMs?: number | null;
+  /** When the current pause began, or null while the candidate is speaking. */
+  silenceStartedAtMs?: number | null;
   /** When true, recording is started by the page after the interviewer speaks. */
   autoStartRecording?: boolean;
   onStart: () => void;
@@ -21,19 +31,23 @@ interface VoiceInputProps {
 }
 
 /**
- * Bottom-of-page recording control for the voice interview. It mirrors
- * `ChatInput`'s structure (timer line + primary action bar) so the text and
- * voice pages feel like siblings.
+ * Bottom-of-page recording control for the voice interview.
+ *
+ * Rebuilt around a single circular control. It used to be a full-width 60px bar
+ * plus a decorative 60×60 tile whose only job was to width-match `ChatInput`'s
+ * send button — and because the tile was hidden while recording, the primary
+ * button jumped 72px wider on that transition, mid-answer. State now reads from
+ * colour and a ring rather than from the button's size, and the whole block is
+ * a fixed height, so nothing moves between states.
+ *
+ * There is also now a real *speaking* state. Previously, while the interviewer
+ * was talking, the button still read "Start recording early" — the only hint
+ * that it was the interviewer's turn lived elsewhere on the page.
  *
  * Timer implementation: the countdown is `<AnswerCountdown>`, the same leaf the
- * text and code inputs use — previously this file carried its own ticking state
- * and its own `formatRemainingTime`, which disagreed with the shared one on
- * negative input. Keeping the tick out here also stops the live "Hearing…"
+ * text and code inputs use. Keeping the tick out here stops the live transcript
  * preview, which already re-renders on every partial recognition result, from
  * being re-rendered four more times a second on top of that.
- *
- * The deadline is derived from the moment recording starts rather than from
- * component mount, because the clock only runs while the candidate is speaking.
  */
 export function VoiceInput({
   isRecording,
@@ -43,6 +57,8 @@ export function VoiceInput({
   finalTranscript,
   recordingError,
   timeLimitSeconds,
+  deadlineMs,
+  silenceStartedAtMs = null,
   autoStartRecording = false,
   onStart,
   onStop,
@@ -53,23 +69,42 @@ export function VoiceInput({
     .join(" ")
     .trim();
 
+  // Ordered by what the candidate most needs to know. Processing outranks
+  // everything because nothing they do will be heard until it clears.
+  const state = isProcessing
+    ? "processing"
+    : isRecording
+      ? "recording"
+      : isSpeakingTts
+        ? "speaking"
+        : "idle";
+
+  const caption = {
+    processing: "Processing your answer",
+    recording: "Listening — pause when you're done",
+    speaking: "Interviewer speaking",
+    idle: autoStartRecording
+      ? "Your mic opens when the interviewer finishes"
+      : "Tap to answer",
+  }[state];
+
+  // The transcript slot stays mounted for the whole answer so the composer does
+  // not grow under the candidate the moment they start talking.
+  const showTranscriptSlot =
+    isRecording || Boolean(livePreview) || Boolean(recordingError);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <AnswerCountdown
           // Remounted on the recording flag so stopping resets to the full
-          // limit rather than holding at wherever the clock stopped. The
-          // countdown stamps its own deadline when it starts, which is why no
-          // deadline is passed: here the clock begins with recording, not with
-          // the component.
+          // limit rather than holding at wherever the clock stopped.
           key={isRecording ? "recording" : "idle"}
+          deadlineMs={deadlineMs ?? undefined}
           timeLimitSeconds={timeLimitSeconds}
           paused={!isRecording}
           suffix={
-            !isRecording &&
-            autoStartRecording &&
-            !isProcessing &&
-            !isSpeakingTts ? (
+            state === "idle" && autoStartRecording ? (
               <> · starts when the interviewer finishes</>
             ) : undefined
           }
@@ -87,64 +122,68 @@ export function VoiceInput({
         )}
       </div>
 
-      {(livePreview || recordingError) && (
+      {showTranscriptSlot && (
         <div
-          className={`rounded-xl border px-3 py-2 text-xs leading-relaxed ${
+          // Polite: a live transcript announced assertively would talk over
+          // everything else a screen-reader user is doing.
+          aria-live="polite"
+          className={cn(
+            "max-h-24 overflow-y-auto rounded-xl border px-3 py-2 text-xs leading-relaxed",
             recordingError
               ? "border-red-200 bg-red-50/70 text-red-800"
-              : "border-slate-200 bg-slate-50/70 text-slate-600"
-          }`}
+              : "border-slate-200 bg-slate-50/70 text-slate-600",
+          )}
         >
           {recordingError ? (
             recordingError
-          ) : (
+          ) : livePreview ? (
             <>
               <span className="mr-1 font-semibold text-slate-500">Hearing</span>
               <span className="text-slate-700">{livePreview}</span>
             </>
+          ) : (
+            <span className="text-slate-400">Listening for your answer…</span>
           )}
         </div>
       )}
 
-      <div className="flex items-end gap-3">
-        {!isRecording ? (
+      {/* Fixed height: the control changes appearance between states, never size. */}
+      <div className="flex h-21 flex-col items-center justify-center gap-1.5">
+        <div className="relative">
+          {state === "recording" && (
+            <span
+              className="pointer-events-none absolute -inset-1 animate-breathe rounded-full ring-4 ring-red-400/40"
+              aria-hidden="true"
+            />
+          )}
           <Button
-            onClick={onStart}
-            disabled={isProcessing}
-            size="lg"
-            className="h-[60px] flex-1 gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+            onClick={state === "recording" ? onStop : onStart}
+            disabled={state === "processing"}
+            variant={state === "recording" ? "destructive" : "default"}
+            size="icon"
+            aria-label={
+              state === "recording"
+                ? "Submit answer now"
+                : state === "speaking"
+                  ? "Interrupt and answer now"
+                  : "Start answering"
+            }
+            className="relative size-14 rounded-full shadow-soft-md transition-all duration-200 hover:shadow-soft-lg"
           >
-            <Mic className="h-5 w-5" />
-            {isProcessing
-              ? "Processing your last answer..."
-              : autoStartRecording
-                ? "Start recording early"
-                : "Start recording"}
+            {state === "processing" ? (
+              <Loader2 className="size-6 animate-spin" />
+            ) : state === "recording" ? (
+              <Square className="size-5 fill-current" />
+            ) : (
+              <Mic className="size-6" />
+            )}
           </Button>
-        ) : (
-          <Button
-            onClick={onStop}
-            variant="destructive"
-            size="lg"
-            className="h-[60px] flex-1 gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-          >
-            <span className="relative flex h-3 w-3 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-            </span>
-            <Square className="h-4 w-4" />
-            Stop recording
-          </Button>
-        )}
+        </div>
 
-        {!isRecording && (
-          <div
-            className="hidden h-[60px] w-[60px] shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 bg-white/60 text-slate-400 sm:flex"
-            aria-hidden="true"
-          >
-            <MicOff className="h-5 w-5" />
-          </div>
-        )}
+        <p className="text-xs font-medium text-slate-500">{caption}</p>
+
+        {/* Sits under the caption so the countdown appears without moving it. */}
+        <SilenceIndicator silenceStartedAtMs={silenceStartedAtMs} />
       </div>
     </div>
   );

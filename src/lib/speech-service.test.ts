@@ -31,6 +31,31 @@ describe("extractSpeakableSentences", () => {
     ]);
   });
 
+  it("emits a short sentence immediately when the floor is zero", () => {
+    // What the voice screen passes for the *first* utterance of a reply. With
+    // the standard floor, an interviewer opening with "Thanks for that." (16
+    // chars) stayed silent until a second sentence had streamed in — seconds
+    // after the text was already on screen. Latency beats smoothness for the
+    // first utterance; the floor comes back once audio is playing.
+    const { sentences, rest } = extractSpeakableSentences(
+      "Thanks for that. Now walk me thr",
+      { minChars: 0 },
+    );
+
+    expect(sentences).toEqual(["Thanks for that."]);
+    expect(rest).toBe(" Now walk me thr");
+  });
+
+  it("still merges that same short opener at the default floor", () => {
+    // The counterpart: nothing about the zero case may leak into mid-reply
+    // behaviour, or playback goes back to stuttering one fragment at a time.
+    const { sentences } = extractSpeakableSentences(
+      "Thanks for that. Now walk me thr",
+    );
+
+    expect(sentences).toEqual([]);
+  });
+
   it("does not split on a single newline", () => {
     // Streamed LLM replies are full of single newlines; splitting on them
     // produced one-word utterances.
@@ -112,9 +137,9 @@ describe("appendUniqueTranscript", () => {
   });
 
   it("matches overlap case-insensitively but preserves original casing", () => {
-    expect(appendUniqueTranscript("I led the Launch", "LED THE LAUNCH now")).toBe(
-      "I led the Launch now",
-    );
+    expect(
+      appendUniqueTranscript("I led the Launch", "LED THE LAUNCH now"),
+    ).toBe("I led the Launch now");
   });
 
   it("handles empty inputs on either side", () => {
