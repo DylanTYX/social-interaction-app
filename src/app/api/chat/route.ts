@@ -541,7 +541,9 @@ function formatSseEvent(event: string, data: unknown): string {
  * the platform reports it, rather than waiting for the next failed write.
  */
 function createStreamingResponse(
-  task: (onChunk: (chunk: string) => void) => Promise<ChatTurnResponse>,
+  task: (
+    onChunk: (chunk: string) => void,
+  ) => Promise<{ result: ChatTurnResponse; finalize: () => Promise<void> }>,
 ): Response {
   const encoder = new TextEncoder();
   let clientGone = false;
@@ -563,11 +565,31 @@ function createStreamingResponse(
       try {
         send(formatSseEvent("start", { status: "streaming" }));
 
-        const result = await task((chunk) => {
+        const { result, finalize } = await task((chunk) => {
           send(formatSseEvent("delta", { chunk }));
         });
 
         send(formatSseEvent("done", result));
+
+        // Everything the candidate is not waiting on — the rolling summary (a
+        // model call, every other turn), competency coverage (an embeddings
+        // call) and usage accounting — runs *after* the client has its reply.
+        //
+        // In voice this is the difference between a conversation and a stutter:
+        // `done` gates both the final sentence being spoken and the microphone
+        // reopening, so every second spent here was a second of silence with
+        // the mic shut, alternating long/short with the summary cadence.
+        //
+        // It runs inside `start()`, before `controller.close()`, so the
+        // invocation stays alive without `after()` and the "client walked away,
+        // finish the work anyway" property above still holds. Failures are
+        // logged, never sent: the client has already resolved on `done` and a
+        // second terminal frame would be parsed by nothing.
+        try {
+          await finalize();
+        } catch (error) {
+          console.error("[POST /api/chat] finalize failed:", error);
+        }
       } catch (error) {
         // The 200 and the `start` event are already on the wire, so failures
         // have to be reported in-band. Log the detail server-side and send the
@@ -871,7 +893,10 @@ export async function POST(request: Request) {
 
     const buildResult = async (
       onChunk?: (chunk: string) => void,
-    ): Promise<ChatTurnResponse> => {
+    ): Promise<{
+      result: ChatTurnResponse;
+      finalize: () => Promise<void>;
+    }> => {
       const requestedAt = Date.now();
       let sawFirstToken = false;
 
@@ -893,7 +918,6 @@ export async function POST(request: Request) {
       );
 
       let turnCount = session.turnCount;
-      let summary = session.summary;
 
       if (isOpening) {
         // The interviewer speaks first; only an assistant row is written.
@@ -944,79 +968,105 @@ export async function POST(request: Request) {
             : null,
         );
         turnCount = result.turnCount;
+      }
 
-        // Decide whether to refresh the rolling summary.
-        const allConversation: ConversationMessage[] = [
-          ...conversation,
-          { role: "user", content: userMessage },
-          { role: "assistant", content: aiMessage },
-        ];
+      /**
+       * Everything the candidate is not waiting on.
+       *
+       * The rolling summary is a model call and coverage is an embeddings call;
+       * together they used to sit between the last generated token and the
+       * `done` frame. In voice that frame gates both the final sentence being
+       * spoken and the microphone reopening, so the candidate sat in silence
+       * with the mic shut — for 1-3s on every second turn, which is exactly the
+       * `SUMMARY_REFRESH_TURNS` cadence.
+       *
+       * `appendTurn` deliberately does *not* move here. It is one indexed RPC,
+       * and `chat-recovery.ts` is built on the invariant that a failed append
+       * reaches the client as an `error` frame; if `done` preceded the write, a
+       * client would treat an unpersisted turn as persisted.
+       */
+      const finalize = async () => {
+        if (!isOpening) {
+          // `turnCount` is the authoritative total message count for the
+          // session. `allConversation` is only the tail we read this request,
+          // so it must not drive the refresh cadence — otherwise the modulo
+          // check would fire against a capped number and the summary would
+          // refresh at the wrong times (or never).
+          const allConversation: ConversationMessage[] = [
+            ...conversation,
+            { role: "user", content: userMessage },
+            { role: "assistant", content: aiMessage },
+          ];
 
-        // `turnCount` is the authoritative total message count for the
-        // session. `allConversation` is only the tail we read this request, so
-        // it must not drive the refresh cadence — otherwise the modulo check
-        // would fire against a capped number and the summary would refresh at
-        // the wrong times (or never).
-        if (shouldRefreshSummary(turnCount, Boolean(session.summary))) {
-          try {
-            const summaryResult = await updateRollingSummary({
-              previousSummary: session.summary,
-              allMessages: allConversation,
-              usage,
-            });
-            if (summaryResult) {
-              summary = summaryResult.summary;
-              await updateSession(supabase, sessionId, {
-                summary: summaryResult.summary,
+          if (shouldRefreshSummary(turnCount, Boolean(session.summary))) {
+            try {
+              await timer.time("summary", false, async () => {
+                const summaryResult = await updateRollingSummary({
+                  previousSummary: session.summary,
+                  allMessages: allConversation,
+                  usage,
+                });
+                if (summaryResult) {
+                  await updateSession(supabase, sessionId, {
+                    summary: summaryResult.summary,
+                  });
+                }
               });
+            } catch (error) {
+              // A summary failure must not break a turn that already succeeded.
+              console.warn("Rolling summary update failed:", error);
             }
-          } catch (error) {
-            // A summary failure should not break the user-facing reply.
-            console.warn("Rolling summary update failed:", error);
           }
         }
-      }
 
-      // Score the question just asked against the competency taxonomy and
-      // persist the running coverage. Done after the reply is on the wire so
-      // it adds nothing to time-to-first-token, and swallowed on failure —
-      // coverage is a reporting nicety, not something worth failing a turn for.
-      try {
-        const nextCoverage = await updateCoverageForQuestion(
-          coverage,
-          aiMessage,
-          usage,
-        );
-        if (
-          Object.keys(nextCoverage.covered).length >
-          Object.keys(coverage.covered).length
-        ) {
-          await updateSession(supabase, sessionId, {
-            competencyCoverage: nextCoverage,
+        // Score the question just asked against the competency taxonomy and
+        // persist the running coverage. Swallowed on failure — coverage is a
+        // reporting nicety, not something worth failing a turn for.
+        try {
+          await timer.time("coverage", false, async () => {
+            const nextCoverage = await updateCoverageForQuestion(
+              coverage,
+              aiMessage,
+              usage,
+            );
+            if (
+              Object.keys(nextCoverage.covered).length >
+              Object.keys(coverage.covered).length
+            ) {
+              await updateSession(supabase, sessionId, {
+                competencyCoverage: nextCoverage,
+              });
+            }
           });
+        } catch (error) {
+          console.warn("Competency coverage update failed:", error);
         }
-      } catch (error) {
-        console.warn("Competency coverage update failed:", error);
-      }
 
-      // Flush here rather than after `buildResult` returns, so the streaming
-      // path — which runs this inside the ReadableStream — is covered too.
-      // Best-effort by construction; it cannot throw.
-      await usage.flush(supabase, { userId: user.id, sessionId });
-      timer.log({ sessionId, roundType });
+        // Best-effort by construction; it cannot throw.
+        await usage.flush(supabase, { userId: user.id, sessionId });
+        timer.log({ sessionId, roundType });
+      };
 
       return {
-        aiMessage,
-        turnCount,
-        summary,
-        analysis,
-        strategy,
-        decisionReason,
-        confidence,
-        shouldEscalate,
-        shouldSlowDown,
-        followupSummary,
-        microFeedback,
+        result: {
+          aiMessage,
+          turnCount,
+          // The pre-turn snapshot, deliberately. Refreshing the summary now
+          // happens in `finalize`, after this payload is already on the wire.
+          // Nothing reads this field: the report reads `sessions.summary` from
+          // the database and `chat-recovery.ts` reads it from `/resume`. It is
+          // kept because `ChatTurnResponse` declares it.
+          summary: session.summary,
+          analysis,
+          strategy,
+          decisionReason,
+          confidence,
+          shouldEscalate,
+          shouldSlowDown,
+          followupSummary,
+          microFeedback,
+        },
+        finalize,
       };
     };
 
@@ -1024,7 +1074,11 @@ export async function POST(request: Request) {
       return createStreamingResponse((onChunk) => buildResult(onChunk));
     }
 
-    const result = await buildResult();
+    // The non-streaming path is only reached after a stream already failed, so
+    // an extra second there is irrelevant and a complete JSON statement of the
+    // turn is worth more than an early return.
+    const { result, finalize } = await buildResult();
+    await finalize();
     return NextResponse.json(result);
   } catch (error) {
     return handleRouteError("POST /api/chat", error);

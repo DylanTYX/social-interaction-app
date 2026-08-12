@@ -53,6 +53,7 @@ import {
   paceToRatePercent,
   type TranscriptResult,
 } from "@/lib/speech-service";
+import { decideSilence } from "@/lib/silence-detection";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
@@ -64,6 +65,12 @@ import {
 } from "@/lib/speech-metrics";
 
 const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
+/**
+ * Submitted when the response timer expires with nothing transcribed. Matches
+ * the text screen's placeholder verbatim so a silent turn reads the same way in
+ * the report regardless of which mode produced it.
+ */
+const NO_RESPONSE_MESSAGE = "[No response submitted before time expired.]";
 
 type DisplayMessage = {
   id: string;
@@ -155,6 +162,14 @@ function VoiceSimulateInner() {
     null,
   );
   const transcriptBufferRef = useRef("");
+  /**
+   * Mirrors `interimTranscript`, because the two paths that end a turn without
+   * a click — the response timeout and the silence watch — run from closures
+   * captured when recording *started*, where the state value is still "". The
+   * trailing phrase is very often still interim at that moment, so reading the
+   * state there silently dropped the end of the answer.
+   */
+  const interimTranscriptRef = useRef("");
   const phraseTimingsRef = useRef<PhraseTiming[]>([]);
   const isStoppingRef = useRef(false);
   const openingGeneratedRef = useRef(false);
@@ -162,6 +177,27 @@ function VoiceSimulateInner() {
   const voiceConfigRef = useRef(voiceConfig);
   const isRecordingRef = useRef(false);
   const sessionCompleteRef = useRef(false);
+
+  // Silence detection. `lastSpeechAtRef` is restamped on every recognition
+  // event including interim ones, which is the high-frequency "still talking"
+  // tick; `hasSpokenRef` gates the whole thing so an opening pause can never
+  // submit an empty answer.
+  const lastSpeechAtRef = useRef<number | null>(null);
+  const hasSpokenRef = useRef(false);
+  const silencePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [silenceStartedAtMs, setSilenceStartedAtMs] = useState<number | null>(
+    null,
+  );
+
+  /**
+   * The deadline the response timer actually enforces.
+   *
+   * Held in state so the countdown renders the same instant the timeout fires.
+   * Previously the two were independent: the timeout was armed here and
+   * `AnswerCountdown` stamped its own deadline when it mounted, so the digits
+   * on screen and the real cutoff only agreed by luck.
+   */
+  const [answerDeadlineMs, setAnswerDeadlineMs] = useState<number | null>(null);
 
   useEffect(() => {
     voiceConfigRef.current = voiceConfig;
@@ -353,6 +389,11 @@ function VoiceSimulateInner() {
         recordingTimeoutRef.current = null;
       }
 
+      if (silencePollRef.current) {
+        clearInterval(silencePollRef.current);
+        silencePollRef.current = null;
+      }
+
       // Synchronously tear everything down. cleanup() handles the recognizer,
       // synthesizer, and any audio that has already been buffered to the
       // speaker.
@@ -415,7 +456,15 @@ function VoiceSimulateInner() {
     if (sessionCompleteRef.current) return;
 
     const speechService = speechServiceRef.current;
-    if (!speechService.isInitialized()) return;
+    if (!speechService.isInitialized()) {
+      // A lapsed token. Returning quietly here left the interview looking
+      // finished: interviewer done speaking, microphone never opening, nothing
+      // on screen to explain it or to click.
+      setRecordingError(
+        "Your microphone session expired. Tap the microphone to reconnect.",
+      );
+      return;
+    }
 
     await handleStartRecording();
   };
@@ -485,6 +534,46 @@ function VoiceSimulateInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, setupError, activePersonaConfig, activeScenarioValue]);
 
+  const stopSilenceWatch = () => {
+    if (silencePollRef.current) {
+      clearInterval(silencePollRef.current);
+      silencePollRef.current = null;
+    }
+    setSilenceStartedAtMs(null);
+  };
+
+  /**
+   * Watch for the candidate finishing, so they do not have to press a button.
+   *
+   * One interval for the whole turn. It writes state only when a pause starts
+   * or ends — not on every tick — so a three-minute answer costs a couple of
+   * renders rather than seven hundred; the visible countdown ticks inside
+   * `SilenceIndicator`, which is a leaf for exactly that reason.
+   */
+  const startSilenceWatch = () => {
+    stopSilenceWatch();
+
+    silencePollRef.current = setInterval(() => {
+      if (!isRecordingRef.current || isStoppingRef.current) return;
+
+      const decision = decideSilence({
+        nowMs: Date.now(),
+        lastSpeechAtMs: lastSpeechAtRef.current,
+        hasSpoken: hasSpokenRef.current,
+      });
+
+      if (decision.kind === "submit") {
+        stopSilenceWatch();
+        void handleStopRecording();
+        return;
+      }
+
+      const nextStart =
+        decision.kind === "warning" ? lastSpeechAtRef.current : null;
+      setSilenceStartedAtMs((prev) => (prev === nextStart ? prev : nextStart));
+    }, 250);
+  };
+
   async function handleStartRecording() {
     const speechService = speechServiceRef.current;
 
@@ -508,22 +597,31 @@ function VoiceSimulateInner() {
       setFinalTranscript("");
       setInterimTranscript("");
       transcriptBufferRef.current = "";
+      interimTranscriptRef.current = "";
       phraseTimingsRef.current = [];
       isStoppingRef.current = false;
+      lastSpeechAtRef.current = null;
+      hasSpokenRef.current = false;
+      setSilenceStartedAtMs(null);
       setIsRecording(true);
 
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
       }
-
-      recordingTimeoutRef.current = setTimeout(() => {
-        void handleStopRecording();
-      }, RESPONSE_TIME_LIMIT_SECONDS * 1000);
 
       await speechService.startListening(
         (result: TranscriptResult) => {
           if (!isMountedRef.current) {
             return;
+          }
+
+          // Any recognition event at all means the candidate is still going.
+          // Interim results are the frequent ones and therefore the useful
+          // ones; finals only arrive at phrase boundaries Azure chooses.
+          if (result.final?.trim() || result.interim?.trim()) {
+            lastSpeechAtRef.current = Date.now();
+            hasSpokenRef.current = true;
           }
 
           if (result.final) {
@@ -548,8 +646,10 @@ function VoiceSimulateInner() {
               }
             }
 
+            interimTranscriptRef.current = "";
             setInterimTranscript("");
           } else if (result.interim) {
+            interimTranscriptRef.current = result.interim;
             setInterimTranscript(result.interim);
           }
         },
@@ -558,6 +658,8 @@ function VoiceSimulateInner() {
 
           setRecordingError(errorMsg);
           setIsRecording(false);
+          setAnswerDeadlineMs(null);
+          stopSilenceWatch();
           if (recordingTimeoutRef.current) {
             clearTimeout(recordingTimeoutRef.current);
             recordingTimeoutRef.current = null;
@@ -574,11 +676,24 @@ function VoiceSimulateInner() {
           ].filter((term): term is string => Boolean(term && term.trim())),
         },
       );
+
+      // Armed only once the recognizer is actually up. It used to be armed
+      // before this await, so microphone permission and Azure's handshake were
+      // charged against the candidate's three minutes.
+      const deadline = Date.now() + RESPONSE_TIME_LIMIT_SECONDS * 1000;
+      setAnswerDeadlineMs(deadline);
+      recordingTimeoutRef.current = setTimeout(() => {
+        void handleStopRecording();
+      }, RESPONSE_TIME_LIMIT_SECONDS * 1000);
+
+      startSilenceWatch();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Recording failed.";
       setRecordingError(errorMessage);
       setIsRecording(false);
+      setAnswerDeadlineMs(null);
+      stopSilenceWatch();
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current);
         recordingTimeoutRef.current = null;
@@ -603,6 +718,8 @@ function VoiceSimulateInner() {
       }
 
       setIsRecording(false);
+      setAnswerDeadlineMs(null);
+      stopSilenceWatch();
 
       if (recordingTimeoutRef.current) {
         clearTimeout(recordingTimeoutRef.current);
@@ -611,7 +728,7 @@ function VoiceSimulateInner() {
 
       const combinedTranscript = appendUniqueTranscript(
         transcriptBufferRef.current,
-        interimTranscript,
+        interimTranscriptRef.current,
       );
 
       const delivery = analyzeDelivery(
@@ -623,6 +740,7 @@ function VoiceSimulateInner() {
         : null;
 
       transcriptBufferRef.current = "";
+      interimTranscriptRef.current = "";
       phraseTimingsRef.current = [];
       setFinalTranscript("");
       setInterimTranscript("");
@@ -630,7 +748,18 @@ function VoiceSimulateInner() {
       if (combinedTranscript) {
         await handleSubmitTranscript(combinedTranscript, deliveryNote);
       } else {
-        setRecordingError("No speech detected. Please try again.");
+        /**
+         * Three minutes elapsed and nothing was said.
+         *
+         * This used to set "No speech detected" and stop, which left the
+         * session with a closed microphone, no interviewer turn pending and
+         * nothing to click — a dead end reachable by walking away from the
+         * screen. Submitting the same placeholder the text screen uses keeps
+         * the interview moving and makes the silence a scored event rather
+         * than a stuck page.
+         */
+        setRecordingError(null);
+        await handleSend(NO_RESPONSE_MESSAGE);
       }
     } catch (err) {
       const errorMessage =
@@ -705,13 +834,33 @@ function VoiceSimulateInner() {
         ratePercent: paceToRatePercent(activePersonaConfig.pace),
       };
       let ttsBuffer = "";
+      // Everything the stream has produced this turn. `ttsBuffer` is only the
+      // tail not yet handed to the synthesizer, so the difference between them
+      // is exactly what has already been voiced — which the recovery path below
+      // needs in order not to say it twice.
+      let streamedText = "";
       let startedSpeaking = false;
 
       const enqueueSentences = (flush: boolean) => {
         if (!ttsEnabled) return;
         const { sentences, rest } = extractSpeakableSentences(ttsBuffer, {
           flush,
-          minChars: 48,
+          /**
+           * Nothing is held back before the first word is out.
+           *
+           * The 48-character floor merges a short sentence into the one after
+           * it, so playback does not stutter through "Right." "Got it." mid
+           * reply. Applied to the *opening* sentence it does something else
+           * entirely: a reply beginning "Thanks for that." is 16 characters, so
+           * the interviewer stayed completely silent until a second full
+           * sentence had streamed in — often a second or more after the text
+           * was already on screen.
+           *
+           * Latency matters more than smoothness for the first utterance and
+           * smoothness matters more afterwards, so the floor starts at zero and
+           * comes back once audio is playing.
+           */
+          minChars: startedSpeaking ? 48 : 0,
         });
         ttsBuffer = rest;
         for (const sentence of sentences) {
@@ -755,6 +904,7 @@ function VoiceSimulateInner() {
         result = await consumeChatStream<ChatTurnResponse>(
           chatResponse,
           (chunk) => {
+            streamedText += chunk;
             ttsBuffer += chunk;
             if (isMountedRef.current) {
               setMessages((prev) =>
@@ -794,7 +944,36 @@ function VoiceSimulateInner() {
           }
           result = (await fallback.json()) as ChatTurnResponse;
         }
-        ttsBuffer = result.aiMessage;
+
+        /**
+         * Queue only what was never spoken.
+         *
+         * This used to be `ttsBuffer = result.aiMessage` — the whole reply —
+         * so the flush below re-read it from the top over audio that was
+         * already playing. The candidate heard the opening sentences twice,
+         * overlapping.
+         *
+         * `recoverPersistedTurn` returns the same turn the stream was midway
+         * through, so its text shares a prefix with what has already been
+         * voiced and only the remainder is new. The re-POST fallback generates
+         * a *different* reply, and the prefix check fails — there, anything
+         * already spoken belongs to an abandoned answer, so it is silenced and
+         * the new reply is spoken whole.
+         */
+        const voiced = streamedText.slice(
+          0,
+          streamedText.length - ttsBuffer.length,
+        );
+
+        if (voiced && result.aiMessage.startsWith(voiced)) {
+          ttsBuffer = result.aiMessage.slice(voiced.length);
+        } else {
+          if (voiced) {
+            await speechService.stopSpeaking();
+            startedSpeaking = false;
+          }
+          ttsBuffer = result.aiMessage;
+        }
       }
 
       const aiMessage = result.aiMessage;
@@ -876,6 +1055,15 @@ function VoiceSimulateInner() {
           : "Unable to reach the API.";
       if (isMountedRef.current) {
         setError(messageText);
+        setIsSpeakingTts(false);
+
+        // Reopen the microphone. This branch skips the auto-start above, so a
+        // single failed request used to end the interview in practice: the
+        // error was shown, the mic stayed shut, and the only way forward was a
+        // button the candidate had no reason to think was needed.
+        if (!sessionCompleteRef.current) {
+          void tryAutoStartRecording();
+        }
       }
     } finally {
       if (isMountedRef.current) {
@@ -1177,6 +1365,8 @@ function VoiceSimulateInner() {
               finalTranscript={finalTranscript}
               recordingError={recordingError}
               timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+              deadlineMs={answerDeadlineMs}
+              silenceStartedAtMs={silenceStartedAtMs}
               autoStartRecording
               onStart={() => void handleStartRecording()}
               onStop={() => void handleStopRecording()}
