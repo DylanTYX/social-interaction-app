@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/api/fetch-json";
 import { useMemo, useState } from "react";
 import {
   Dumbbell,
@@ -124,13 +125,11 @@ export default function DrillsPage() {
           roundType,
         }),
       });
-      const payload = (await response.json()) as ModelAnswerResult & {
-        error?: string;
-      };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Could not generate feedback.");
-      }
-      setResult(payload);
+      // `readJson` surfaces the server's own message and, unlike parsing
+      // directly, survives a non-JSON error body — a proxy 502 or an auth
+      // redirect returns HTML, which used to throw a parse error and mask the
+      // real status.
+      setResult(await readJson<ModelAnswerResult>(response));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not generate feedback.",

@@ -57,6 +57,7 @@ import {
   type TranscriptResult,
 } from "@/lib/speech-service";
 import { decideSilence } from "@/lib/silence-detection";
+import { readJson } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
@@ -506,11 +507,10 @@ function VoiceSimulateInner() {
           }),
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to generate the opening greeting.");
-        }
-
-        const data = (await response.json()) as ChatTurnResponse;
+        // `readJson` surfaces the route's own message and survives a non-JSON
+        // error body, where parsing directly threw a parse error that masked
+        // the real status.
+        const data = await readJson<ChatTurnResponse>(response);
 
         if (!isMountedRef.current) {
           return;
@@ -1021,10 +1021,7 @@ function VoiceSimulateInner() {
               streamResponse: false,
             }),
           });
-          if (!fallback.ok) {
-            throw new Error("Failed to generate AI response.");
-          }
-          result = (await fallback.json()) as ChatTurnResponse;
+          result = await readJson<ChatTurnResponse>(fallback);
         }
 
         /**
@@ -1265,7 +1262,7 @@ function VoiceSimulateInner() {
               title={bootstrap.jobDescriptionTitle}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span className="max-w-[160px] truncate">
+              <span className="max-w-40 truncate">
                 {bootstrap.jobDescriptionTitle}
               </span>
             </span>
