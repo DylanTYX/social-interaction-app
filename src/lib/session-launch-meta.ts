@@ -1,6 +1,7 @@
-import type {
-  InterviewSetupState,
-  VoiceSetupConfig,
+import {
+  normalizeVoiceConfig,
+  type InterviewSetupState,
+  type VoiceSetupConfig,
 } from "@/lib/interview-setup";
 import {
   normalizeInterviewLoop,
@@ -264,7 +265,10 @@ export function sanitizeLaunchMeta(
         Math.min(rounds.length - 1, loop.currentRoundIndex),
       ),
     },
-    voiceConfig: input.voiceConfig as SessionLaunchMeta["voiceConfig"],
+    // Normalized, not cast. This was `as SessionLaunchMeta["voiceConfig"]`,
+    // which asserts a shape rather than checking one — so whatever the client
+    // sent was written to `launch_meta` verbatim.
+    voiceConfig: normalizeVoiceConfig(input.voiceConfig),
     /**
      * Document text is stripped before this is stored.
      *
