@@ -19,6 +19,9 @@ function daysSince(iso: string): number {
  * Picks one concrete next step from interview history — weakest scenario,
  * longest gap, voice mode never tried, or a sensible default.
  */
+/** Sessions in one scenario before it can be called a weakness. */
+const MIN_SESSIONS_FOR_WEAKNESS = 2;
+
 export function getSuggestedNextSession(
   sessions: InterviewSessionSummary[],
   options?: {
@@ -102,15 +105,32 @@ export function getSuggestedNextSession(
       key: string;
       title: string;
       avg: number;
+      count: number;
       lastAt: string;
     } | null = null;
 
     for (const [key, bucket] of byScenario.entries()) {
+      /**
+       * Two sessions minimum before this is called a weakness.
+       *
+       * There was no minimum, so one below-par session was enough for the
+       * dashboard to tell the user "this scenario has your lowest average
+       * score" — a claim about a pattern, made from a single point, and the
+       * first thing they read on the page.
+       */
+      if (bucket.scores.length < MIN_SESSIONS_FOR_WEAKNESS) continue;
+
       const avg =
         bucket.scores.reduce((sum, value) => sum + value, 0) /
         bucket.scores.length;
       if (!weakest || avg < weakest.avg) {
-        weakest = { key, title: bucket.title, avg, lastAt: bucket.lastAt };
+        weakest = {
+          key,
+          title: bucket.title,
+          avg,
+          count: bucket.scores.length,
+          lastAt: bucket.lastAt,
+        };
       }
     }
 
@@ -118,7 +138,7 @@ export function getSuggestedNextSession(
       return {
         id: "weakest-scenario",
         title: `Improve on: ${weakest.title}`,
-        description: `Your average here is ${Math.round(weakest.avg)}%. Another round will help you close the gap.`,
+        description: `You average ${Math.round(weakest.avg)}% here across ${weakest.count} sessions. Another round will help you close the gap.`,
         href: "/simulate/setup",
         reason: "This scenario has your lowest average score.",
         accent: "purple",

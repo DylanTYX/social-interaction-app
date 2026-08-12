@@ -84,6 +84,11 @@ function countOccurrences(haystack: string, needles: string[]): number {
   }, 0);
 }
 
+/** Sentences of three or more words before an answer counts as prose. */
+const MIN_SENTENCES = 2;
+/** The most a keyword run can score, however many magic words it contains. */
+const KEYWORD_SALAD_CEILING = 45;
+
 export function scoreAnswerHeuristically(raw: string): HeuristicFeedback {
   const text = raw.trim();
   const lower = ` ${text.toLowerCase()} `;
@@ -145,10 +150,39 @@ export function scoreAnswerHeuristically(raw: string): HeuristicFeedback {
     strengths.push("Crisp delivery — no filler words.");
   }
 
-  const score = Math.max(
+  /**
+   * Does this read like an answer, or like a list of the words that score well?
+   *
+   * Every component above rewards keyword *presence*, so
+   * "I led, I delivered, 40% improvement in Q3, stakeholders, KPI" collected
+   * length + numbers + a result word + two "I"s + no fillers = 90/100, on the
+   * same 0-100 scale as the real analyzer, as the first number a prospective
+   * user ever sees. That is a bad promise to open with.
+   *
+   * Sentences are the cheapest signal that separates the two: a real answer has
+   * several, a keyword run has one or none. Fragments under three words do not
+   * count, so "KPI. Stakeholders. Impact." does not buy its way through.
+   */
+  const sentences = text
+    .split(/[.!?]+/)
+    .filter((part) => part.trim().split(/\s+/).filter(Boolean).length >= 3);
+
+  const readsAsProse = sentences.length >= MIN_SENTENCES;
+
+  let score = Math.max(
     5,
     Math.min(98, lengthScore + specificityScore + structureScore + fillerScore),
   );
+
+  if (!readsAsProse && wordCount >= 25) {
+    // Capped rather than zeroed: the keywords are not *wrong*, they are simply
+    // not an answer yet, and the tip says exactly that.
+    score = Math.min(score, KEYWORD_SALAD_CEILING);
+    tips.unshift(
+      "Write it as full sentences — right now this reads as a list of keywords rather than a story.",
+    );
+    strengths.length = 0;
+  }
 
   // Keep feedback digestible.
   return {

@@ -39,22 +39,38 @@ function getAverage(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+/** Answers needed before a direction is claimed at all. */
+const MIN_TURNS_FOR_TREND = 4;
+/**
+ * Points on a 0-100 scale that separate a trend from noise.
+ *
+ * It was 1, which is smaller than the analyzer's own turn-to-turn variance —
+ * 71 then 72.5 was reported to the user as "improving".
+ */
+const TREND_THRESHOLD = 8;
+
 function getTrend(values: number[]): "improving" | "declining" | "stable" {
-  if (values.length < 2) {
+  /**
+   * Compares the first *half* of the session against the second, not the first
+   * turn against the last.
+   *
+   * Two turns used to be enough to earn a direction, decided by a single pair
+   * of readings — so one strong closing answer read as "improving" and one
+   * weak one as "declining", on a sample of two. Averaging the halves means a
+   * single outlier at either end cannot flip the verdict.
+   */
+  if (values.length < MIN_TURNS_FOR_TREND) {
     return "stable";
   }
 
-  const first = values[0];
-  const last = values[values.length - 1];
+  const midpoint = Math.floor(values.length / 2);
+  const firstHalf = values.slice(0, midpoint);
+  const secondHalf = values.slice(values.length - midpoint);
 
-  if (last > first + 1) {
-    return "improving";
-  }
+  const delta = getAverage(secondHalf) - getAverage(firstHalf);
 
-  if (last < first - 1) {
-    return "declining";
-  }
-
+  if (delta > TREND_THRESHOLD) return "improving";
+  if (delta < -TREND_THRESHOLD) return "declining";
   return "stable";
 }
 
