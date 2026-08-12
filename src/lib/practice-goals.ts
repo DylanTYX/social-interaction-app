@@ -25,8 +25,14 @@ function startOfWeek(date: Date): Date {
   return d;
 }
 
+/**
+ * Messages before a session counts as having practised at all: the opening
+ * greeting plus one exchange.
+ */
+export const MIN_TURNS_TO_PRACTISE = 3;
+
 export interface PracticeProgress {
-  /** Sessions started this calendar week (Mon–Sun). */
+  /** Sessions *practised* this calendar week (Mon–Sun). */
   thisWeek: number;
   /** Current consecutive-day streak (today or yesterday anchored). */
   streakDays: number;
@@ -37,7 +43,21 @@ export interface PracticeProgress {
 export function computePracticeProgress(
   sessions: InterviewSessionSummary[],
 ): PracticeProgress {
+  /**
+   * Sessions that represent actual practice, not merely a launch.
+   *
+   * The row is created at the end of the setup wizard, before a single word is
+   * exchanged — so this counted opening the wizard and closing the tab. Three
+   * of those on a Monday read "3/3 · Goal hit", and one a day earned a
+   * three-day streak. A streak is a motivation device; one that rewards opening
+   * a page is worse than none.
+   *
+   * The bar is deliberately lower than `MIN_TURNS_TO_SCORE`: a short session is
+   * still practice and should still keep a streak alive, it just should not
+   * vote on how good you are. One exchange is enough to count as showing up.
+   */
   const timestamps = sessions
+    .filter((entry) => entry.turnCount >= MIN_TURNS_TO_PRACTISE)
     .map((entry) => Date.parse(entry.createdAt))
     .filter((ts) => !Number.isNaN(ts))
     .sort((a, b) => b - a);
@@ -46,9 +66,7 @@ export function computePracticeProgress(
   const thisWeek = timestamps.filter((ts) => ts >= weekStart).length;
 
   // Unique day keys for streak math.
-  const dayKeys = new Set(
-    timestamps.map((ts) => new Date(ts).toDateString()),
-  );
+  const dayKeys = new Set(timestamps.map((ts) => new Date(ts).toDateString()));
 
   // Current streak: walk back from today (allowing a 1-day grace if the user
   // hasn't practiced *today* yet but did yesterday).

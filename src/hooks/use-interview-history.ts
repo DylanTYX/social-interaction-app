@@ -10,6 +10,12 @@ export interface InterviewSessionSummary {
   scenarioValue: string;
   personaName: string;
   status: "in_progress" | "completed" | "abandoned";
+  /**
+   * Messages exchanged, not answers given — `append_interview_turn` bumps it by
+   * two per user/assistant pair, plus one for the opening greeting. Used to
+   * decide whether a session is substantial enough to score.
+   */
+  turnCount: number;
   averageScore: number | null;
   durationMinutes: number | null;
   startedAt: string;
