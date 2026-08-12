@@ -40,7 +40,7 @@ export interface RateLimitResult {
   remaining: number;
 }
 
-export function checkRateLimit(
+function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,

@@ -359,54 +359,6 @@ export class SpeechService {
   }
 
   /**
-   * Prompt the browser for microphone access. Returns true on success.
-   */
-  async requestMicrophoneAccess(): Promise<boolean> {
-    try {
-      if (typeof navigator === "undefined" || !navigator.mediaDevices) {
-        console.error(
-          "mediaDevices is not supported. Check: HTTPS required, browser support, or OS permissions.",
-        );
-        return false;
-      }
-
-      if (!navigator.mediaDevices.getUserMedia) {
-        console.error("getUserMedia is not supported in this browser.");
-        return false;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
-      stream.getTracks().forEach((track) => track.stop());
-      return true;
-    } catch (error) {
-      if (error instanceof DOMException) {
-        if (error.name === "NotAllowedError") {
-          console.error(
-            "Microphone permission denied. Please allow microphone access in browser settings and reload the page.",
-          );
-        } else if (error.name === "NotFoundError") {
-          console.error(
-            "No microphone device found. Please connect a microphone.",
-          );
-        } else if (error.name === "NotReadableError") {
-          console.error(
-            "Microphone is in use by another application. Close other apps and try again.",
-          );
-        }
-      }
-      const errorMessage =
-        error instanceof Error ? error.message : "Microphone access denied";
-      console.error("Microphone access error:", errorMessage);
-      return false;
-    }
-  }
-
-  /**
    * Start continuous speech recognition with real-time interim results.
    */
   async startListening(

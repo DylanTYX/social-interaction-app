@@ -26,16 +26,16 @@ Does the analyzer put an answer in the right band?
 Bands are defined in [`src/eval/fixtures.ts`](../src/eval/fixtures.ts) and
 deliberately **overlap**:
 
-| Band | Range |
-|---|---|
-| weak | 0–45 |
-| mediocre | 40–72 |
-| strong | 68–100 |
+| Band     | Range  |
+| -------- | ------ |
+| weak     | 0–45   |
+| mediocre | 40–72  |
+| strong   | 68–100 |
 
 The overlap is the point. A "strong" answer scoring 70 and a "mediocre" one
 scoring 71 is not a failure — human interviewers do not agree to the point
 either. What would be a failure is a strong answer scoring 40. Accuracy measures
-*usable* agreement, not exact agreement.
+_usable_ agreement, not exact agreement.
 
 ### 2. Stability across runs
 
@@ -60,7 +60,7 @@ How often the model omits a field it was asked for.
 
 This is why `jsonrepair` is a dependency. It is also why the analyzer has a
 `finish_reason === "length"` check and a retry: a truncated response is
-*almost* valid JSON, and without the check it failed as a generic parse error
+_almost_ valid JSON, and without the check it failed as a generic parse error
 that named the wrong cause.
 
 Note the check narrowed deliberately. Six fields — word count, hesitation
@@ -71,7 +71,7 @@ they can no longer be missing.
 The remaining judgement fields carry neutral defaults, so the product never sees
 an undefined score. That would make the finished object complete by
 construction and the metric meaningless, so `analyzeResponse` reports an
-`omittedFields` list recording what the model actually left out *before* the
+`omittedFields` list recording what the model actually left out _before_ the
 defaults fill it in. The harness reads that. It is diagnostic only — nothing in
 the product consumes it.
 
@@ -81,14 +81,14 @@ the product consumes it.
 
 18 fixtures across all six round types:
 
-| Round type | Fixtures |
-|---|---|
-| behavioral | 5 |
-| technical_swe | 3 |
-| system_design | 3 |
-| screening | 2 |
-| case | 2 |
-| hr | 3 |
+| Round type    | Fixtures |
+| ------------- | -------- |
+| behavioral    | 5        |
+| technical_swe | 3        |
+| system_design | 3        |
+| screening     | 2        |
+| case          | 2        |
+| hr            | 3        |
 
 Each fixture carries a `rationale` explaining why it belongs in its band. That
 is not decoration — it is the thing a marker can check. If you disagree with a
@@ -109,11 +109,20 @@ npm run eval -- --only=hr     # filter by id substring or round type
 Cost is `fixtures × runs` analyzer calls: 18 × 5 = 90 calls, a few cents at
 `gpt-4o-mini` pricing. It needs `OPENAI_API_KEY` in `.env.local`.
 
-Capture the output:
+Capture the output. `npm run eval` prints to stdout and writes nothing itself,
+so a run that is not redirected leaves no evidence behind — which is how the
+harness ended up built and never recorded.
 
 ```bash
-npm run eval -- --runs=5 --json > docs/eval-results.json
+# Human-readable, alongside the persona artifact
+npm run eval -- --runs=5 | tee docs/artifacts/eval-results.txt
+
+# Machine-readable, for tables in the report
+npm run eval -- --runs=5 --json > docs/artifacts/eval-results.json
 ```
+
+Commit both. The numbers in the Results section below are only claims until the
+run that produced them is in the repository.
 
 ---
 
@@ -132,12 +141,12 @@ the only measurement that can tell the difference.
 
 Run the harness at `9cf6024~1` and at `HEAD`, and record both:
 
-| Metric | Before (`9cf6024~1`) | After (`HEAD`) | Verdict |
-|---|---|---|---|
-| Band accuracy | _pending_ | _pending_ | must not drop |
-| Mean std dev across runs | _pending_ | _pending_ | must not rise |
-| Strong/weak separation | _pending_ | _pending_ | must not narrow |
-| Field completeness | _pending_ | _pending_ | — |
+| Metric                   | Before (`9cf6024~1`) | After (`HEAD`) | Verdict         |
+| ------------------------ | -------------------- | -------------- | --------------- |
+| Band accuracy            | _pending_            | _pending_      | must not drop   |
+| Mean std dev across runs | _pending_            | _pending_      | must not rise   |
+| Strong/weak separation   | _pending_            | _pending_      | must not narrow |
+| Field completeness       | _pending_            | _pending_      | —               |
 
 **If band accuracy drops, revert the change and say so.** A ~17% scaffold
 reduction is not worth worse scoring, and reporting a reverted experiment is
@@ -150,14 +159,14 @@ screening are judged on motivation and fit, which is softer than correctness and
 complexity — expect lower agreement there, and say so rather than hiding it in
 an average.
 
-| Round type | Fixtures | Band accuracy | Mean std dev |
-|---|---|---|---|
-| behavioral | 5 | _pending_ | _pending_ |
-| technical_swe | 3 | _pending_ | _pending_ |
-| system_design | 3 | _pending_ | _pending_ |
-| screening | 2 | _pending_ | _pending_ |
-| case | 2 | _pending_ | _pending_ |
-| hr | 3 | _pending_ | _pending_ |
+| Round type    | Fixtures | Band accuracy | Mean std dev |
+| ------------- | -------- | ------------- | ------------ |
+| behavioral    | 5        | _pending_     | _pending_    |
+| technical_swe | 3        | _pending_     | _pending_    |
+| system_design | 3        | _pending_     | _pending_    |
+| screening     | 2        | _pending_     | _pending_    |
+| case          | 2        | _pending_     | _pending_    |
+| hr            | 3        | _pending_     | _pending_    |
 
 ---
 
@@ -174,7 +183,7 @@ An evaluator will find these anyway; better to name them.
 - **Band assignment is one person's judgement.** There is no second annotator,
   so there is no inter-rater agreement figure. A stronger design would have two
   people band the fixtures independently and report Cohen's kappa first.
-- **This measures the analyzer, not the interview.** Whether the *questions* are
+- **This measures the analyzer, not the interview.** Whether the _questions_ are
   good, whether the adaptation helps a candidate improve, and whether the app
   teaches anything are separate questions — that is what
   [`UAT.md`](UAT.md) is for.
