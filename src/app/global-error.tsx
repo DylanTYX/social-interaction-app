@@ -1,5 +1,6 @@
 "use client";
 
+import { reportClientError } from "@/lib/report-client-error";
 import { useEffect } from "react";
 
 // `global-error` replaces the root layout entirely when it renders, so it gets
@@ -22,7 +23,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[global] render failed:", error);
+    // Transmitted, not just logged locally: this used to `console.error` in the
+    // user's own browser, so a render crash left no record anywhere and the
+    // "Reference" shown below matched nothing on the server.
+    reportClientError("global", error);
   }, [error]);
 
   return (

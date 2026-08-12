@@ -1,5 +1,6 @@
 "use client";
 
+import { reportClientError } from "@/lib/report-client-error";
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
@@ -21,9 +22,10 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Server-side logging already covers API failures; this catches the render
-    // path, which previously produced a blank screen and no record at all.
-    console.error("[dashboard] render failed:", error);
+    // Transmitted, not just logged locally: this used to `console.error` in the
+    // user's own browser, so a render crash left no record anywhere and the
+    // "Reference" shown below matched nothing on the server.
+    reportClientError("dashboard", error);
   }, [error]);
 
   return (

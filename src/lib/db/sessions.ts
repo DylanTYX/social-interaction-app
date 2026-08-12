@@ -213,6 +213,20 @@ export async function listSessions(
  * the `metrics` JSONB and could not be indexed, so the caller loaded 200 rows
  * and filtered them in memory.
  */
+/**
+ * Every session in one interview loop.
+ *
+ * Bounded by `MAX_LOOP_ROUNDS`, because `/api/loops/[loopId]` runs a
+ * `listTurnAnalyses` per row returned. `loop_id` is not settable through the
+ * API — but it is a plain column, so a direct table write could point every
+ * session a user owns at one loop and turn a single GET into a fan-out over all
+ * of them. A loop cannot legitimately exceed its configured round count.
+ */
+/** A loop cannot have more rounds than the setup wizard allows. */
+const MAX_LOOP_ROUNDS = 10;
+/** Far past the longest configured round; a session cannot legitimately exceed it. */
+const MAX_TURN_ANALYSES = 200;
+
 export async function listSessionsInLoop(
   supabase: SupabaseClient,
   loopId: string,
@@ -221,7 +235,8 @@ export async function listSessionsInLoop(
     .from("interview_sessions")
     .select(SESSION_COLUMNS)
     .eq("loop_id", loopId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(MAX_LOOP_ROUNDS);
 
   if (error) throw error;
   return (data ?? []).map((row) => rowToSession(row as SessionRow));
@@ -569,6 +584,13 @@ function rowToTurnAnalysis(row: TurnAnalysisRow): TurnAnalysisRecord {
 }
 
 /** Every scored turn for a session, oldest first. Powers the report. */
+/**
+ * Scored turns for one session, oldest first.
+ *
+ * Capped well above any real round — `targetTurnsForDuration` tops out in the
+ * low dozens — because `/report`, `/resume` and `/next-round` all call this and
+ * none of them was rate limited.
+ */
 export async function listTurnAnalyses(
   supabase: SupabaseClient,
   sessionId: string,
@@ -577,7 +599,8 @@ export async function listTurnAnalyses(
     .from("interview_turn_analyses")
     .select(TURN_ANALYSIS_COLUMNS)
     .eq("session_id", sessionId)
-    .order("turn_index", { ascending: true });
+    .order("turn_index", { ascending: true })
+    .limit(MAX_TURN_ANALYSES);
 
   if (error) throw error;
   return (data ?? []).map((row) => rowToTurnAnalysis(row as TurnAnalysisRow));

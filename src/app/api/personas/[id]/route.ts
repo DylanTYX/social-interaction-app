@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseUuid } from "@/lib/api/query";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
@@ -18,6 +19,12 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `persona:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const { id: rawId } = await ctx.params;
     const id = parseUuid(rawId, "id");
@@ -57,6 +64,12 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `persona:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const { id: rawId } = await ctx.params;
     const id = parseUuid(rawId, "id");

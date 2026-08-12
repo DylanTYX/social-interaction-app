@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -31,6 +32,12 @@ export async function GET(request: Request) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `sessions:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 25, max: 100 });
@@ -69,6 +76,12 @@ export async function POST(request: Request) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `sessions:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const body = await readJsonBody<{
       practiceMode?: string;
