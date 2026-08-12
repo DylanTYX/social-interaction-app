@@ -21,9 +21,7 @@ import {
  */
 let cache: Promise<number[][]> | null = null;
 
-export function getCompetencyEmbeddings(
-  usage?: UsageCollector,
-): Promise<number[][]> {
+function getCompetencyEmbeddings(usage?: UsageCollector): Promise<number[][]> {
   if (!cache) {
     // Recorded even though it is memoised: it is a real batch of 12 embeddings
     // billed once per server process, and on a serverless deploy "once per

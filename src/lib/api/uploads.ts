@@ -32,7 +32,7 @@ const TOO_LARGE_MESSAGE = `Upload is too large. Keep PDFs under ${
  * through — which is precisely the case it exists to stop. `readCappedBody`
  * below is the check that actually holds.
  */
-export function assertDeclaredSizeWithinLimit(request: Request): void {
+function assertDeclaredSizeWithinLimit(request: Request): void {
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (
     Number.isFinite(declared) &&

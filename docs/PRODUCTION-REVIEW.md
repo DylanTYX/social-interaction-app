@@ -18,8 +18,8 @@ the sequence was verified by typecheck, lint and tests only, because the app
 could not be built on the Node 18 that was on `PATH`. (Node 22 was available
 under nvm the whole time; the build failure that suggested otherwise was a stale
 `.next` cache.) Current state: `tsc` clean, lint clean apart from one
-pre-existing warning in a docs script, **336 tests across 38 files**, production
-build succeeds.
+pre-existing warning in a docs script, **381 tests across 46 files**, production
+build succeeds. Migrations `0011` and `0012` have since been applied.
 
 ---
 
@@ -215,14 +215,12 @@ Checked and found sound, recorded so the next review does not re-litigate them:
   OpenAI since these changes.
 - No load testing. The performance findings are read from the code — query
   shapes, fan-out widths, index coverage — not measured.
-- **Migrations `0011` and `0012` have not been applied**, and `0012` is the one
-  that matters: until it runs, the API calls `update_session_progress` and
-  `record_llm_usage`, which do not exist yet — session updates and token
-  accounting will fail. Apply both before the next run. `0011`'s constraints are
-  `not valid`, so they cannot fail on existing rows, but that also means
-  existing rows stay unchecked until someone runs `validate constraint`.
-- **`0012` has not been exercised against a live database.** The functions are
-  written and their callers typecheck, but no session update or usage flush has
-  actually round-tripped through them here.
+- **`0011`'s constraints are `not valid`**, so existing rows stay unchecked
+  until someone runs `validate constraint`. New and updated rows are checked.
+- **The `0012` RPC path is unit-tested but not yet exercised end to end here.**
+  `updateSession` and `UsageCollector.flush` have tests asserting they call
+  `update_session_progress` / `record_llm_usage` with the right shape, so a
+  drift in the function name or arguments fails loudly — but no full interview
+  has round-tripped through them in this environment.
 - The `[turn-timing]` numbers that would settle whether the analyzer is worth
   splitting have still not been read from a real session.

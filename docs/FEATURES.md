@@ -23,7 +23,7 @@ Four steps. Only one thing is required: a sentence or two about the role.
 
 ### 1. Context
 
-**How you want to answer** — *Text* to type, *Voice* to speak and hear the
+**How you want to answer** — _Text_ to type, _Voice_ to speak and hear the
 interviewer speak back.
 
 **The role** — describe it in your own words, or tap a quick-start to fill the
@@ -45,25 +45,25 @@ Both are saved to your library and reusable across sessions.
 
 Start from a preset, or build it yourself:
 
-| Preset | What you get |
-|---|---|
-| Quick practice | One round, ready to go |
-| Screen + behavioural | Two rounds |
-| Full SWE loop | Screen, technical, system design, behavioural |
-| Suggest from job description | Rounds picked to match the JD you attached |
+| Preset                       | What you get                                  |
+| ---------------------------- | --------------------------------------------- |
+| Quick practice               | One round, ready to go                        |
+| Screen + behavioural         | Two rounds                                    |
+| Full SWE loop                | Screen, technical, system design, behavioural |
+| Suggest from job description | Rounds picked to match the JD you attached    |
 
 Every round is editable. For each one you choose:
 
 **Type** — six kinds, each scored on its own criteria:
 
-| Round | Judged on |
-|---|---|
-| Intro / screening | Clarity, motivation, fit, concision |
-| Behavioural | STAR structure, clarity, specificity |
-| Technical SWE | Problem framing, correctness, complexity, edge cases, code quality |
-| System design | Requirements, architecture, depth, tradeoffs, scalability |
-| Case / problem solving | Problem framing, structure, tradeoffs, depth |
-| HR / People | Motivation, values fit, logistics, your questions for them |
+| Round                  | Judged on                                                          |
+| ---------------------- | ------------------------------------------------------------------ |
+| Intro / screening      | Clarity, motivation, fit, concision                                |
+| Behavioural            | STAR structure, clarity, specificity                               |
+| Technical SWE          | Problem framing, correctness, complexity, edge cases, code quality |
+| System design          | Requirements, architecture, depth, tradeoffs, scalability          |
+| Case / problem solving | Problem framing, structure, tradeoffs, depth                       |
+| HR / People            | Motivation, values fit, logistics, your questions for them         |
 
 **Length** — 5 to 90 minutes. This genuinely controls how long the interview
 runs; the slider tells you roughly how many questions to expect.
@@ -108,7 +108,7 @@ starts it.
 
 ## During the interview
 
-- **The interviewer adapts.** Your answer is scored *before* the next question
+- **The interviewer adapts.** Your answer is scored _before_ the next question
   is written, and the verdict steers what comes next. A vague answer gets
   drilled for specifics; a strong one gets pushed a level deeper.
 - **Live coaching** (optional) shows a one-line hint under each of your answers,
@@ -132,7 +132,14 @@ pick the interview back up where you left off.
 
 - Overall score, plus clarity, structure and confidence breakdowns
 - A summary of the conversation
-- The full transcript, with per-answer coaching
+- The full transcript, with **each answer's own score** and the strengths and
+  gaps behind it — so you can see which answer moved the number, not just the
+  number
+- **How hard the interviewer was.** The rubric is persona-blind, but question
+  _difficulty_ scales with strictness, so the report says which band this
+  interviewer sat in and what that means for reading the score. Two 78s from
+  different interviewers are not the same achievement.
+- Per-answer coaching on demand
 - **Model answers** — for any question, see a strong example answer, your own
   answer rewritten, and specific tips
 - **Competency coverage** — which of twelve competencies (conflict, failure,
@@ -157,7 +164,15 @@ across the day, recurring strengths, and recurring gaps.
 suggestion for what to work on next.
 
 **Analytics** — score trend over time, four skill dimensions tracked
-separately, and a breakdown by scenario.
+separately, a breakdown by scenario, and **competency coverage across every
+session**: which of the twelve competencies have come up, how often, and which
+you have never been asked about. The per-session report answers "did this
+interview touch delegation?"; this answers "what have I still never practised?"
+
+Trends deliberately stay blank until there is enough data to mean something —
+four scored sessions for a line, two sessions in a scenario before it is called
+a weakness. A single session is shown as its own score rather than as an
+"average".
 
 **Drills** — single questions to practise against without setting up a full
 interview.
@@ -165,7 +180,8 @@ interview.
 **Libraries** — saved personas, job descriptions and CVs, reusable across
 sessions.
 
-**Weekly goal** — set a target number of sessions and track your streak.
+**Weekly goal** — set a target number of sessions and track your streak. Both
+count sessions you actually practised in, not ones you opened and closed.
 
 **Settings** — default practice mode, streaming and coaching preferences, voice
 selection, export all your data as JSON, or delete your interview history.
@@ -187,4 +203,13 @@ Worth knowing up front:
 - **English only**, despite personas having a nationality.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
-  network.
+  network. The setup wizard now requires the microphone check to pass before a
+  voice interview can start, so this fails before the interview rather than
+  during it.
+- **Scores are not directly comparable across interviewers.** The rubric never
+  sees the persona, but question difficulty scales with strictness — so a
+  supportive interviewer asks easier questions and those answers score higher.
+  The report names the difficulty band; the analytics trend does not yet
+  separate by persona.
+- **The interview screen assumes a desktop browser.** It works on a laptop; on a
+  phone the composer and the coaching rail have no small-screen layout.

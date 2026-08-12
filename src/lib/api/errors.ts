@@ -21,7 +21,15 @@ const GENERIC_500 = "Something went wrong. Please try again.";
  * `scope` is a short tag identifying the handler (e.g. "POST /api/chat") so
  * the log line is greppable.
  */
-export function serverError(scope: string, error: unknown): NextResponse {
+/**
+ * Deliberately not exported.
+ *
+ * Every route reaches this through `handleRouteError`. Calling it directly is
+ * the mistake that flattened fourteen routes' `ClientVisibleError`s into 500s —
+ * a `parseUuid` rejection surfaced as "something went wrong" instead of a 404
+ * — so the only way to log-and-500 is now the one that checks first.
+ */
+function serverError(scope: string, error: unknown): NextResponse {
   console.error(`[${scope}]`, error);
   return NextResponse.json({ error: GENERIC_500 }, { status: 500 });
 }
@@ -62,7 +70,10 @@ export class ClientVisibleError extends Error {
  */
 export function handleRouteError(scope: string, error: unknown): NextResponse {
   if (error instanceof ClientVisibleError) {
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.status },
+    );
   }
   return serverError(scope, error);
 }

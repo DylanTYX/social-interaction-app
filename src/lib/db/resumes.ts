@@ -59,7 +59,7 @@ const PROMPT_RESUME_CHARS = 6_000;
  * Derive a friendly title from the resume text — typically the candidate's
  * name on the first non-empty line, falling back to a generic label.
  */
-export function buildResumeTitle(rawText: string): string {
+function buildResumeTitle(rawText: string): string {
   const firstLine = rawText
     .split("\n")
     .map((line) => line.trim())

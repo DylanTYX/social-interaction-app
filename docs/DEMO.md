@@ -11,14 +11,14 @@ Two rules underneath all of it:
 2. **Lead with "it is measured", not "it is cheap."** A ten-question round costs
    about a cent. Anyone who hears "we saved $0.0005 per session" will rightly
    push back. The contribution is that every model call is instrumented, priced
-   and checkable — including the optimisation that provably does *not* fire.
+   and checkable — including the optimisation that provably does _not_ fire.
 
 ---
 
 ## How it works
 
-Read this before the runbook. The commands below prove things; this is *what*
-they prove and *why the proof holds*. Every claim ends at a file you can open.
+Read this before the runbook. The commands below prove things; this is _what_
+they prove and _why the proof holds_. Every claim ends at a file you can open.
 
 ### A. How a persona changes the interview
 
@@ -61,7 +61,7 @@ feel different."
 The textual path is what the empirical layer (`--live`) exists to measure, using
 a blind judge, precisely because prompt text cannot be evaluated by inspection.
 
-**What persona does *not* touch:** scoring. `analyzeResponse` takes no persona
+**What persona does _not_ touch:** scoring. `analyzeResponse` takes no persona
 argument and its cache key is `analyzer:${roundType}`. Persona changes what gets
 asked next; it never changes what an answer was worth.
 
@@ -106,7 +106,7 @@ on a bare session is ~590 tokens, under the 1,024 floor, so nothing caches at
 all. `cost-report` says so in words rather than printing a zero for you to
 interpret. The claim to make is not "this app uses prompt caching" — it is:
 
-> The prompt is *ordered* so caching engages whenever the prompt is large
+> The prompt is _ordered_ so caching engages whenever the prompt is large
 > enough to be worth caching. On small prompts it does not fire, and on small
 > prompts it does not matter. Here is the measurement telling you which case
 > you are in.
@@ -115,15 +115,15 @@ interpret. The claim to make is not "this app uses prompt caching" — it is:
 
 This ordering is itself part of the contribution — worth saying out loud.
 
-| | Kind of evidence | Example here |
-|---|---|---|
-| 1 | **Deterministic computation** — reproduces exactly | `npm run eval:persona`, the difficulty numbers |
-| 2 | **A test that fails when the claim stops being true** | `persona-engine.test.ts` fails if Yuki and Isabella's dials converge; `pricing.test.ts` fails if cached tokens are ever billed as extra input |
-| 3 | **Measured rows, nothing sampled** | `llm_usage` — one row per model call |
-| 4 | **Blind measurement** | the judge is never told which persona produced the text, so it cannot agree with the label |
-| 5 | **Committed artifacts** | `docs/artifacts/`, so a network failure costs nothing |
+|     | Kind of evidence                                      | Example here                                                                                                                                  |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Deterministic computation** — reproduces exactly    | `npm run eval:persona`, the difficulty numbers                                                                                                |
+| 2   | **A test that fails when the claim stops being true** | `persona-engine.test.ts` fails if Yuki and Isabella's dials converge; `pricing.test.ts` fails if cached tokens are ever billed as extra input |
+| 3   | **Measured rows, nothing sampled**                    | `llm_usage` — one row per model call                                                                                                          |
+| 4   | **Blind measurement**                                 | the judge is never told which persona produced the text, so it cannot agree with the label                                                    |
+| 5   | **Committed artifacts**                               | `docs/artifacts/`, so a network failure costs nothing                                                                                         |
 
-Note what is *absent*: no claim rests on a single generated example, and no
+Note what is _absent_: no claim rests on a single generated example, and no
 figure in this document was estimated.
 
 ---
@@ -133,17 +133,17 @@ figure in this document was estimated.
 Asked directly: are these tools reachable by end users? Almost entirely no — and
 the exception is worth presenting rather than glossing.
 
-| Concern | Where the boundary actually sits | Enforced? |
-|---|---|---|
-| The tooling (`eval`, `eval:persona`, `cost-report`, `pricing.ts`) | Import graph — nothing under `src/app`, `src/components`, `src/hooks` or `src/lib` imports them, so Next bundles none of it | Yes — now a lint rule (`eslint.config.mjs`), so a future import fails CI rather than silently shipping |
-| `SUPABASE_SERVICE_ROLE_KEY` | One CLI script, no `NEXT_PUBLIC_` prefix | Yes — Next only inlines `NEXT_PUBLIC_*`, so it evaluates to `undefined` in a browser even if imported wrongly |
-| Another user's data | Row-level security on every table, `user_id = auth.uid()` | Yes, in the database |
-| `docs/` and `docs/artifacts/` | Not in `public/`, no file-serving route, no rewrites | Yes — no URL returns them |
-| **A user's own `llm_usage` rows** | **Nothing. The UI simply never renders them** | **No** |
+| Concern                                                           | Where the boundary actually sits                                                                                            | Enforced?                                                                                                     |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| The tooling (`eval`, `eval:persona`, `cost-report`, `pricing.ts`) | Import graph — nothing under `src/app`, `src/components`, `src/hooks` or `src/lib` imports them, so Next bundles none of it | Yes — now a lint rule (`eslint.config.mjs`), so a future import fails CI rather than silently shipping        |
+| `SUPABASE_SERVICE_ROLE_KEY`                                       | One CLI script, no `NEXT_PUBLIC_` prefix                                                                                    | Yes — Next only inlines `NEXT_PUBLIC_*`, so it evaluates to `undefined` in a browser even if imported wrongly |
+| Another user's data                                               | Row-level security on every table, `user_id = auth.uid()`                                                                   | Yes, in the database                                                                                          |
+| `docs/` and `docs/artifacts/`                                     | Not in `public/`, no file-serving route, no rewrites                                                                        | Yes — no URL returns them                                                                                     |
+| **A user's own `llm_usage` rows**                                 | **Nothing. The UI simply never renders them**                                                                               | **No**                                                                                                        |
 
 **The last row, stated plainly.** Migration `0007` grants `select, insert` on
 `llm_usage` to `authenticated`, and Supabase exposes every granted table over
-PostgREST. A logged-in user can open devtools and read all of *their own* usage
+PostgREST. A logged-in user can open devtools and read all of _their own_ usage
 rows — model names, token counts, session ids — using the publishable key
 already in their browser. They can also insert forged rows attributed to
 themselves.
@@ -153,23 +153,23 @@ any row (no grant), or derive dollar cost (the price table is not in the
 browser).
 
 **Why it is that way, and why it is a trade-off rather than an oversight:**
-usage is written by the server using the *user's own* cookie-bound session, not
+usage is written by the server using the _user's own_ cookie-bound session, not
 a privileged one. Revoking `insert` from `authenticated` would stop recording
 entirely. Fixing it properly means a service-role write path — real work, not
 demo-blocking, and recorded here rather than discovered by someone else.
 
-**The line to use if asked:** *"The absence of a UI is not access control. The
+**The line to use if asked:** _"The absence of a UI is not access control. The
 enforced boundaries are the import graph, the service-role key and RLS. A user
 can see their own token counts if they go looking; they cannot see anyone
-else's, and they cannot see what it cost."*
+else's, and they cannot see what it cost."_
 
 ### Why each command is developer-only
 
-| Command | What stops an end user | 
-|---|---|
-| `npm run eval` | Needs `OPENAI_API_KEY`; in no bundle; spends money |
-| `npm run eval:persona` | Same, plus it imports test-support fixtures |
-| `npm run cost-report` | Needs `SUPABASE_SERVICE_ROLE_KEY`, which exists only in a developer's `.env.local` |
+| Command                | What stops an end user                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `npm run eval`         | Needs `OPENAI_API_KEY`; in no bundle; spends money                                 |
+| `npm run eval:persona` | Same, plus it imports test-support fixtures                                        |
+| `npm run cost-report`  | Needs `SUPABASE_SERVICE_ROLE_KEY`, which exists only in a developer's `.env.local` |
 
 **No developer dashboard was built, deliberately.** The app has no admin or role
 concept at all — every authenticated user is exactly equal — so a privileged
@@ -181,17 +181,17 @@ scriptable, and its output can be committed.
 
 ## Pre-flight — do this the day before, not on the day
 
-| # | Check | Command | Must see |
-|---|---|---|---|
-| 1 | **Node ≥20.9** | `node -v` | Not 18.x. Next 16 will not start on 18. `nvm install 20 && nvm use 20` |
-| 2 | Dependencies | `npm ci` | clean install |
-| 3 | Types, lint, tests | `npx tsc --noEmit && npm run lint && npm test` | 0, 0, all passing |
-| 4 | Supabase reachable | `curl -s -o /dev/null -w "%{http_code}\n" $NEXT_PUBLIC_SUPABASE_URL/rest/v1/` | `401` (correct for an unauthenticated probe) |
-| 5 | **Migrations `0001`–`0010` applied** | Supabase dashboard → SQL editor | `llm_usage` and `coach_answers` exist. Without `0007` there is no cost demo at all |
-| 6 | OpenAI key has credit | `npm run eval -- --runs=1 --only=<one fixture>` | completes without a 429 |
-| 7 | App starts | `npm run dev` | loads at `localhost:3000` |
-| 8 | **Full dry run** | everything below, end to end | on the machine and network you will present from |
-| 9 | Commit the artifacts | `npm run eval:persona > docs/artifacts/persona.txt` etc. | so every number has a fallback |
+| #   | Check                                | Command                                                                       | Must see                                                                           |
+| --- | ------------------------------------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | **Node ≥20.9**                       | `node -v`                                                                     | Not 18.x. Next 16 will not start on 18. `nvm install 20 && nvm use 20`             |
+| 2   | Dependencies                         | `npm ci`                                                                      | clean install                                                                      |
+| 3   | Types, lint, tests                   | `npx tsc --noEmit && npm run lint && npm test`                                | 0, 0, all passing                                                                  |
+| 4   | Supabase reachable                   | `curl -s -o /dev/null -w "%{http_code}\n" $NEXT_PUBLIC_SUPABASE_URL/rest/v1/` | `401` (correct for an unauthenticated probe)                                       |
+| 5   | **Migrations `0001`–`0010` applied** | Supabase dashboard → SQL editor                                               | `llm_usage` and `coach_answers` exist. Without `0007` there is no cost demo at all |
+| 6   | OpenAI key has credit                | `npm run eval -- --runs=1 --only=<one fixture>`                               | completes without a 429                                                            |
+| 7   | App starts                           | `npm run dev`                                                                 | loads at `localhost:3000`                                                          |
+| 8   | **Full dry run**                     | everything below, end to end                                                  | on the machine and network you will present from                                   |
+| 9   | Commit the artifacts                 | `npm run eval:persona > docs/artifacts/persona.txt` etc.                      | so every number has a fallback                                                     |
 
 ---
 
@@ -219,10 +219,10 @@ single pace sentence. A test (`persona-engine.test.ts`) fails if a future edit
 brings Yuki and Isabella's dials together, so the comparison cannot quietly
 stop demonstrating anything.
 
-**What to say:** *"Same question, same answer, same round type. The only
+**What to say:** _"Same question, same answer, same round type. The only
 variable is who is asking. The difficulty target the system sets for the next
 question moves from 5 to 7 — and that is pure arithmetic, not a model call, so
-it reproduces exactly every time."*
+it reproduces exactly every time."_
 
 ### 1b. The empirical proof — run beforehand, show the committed output
 
@@ -245,8 +245,8 @@ Stochastic and billed, so run it in advance and show the file.
   are known and documented rather than discovered by your examiner.
 - **Scoring is persona-independent, deliberately.** `analyzeResponse` takes no
   persona and its cache key is `analyzer:${roundType}`. A strict interviewer and
-  a warm one score the same answer identically. Persona changes *what gets
-  asked next*, not *what the answer was worth* — grading should not depend on
+  a warm one score the same answer identically. Persona changes _what gets
+  asked next_, not _what the answer was worth_ — grading should not depend on
   who asked.
 
 ---
@@ -265,17 +265,17 @@ differ by exactly the demonym.
 
 1. **It is national-origin stereotyping with extra steps.** A retrieval store
    keyed on nationality returning behavioural claims makes the model generate
-   behaviour *from national origin*, deterministically. That is what a
+   behaviour _from national origin_, deterministically. That is what a
    stereotype is.
 2. **It cannot be sourced at the granularity it needs.** Hofstede and GLOBE are
-   *national aggregate* scores whose authors explicitly warn against applying
+   _national aggregate_ scores whose authors explicitly warn against applying
    them to individuals — the ecological fallacy. Using them to drive one
    interviewer's behaviour misapplies them exactly as cautioned.
 3. **It is not needed.** Strictness, warmth, pace, pushback and style are
    explicit, controllable and measurable. They make the claim falsifiable.
    Nationality would make it arguable.
 
-**The honest next step, if asked what you'd do instead:** interview *conventions*
+**The honest next step, if asked what you'd do instead:** interview _conventions_
 by market — competency frameworks, self-introduction openers, case rounds —
 keyed off the job description, cited to hiring guides, about **process** rather
 than people. Defensible, sourceable, and genuinely useful to someone
@@ -306,22 +306,22 @@ so an unpriced model shows as unpriced instead of understating spend.
 Run each live. Each is provable from row counts, which is far stronger than a
 before/after table built from traffic that never ran.
 
-| Demo | Do this | Then show |
-|---|---|---|
-| **The caching floor** | One session with no JD. Then one with a JD attached. | `npm run cost-report -- --session=<id>` for each. `cached_tokens` is **0** on the first, non-zero on the second. |
-| **Trivial-answer skip** | Answer `ok`. Then answer properly. | Two `llm_usage` rows for the real answer (interviewer + analyzer); one for the trivial one. |
-| **Coach-answer cache** | Generate a model answer on a report. Reload. Generate again. | A row the first time, **none** the second. |
+| Demo                    | Do this                                                      | Then show                                                                                                        |
+| ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **The caching floor**   | One session with no JD. Then one with a JD attached.         | `npm run cost-report -- --session=<id>` for each. `cached_tokens` is **0** on the first, non-zero on the second. |
+| **Trivial-answer skip** | Answer `ok`. Then answer properly.                           | Two `llm_usage` rows for the real answer (interviewer + analyzer); one for the trivial one.                      |
+| **Coach-answer cache**  | Generate a model answer on a report. Reload. Generate again. | A row the first time, **none** the second.                                                                       |
 
 **The caching one is the centrepiece, and it is a negative result.** The
 interviewer's stable prefix on a bare session is ~590 tokens; OpenAI only caches
 prefixes of 1,024+. So on a plain session caching does not fire at all, and the
 report says so in words rather than leaving a zero to interpret.
 
-**What to say:** *"The prompt is ordered so the constant part comes first and
+**What to say:** _"The prompt is ordered so the constant part comes first and
 the volatile part last. That ordering costs nothing when caching doesn't fire,
 and it is the only thing that makes it possible when it does. On a bare session
 it doesn't fire — and here is the measurement showing that, rather than a claim
-that it does."*
+that it does."_
 
 That is the strongest moment in the demo. It shows an optimisation being
 honestly reported as inactive.
@@ -369,20 +369,20 @@ discount returns — the floor is not a target to game.
 **"Why isn't the question bank in the vector DB?"**
 Already answered in `docs/TOKEN-COST.md` under "Deliberately not done". RAG
 saves tokens when it replaces stuffing a large corpus into the prompt — which is
-why it *is* used for job descriptions, which run to 30,000 characters. The
+why it _is_ used for job descriptions, which run to 30,000 characters. The
 interviewer prompt has no question corpus to slim down; questions are generated.
-Retrieval would *add* ~60–150 input tokens per turn plus an embedding call. The
+Retrieval would _add_ ~60–150 input tokens per turn plus an embedding call. The
 whole 39-question bank is ~800 tokens — the corpus is smaller than the machinery
-needed to search it. There is a legitimate *quality* argument for a curated
+needed to search it. There is a legitimate _quality_ argument for a curated
 bank; there is no cost argument.
 
 ---
 
 ## Where the numbers live
 
-| Claim | Command | Doc |
-|---|---|---|
-| Personas differ | `npm run eval:persona` | this file |
-| Scoring accuracy and stability | `npm run eval` | `docs/EVALUATION.md` |
-| Cost, caching, per-turn spend | `npm run cost-report` | `docs/TOKEN-COST.md` |
-| What is built | — | `docs/FEATURES.md` |
+| Claim                          | Command                | Doc                  |
+| ------------------------------ | ---------------------- | -------------------- |
+| Personas differ                | `npm run eval:persona` | this file            |
+| Scoring accuracy and stability | `npm run eval`         | `docs/EVALUATION.md` |
+| Cost, caching, per-turn spend  | `npm run cost-report`  | `docs/TOKEN-COST.md` |
+| What is built                  | —                      | `docs/FEATURES.md`   |

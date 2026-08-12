@@ -8,7 +8,7 @@ function Pulse({ className }: { className: string }) {
   return <Skeleton className={className} />;
 }
 
-export function SessionRowSkeleton() {
+function SessionRowSkeleton() {
   return (
     <div className="flex items-center gap-4 rounded-xl p-4">
       <Pulse className="h-10 w-10 shrink-0 rounded-full" />
@@ -31,7 +31,7 @@ export function SessionListSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-export function PersonaCardSkeleton() {
+function PersonaCardSkeleton() {
   return (
     <Card className="border border-gray-200/60">
       <CardHeader>
@@ -79,7 +79,7 @@ export function PersonaGridSkeleton({ count = 6 }: { count?: number }) {
  * only one of them used a shared component; the other hand-rolled three grey
  * blocks.
  */
-export function DocumentRowSkeleton() {
+function DocumentRowSkeleton() {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
       <Pulse className="h-9 w-9 shrink-0 rounded-lg" />
