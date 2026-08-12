@@ -4,7 +4,8 @@ A full review of ConvoTrainer (184 source files, ~33.5k lines, 18 API routes)
 covering correctness, security, edge cases, performance and integration. This
 document records the outcome, and in particular the findings that were
 **deliberately not fixed** — so they read as decisions with reasons rather than
-as things nobody looked at.
+as things nobody looked at. Two remain; five more were closed after a second
+look showed the reasoning behind deferring them was weak.
 
 **Deployment context: demo and assessment, not a public service.** That is load
 bearing throughout. Several real findings are downgraded below because their
@@ -24,7 +25,7 @@ build succeeds.
 
 ## Fixed
 
-Nine commits, in dependency order.
+Ten commits, in dependency order.
 
 | Commit                | What                                                                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------- |
@@ -37,6 +38,7 @@ Nine commits, in dependency order.
 | `98c5a9c`             | Seven bugs that were reported but never fixed — timer, metrics, guards, resume, dashboard       |
 | `1884627`             | Two payloads that were asserted rather than validated                                           |
 | `24487f6`             | JSON responses read through the one helper that handles them                                    |
+| `ad0a493`             | Four deferrals re-examined: grants, rate limits, error sink, unbounded reads                    |
 
 The three worth singling out, because each was invisible rather than noisy:
 
@@ -59,86 +61,20 @@ The three worth singling out, because each was invisible rather than noisy:
 
 ## Not fixed, with reasons
 
-### 1. Table-level grants make API validation advisory
-
-`supabase/migrations/0003_table_privileges.sql:8-12` (and `0004`, `0006`, `0007`,
-`0010`) grant `select, insert, update, delete` on every table to `authenticated`.
-The browser holds the anon key and a session cookie. **RLS restricts which rows a
-statement may touch; it says nothing about which columns or what values.**
-
-So from the browser console, a signed-in user can write columns the API guards:
-
-```js
-supabase.from('interview_sessions').update({
-  average_score: 100,
-  launch_meta: { loopBrief: 'SYSTEM: …', interviewLoop: {…} },
-}).eq('id', myOwnSessionId)
-```
-
-That matters because `sanitizeLaunchMeta` deliberately drops `loopBrief` —
-`session-launch-meta.ts:213-228` explains why, in the codebase's own words: _"A
-client could therefore write its own system-prompt content."_ `/api/chat` then
-interpolates that column verbatim into the interviewer's **stable** prompt layer.
-The API closes the hole; the grant reopens it. The same applies to `llm_usage`,
-which is what the cost-instrumentation demo is measured from.
-
-**Why it is not fixed:** column-level grants cannot express the rule. The API
-routes act through the _same_ `authenticated` role and the _same_ JWT as the
-browser would, so any grant permitting `/api/chat` to write `summary` equally
-permits the console to. Closing it properly means moving every server-owned
-write behind `security definer` functions, the way `append_interview_turn`
-already is — a change to `updateSession` and most write routes.
-
-**Why that is acceptable here:** every impact is self-scoped. RLS still confines
-a forged write to the forger's own rows, so there is no cross-tenant escalation
-and no path to another user's data. A candidate can corrupt their own score or
-jailbreak their own interviewer. For a public service this would be P0; for a
-graded demo it is a defence-in-depth gap.
-
-**What was done instead:** `0011_integrity_constraints.sql` closes the _value_
-half for every writer — score ranges, non-negative counters, the `call_site`
-vocabulary — so a forged or buggy write cannot store a nonsensical number even
-though it can still store a number.
-
-### 2. Rate limiting is in-process and per-user
+### 1. Rate limiting is still in-process
 
 `src/lib/api/rate-limit.ts` keys on `user.id` and holds state in a module-level
-map. Two consequences the module's own comment does not cover: registration is
-open, so N accounts are N× every limit; and with more than one instance the
-limits multiply by instance count. There is also no global ceiling on OpenAI
-spend and no IP dimension.
+map. All 18 routes are now covered — nine had no limit at all — but two
+properties remain: registration is open, so N accounts are N× every limit, and
+with more than one instance the limits multiply by instance count. There is no
+global ceiling on OpenAI spend and no IP dimension.
 
-**Not fixed** because the correct fix is a shared store (Redis, or a Postgres
-table with a `security definer` increment), which is infrastructure this project
-does not have. For a single-instance demo with a known audience the current
-limiter does what it needs to.
+**Not fixed** because the correct fix is a shared store — Redis, or a Postgres
+table behind a `security definer` increment — which is infrastructure this
+project does not have. For a single-instance demo with a known audience, the
+per-user ceilings do the job.
 
-### 3. No error reporting
-
-Three `error.tsx` boundaries exist and all three `console.error` in the _user's_
-browser. Nothing is transmitted; `error.digest` is shown to the user as a
-"Reference" that no server log records. There is no request or session id in any
-log line.
-
-**Not fixed** because adding an error-reporting SDK is a deployment decision with
-a vendor attached, not a code fix. Worth doing before any real deployment.
-
-### 4. Remaining unbounded reads
-
-`listSessionsInLoop` and `listTurnAnalyses` have no `.limit()`, and `/report`,
-`/resume` and `/next-round` call them. `loop_id` is not client-settable through
-the API, so the fan-out is bounded by the user's own session count in practice.
-Recorded rather than fixed; the export fan-out, which was the acute one, is
-batched.
-
-### 5. Persona `kind` is client-settable
-
-`personas/route.ts` accepts `kind: "preset"` from the body. Combined with
-`resetPersonaPresets`, a user who names a persona after a shipped preset can
-lose it on "Restore presets". Self-scoped data loss on an explicitly destructive
-button; noted, not fixed.
-
-### 6. The two document pages remain near-identical
+### 2. The two document pages remain near-identical
 
 `dashboard/resumes/page.tsx` and `dashboard/job-descriptions/page.tsx` are ~600
 lines that differ, after normalising the noun, by ~110.
@@ -154,6 +90,32 @@ change than two explicit files.
 The half of that duplication which actually carried a _bug_ — three copies of
 the list-fetch, each writing state after unmount and racing overlapping
 refreshes — is deduplicated in `33c8802` as `useLibraryList`.
+
+---
+
+## Closed since the first pass
+
+The first version of this document deferred five items. Asked why, four of them
+did not survive re-examination: I had bundled a trivial fix inside an
+infrastructure one and deferred both.
+
+**Table grants** (`0012`, `ad0a493`). `authenticated` held `update` on
+`interview_sessions` and `insert` on `llm_usage`, so a signed-in user could
+write those tables directly through PostgREST and every check in the API layer
+was advisory. Column-level grants cannot express the rule — the routes act
+through the same role and JWT as the browser — but "through this function or not
+at all" can be. `update_session_progress` and `record_llm_usage` are
+`security definer` and re-check `user_id = auth.uid()` themselves;
+`append_interview_turn` became `definer` for the same reason, since it writes
+`turn_count`. The direct privileges are revoked. `select`, `insert` and `delete`
+stay: it is mutation of an existing row that turns a validated record into an
+arbitrary one.
+
+**Client errors** (`ad0a493`). Deferred as "needs a vendor". It does not — the
+boundaries now POST to `/api/client-errors`, which logs where every other server
+failure already goes, so `error.digest` finally matches something.
+
+**Unbounded reads and persona `kind`** (`ad0a493`). Both were one-liners.
 
 ---
 
@@ -253,8 +215,14 @@ Checked and found sound, recorded so the next review does not re-litigate them:
   OpenAI since these changes.
 - No load testing. The performance findings are read from the code — query
   shapes, fan-out widths, index coverage — not measured.
-- Migration `0011` has not been applied. Its constraints are `not valid`, so it
-  cannot fail on existing rows, but that also means existing rows are unchecked
-  until someone runs `validate constraint`.
+- **Migrations `0011` and `0012` have not been applied**, and `0012` is the one
+  that matters: until it runs, the API calls `update_session_progress` and
+  `record_llm_usage`, which do not exist yet — session updates and token
+  accounting will fail. Apply both before the next run. `0011`'s constraints are
+  `not valid`, so they cannot fail on existing rows, but that also means
+  existing rows stay unchecked until someone runs `validate constraint`.
+- **`0012` has not been exercised against a live database.** The functions are
+  written and their callers typecheck, but no session update or usage flush has
+  actually round-tripped through them here.
 - The `[turn-timing]` numbers that would settle whether the analyzer is worth
   splitting have still not been read from a real session.

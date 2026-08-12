@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       title,
       usage,
     });
-    await usage.flush(supabase, { userId: user.id });
+    await usage.flush(supabase);
 
     return NextResponse.json({ resume }, { status: 201 });
   } catch (error) {

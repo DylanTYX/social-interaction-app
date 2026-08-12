@@ -113,7 +113,7 @@ export async function POST(request: Request) {
       roleTitle,
       usage,
     });
-    await usage.flush(supabase, { userId: user.id });
+    await usage.flush(supabase);
 
     return NextResponse.json({ jobDescription }, { status: 201 });
   } catch (error) {

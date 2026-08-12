@@ -1157,7 +1157,7 @@ export async function POST(request: Request) {
      * nowhere. `usage.flush` is best-effort by construction and cannot throw.
      */
     const flushAccounting = async () => {
-      await usage.flush(supabase, { userId: user.id, sessionId });
+      await usage.flush(supabase, { sessionId });
       timer.log({ sessionId, roundType });
     };
 

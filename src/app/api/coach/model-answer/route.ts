@@ -193,7 +193,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // deliberately absent.
     const usage = new UsageCollector();
     usage.record("coach", MODEL, data.usage);
-    await usage.flush(supabase, { userId: user.id });
+    await usage.flush(supabase);
 
     const content = data.choices?.[0]?.message?.content ?? "";
 
