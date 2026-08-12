@@ -22,6 +22,12 @@ export interface InterviewSessionSummary {
   endedAt: string | null;
   createdAt: string;
   metrics?: Record<string, unknown> | null;
+  /**
+   * Which competencies this session's questions touched. Already stored and
+   * already returned by the API; declared here so the analytics page can ask
+   * the cross-session question the per-session report cannot.
+   */
+  competencyCoverage?: unknown;
 }
 
 export interface InterviewHistoryFilters {
