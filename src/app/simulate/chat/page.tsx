@@ -40,10 +40,7 @@ import {
   useInterviewSessionBootstrap,
 } from "@/hooks/use-interview-session-bootstrap";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
-import {
-  createDefaultInterviewSetup,
-  saveInterviewSetup,
-} from "@/lib/interview-setup";
+import { updateInterviewSetup } from "@/lib/interview-setup";
 import { readJson } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
@@ -80,7 +77,6 @@ type ScenarioOption = {
   description: string;
 };
 
-const DEFAULT_SETUP = createDefaultInterviewSetup();
 const RESPONSE_TIME_LIMIT_SECONDS = 300; // 5 minutes per answer
 
 function createMessageId() {
@@ -353,16 +349,13 @@ function ChatSimulateInner() {
 
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
-    saveInterviewSetup({
+    updateInterviewSetup({
       scenarioValue: activeScenarioValue,
       streamResponses,
       liveCoachingEnabled,
       personaConfig: activePersonaConfig,
       practiceMode: "text",
       interviewLoop: bootstrap.interviewLoop,
-      voiceConfig: DEFAULT_SETUP.voiceConfig,
-      jobDescription: DEFAULT_SETUP.jobDescription,
-      resume: DEFAULT_SETUP.resume,
     });
   }, [
     bootstrap.status,
@@ -660,17 +653,10 @@ function ChatSimulateInner() {
                   const next = !liveCoachingOn;
                   setCoachingOverride(next);
                   setSidebarOverride(next);
-                  saveInterviewSetup({
-                    ...DEFAULT_SETUP,
-                    scenarioValue: activeScenarioValue,
-                    streamResponses,
-                    liveCoachingEnabled: next,
-                    personaConfig: activePersonaConfig,
-                    practiceMode: "text",
-                    interviewLoop: bootstrap.interviewLoop,
-                    voiceConfig: DEFAULT_SETUP.voiceConfig,
-                    jobDescription: DEFAULT_SETUP.jobDescription,
-                  });
+                  // Only the thing the user just toggled. This used to spread
+                  // `DEFAULT_SETUP` over the whole stored config, which reset
+                  // the job description and CV along with it.
+                  updateInterviewSetup({ liveCoachingEnabled: next });
                 }}
               >
                 {liveCoachingOn
