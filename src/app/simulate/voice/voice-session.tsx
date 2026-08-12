@@ -71,6 +71,8 @@ const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
  * the report regardless of which mode produced it.
  */
 const NO_RESPONSE_MESSAGE = "[No response submitted before time expired.]";
+/** Retries of the opening greeting before the error is left standing. */
+const MAX_OPENING_ATTEMPTS = 2;
 
 type DisplayMessage = {
   id: string;
@@ -215,6 +217,11 @@ function VoiceSimulateInner() {
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  /**
+   * Bumped when the opening greeting fails, to re-run the effect that makes it.
+   * Bounded, because a server that is down should not be retried forever.
+   */
+  const [openingAttempt, setOpeningAttempt] = useState(0);
 
   const activeScenario = scenarioFromBootstrap(bootstrap);
   const stageLabel = getStageLabel(turn.stage);
@@ -479,7 +486,8 @@ function VoiceSimulateInner() {
       !activePersonaConfig ||
       !activeScenarioValue ||
       messages.length > 0 ||
-      openingGeneratedRef.current
+      openingGeneratedRef.current ||
+      openingAttempt > MAX_OPENING_ATTEMPTS
     ) {
       return;
     }
@@ -501,8 +509,7 @@ function VoiceSimulateInner() {
         });
 
         if (!response.ok) {
-          console.warn("Failed to generate opening greeting");
-          return;
+          throw new Error("Failed to generate the opening greeting.");
         }
 
         const data = (await response.json()) as ChatTurnResponse;
@@ -527,12 +534,36 @@ function VoiceSimulateInner() {
         }
       } catch (err) {
         console.warn("Error generating opening greeting:", err);
+        if (!isMountedRef.current) return;
+
+        /**
+         * Release the latch so the interview is recoverable.
+         *
+         * The latch is set *before* the request — correctly, since it is what
+         * stops a second effect run firing a second greeting — but nothing
+         * cleared it on failure and nothing retried. One transient error left
+         * an empty transcript, an idle microphone and no error on screen: the
+         * session was over before it began, and the only way out was a reload.
+         */
+        openingGeneratedRef.current = false;
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Could not start the interview. Retrying…",
+        );
+        setOpeningAttempt((attempt) => attempt + 1);
       }
     };
 
     void generateOpening();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, setupError, activePersonaConfig, activeScenarioValue]);
+  }, [
+    isLoading,
+    setupError,
+    activePersonaConfig,
+    activeScenarioValue,
+    openingAttempt,
+  ]);
 
   /**
    * The latest `handleStopRecording`, for the two callers that are not a click.

@@ -105,6 +105,28 @@ export async function PATCH(request: Request, ctx: RouteParams) {
         ? body.status
         : undefined;
 
+    /**
+     * Duration is derived here, not taken from the client.
+     *
+     * The client computed it from the moment its own hook mounted, which is
+     * only the session start for a session begun in that tab. Resume a
+     * thirty-minute interview, answer two questions and end it, and the stored
+     * duration was four minutes — and the dashboard's "practice time" tile sums
+     * exactly this column, so every resumed session undercounted it.
+     *
+     * The row knows when it actually started, so ask it.
+     */
+    let durationMinutes = parseDurationMinutes(body.durationMinutes);
+    if (status === "completed") {
+      const existing = await getSession(supabase, id);
+      const startedAtMs = existing
+        ? Date.parse(existing.startedAt)
+        : Number.NaN;
+      durationMinutes = Number.isFinite(startedAtMs)
+        ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
+        : durationMinutes;
+    }
+
     const session = await updateSession(supabase, id, {
       status,
       // The server feeds this straight back into the next interviewer prompt,
@@ -118,7 +140,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       // `timestamptz` columns, so a NaN or an out-of-range number surfaced as
       // an opaque 500 from the database rather than a 400 from us.
       averageScore: parseScore(body.averageScore),
-      durationMinutes: parseDurationMinutes(body.durationMinutes),
+      durationMinutes,
       endedAt: parseTimestamp(body.endedAt),
     });
 
