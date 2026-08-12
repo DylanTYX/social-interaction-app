@@ -28,6 +28,7 @@
 
 import { analyzeResponse, type AnalysisResult } from "@/lib/response-analyzer";
 import { BAND_RANGES, FIXTURES, type EvalFixture } from "@/eval/fixtures";
+import { scoreAnswerHeuristically } from "@/lib/answer-heuristics";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 
@@ -198,6 +199,106 @@ async function main() {
     results.filter((r) => r.fixture.band === "weak").flatMap((r) => r.scores),
   );
 
+  /**
+   * Accuracy per round type.
+   *
+   * The headline number hid the only finding the first honest run produced:
+   * weak *behavioral* answers scored 10 and 30, while weak technical, design,
+   * case, screening and HR answers all landed at 53-61. One aggregate
+   * percentage cannot show that; five rows can.
+   */
+  const byRoundType = [...new Set(fixtures.map((f) => f.roundType))]
+    .map((roundType) => {
+      const rows = results.filter((r) => r.fixture.roundType === roundType);
+      const scores = rows.flatMap((r) => r.scores);
+      const hits = rows.reduce(
+        (n, r) =>
+          n + r.scores.filter((score) => inBand(score, r.fixture)).length,
+        0,
+      );
+      return {
+        roundType,
+        runs: scores.length,
+        accuracy: scores.length ? hits / scores.length : Number.NaN,
+      };
+    })
+    .sort((a, b) => a.accuracy - b.accuracy);
+
+  /**
+   * Which way the misses go.
+   *
+   * "63% accurate" says nothing about direction. Every miss in the first run
+   * was scored *too high* — that is a systematic leniency, which is an
+   * actionable claim, where "wrong a third of the time" is not.
+   */
+  const misses = results.flatMap((r) =>
+    r.scores
+      .filter((score) => !inBand(score, r.fixture))
+      .map((score) => {
+        const [lo, hi] = BAND_RANGES[r.fixture.band];
+        return score > hi ? "over" : score < lo ? "under" : "in";
+      }),
+  );
+  const scoredTooHigh = misses.filter((m) => m === "over").length;
+  const scoredTooLow = misses.filter((m) => m === "under").length;
+
+  /**
+   * How wide each band actually is in practice.
+   *
+   * Std dev measures whether one fixture scores the same twice. It says nothing
+   * about whether a *band* is coherent — and "weak" spanning 10 to 61 is the
+   * real problem, invisible to every metric here until now.
+   */
+  const bandSpread = (["weak", "mediocre", "strong"] as const).map((band) => {
+    const scores = results
+      .filter((r) => r.fixture.band === band)
+      .flatMap((r) => r.scores);
+    return {
+      band,
+      min: scores.length ? Math.min(...scores) : Number.NaN,
+      max: scores.length ? Math.max(...scores) : Number.NaN,
+      spread: scores.length
+        ? Math.max(...scores) - Math.min(...scores)
+        : Number.NaN,
+    };
+  });
+
+  /**
+   * A control condition: the same fixtures through the keyword heuristic that
+   * powers the landing page's "try a question" box.
+   *
+   * Without it, "63%" has nothing to be good or bad *relative to*. This costs
+   * no API calls — it is the same local function — and answers the obvious
+   * question of whether the model is doing work a regex could do.
+   */
+  const baselineScore = (fixture: EvalFixture) =>
+    scoreAnswerHeuristically(fixture.answer).score;
+
+  const baselineHits = fixtures.filter((fixture) =>
+    inBand(baselineScore(fixture), fixture),
+  ).length;
+  const baselineAccuracy = fixtures.length
+    ? baselineHits / fixtures.length
+    : Number.NaN;
+
+  /**
+   * The baseline's *separation*, which is the comparison that matters.
+   *
+   * Band accuracy is a coarse three-class metric, and the middle band is wide
+   * (40-72) — so a scorer that clusters everything around 60 collects hits it
+   * has not earned. The keyword heuristic does exactly that: it lands 55.6% of
+   * fixtures in the right band while pulling strong and weak apart by only 13
+   * points, against the analyzer's 36. Reporting accuracy alone would have
+   * understated the analyzer by almost a factor of three.
+   */
+  const baselineStrong = mean(
+    fixtures.filter((f) => f.band === "strong").map(baselineScore),
+  );
+  const baselineWeak = mean(
+    fixtures.filter((f) => f.band === "weak").map(baselineScore),
+  );
+  const baselineSeparation = baselineStrong - baselineWeak;
+
   const summary = {
     fixtures: fixtures.length,
     runsPerFixture: runs,
@@ -208,6 +309,12 @@ async function main() {
     strongMean: strongAvg,
     weakMean: weakAvg,
     separation: strongAvg - weakAvg,
+    byRoundType,
+    scoredTooHigh,
+    scoredTooLow,
+    bandSpread,
+    baselineAccuracy,
+    baselineSeparation,
     fieldCompleteness: totalRuns ? 1 - runsWithMissing / allMissing.length : 0,
     errors: results.flatMap((r) => r.errors),
     cost: (() => {
@@ -254,14 +361,52 @@ async function main() {
     Number.isFinite(value) ? value.toFixed(digits) : "n/a";
 
   console.log("\n--- summary ---");
+  // Separation leads because it is what this harness set out to test: the
+  // fixtures' own docstring says the claim is "this separates a strong answer
+  // from a weak one", not "this predicts 73". Band accuracy buckets that
+  // judgement into three and throws the magnitude away.
+  console.log(
+    `Separation         ${num(summary.separation)} points  (strong ${num(summary.strongMean)} vs weak ${num(summary.weakMean)})`,
+  );
   console.log(`Band accuracy      ${(summary.bandAccuracy * 100).toFixed(1)}%`);
   console.log(`Mean std dev       ${num(summary.meanStdDev, 2)} points`);
   console.log(`Worst std dev      ${num(summary.maxStdDev, 2)} points`);
-  console.log(`Strong mean        ${num(summary.strongMean)}`);
-  console.log(`Weak mean          ${num(summary.weakMean)}`);
-  console.log(`Separation         ${num(summary.separation)} points`);
   console.log(
     `Field completeness ${(summary.fieldCompleteness * 100).toFixed(1)}%`,
+  );
+
+  // Direction matters more than the rate: leniency is actionable, "wrong
+  // sometimes" is not.
+  if (summary.scoredTooHigh || summary.scoredTooLow) {
+    console.log(
+      `Misses             ${summary.scoredTooHigh} scored too high, ${summary.scoredTooLow} too low`,
+    );
+  }
+
+  console.log("\nBand accuracy by round type");
+  for (const row of summary.byRoundType) {
+    const bar = "#"
+      .repeat(Math.round((row.accuracy || 0) * 20))
+      .padEnd(20, ".");
+    console.log(
+      `  ${row.roundType.padEnd(16)} ${bar} ${(row.accuracy * 100).toFixed(0).padStart(3)}%  (${row.runs} runs)`,
+    );
+  }
+
+  console.log("\nObserved range per band");
+  for (const row of summary.bandSpread) {
+    const [lo, hi] = BAND_RANGES[row.band];
+    console.log(
+      `  ${row.band.padEnd(9)} expected ${String(lo).padStart(3)}-${String(hi).padEnd(3)}  observed ${num(row.min, 0).padStart(3)}-${num(row.max, 0).padEnd(3)}  (spread ${num(row.spread, 0)})`,
+    );
+  }
+
+  console.log("\nAgainst a keyword-heuristic baseline (no API calls)");
+  console.log(
+    `  separation      analyzer ${num(summary.separation)}  vs baseline ${num(summary.baselineSeparation)}  (${num(summary.separation / summary.baselineSeparation, 1)}x)`,
+  );
+  console.log(
+    `  band accuracy   analyzer ${(summary.bandAccuracy * 100).toFixed(1)}%  vs baseline ${(summary.baselineAccuracy * 100).toFixed(1)}%`,
   );
   console.log(
     `\nAvg prompt tokens  ${num(summary.cost.avgPromptTokensPerCall, 0)} per analyzer call`,
