@@ -83,14 +83,21 @@ export class UsageCollector {
    * Write the batch. Never throws — accounting must not be able to fail a
    * request that already produced a good answer for the user.
    */
+  /**
+   * `userId` is deliberately not a parameter: `record_llm_usage` attributes
+   * every row to `auth.uid()` server-side, so passing one would be a value the
+   * database ignores — and a caller could reasonably expect it to be honoured.
+   */
   async flush(
     supabase: SupabaseClient,
-    context: { userId: string; sessionId?: string | null },
+    context: { sessionId?: string | null } = {},
   ): Promise<void> {
     if (this.records.length === 0) return;
 
+    // No `user_id`: `record_llm_usage` attributes every row to `auth.uid()`
+    // itself, so the caller cannot write usage against someone else — and, more
+    // to the point, cannot write it at all except through this function.
     const rows = this.records.map((r) => ({
-      user_id: context.userId,
       session_id: context.sessionId ?? null,
       call_site: r.callSite,
       model: r.model,
@@ -102,7 +109,15 @@ export class UsageCollector {
     this.records = [];
 
     try {
-      const { error } = await supabase.from("llm_usage").insert(rows);
+      /**
+       * Through an RPC because `authenticated` no longer holds `insert` on
+       * `llm_usage`. It held it for the API and therefore for the browser too,
+       * which made the cost figures forgeable by the person they describe — an
+       * awkward property for numbers presented as measured fact.
+       */
+      const { error } = await supabase.rpc("record_llm_usage", {
+        p_rows: rows,
+      });
       if (error) {
         console.warn("[token-usage] insert failed:", error.message);
       }

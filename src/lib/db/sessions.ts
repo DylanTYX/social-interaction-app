@@ -424,11 +424,31 @@ export async function updateSession(
     patch.duration_minutes = input.durationMinutes;
   if (input.endedAt !== undefined) patch.ended_at = input.endedAt;
 
+  /**
+   * Through an RPC, not a direct update.
+   *
+   * `authenticated` no longer holds `update` on this table: it grants the
+   * browser the same privilege it grants these routes, so every validation
+   * here was advisory against a direct PostgREST call. `update_session_progress`
+   * is `security definer` and re-checks `user_id = auth.uid()` itself, which is
+   * what RLS used to do.
+   *
+   * The patch keeps its "key present" semantics — a missing key leaves the
+   * column alone, an explicit null clears it — so `ended_at: null` still means
+   * something different from not mentioning `ended_at`.
+   */
+  const { error: rpcError } = await supabase.rpc("update_session_progress", {
+    p_session_id: id,
+    p_patch: patch,
+  });
+  if (rpcError) throw rpcError;
+
+  // Read back separately: the function returns void, and the caller wants the
+  // row as it now stands.
   const { data, error } = await supabase
     .from("interview_sessions")
-    .update(patch)
-    .eq("id", id)
     .select(SESSION_COLUMNS)
+    .eq("id", id)
     .single();
 
   if (error) throw error;
