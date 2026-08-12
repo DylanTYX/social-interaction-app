@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { unauthorized, handleRouteError } from "@/lib/api/errors";
@@ -14,6 +15,12 @@ export async function DELETE() {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `meSessions:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const { error } = await supabase
       .from("interview_sessions")

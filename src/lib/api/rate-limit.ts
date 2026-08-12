@@ -91,6 +91,17 @@ export const RATE_LIMITS = {
   heavyRead: { limit: 30, windowMs: 60_000 },
   /** Creates a session row per call, so it needs a ceiling like any write. */
   nextRound: { limit: 20, windowMs: 60_000 },
+  /**
+   * The general bucket for everything else: session and library CRUD, and the
+   * ordinary list reads.
+   *
+   * Nine routes had no limit at all — including `POST /api/sessions` (a row per
+   * call, with unbounded JSONB on it), `GET /api/sessions/[id]/resume` (200
+   * messages plus every turn analysis, the same cost profile as `/report`,
+   * which *was* limited), and `POST /api/personas/reset` (thirteen statements
+   * per call). Generous enough that the UI cannot reach it.
+   */
+  standard: { limit: 60, windowMs: 60_000 },
 } as const;
 
 /**

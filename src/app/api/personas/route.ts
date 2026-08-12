@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -18,6 +19,12 @@ export async function GET() {
       return unauthorized();
     }
 
+    const limited = enforceRateLimit(
+      `personas:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
+
     const personas = await listPersonas(supabase, user.id);
     return NextResponse.json({ personas });
   } catch (error) {
@@ -31,6 +38,12 @@ export async function POST(request: Request) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `personas:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const body = await readJsonBody<{
       name?: string;
@@ -53,7 +66,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const kind: PersonaKind = body.kind === "preset" ? "preset" : "user";
+    /**
+     * Always "user". A preset is something we ship, not something a client
+     * declares.
+     *
+     * This used to honour `kind: "preset"` from the body, which mattered
+     * because `resetPersonaPresets` deletes rows of that kind and overwrites
+     * same-named ones: a persona a user created could be silently destroyed by
+     * a button labelled "Restore presets". Seeding real presets happens in
+     * `listPersonas`, server-side, and never through this route.
+     */
+    const kind: PersonaKind = "user";
 
     const persona = await createPersona(supabase, user.id, {
       name,

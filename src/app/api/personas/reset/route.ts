@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { resetPersonaPresets } from "@/lib/db/personas";
@@ -11,6 +12,12 @@ export async function POST() {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `personaReset:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const personas = await resetPersonaPresets(supabase, user.id);
     return NextResponse.json({ personas });

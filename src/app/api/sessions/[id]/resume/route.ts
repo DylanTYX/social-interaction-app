@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -27,6 +28,12 @@ export async function GET(
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `resume:${user.id}`,
+      RATE_LIMITS.heavyRead,
+    );
+    if (limited) return limited;
 
     const { id: rawId } = await context.params;
     const id = parseUuid(rawId, "session id");

@@ -1,3 +1,4 @@
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -20,6 +21,12 @@ export async function GET(_request: Request, ctx: RouteParams) {
       return unauthorized();
     }
 
+    const limited = enforceRateLimit(
+      `jobDescription:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
+
     const { id: rawId } = await ctx.params;
     const id = parseUuid(rawId, "id");
     const jobDescription = await getJobDescription(supabase, id);
@@ -39,6 +46,12 @@ export async function DELETE(_request: Request, ctx: RouteParams) {
     if (!user) {
       return unauthorized();
     }
+
+    const limited = enforceRateLimit(
+      `jobDescription:${user.id}`,
+      RATE_LIMITS.standard,
+    );
+    if (limited) return limited;
 
     const { id: rawId } = await ctx.params;
     const id = parseUuid(rawId, "id");
