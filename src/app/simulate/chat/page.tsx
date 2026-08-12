@@ -163,6 +163,7 @@ function ChatSimulateInner() {
       bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex],
     ),
     initialAnalyses: resumed.analyses,
+    initialDecision: resumed.lastDecision,
   });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -395,9 +396,10 @@ function ChatSimulateInner() {
       feedbackLoading: liveCoachingOn,
     };
 
-    const nextMessages = [...messages, userMessage];
-
-    setMessages(nextMessages);
+    // Updater form, like every other write in this function. This one read the
+    // captured `messages`, so anything appended between that render and this
+    // call — a streamed chunk landing, the opening turn arriving — was dropped.
+    setMessages((currentMessages) => [...currentMessages, userMessage]);
     setIsSending(true);
     setError(null);
 

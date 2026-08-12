@@ -3,7 +3,10 @@
 import { useMemo } from "react";
 
 import type { AnalysisResult } from "@/lib/response-analyzer";
-import type { InterviewBootstrap } from "@/hooks/use-interview-session-bootstrap";
+import type {
+  InterviewBootstrap,
+  LastTurnDecision,
+} from "@/hooks/use-interview-session-bootstrap";
 
 /**
  * A session's restored transcript and scoring history, in the shape both
@@ -36,6 +39,8 @@ export interface ResumedSession {
   status: "idle" | "loading" | "ready";
   messages: ResumedMessage[];
   analyses: AnalysisResult[];
+  /** The interviewer's last decision before the reload, or null if fresh. */
+  lastDecision: LastTurnDecision | null;
 }
 
 const EMPTY: ResumedMessage[] = [];
@@ -46,20 +51,31 @@ export function useResumedSession(
 ): ResumedSession {
   return useMemo(() => {
     if (bootstrap.status === "loading") {
-      return { status: "loading", messages: EMPTY, analyses: NO_ANALYSES };
+      return {
+        status: "loading",
+        messages: EMPTY,
+        analyses: NO_ANALYSES,
+        lastDecision: null,
+      };
     }
 
     // A fresh launch has no transcript to restore. That is "ready with
     // nothing", not "idle" — the caller renders its welcome message and starts
     // the interview, and it must not sit waiting for data that is not coming.
     if (!bootstrap.resumed) {
-      return { status: "ready", messages: EMPTY, analyses: NO_ANALYSES };
+      return {
+        status: "ready",
+        messages: EMPTY,
+        analyses: NO_ANALYSES,
+        lastDecision: null,
+      };
     }
 
     return {
       status: "ready",
       messages: bootstrap.resumed.messages,
       analyses: bootstrap.resumed.analyses,
+      lastDecision: bootstrap.resumed.lastDecision,
     };
   }, [bootstrap.status, bootstrap.resumed]);
 }

@@ -12,11 +12,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * starts to drift for real: a candidate who switches from prose to the editor
  * mid-round must not silently get an untimed answer.
  *
- * The deadline is captured once, on mount, rather than derived from a ticking
- * count. The inputs are remounted between turns (`key={userTurnKey}` on the
- * chat page), so mount is exactly "this turn started" — and an absolute
- * deadline cannot drift the way a decrementing counter does when the tab is
- * backgrounded and `setInterval` is throttled.
+ * The deadline is absolute rather than a decrementing count, so it cannot drift
+ * when the tab is backgrounded and `setInterval` is throttled. It is stamped on
+ * mount, which is exactly "this turn started" because the inputs are remounted
+ * between turns (`key={userTurnKey}` on the chat page) — with one exception the
+ * hook has to handle itself: `setUserTurnKey` sits inside the send's `try`, so
+ * a *failed* send does not remount the input. Without the pause accounting
+ * below, the whole failed round-trip was charged to the candidate's clock, and
+ * a slow failure could re-enable the input with a deadline already in the past
+ * — auto-submitting "[No response submitted…]" on the very first tick.
  *
  * This hook deliberately holds no ticking state. It used to: a `clockMs` that
  * advanced four times a second, which re-rendered whichever input called it —
@@ -52,11 +56,14 @@ export function useAnswerTimer({
    */
   onExpire: () => boolean;
 }) {
-  const [deadlineMs] = useState<number>(
+  const [deadlineMs, setDeadlineMs] = useState<number>(
     () => Date.now() + timeLimitSeconds * 1000,
   );
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasExpiredRef = useRef(false);
+  // When the clock was paused (disabled), so the paused span can be handed back
+  // on resume rather than silently counted against the candidate.
+  const pausedAtRef = useRef<number | null>(null);
   // Held in a ref so a caller that rebuilds `onExpire` every render — which is
   // every caller, since it closes over the draft answer — does not tear down
   // and re-arm the interval on each keystroke.
@@ -75,8 +82,26 @@ export function useAnswerTimer({
 
   useEffect(() => {
     if (disabled) {
+      // Mark the moment the clock stopped, once — the input can be disabled and
+      // re-rendered several times without the pause restarting.
+      if (pausedAtRef.current === null) pausedAtRef.current = Date.now();
       clearTimer();
       return;
+    }
+
+    // Re-enabling. A failed send disables the input for the whole network
+    // round-trip — up to a full timeout — and that time was not the candidate's
+    // to spend. Push the deadline forward by however long we were paused, then
+    // let the resulting re-render re-arm the interval against the new deadline;
+    // without this the deadline could already be in the past on resume and the
+    // timer would auto-submit on its first tick.
+    if (pausedAtRef.current !== null) {
+      const pausedFor = Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+      if (pausedFor > 0) {
+        setDeadlineMs((current) => current + pausedFor);
+        return;
+      }
     }
 
     if (timerRef.current) return;
@@ -85,7 +110,11 @@ export function useAnswerTimer({
       if (Date.now() < deadlineMs || hasExpiredRef.current) return;
 
       hasExpiredRef.current = true;
-      if (!onExpireRef.current()) {
+      if (onExpireRef.current()) {
+        // Submitted. The timer's work is done — stop ticking rather than spin
+        // every 250ms until unmount, short-circuiting on `hasExpiredRef`.
+        clearTimer();
+      } else {
         hasExpiredRef.current = false;
       }
     }, 250);

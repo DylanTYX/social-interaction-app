@@ -18,6 +18,17 @@ export interface InterviewMetrics {
 export interface MetricsSnapshot {
   analyses: AnalysisResult[];
   state: InterviewSessionState;
+  /**
+   * Turns already on record before this mount, from a resume.
+   *
+   * Required rather than optional, because forgetting it is exactly the bug
+   * this parameter exists to prevent. `state.turnCount` is seeded fresh on
+   * every mount and counts only the turns taken *since* the resume, so the
+   * metrics blob for a resumed 6-of-8 session recorded `turnCount: 2`. Every
+   * other consumer in the hook already uses `restoredTurns + turnCount`; this
+   * one silently did not.
+   */
+  restoredTurns: number;
 }
 
 function getAverage(values: number[]): number {
@@ -76,7 +87,7 @@ function getDominantGap(analyses: AnalysisResult[]): string {
 export function buildInterviewMetrics(
   snapshot: MetricsSnapshot,
 ): InterviewMetrics {
-  const { analyses, state } = snapshot;
+  const { analyses, state, restoredTurns } = snapshot;
 
   const overallScores = analyses.map((analysis) => analysis.overallScore);
   const specificityScores = analyses.map(
@@ -89,14 +100,15 @@ export function buildInterviewMetrics(
     if (analysis.technicalScores) {
       const scores = analysis.technicalScores;
       return (
-        scores.problemFraming +
-        scores.approach +
-        scores.correctness +
-        scores.complexity +
-        scores.communication +
-        scores.edgeCases +
-        scores.codeQuality
-      ) / 7;
+        (scores.problemFraming +
+          scores.approach +
+          scores.correctness +
+          scores.complexity +
+          scores.communication +
+          scores.edgeCases +
+          scores.codeQuality) /
+        7
+      );
     }
     const { situation, task, action, result } = analysis.starAnalysis;
     return (
@@ -107,7 +119,7 @@ export function buildInterviewMetrics(
   return {
     sessionId: state.sessionId,
     personaName: state.personaName,
-    turnCount: state.turnCount,
+    turnCount: restoredTurns + state.turnCount,
     followupCount: state.followupCount,
     averageOverallScore: getAverage(overallScores),
     averageSTARScore: getAverage(starScores),

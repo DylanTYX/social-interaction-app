@@ -144,6 +144,7 @@ function VoiceSimulateInner() {
       bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex],
     ),
     initialAnalyses: resumed.analyses,
+    initialDecision: resumed.lastDecision,
   });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);

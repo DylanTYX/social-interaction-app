@@ -32,10 +32,12 @@ export function ScoreComparison({
         const payload = (await response.json()) as {
           sessions?: InterviewSessionSummary[];
         };
-        if (cancelled || currentScore === null) {
-          setLoaded(true);
-          return;
-        }
+        // Two different reasons to stop, and neither wants a state write here:
+        // `cancelled` means the component is gone, and the `finally` below
+        // already sets `loaded` for the unscored case. This used to call
+        // `setLoaded(true)` on both paths — including, precisely, after
+        // unmount.
+        if (cancelled || currentScore === null) return;
         const currentTs = Date.parse(currentStartedAt);
         const prior = (payload.sessions ?? [])
           .filter(

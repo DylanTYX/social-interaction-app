@@ -108,7 +108,8 @@ export default function DashboardPage() {
   // Fetches the whole library to derive one boolean, which is wasteful. Kept
   // deliberately: dropping it would silently remove the JD-aware branch of the
   // recommendation. Fixing it properly means a count endpoint.
-  const { items: jobDescriptions } = useJobDescriptions();
+  const { items: jobDescriptions, status: jobDescriptionStatus } =
+    useJobDescriptions();
 
   const recentSessions = useMemo(() => sessions.slice(0, 5), [sessions]);
   const stats = useMemo(() => computeSessionStats(sessions), [sessions]);
@@ -121,10 +122,17 @@ export default function DashboardPage() {
   const suggestion = useMemo(
     () =>
       getSuggestedNextSession(sessions, {
-        hasJobDescriptions: jobDescriptions.length > 0,
+        // `undefined` when we do not know. The hook's error was discarded
+        // here, so a failed or 401 load was indistinguishable from an empty
+        // library — and the recommender silently dropped its JD-aware branch
+        // for a user who does have one.
+        hasJobDescriptions:
+          jobDescriptionStatus === "ready"
+            ? jobDescriptions.length > 0
+            : undefined,
         hasVoiceSessions: sessions.some((s) => s.practiceMode === "voice"),
       }),
-    [sessions, jobDescriptions.length],
+    [sessions, jobDescriptions.length, jobDescriptionStatus],
   );
 
   const isLoading = status === "loading";
