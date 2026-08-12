@@ -13,7 +13,7 @@ import {
 import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
 import { isTechnicalRound } from "@/lib/round-types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import { parseBoundedString } from "@/lib/api/query";
+import { parseBoundedString, parseOptionalUuid } from "@/lib/api/query";
 import {
   MAX_COACH_ANSWER_CHARS,
   MAX_COACH_QUESTION_CHARS,
@@ -48,6 +48,12 @@ function rubricGuidance(roundType: InterviewRoundType | undefined): string {
   return "This is a behavioral question. A strong answer uses the STAR structure (Situation, Task, Action, Result) with a specific, first-person example and a quantified outcome.";
 }
 
+/**
+ * Far past any real interview — the longest configured round is a few dozen
+ * turns — while staying well inside int4.
+ */
+const MAX_TURN_INDEX = 10_000;
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const { supabase, user } = await getCurrentUser();
@@ -77,10 +83,22 @@ export async function POST(request: Request): Promise<NextResponse> {
     // the turn. The drills page has no session and sends neither.
     const sessionId =
       typeof body.sessionId === "string" && body.sessionId.trim()
-        ? body.sessionId.trim()
+        ? (parseOptionalUuid(body.sessionId.trim(), "sessionId") ?? null)
         : null;
+    /**
+     * Bounded, not merely an integer.
+     *
+     * `turn_index` is a Postgres `int` and this is a cache *key*: an unchecked
+     * value could overflow int4 — which `saveCoachAnswer` then swallowed — and
+     * an arbitrary index let a client seed its own cache entries at positions
+     * no turn occupies, to be served back later as coaching. Self-scoped, but
+     * the cache is trusted unconditionally on read.
+     */
     const turnIndex =
-      typeof body.turnIndex === "number" && Number.isInteger(body.turnIndex)
+      typeof body.turnIndex === "number" &&
+      Number.isInteger(body.turnIndex) &&
+      body.turnIndex >= 0 &&
+      body.turnIndex <= MAX_TURN_INDEX
         ? body.turnIndex
         : null;
     const cacheable = sessionId !== null && turnIndex !== null;

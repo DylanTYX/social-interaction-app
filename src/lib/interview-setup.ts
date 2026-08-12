@@ -96,6 +96,9 @@ const LAUNCH_STORAGE_KEY = "social-interaction-app.interviewLaunch";
 /** Storage migration: the original implementation kept setup in sessionStorage too. */
 const LEGACY_SESSION_SETUP_KEY = "social-interaction-app.interviewSetup";
 
+/** An Azure voice name is ~30 characters; this is generous headroom. */
+const MAX_VOICE_FIELD_CHARS = 120;
+
 function createDefaultVoiceConfig(): VoiceSetupConfig {
   return {
     microphoneChecked: false,
@@ -148,7 +151,7 @@ function normalizeResumeConfig(
   };
 }
 
-function normalizeVoiceConfig(
+export function normalizeVoiceConfig(
   voiceConfig: Partial<VoiceSetupConfig> | undefined,
 ): VoiceSetupConfig {
   const defaults = createDefaultVoiceConfig();
@@ -163,17 +166,23 @@ function normalizeVoiceConfig(
       voiceConfig?.ttsEnabled === undefined
         ? defaults.ttsEnabled
         : Boolean(voiceConfig.ttsEnabled),
+    // Bounded and type-checked: these two reach the server via `launch_meta`
+    // and are handed to the Azure SDK as a voice name. `sanitizeLaunchMeta`
+    // used to cast the whole object through with `as`, so neither the types
+    // nor the lengths were ever actually checked on the server side.
     selectedVoiceName:
-      voiceConfig?.selectedVoiceName ?? defaults.selectedVoiceName,
+      typeof voiceConfig?.selectedVoiceName === "string"
+        ? voiceConfig.selectedVoiceName.slice(0, MAX_VOICE_FIELD_CHARS)
+        : defaults.selectedVoiceName,
     selectedVoiceUri:
-      voiceConfig?.selectedVoiceUri ?? defaults.selectedVoiceUri,
+      typeof voiceConfig?.selectedVoiceUri === "string"
+        ? voiceConfig.selectedVoiceUri.slice(0, MAX_VOICE_FIELD_CHARS)
+        : defaults.selectedVoiceUri,
   };
 }
 
 function normalizeJobDescriptionConfig(
-  jobDescription:
-    | Partial<JobDescriptionSetupConfig>
-    | undefined,
+  jobDescription: Partial<JobDescriptionSetupConfig> | undefined,
 ): JobDescriptionSetupConfig {
   const defaults = createDefaultJobDescriptionConfig();
 

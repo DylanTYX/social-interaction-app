@@ -65,6 +65,13 @@ beforeEach(() => {
   process.env.OPENAI_API_KEY = "test-key";
 });
 
+/**
+ * A real uuid: the route validates the shape now, because `session_id` is a
+ * `uuid` FK and `turn_index` is an `int` cache key — an unchecked value there
+ * reached Postgres as a 22P02 or an overflow.
+ */
+const SESSION_ID = "33333333-3333-4333-8333-333333333333";
+
 describe("POST /api/coach/model-answer", () => {
   it("rejects an unauthenticated caller before spending anything", async () => {
     getCurrentUser.mockResolvedValue({ supabase: SUPABASE, user: null });
@@ -101,12 +108,38 @@ describe("POST /api/coach/model-answer", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     const response = await POST(
-      request({ question: "Q", answer: "A", sessionId: "s1", turnIndex: 2 }),
+      request({
+        question: "Q",
+        answer: "A",
+        sessionId: SESSION_ID,
+        turnIndex: 2,
+      }),
     );
 
     expect(await response.json()).toEqual(cached);
     // The whole point of the cache: a second look at a report is free.
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("ignores a cache key that could not name a real turn", async () => {
+    // `turn_index` is a Postgres `int`. An unbounded value overflowed it — and
+    // `saveCoachAnswer` swallows its own errors, so the failure was silent —
+    // while also letting a client seed cache entries at positions no turn
+    // occupies, to be served back later as coaching.
+    getCoachAnswer.mockResolvedValue(null);
+
+    for (const turnIndex of [-1, 2 ** 40, 1.5]) {
+      getCoachAnswer.mockClear();
+      await POST(
+        request({
+          question: "Q",
+          answer: "A",
+          sessionId: SESSION_ID,
+          turnIndex,
+        }),
+      );
+      expect(getCoachAnswer).not.toHaveBeenCalled();
+    }
   });
 
   it("does not consult the cache without a session and turn index", async () => {
@@ -130,7 +163,7 @@ describe("POST /api/coach/model-answer", () => {
       request({
         question: "Q",
         answer: "A",
-        sessionId: "s1",
+        sessionId: SESSION_ID,
         turnIndex: 4,
         roundType: "hr",
       }),
@@ -140,7 +173,7 @@ describe("POST /api/coach/model-answer", () => {
     expect(saveCoachAnswer).toHaveBeenCalledWith(
       SUPABASE,
       expect.objectContaining({
-        sessionId: "s1",
+        sessionId: SESSION_ID,
         turnIndex: 4,
         roundType: "hr",
       }),
