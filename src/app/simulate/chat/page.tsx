@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -169,9 +169,30 @@ function ChatSimulateInner() {
   const [isAdvancedStateOpen, setIsAdvancedStateOpen] = useState(false);
   const [isEndDialogOpen, setIsEndDialogOpen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  /**
+   * The round has run its length and the transcript is closed.
+   *
+   * Mirrors the voice screen's `sessionCompleteRef`. Without it the input
+   * stayed live after `applyTurn` had already persisted the completion, so the
+   * candidate could keep answering a finished interview.
+   */
+  const [sessionComplete, setSessionComplete] = useState(false);
+  // Synchronous companion: `handleSend` needs to refuse a submit that races the
+  // completion, and state is not readable in the same tick it is set.
+  const sessionCompleteRef = useRef(false);
 
   const handleEndSession = async () => {
-    if (isEnding) return;
+    /**
+     * Refuse while a turn is still in flight.
+     *
+     * `endSession` PATCHes from state captured before the running turn, and the
+     * in-flight `handleSend` will PATCH again through `applyTurn` when it
+     * lands. Two writers to `averageScore`/`status`/`endedAt` with no defined
+     * order — the same hazard the redundant `endSession()` call was removed to
+     * fix, reachable here because the button was never gated and never
+     * disabled.
+     */
+    if (isEnding || isSending) return;
     setIsEnding(true);
     const sessionId = bootstrap.sessionId;
     await turn.endSession();
@@ -471,7 +492,32 @@ function ChatSimulateInner() {
       // `endSession` here too would write a *second* time from a callback
       // closed over pre-turn state and overwrite this turn's score with the
       // previous mean. That second call used to be right here.
-      turn.applyTurn(data);
+      const applied = turn.applyTurn(data);
+
+      /**
+       * The round is over — stop taking answers.
+       *
+       * The voice screen has always done this; the text screen discarded
+       * `applyTurn`'s return, so nothing ever acted on completion. `applyTurn`
+       * still *persisted* it, which made the failure worse than merely running
+       * long: every subsequent turn wrote another completion with a fresh
+       * `endedAt`, the progress badge sat at "Question N of ~N" forever, and
+       * the sessions list showed a live interview as finished and linked it to
+       * a report that was still being written.
+       */
+      if (applied?.isComplete) {
+        sessionCompleteRef.current = true;
+        setSessionComplete(true);
+        // No `endSession()` here, for the reason above: `applyTurn` has already
+        // persisted the completion including this turn.
+        setTimeout(() => {
+          router.push(
+            bootstrap.sessionId
+              ? `/simulate/report/${bootstrap.sessionId}`
+              : "/dashboard",
+          );
+        }, 1000);
+      }
     } catch (requestError) {
       const messageText =
         requestError instanceof Error
@@ -584,6 +630,8 @@ function ChatSimulateInner() {
             type="button"
             variant="destructive"
             onClick={() => setIsEndDialogOpen(true)}
+            // Held shut while a turn is streaming; see `handleEndSession`.
+            disabled={isSending || isEnding}
             className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
           >
             End session
@@ -716,7 +764,7 @@ function ChatSimulateInner() {
                 language={codeLanguage}
                 onLanguageChange={setCodeLanguage}
                 onSend={handleSend}
-                disabled={isSending}
+                disabled={isSending || sessionComplete}
                 timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
                 timeoutFallbackMessage="[No response submitted before time expired.]"
               />
@@ -724,7 +772,7 @@ function ChatSimulateInner() {
               <ChatInput
                 key={userTurnKey}
                 onSend={handleSend}
-                disabled={isSending}
+                disabled={isSending || sessionComplete}
                 timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
                 timeoutFallbackMessage="[No response submitted before time expired.]"
               />

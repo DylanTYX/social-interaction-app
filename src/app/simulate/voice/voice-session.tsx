@@ -534,6 +534,22 @@ function VoiceSimulateInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, setupError, activePersonaConfig, activeScenarioValue]);
 
+  /**
+   * The latest `handleStopRecording`, for the two callers that are not a click.
+   *
+   * The silence interval and the response timeout are both created once per
+   * turn and outlive the render that created them. Calling the captured
+   * `handleStopRecording` meant calling a chain — `handleSubmitTranscript` →
+   * `handleSend` → `turn.applyTurn` — frozen at that render. `applyTurn` builds
+   * `[...effectiveAnalyses, analysis]` with no functional updater, so every
+   * auto-submitted turn discarded the whole analysis history, wrote the turn's
+   * raw score as the session average, and never reached the completion check.
+   *
+   * The stop *button* was always fine, because a click handler comes from the
+   * current render — which is exactly why this survived manual testing.
+   */
+  const handleStopRecordingRef = useRef<() => Promise<void>>(async () => {});
+
   const stopSilenceWatch = () => {
     if (silencePollRef.current) {
       clearInterval(silencePollRef.current);
@@ -564,7 +580,7 @@ function VoiceSimulateInner() {
 
       if (decision.kind === "submit") {
         stopSilenceWatch();
-        void handleStopRecording();
+        void handleStopRecordingRef.current();
         return;
       }
 
@@ -683,7 +699,7 @@ function VoiceSimulateInner() {
       const deadline = Date.now() + RESPONSE_TIME_LIMIT_SECONDS * 1000;
       setAnswerDeadlineMs(deadline);
       recordingTimeoutRef.current = setTimeout(() => {
-        void handleStopRecording();
+        void handleStopRecordingRef.current();
       }, RESPONSE_TIME_LIMIT_SECONDS * 1000);
 
       startSilenceWatch();
@@ -745,6 +761,21 @@ function VoiceSimulateInner() {
       setFinalTranscript("");
       setInterimTranscript("");
 
+      /**
+       * The turn is stopped; what follows is sending, not stopping.
+       *
+       * This flag used to stay set across the awaits below, and
+       * `tryAutoStartRecording` bails on it — so every microphone reopen
+       * reached from inside `handleSend` was a silent no-op. That killed two
+       * recovery paths outright: a failed request ended the interview, and with
+       * TTS disabled the microphone never reopened after the first answer.
+       *
+       * Cleared here rather than in the `finally` because re-entrancy is only a
+       * hazard for the `stopListening` sequence above; a second call now falls
+       * through to `handleSend`'s own `isSending` guard.
+       */
+      isStoppingRef.current = false;
+
       if (combinedTranscript) {
         await handleSubmitTranscript(combinedTranscript, deliveryNote);
       } else {
@@ -771,6 +802,12 @@ function VoiceSimulateInner() {
       isStoppingRef.current = false;
     }
   };
+
+  // Refreshed every render so the timer and the silence watch always reach the
+  // current closure. Assigned in an effect, never during render.
+  useEffect(() => {
+    handleStopRecordingRef.current = handleStopRecording;
+  });
 
   const handleSubmitTranscript = async (
     transcript: string,
@@ -1142,7 +1179,10 @@ function VoiceSimulateInner() {
   };
 
   const handleEndSession = async () => {
-    if (isEnding) return;
+    // Refuse while a turn is in flight: `endSession` PATCHes from pre-turn
+    // state and the running `handleSend` will PATCH again through `applyTurn`,
+    // giving two undefined-order writers to `averageScore`.
+    if (isEnding || isSending) return;
     setIsEnding(true);
     const sessionId = bootstrap.sessionId;
     await turn.endSession();
@@ -1210,6 +1250,8 @@ function VoiceSimulateInner() {
             type="button"
             variant="destructive"
             onClick={() => setIsEndDialogOpen(true)}
+            // Held shut while a turn is streaming; see `handleEndSession`.
+            disabled={isSending || isEnding}
             className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
           >
             End session
