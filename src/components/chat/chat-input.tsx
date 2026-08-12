@@ -1,5 +1,6 @@
 "use client";
 
+import { NO_RESPONSE_MESSAGE } from "@/lib/chat-contract";
 import { useCallback, useState } from "react";
 
 import { useAnswerTimer } from "@/hooks/use-answer-timer";
@@ -19,7 +20,7 @@ export function ChatInput({
   onSend,
   disabled,
   timeLimitSeconds = 300,
-  timeoutFallbackMessage = "[No response submitted before time expired.]",
+  timeoutFallbackMessage = NO_RESPONSE_MESSAGE,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
 

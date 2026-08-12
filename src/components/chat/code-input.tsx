@@ -1,5 +1,6 @@
 "use client";
 
+import { NO_RESPONSE_MESSAGE } from "@/lib/chat-contract";
 import { useCallback, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -55,7 +56,7 @@ export function CodeInput({
   language,
   onLanguageChange,
   timeLimitSeconds = 300,
-  timeoutFallbackMessage = "[No response submitted before time expired.]",
+  timeoutFallbackMessage = NO_RESPONSE_MESSAGE,
 }: {
   onSend: (message: string) => void;
   disabled?: boolean;

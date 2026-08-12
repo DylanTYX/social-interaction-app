@@ -13,7 +13,10 @@ import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import { CoachingRail } from "@/components/chat/coaching-rail";
-import type { ChatTurnResponse } from "@/lib/chat-contract";
+import {
+  NO_RESPONSE_MESSAGE,
+  type ChatTurnResponse,
+} from "@/lib/chat-contract";
 import {
   formatMessageTime,
   getMetricTone,
@@ -65,12 +68,6 @@ import {
 } from "@/lib/speech-metrics";
 
 const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
-/**
- * Submitted when the response timer expires with nothing transcribed. Matches
- * the text screen's placeholder verbatim so a silent turn reads the same way in
- * the report regardless of which mode produced it.
- */
-const NO_RESPONSE_MESSAGE = "[No response submitted before time expired.]";
 /** Retries of the opening greeting before the error is left standing. */
 const MAX_OPENING_ATTEMPTS = 2;
 
@@ -936,11 +933,27 @@ function VoiceSimulateInner() {
             startedSpeaking = true;
             setIsSpeakingTts(true);
           }
-          void speechService.speakQueued(
-            sentence,
-            voiceConfigRef.current?.selectedVoiceUri,
-            prosody,
-          );
+          /**
+           * `void` attached no handler, so a synthesis failure or the 30s
+           * backstop became a bare unhandled rejection in the browser — and
+           * `reportPlaybackFailure` is not called on that path, so nothing
+           * reached the UI either. A mid-reply Azure error left the candidate
+           * with silence and no explanation.
+           */
+          speechService
+            .speakQueued(
+              sentence,
+              voiceConfigRef.current?.selectedVoiceUri,
+              prosody,
+            )
+            .catch((speakError: unknown) => {
+              console.warn("TTS synthesis failed:", speakError);
+              if (isMountedRef.current) {
+                setRecordingError(
+                  "The interviewer's voice cut out. The transcript is still on screen.",
+                );
+              }
+            });
         }
       };
 

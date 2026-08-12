@@ -12,6 +12,18 @@ import type {
  * missing `microFeedback`, so the server computed a coaching hint on every
  * voice turn and the client silently dropped it.
  */
+/**
+ * Submitted when a response timer expires with nothing written or said.
+ *
+ * Shared, because it was written out five times — and because the *server* has
+ * to recognise it. At 43 characters it cleared `isTrivialAnswer`'s ten-character
+ * floor, so a candidate who walked away got a full scoring call on the
+ * placeholder itself, and whatever score the model invented for it was
+ * persisted and shown in the report as a real answer.
+ */
+export const NO_RESPONSE_MESSAGE =
+  "[No response submitted before time expired.]";
+
 export interface ChatTurnResponse {
   aiMessage: string;
   turnCount: number;

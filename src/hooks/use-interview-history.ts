@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 
 export interface InterviewSessionSummary {
   id: string;
@@ -99,11 +99,29 @@ export function useInterviewHistory(
     [buildUrl],
   );
 
+  /**
+   * Which refresh is allowed to write. Anything older is a stale response.
+   *
+   * `refresh` is rebuilt whenever `limit`, `query`, `mode` or `statusFilter`
+   * change, and the sessions page changes them from a debounced search box and
+   * two selects — so two requests are routinely in flight. There was no guard
+   * at all: whichever resolved *last* won, so a slow first request could land
+   * after a fast second one and leave the list showing results for a filter the
+   * controls no longer displayed, with nothing to correct it until the next
+   * refetch.
+   */
+  const requestIdRef = useRef(0);
+
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestIdRef.current === requestId;
+
     setStatus("loading");
     setError(null);
     try {
       const payload = await fetchPage(0);
+      if (!isCurrent()) return;
+
       if (payload === null) {
         setSessions([]);
         setTotal(0);
@@ -114,6 +132,7 @@ export function useInterviewHistory(
       setTotal(payload.total ?? payload.sessions.length);
       setStatus("ready");
     } catch (err) {
+      if (!isCurrent()) return;
       setError(err instanceof Error ? err.message : "Failed to load sessions.");
       setStatus("error");
     }

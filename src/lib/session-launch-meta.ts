@@ -1,4 +1,7 @@
-import type { InterviewSetupState, VoiceSetupConfig } from "@/lib/interview-setup";
+import type {
+  InterviewSetupState,
+  VoiceSetupConfig,
+} from "@/lib/interview-setup";
 import {
   normalizeInterviewLoop,
   type InterviewLoopConfig,
@@ -227,6 +230,13 @@ function clampText(value: unknown, max: number): string | undefined {
  * oversized value should degrade to a usable session rather than block the user
  * from starting one.
  */
+function withoutRawText<T extends { rawText?: unknown } | undefined | null>(
+  config: T,
+): T {
+  if (!config || typeof config !== "object") return config;
+  return { ...config, rawText: "" };
+}
+
 export function sanitizeLaunchMeta(
   value: unknown,
   practiceMode: PracticeMode,
@@ -238,7 +248,8 @@ export function sanitizeLaunchMeta(
   const rounds = loop.rounds.slice(0, MAX_LOOP_ROUNDS).map((round) => ({
     ...round,
     title: clampText(round.title, MAX_SCENARIO_TITLE_CHARS) ?? round.title,
-    focus: clampText(round.focus, MAX_SCENARIO_DESCRIPTION_CHARS) ?? round.focus,
+    focus:
+      clampText(round.focus, MAX_SCENARIO_DESCRIPTION_CHARS) ?? round.focus,
   }));
 
   return {
@@ -254,8 +265,23 @@ export function sanitizeLaunchMeta(
       ),
     },
     voiceConfig: input.voiceConfig as SessionLaunchMeta["voiceConfig"],
-    jobDescription: input.jobDescription as SessionLaunchMeta["jobDescription"],
-    resume: input.resume,
+    /**
+     * Document text is stripped before this is stored.
+     *
+     * Both configs carry a `rawText` copy of the whole document, and nothing
+     * ever reads it back off the session — the id is in a foreign key column
+     * and the server fetches the text from its own table. Keeping the copy had
+     * two costs. It is unbounded, so it inflated `launch_meta` on every session
+     * (and `/resume` and `/export`, which echo it back). And it outlived the
+     * document: deleting a resume nulls `resume_id` but left the full CV — real
+     * names, employers, dates — sitting in the launch metadata of every session
+     * that had used it, and in any export taken afterwards. "Delete my resume"
+     * has to mean it.
+     */
+    jobDescription: withoutRawText(
+      input.jobDescription as SessionLaunchMeta["jobDescription"],
+    ),
+    resume: withoutRawText(input.resume),
     customScenarioBrief: clampText(
       input.customScenarioBrief,
       MAX_SCENARIO_DESCRIPTION_CHARS,
