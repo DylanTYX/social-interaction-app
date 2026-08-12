@@ -165,15 +165,31 @@ function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
   };
 }
 
+/**
+ * Scored sessions before a trend line is drawn at all.
+ *
+ * Every chart on this page used to render at two points, which is a pair of
+ * readings dressed as a direction — and the recommendations built on top of
+ * them called a bucket a weakness off a single session.
+ */
+const MIN_POINTS_FOR_TREND = 4;
+
 function ScoreSparkline({
   points,
 }: {
   points: { id: string; score: number }[];
 }) {
-  if (points.length < 2) {
+  /**
+   * Four, not two. A line through two points is not a trend, it is a pair of
+   * readings — and drawing one invites the user to read a direction into a
+   * sample that cannot support one.
+   */
+  if (points.length < MIN_POINTS_FOR_TREND) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 text-sm text-gray-500">
-        Complete at least two scored sessions to see a trend.
+      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-6 text-center text-sm text-gray-500">
+        {points.length === 0
+          ? "Complete a few scored sessions to see how you are tracking."
+          : `${points.length} scored session${points.length === 1 ? "" : "s"} so far — ${MIN_POINTS_FOR_TREND} shows a trend.`}
       </div>
     );
   }
@@ -266,7 +282,9 @@ function ScoreSparkline({
 }
 
 function DimensionSparkline({ series }: { series: DimensionSeries }) {
-  if (series.values.length < 2) {
+  // Same bar as the score trend: a dimension "snapshot" is one answer, so two
+  // of them is two answers.
+  if (series.values.length < MIN_POINTS_FOR_TREND) {
     return (
       <div className="rounded-lg border border-dashed border-gray-200 p-4 text-xs text-gray-500">
         {series.label}: not enough data yet
@@ -471,7 +489,9 @@ export default function AnalyticsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {model.dimensionSeries.every((series) => series.values.length < 2) ? (
+          {model.dimensionSeries.every(
+            (series) => series.values.length < MIN_POINTS_FOR_TREND,
+          ) ? (
             <p className="text-sm text-gray-500">
               Complete a few more scored answers in text mode to see
               per-dimension trends.
@@ -514,9 +534,13 @@ export default function AnalyticsPage() {
                       <span className="text-gray-500 shrink-0 ml-3">
                         {bucket.count} session
                         {bucket.count === 1 ? "" : "s"}
-                        {bucket.averageScore !== null
+                        {/* An "average" of one session is that session's
+                            score wearing a word it has not earned. */}
+                        {bucket.averageScore !== null && bucket.count > 1
                           ? ` · avg ${Math.round(bucket.averageScore)}%`
-                          : ""}
+                          : bucket.averageScore !== null
+                            ? ` · ${Math.round(bucket.averageScore)}%`
+                            : ""}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-gray-100">
