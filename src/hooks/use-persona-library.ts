@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useLibraryList } from "@/hooks/use-library-list";
+import { useCallback } from "react";
 import {
   createPersonaEntry,
   deletePersonaEntry,
@@ -36,38 +37,14 @@ export interface UsePersonaLibrary {
  * drift).
  */
 export function usePersonaLibrary(): UsePersonaLibrary {
-  const [library, setLibrary] = useState<PersonaLibraryEntry[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    try {
-      const next = await fetchPersonaLibrary();
-      setLibrary(next);
-      setStatus("ready");
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load personas.";
-      setError(message);
-      setStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void refresh();
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
+  const {
+    items: library,
+    status,
+    error,
+    refresh,
+    setItems: setLibrary,
+    setError,
+  } = useLibraryList(fetchPersonaLibrary, "Failed to load personas.");
 
   const createEntry = useCallback(
     async (config: PersonaConfig) => {
@@ -82,7 +59,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return null;
       }
     },
-    [],
+    [setLibrary, setError],
   );
 
   const updateEntry = useCallback(
@@ -100,7 +77,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return null;
       }
     },
-    [],
+    [setLibrary, setError],
   );
 
   const duplicateEntry = useCallback(
@@ -116,21 +93,24 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return null;
       }
     },
-    [],
+    [setLibrary, setError],
   );
 
-  const deleteEntry = useCallback(async (id: string) => {
-    try {
-      await deletePersonaEntry(id);
-      setLibrary((current) => current.filter((entry) => entry.id !== id));
-      return true;
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete persona.",
-      );
-      return false;
-    }
-  }, []);
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      try {
+        await deletePersonaEntry(id);
+        setLibrary((current) => current.filter((entry) => entry.id !== id));
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete persona.",
+        );
+        return false;
+      }
+    },
+    [setLibrary, setError],
+  );
 
   const resetLibrary_ = useCallback(async () => {
     try {
@@ -141,7 +121,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         err instanceof Error ? err.message : "Failed to restore presets.",
       );
     }
-  }, []);
+  }, [setLibrary, setError]);
 
   return {
     library,

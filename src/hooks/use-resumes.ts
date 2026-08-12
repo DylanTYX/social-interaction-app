@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useLibraryList } from "@/hooks/use-library-list";
+import { useCallback } from "react";
 import { readJson } from "@/lib/api/fetch-json";
 
 export interface ResumeSummary {
@@ -34,59 +35,38 @@ export interface UseResumes {
   remove: (id: string) => Promise<boolean>;
 }
 
+/**
+ * `limit=50` is explicit because omitting it silently took the route's fallback
+ * of 20 while the cap is 50 — so a 21st saved item was unreachable from both
+ * this page and the setup wizard's picker.
+ */
+async function loadResumes(): Promise<ResumeSummary[]> {
+  const response = await fetch("/api/resumes?limit=50", { cache: "no-store" });
+
+  if (!response.ok) {
+    // A 401 is an error, not an empty library. Swallowing it made a signed-out
+    // user see the cheerful "add your first one" empty state.
+    if (response.status === 401) {
+      throw new Error("Your session expired. Sign in again to continue.");
+    }
+    const detail = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(
+      detail?.error ?? `Failed to load resumes (HTTP ${response.status}).`,
+    );
+  }
+
+  const payload = await readJson<ApiPayload>(response);
+  return payload.resumes ?? [];
+}
+
 /** Manages the user's resume/CV library. Mirrors `useJobDescriptions`. */
 export function useResumes(): UseResumes {
-  const [items, setItems] = useState<ResumeSummary[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
+  const { items, status, error, refresh, setItems, setError } = useLibraryList(
+    loadResumes,
+    "Failed to load resumes.",
   );
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-    try {
-      // Explicit, because omitting it silently took the route's fallback of 20
-      // while the cap is 50 — so a 21st saved item was unreachable from both
-      // this page and the setup wizard's picker.
-      const response = await fetch("/api/resumes?limit=50", {
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        // A 401 is an error, not an empty library. Swallowing it here made a
-        // signed-out user see the cheerful "add your first one" empty state —
-        // and made three sibling pages behave three different ways, since
-        // `usePersonaLibrary` has always surfaced it. One policy now.
-        if (response.status === 401) {
-          throw new Error("Your session expired. Sign in again to continue.");
-        }
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ?? `Failed to load resumes (HTTP ${response.status}).`,
-        );
-      }
-      const payload = await readJson<ApiPayload>(response);
-      setItems(payload.resumes ?? []);
-      setStatus("ready");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load resumes.");
-      setStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        void refresh();
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
 
   const uploadText = useCallback<UseResumes["uploadText"]>(
     async ({ rawText, title }) => {
@@ -109,7 +89,7 @@ export function useResumes(): UseResumes {
         return null;
       }
     },
-    [],
+    [setItems, setError],
   );
 
   const uploadPdf = useCallback<UseResumes["uploadPdf"]>(
@@ -138,20 +118,27 @@ export function useResumes(): UseResumes {
         return null;
       }
     },
-    [],
+    [setItems, setError],
   );
 
-  const remove = useCallback<UseResumes["remove"]>(async (id) => {
-    try {
-      const response = await fetch(`/api/resumes/${id}`, { method: "DELETE" });
-      await readJson<ApiPayload>(response);
-      setItems((current) => current.filter((item) => item.id !== id));
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete resume.");
-      return false;
-    }
-  }, []);
+  const remove = useCallback<UseResumes["remove"]>(
+    async (id) => {
+      try {
+        const response = await fetch(`/api/resumes/${id}`, {
+          method: "DELETE",
+        });
+        await readJson<ApiPayload>(response);
+        setItems((current) => current.filter((item) => item.id !== id));
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete resume.",
+        );
+        return false;
+      }
+    },
+    [setItems, setError],
+  );
 
   return { items, status, error, refresh, uploadText, uploadPdf, remove };
 }
