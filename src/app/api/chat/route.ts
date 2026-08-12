@@ -692,6 +692,34 @@ export async function POST(request: Request) {
       return notFound("Session not found.");
     }
 
+    /**
+     * A finished interview takes no more turns.
+     *
+     * No route checked this, so a completed session kept accepting answers
+     * indefinitely — appending rows past `ended_at`, re-scoring, and moving an
+     * `average_score` the report had already been written from.
+     */
+    if (session.status === "completed") {
+      return badRequest("This interview has already ended.");
+    }
+
+    /**
+     * The opening greeting happens once, at the start.
+     *
+     * `mode: "opening"` skips the `userMessage` requirement and the analyzer,
+     * then writes an assistant-only row and bumps `turn_count`. Nothing bounded
+     * it: the same call could be repeated at the chat rate limit, each one a
+     * full interviewer completion carrying the entire stable prompt — persona,
+     * scenario, resume and job description — with no user input at all.
+     *
+     * It also permanently flipped the user/assistant `turn_index` parity, which
+     * `findPriorQuestion`, the coach cache key and `interview_turn_analyses`
+     * all depend on.
+     */
+    if (isOpening && session.turnCount > 0) {
+      return badRequest("This interview has already started.");
+    }
+
     // `listMessages` takes the tail for a limited read now, so the
     // order-descending-then-reverse dance this used to do by hand is gone.
     const recentRows = await listMessages(supabase, sessionId, {
