@@ -12,6 +12,7 @@ import {
   Sparkles,
   Printer,
   Link2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import {
 import {
   createDefaultResumeConfig,
   saveInterviewLaunch,
+  updateInterviewSetup,
 } from "@/lib/interview-setup";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import {
@@ -65,6 +67,9 @@ interface SessionRecord {
   scenarioTitle: string | null;
   scenarioValue: string;
   personaName: string;
+  /** Both already returned by `/report`; declared so the page can reuse them. */
+  personaConfig: PersonaConfig;
+  launchMeta: SessionLaunchMeta | null;
   status: "in_progress" | "completed" | "abandoned";
   summary: string | null;
   turnCount: number;
@@ -275,6 +280,41 @@ export default function SessionReportPage({
     }
   };
 
+  /**
+   * Run this interview again, without rebuilding it by hand.
+   *
+   * The report used to end at the transcript: its only forward action was
+   * "Start next round", which exists only for loops. Finish a single-round
+   * practice and there was nothing to do next — no way to repeat the setup, and
+   * the dashboard's "your weakest scenario is X" card linked to a *blank*
+   * wizard, so it identified the right thing to practise and then discarded it.
+   *
+   * This pre-fills the wizard rather than launching straight in: the user
+   * usually wants to change one thing — a harder persona, a longer round — and
+   * the review step is where they can.
+   */
+  const handlePractiseAgain = () => {
+    if (!data) return;
+    const { session: previous } = data;
+    const launch = previous.launchMeta;
+
+    updateInterviewSetup({
+      scenarioValue: previous.scenarioValue,
+      customScenarioBrief: launch?.customScenarioBrief ?? "",
+      practiceMode: previous.practiceMode,
+      personaConfig: previous.personaConfig,
+      personaLibraryId: launch?.personaLibraryId,
+      ...(launch?.interviewLoop ? { interviewLoop: launch.interviewLoop } : {}),
+      ...(launch?.voiceConfig ? { voiceConfig: launch.voiceConfig } : {}),
+      ...(launch?.jobDescription
+        ? { jobDescription: launch.jobDescription }
+        : {}),
+      ...(launch?.resume ? { resume: launch.resume } : {}),
+    });
+
+    router.push(`/simulate/setup?mode=${previous.practiceMode}`);
+  };
+
   return (
     // `AppShell` owns the scroll container and background now. The back arrow
     // is gone with it — the sidebar is the way out, which is the whole reason
@@ -311,6 +351,13 @@ export default function SessionReportPage({
             </Badge>
           )}
           <div className="ml-1 flex items-center gap-2 print:hidden">
+            {/* The report used to end at the transcript for a single-round
+                session — its only forward action was "Start next round", which
+                exists only for loops. */}
+            <Button size="sm" className="gap-1.5" onClick={handlePractiseAgain}>
+              <RotateCcw className="h-4 w-4" />
+              Practise again
+            </Button>
             <Button
               variant="outline"
               size="sm"

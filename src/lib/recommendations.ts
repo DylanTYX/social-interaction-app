@@ -83,7 +83,7 @@ export function getSuggestedNextSession(
   if (scored.length > 0) {
     const byScenario = new Map<
       string,
-      { title: string; scores: number[]; lastAt: string }
+      { title: string; scores: number[]; lastAt: string; lastId: string }
     >();
 
     for (const session of scored) {
@@ -93,10 +93,14 @@ export function getSuggestedNextSession(
         title,
         scores: [],
         lastAt: session.createdAt,
+        lastId: session.id,
       };
       bucket.scores.push(session.averageScore);
-      if (Date.parse(session.createdAt) > Date.parse(bucket.lastAt)) {
+      if (Date.parse(session.createdAt) >= Date.parse(bucket.lastAt)) {
         bucket.lastAt = session.createdAt;
+        // Tracked so the recommendation can point at that attempt's report,
+        // which is where "Practise again" lives.
+        bucket.lastId = session.id;
       }
       byScenario.set(key, bucket);
     }
@@ -107,6 +111,7 @@ export function getSuggestedNextSession(
       avg: number;
       count: number;
       lastAt: string;
+      lastId: string;
     } | null = null;
 
     for (const [key, bucket] of byScenario.entries()) {
@@ -130,6 +135,7 @@ export function getSuggestedNextSession(
           avg,
           count: bucket.scores.length,
           lastAt: bucket.lastAt,
+          lastId: bucket.lastId,
         };
       }
     }
@@ -138,8 +144,18 @@ export function getSuggestedNextSession(
       return {
         id: "weakest-scenario",
         title: `Improve on: ${weakest.title}`,
-        description: `You average ${Math.round(weakest.avg)}% here across ${weakest.count} sessions. Another round will help you close the gap.`,
-        href: "/simulate/setup",
+        description: `You average ${Math.round(weakest.avg)}% here across ${weakest.count} sessions. Open your last attempt to see what to fix, then run it again.`,
+        /**
+         * Points at that scenario's most recent report rather than a blank
+         * wizard.
+         *
+         * Every recommendation used to link to `/simulate/setup` with nothing
+         * attached — so the card named the right thing to practise and then
+         * made the user rebuild it from scratch. The report is where the
+         * per-answer feedback and the "Practise again" button both live, so
+         * sending them there turns the suggestion into a path.
+         */
+        href: `/simulate/report/${weakest.lastId}`,
         reason: "This scenario has your lowest average score.",
         accent: "purple",
       };
