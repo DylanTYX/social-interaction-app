@@ -105,8 +105,9 @@ export default function ResumesPage() {
           </CardTitle>
           <CardDescription>
             Stored as plain text and sent to the interviewer so questions can
-            reference your background. Don&apos;t include anything you
-            wouldn&apos;t want in a prompt.
+            reference your background. The text is processed by OpenAI to
+            generate questions and feedback, so don&apos;t include anything you
+            wouldn&apos;t want sent to a third party.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -798,6 +798,44 @@ function SettingsPageInner() {
 
               <Separator />
 
+              {/* Nothing in the product said any of this. Neither "OpenAI" nor
+                  "Azure" appeared in a single rendered string, on a tool whose
+                  first setup step invites you to upload your actual CV. */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-900">
+                  Where your data goes
+                </h3>
+                <ul className="space-y-1.5 text-sm text-gray-500">
+                  <li>
+                    <span className="font-medium text-gray-700">
+                      Your answers, job descriptions and CV
+                    </span>{" "}
+                    are sent to OpenAI to generate questions, scores and
+                    coaching. They are not used to train their models under the
+                    API terms, but they do leave this app.
+                  </li>
+                  <li>
+                    <span className="font-medium text-gray-700">
+                      Your voice
+                    </span>{" "}
+                    is streamed to Microsoft Azure Speech for transcription
+                    during a voice interview, and the interviewer&apos;s replies
+                    are synthesised there. Audio is not stored by this app —
+                    only the transcript is.
+                  </li>
+                  <li>
+                    <span className="font-medium text-gray-700">
+                      Transcripts, scores and documents
+                    </span>{" "}
+                    are kept until you delete them. Deleting a session removes
+                    its transcript and scores; deleting a resume or job
+                    description removes that document.
+                  </li>
+                </ul>
+              </div>
+
+              <Separator />
+
               <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 space-y-2">
                 <p className="font-semibold text-red-900">Danger zone</p>
                 <p className="text-sm text-red-800/80">
