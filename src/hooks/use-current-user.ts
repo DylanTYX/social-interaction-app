@@ -75,7 +75,8 @@ export function useCurrentUser(): CurrentUserState {
 export function getDisplayName(user: User | null): string {
   if (!user) return "You";
   const meta = user.user_metadata ?? {};
-  const fullName = typeof meta.full_name === "string" ? meta.full_name.trim() : "";
+  const fullName =
+    typeof meta.full_name === "string" ? meta.full_name.trim() : "";
   if (fullName) return fullName;
 
   const firstName =

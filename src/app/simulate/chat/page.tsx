@@ -44,12 +44,12 @@ import {
   createDefaultInterviewSetup,
   saveInterviewSetup,
 } from "@/lib/interview-setup";
+import { readJson } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import {
   NO_RESPONSE_MESSAGE,
-  type ChatTurnError,
   type ChatTurnResponse,
 } from "@/lib/chat-contract";
 import {
@@ -328,9 +328,7 @@ function ChatSimulateInner() {
             streamResponse: false,
           }),
         });
-        if (!response.ok) throw new Error("Opening turn failed.");
-
-        const data = (await response.json()) as ChatTurnResponse;
+        const data = await readJson<ChatTurnResponse>(response);
         if (!data.aiMessage?.trim()) return;
 
         setMessages([
@@ -432,12 +430,16 @@ function ChatSimulateInner() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = (await response.json()) as ChatTurnError;
-        throw new Error(errorData.error ?? "Failed to generate AI response.");
-      }
-
       let data: ChatTurnResponse;
+
+      // Non-streaming failures are surfaced by `readJson` below, which reads
+      // the body as text first — so a proxy 502 or an auth redirect returning
+      // HTML reports its status instead of a JSON parse error. The streaming
+      // path cannot use it: the body is an event stream, not a JSON document,
+      // so it checks the status directly.
+      if (!response.ok && streamResponses) {
+        throw new Error("Failed to generate AI response.");
+      }
 
       if (streamResponses) {
         try {
@@ -475,19 +477,11 @@ function ChatSimulateInner() {
               body: JSON.stringify({ ...payload, streamResponse: false }),
             });
 
-            if (!fallbackResponse.ok) {
-              const errorData =
-                (await fallbackResponse.json()) as ChatTurnError;
-              throw new Error(
-                errorData.error ?? "Failed to generate AI response.",
-              );
-            }
-
-            data = (await fallbackResponse.json()) as ChatTurnResponse;
+            data = await readJson<ChatTurnResponse>(fallbackResponse);
           }
         }
       } else {
-        data = (await response.json()) as ChatTurnResponse;
+        data = await readJson<ChatTurnResponse>(response);
       }
 
       if (streamResponses) {
@@ -645,7 +639,7 @@ function ChatSimulateInner() {
               title={initialState.jobDescriptionTitle}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span className="max-w-[160px] truncate">
+              <span className="max-w-40 truncate">
                 {initialState.jobDescriptionTitle}
               </span>
             </span>

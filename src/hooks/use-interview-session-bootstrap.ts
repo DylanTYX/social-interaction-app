@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/api/fetch-json";
 import { useEffect, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import type { PersonaConfig } from "@/lib/persona-engine";
@@ -236,10 +237,7 @@ export function useInterviewSessionBootstrap(
             `/api/sessions/${encodeURIComponent(resumeId)}/resume`,
             { cache: "no-store" },
           );
-          if (!response.ok) {
-            throw new Error("Could not resume this session.");
-          }
-          const payload = (await response.json()) as {
+          const payload = await readJson<{
             session: Parameters<typeof sessionRowToLaunch>[0];
             launch: SessionLaunchMeta | null;
             jobDescription: {
@@ -258,7 +256,7 @@ export function useInterviewSessionBootstrap(
               strategy?: string | null;
               confidence?: number | null;
             }>;
-          };
+          }>(response);
 
           const launch = sessionRowToLaunch(
             payload.session,

@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/api/fetch-json";
 import { useCallback, useRef, useEffect, useState } from "react";
 
 export interface InterviewSessionSummary {
@@ -82,19 +83,14 @@ export function useInterviewHistory(
   const fetchPage = useCallback(
     async (offset: number) => {
       const response = await fetch(buildUrl(offset), { cache: "no-store" });
-      if (!response.ok) {
-        if (response.status === 401) return null;
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ?? `Failed to load sessions (HTTP ${response.status}).`,
-        );
-      }
-      return (await response.json()) as {
+      // Signed out is not an error here — the caller renders an empty history
+      // rather than a failure. Every other status goes through `readJson`,
+      // which surfaces the server's own message.
+      if (response.status === 401) return null;
+      return await readJson<{
         sessions: InterviewSessionSummary[];
         total?: number;
-      };
+      }>(response);
     },
     [buildUrl],
   );

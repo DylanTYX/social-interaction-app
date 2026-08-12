@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/api/fetch-json";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -458,18 +459,7 @@ function SetupWizard() {
         }),
       });
 
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ?? `Failed to start session (HTTP ${response.status}).`,
-        );
-      }
-
-      const { session } = (await response.json()) as {
-        session: { id: string };
-      };
+      const { session } = await readJson<{ session: { id: string } }>(response);
 
       saveInterviewLaunch({
         ...setup,

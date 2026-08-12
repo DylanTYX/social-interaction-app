@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/api/fetch-json";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -135,16 +136,7 @@ export default function SessionReportPage({
         const response = await fetch(`/api/sessions/${id}/report`, {
           cache: "no-store",
         });
-        if (!response.ok) {
-          const detail = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          throw new Error(
-            detail?.error ??
-              `Failed to load session (HTTP ${response.status}).`,
-          );
-        }
-        const payload = (await response.json()) as ReportPayload;
+        const payload = await readJson<ReportPayload>(response);
         if (cancelled) return;
         setData(payload);
         setStatus("ready");
@@ -233,13 +225,7 @@ export default function SessionReportPage({
       const response = await fetch(`/api/sessions/${id}/next-round`, {
         method: "POST",
       });
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(detail?.error ?? "Could not start the next round.");
-      }
-      const payload = (await response.json()) as {
+      const payload = await readJson<{
         session: {
           id: string;
           practiceMode: "text" | "voice";
@@ -247,7 +233,7 @@ export default function SessionReportPage({
           personaConfig: PersonaConfig;
         };
         launchMeta: SessionLaunchMeta;
-      };
+      }>(response);
       saveInterviewLaunch({
         scenarioValue: payload.session.scenarioValue,
         customScenarioBrief: payload.launchMeta.customScenarioBrief,
@@ -614,15 +600,7 @@ function TurnCoaching({
           turnIndex,
         }),
       });
-      const payload = (await response.json()) as ModelAnswerResult & {
-        error?: string;
-      };
-      if (!response.ok) {
-        throw new Error(
-          payload.error ?? "Could not generate a stronger answer.",
-        );
-      }
-      setResult(payload);
+      setResult(await readJson<ModelAnswerResult>(response));
     } catch (err) {
       setError(
         err instanceof Error
