@@ -47,6 +47,7 @@ import { isTechnicalRound } from "@/lib/round-types";
 import { suggestedBreakMinutes } from "@/lib/interview-progress";
 import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
+import { TurnScore, toTurnFeedback } from "@/components/report/turn-score";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
 import { parseCoverage } from "@/lib/competencies";
 
@@ -74,9 +75,23 @@ interface SessionRecord {
   endedAt: string | null;
 }
 
+/** The scored-answer rows as they arrive over the wire. */
+interface TurnAnalysisRecord {
+  turnIndex: number;
+  overallScore: number | null;
+  analysis: Record<string, unknown> | null;
+}
+
 interface ReportPayload {
   session: SessionRecord;
   messages: MessageRecord[];
+  /**
+   * One row per scored answer. The API has always returned this
+   * (`report/route.ts`), and this interface never declared it — so it was
+   * fetched, sent over the wire and discarded on every report, leaving the user
+   * with one aggregate number and no way to see which answer cost them.
+   */
+  turnAnalyses: TurnAnalysisRecord[];
   jobDescription: {
     id: string;
     title: string;
@@ -496,6 +511,14 @@ export default function SessionReportPage({
               const visible = messages.filter(
                 (message) => message.role !== "system",
               );
+              // Keyed by turn index, which is what `interview_turn_analyses`
+              // records against and what the message carries.
+              const analysisByTurn = new Map(
+                (data.turnAnalyses ?? []).map((entry) => [
+                  entry.turnIndex,
+                  entry,
+                ]),
+              );
               let lastQuestion = "";
               return visible.map((message) => {
                 const isUser = message.role === "user";
@@ -524,6 +547,19 @@ export default function SessionReportPage({
                         {message.content}
                       </p>
                     </div>
+                    {isUser &&
+                      (() => {
+                        const scored = analysisByTurn.get(message.turnIndex);
+                        if (!scored) return null;
+                        return (
+                          <TurnScore
+                            feedback={toTurnFeedback(
+                              scored.analysis,
+                              scored.overallScore,
+                            )}
+                          />
+                        );
+                      })()}
                     {isUser && questionForTurn && (
                       <TurnCoaching
                         question={questionForTurn}

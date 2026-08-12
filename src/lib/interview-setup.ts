@@ -292,6 +292,27 @@ export function saveInterviewSetup(setup: InterviewSetupState): void {
   }
 }
 
+/**
+ * Update part of the stored setup, leaving the rest alone.
+ *
+ * The interview screens re-save the setup on every session so the wizard
+ * reflects what you actually ran. They did that with `saveInterviewSetup`,
+ * which replaces the whole blob — and because neither screen has the document
+ * config to hand, both passed `DEFAULT_SETUP.jobDescription` and
+ * `DEFAULT_SETUP.resume`. So finishing one interview turned your job
+ * description and CV back **off**, and you re-attached them by hand before the
+ * next one. Every session.
+ *
+ * A merge makes the omission harmless: a caller that does not mention a field
+ * cannot destroy it.
+ */
+export function updateInterviewSetup(
+  patch: Partial<InterviewSetupState>,
+): void {
+  const current = loadInterviewSetup() ?? createDefaultInterviewSetup();
+  saveInterviewSetup({ ...current, ...patch });
+}
+
 export function loadInterviewSetup(): InterviewSetupState | null {
   const local = getLocal();
   if (!isStorageAvailable(local)) return null;

@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   createDefaultInterviewSetup,
-  saveInterviewSetup,
+  updateInterviewSetup,
 } from "@/lib/interview-setup";
 import {
   scenarioFromBootstrap,
@@ -236,7 +236,7 @@ function VoiceSimulateInner() {
 
   useEffect(() => {
     if (bootstrap.status !== "ready") return;
-    saveInterviewSetup({
+    updateInterviewSetup({
       scenarioValue: activeScenarioValue,
       customScenarioBrief: bootstrap.customScenarioBrief,
       streamResponses: bootstrap.streamResponses,
@@ -245,8 +245,6 @@ function VoiceSimulateInner() {
       practiceMode: "voice",
       interviewLoop: bootstrap.interviewLoop,
       voiceConfig: bootstrap.voiceConfig,
-      jobDescription: DEFAULT_SETUP.jobDescription,
-      resume: DEFAULT_SETUP.resume,
     });
   }, [
     bootstrap.status,
