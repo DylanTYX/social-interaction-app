@@ -299,6 +299,40 @@ ${candidateResponse}`;
  * report that component, so treating it as absent is truthful, and it steers
  * the interviewer to probe for it.
  */
+/** Longest a single note may be. Comfortably past a full sentence. */
+const MAX_NOTE_CHARS = 200;
+/** The model is asked for two of each; a third is a sign something went wrong. */
+const MAX_NOTES = 3;
+
+/**
+ * Bound and flatten the analyzer's free-text notes.
+ *
+ * These three arrays are the only model output that travels back *into* a
+ * prompt: `buildSteeringBlock` interpolates `strengths[0]` and `gaps[0]` into a
+ * `role: "system"` message on the very next turn, and `loop-brief.ts` folds
+ * them into the stable layer of the next round, where they persist in
+ * `launch_meta` and are paid for on every turn thereafter.
+ *
+ * They are also derived from text the candidate wrote, which closes the loop: a
+ * candidate can shape their answer so the analyzer emits a note containing
+ * newlines and something that reads like an instruction, and that lands
+ * unescaped inside a system message. `response_format: json_object` constrains
+ * the shape of the reply, never the content of a string inside it.
+ *
+ * So: cap the count, cap the length, and collapse newlines — a note is one
+ * line of coaching, and a line break is what makes injected text look like a
+ * new directive rather than part of a sentence.
+ */
+export function sanitizeNotes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.replace(/\s+/g, " ").trim().slice(0, MAX_NOTE_CHARS))
+    .filter(Boolean)
+    .slice(0, MAX_NOTES);
+}
+
 function withStarDefaults(
   star: Partial<STARAnalysis> | undefined,
 ): STARAnalysis {
@@ -507,13 +541,9 @@ export async function analyzeResponse(
       // `interview-metrics.ts` does `analysis.gaps.forEach`, inside a client
       // render path, so a missing key surfaced as a raw TypeError message in
       // the user-visible coaching card.
-      strengths: Array.isArray(analysisData.strengths)
-        ? analysisData.strengths
-        : [],
-      gaps: Array.isArray(analysisData.gaps) ? analysisData.gaps : [],
-      followupTopics: Array.isArray(analysisData.followupTopics)
-        ? analysisData.followupTopics
-        : [],
+      strengths: sanitizeNotes(analysisData.strengths),
+      gaps: sanitizeNotes(analysisData.gaps),
+      followupTopics: sanitizeNotes(analysisData.followupTopics),
       omittedFields,
     };
   } catch (error) {
