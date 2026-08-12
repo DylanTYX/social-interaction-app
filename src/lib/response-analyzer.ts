@@ -412,9 +412,10 @@ export async function analyzeResponse(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
       throw new Error(
-        `OpenAI API error: ${response.status} - ${JSON.stringify(errorData)}`,
+        // Status only. On a content-filter rejection the error body echoes the
+        // offending input, which here is the candidate's answer.
+        `OpenAI API error: ${response.status}`,
       );
     }
 
@@ -462,8 +463,20 @@ export async function analyzeResponse(
     try {
       analysisData = parseAnalysisJson(rawAnalysis);
     } catch {
+      /**
+       * Deliberately not interpolating `rawAnalysis`.
+       *
+       * It is the analyzer's full verdict on the candidate's answer —
+       * `starAnalysis.situation.context`, `.action.summary`, `.result.impact`,
+       * `strengths`, `gaps` — which paraphrase and often quote what they wrote.
+       * This error is caught in `/api/chat` and `console.warn`ed, so it landed
+       * verbatim in platform logs, retained indefinitely and unredacted.
+       *
+       * The length and a short shape hint are what actually help diagnose a
+       * parse failure; the content never did.
+       */
       throw new Error(
-        `Failed to parse analyzer response as JSON: ${rawAnalysis}`,
+        `Failed to parse analyzer response as JSON (${rawAnalysis.length} chars, starts with ${JSON.stringify(rawAnalysis.slice(0, 40))}).`,
       );
     }
 
