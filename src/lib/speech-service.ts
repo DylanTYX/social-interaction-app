@@ -323,8 +323,20 @@ export class SpeechService {
     try {
       await this.waitForQueuePlaybackEnd(playback);
     } finally {
-      this.disposeQueuePlayback();
-      this.isSpeakingFlag = false;
+      /**
+       * Dispose only what this call was waiting on.
+       *
+       * A barge-in — the "Stop voice" button, or opening the microphone during
+       * playback — already disposed `playback` and may have built a *new* one
+       * for the next turn by the time this wait finally gives up on its
+       * ceiling. Disposing unconditionally then cut the new reply off
+       * mid-sentence, force-resolved its in-flight synthesis and left
+       * `isSpeakingFlag` false while its worker was still running.
+       */
+      if (this.queuePlayback === playback) {
+        this.disposeQueuePlayback();
+        this.isSpeakingFlag = false;
+      }
     }
   }
 
@@ -870,6 +882,16 @@ export class SpeechService {
       // `.catch`, leaving a paused element at time zero that will never end.
       let sawProgress = false;
       const poll = setInterval(() => {
+        /**
+         * Torn down under us by a barge-in.
+         *
+         * `stopSpeaking` mutes the element, resets `currentTime` to 0 and
+         * blanks `src` — so `ended` stays false and `currentTime` stays 0,
+         * while `sawProgress` is already true from before the interruption.
+         * Neither exit below can fire, and the wait ran to its multi-second
+         * ceiling holding `isSpeakingFlag` and the microphone with it.
+         */
+        if (this.queuePlayback !== playback) return finish();
         if (!audio) return;
         if (audio.ended) return finish();
         if (audio.currentTime > 0) {

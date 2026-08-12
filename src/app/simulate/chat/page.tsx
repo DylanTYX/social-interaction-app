@@ -47,7 +47,11 @@ import {
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
-import type { ChatTurnError, ChatTurnResponse } from "@/lib/chat-contract";
+import {
+  NO_RESPONSE_MESSAGE,
+  type ChatTurnError,
+  type ChatTurnResponse,
+} from "@/lib/chat-contract";
 import {
   formatMessageTime,
   getMetricTone,
@@ -822,7 +826,7 @@ function ChatSimulateInner() {
                 onSend={handleSend}
                 disabled={isSending || sessionComplete}
                 timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-                timeoutFallbackMessage="[No response submitted before time expired.]"
+                timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
               />
             ) : (
               <ChatInput
@@ -830,7 +834,7 @@ function ChatSimulateInner() {
                 onSend={handleSend}
                 disabled={isSending || sessionComplete}
                 timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-                timeoutFallbackMessage="[No response submitted before time expired.]"
+                timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
               />
             )}
           </div>

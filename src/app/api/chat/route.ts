@@ -69,7 +69,10 @@ import {
   type CompetencyCoverage,
 } from "@/lib/competencies";
 import { updateCoverageForQuestion } from "@/lib/competency-matching";
-import type { ChatTurnResponse } from "@/lib/chat-contract";
+import {
+  NO_RESPONSE_MESSAGE,
+  type ChatTurnResponse,
+} from "@/lib/chat-contract";
 
 export const runtime = "nodejs";
 
@@ -341,7 +344,13 @@ function buildSteeringBlock(
 
 function isTrivialAnswer(message: string): boolean {
   const trimmed = message.trim();
-  return trimmed.length < MIN_ANALYZABLE_CHARS || TRIVIAL_ANSWER.test(trimmed);
+  return (
+    trimmed.length < MIN_ANALYZABLE_CHARS ||
+    TRIVIAL_ANSWER.test(trimmed) ||
+    // The timer's placeholder. Long enough to clear the floor above, so without
+    // this it was scored as though the candidate had written it.
+    trimmed === NO_RESPONSE_MESSAGE
+  );
 }
 
 /** The most recent assistant message is the question the user just answered. */
@@ -829,7 +838,7 @@ export async function POST(request: Request) {
     const analysisPromise: Promise<AnalysisResult | null> =
       shouldAnalyze && priorQuestion
         ? timer
-            .time("analysis", true, () =>
+            .time("analysis", false, () =>
               analyzeResponse(
                 userMessage,
                 priorQuestion,
@@ -846,10 +855,22 @@ export async function POST(request: Request) {
         : Promise.resolve(null);
 
     if (shouldAnalyze && priorQuestion) {
+      /**
+       * Timed separately from the analysis call itself.
+       *
+       * `time("analysis", …)` records when the promise *settles*, which on a
+       * deadline miss is long after the reply started — so marking it blocking
+       * made `blockingMs()` report a 30-second scorer as 30 seconds of waiting
+       * when the candidate waited four. The instrumentation added to decide
+       * whether the analyzer is worth optimising over-reported it by ~7x on
+       * exactly the slow turns that would have justified the work.
+       */
+      const steerFrom = Date.now();
       analysis =
         STEER_DEADLINE_MS > 0
           ? await raceDeadline(analysisPromise, STEER_DEADLINE_MS)
           : await analysisPromise;
+      timer.markSince("steer_wait", steerFrom);
 
       if (!analysis) {
         steeringMissedDeadline = true;

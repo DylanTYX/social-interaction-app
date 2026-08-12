@@ -9,6 +9,8 @@ import { unauthorized, handleRouteError } from "@/lib/api/errors";
 export const runtime = "nodejs";
 
 /** Cap on transcript rows per session in the export. */
+/** Queries in flight at once. Enough to be quick, far from pool-exhausting. */
+const EXPORT_CONCURRENCY = 5;
 const MESSAGES_PER_SESSION = 500;
 
 /**
@@ -34,18 +36,35 @@ export async function GET() {
       listJobDescriptions(supabase, { limit: 200 }),
     ]);
 
-    // Inline messages alongside each session so the export is self-contained.
-    const sessionsWithMessages = await Promise.all(
-      sessionPage.sessions.map(async (session) => {
-        // Bounded per session: an export is a convenience, not an archive
-        // guarantee, and one query per session over 500 sessions is already
-        // the most expensive read in the app.
-        const messages = await listMessages(supabase, session.id, {
-          limit: MESSAGES_PER_SESSION,
-        });
-        return { ...session, messages };
-      }),
-    );
+    /**
+     * Inline messages alongside each session so the export is self-contained.
+     *
+     * In batches, because `Promise.all` over the map issued **one query per
+     * session, all at once** — up to 500 simultaneous PostgREST requests from a
+     * single click. At 30 requests a minute that is 15,000 concurrent queries,
+     * which exhausts the connection pooler for every other user of the project,
+     * not just the one exporting.
+     */
+    const sessionsWithMessages: Array<
+      (typeof sessionPage.sessions)[number] & {
+        messages: Awaited<ReturnType<typeof listMessages>>;
+      }
+    > = [];
+
+    for (let i = 0; i < sessionPage.sessions.length; i += EXPORT_CONCURRENCY) {
+      const batch = sessionPage.sessions.slice(i, i + EXPORT_CONCURRENCY);
+      const withMessages = await Promise.all(
+        batch.map(async (session) => ({
+          ...session,
+          // Bounded per session: an export is a convenience, not an archive
+          // guarantee.
+          messages: await listMessages(supabase, session.id, {
+            limit: MESSAGES_PER_SESSION,
+          }),
+        })),
+      );
+      sessionsWithMessages.push(...withMessages);
+    }
 
     const payload = {
       exportedAt: new Date().toISOString(),

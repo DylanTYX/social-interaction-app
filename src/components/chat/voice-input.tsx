@@ -69,14 +69,22 @@ export function VoiceInput({
     .join(" ")
     .trim();
 
-  // Ordered by what the candidate most needs to know. Processing outranks
-  // everything because nothing they do will be heard until it clears.
-  const state = isProcessing
-    ? "processing"
-    : isRecording
-      ? "recording"
-      : isSpeakingTts
-        ? "speaking"
+  /**
+   * Ordered by what the candidate most needs to know.
+   *
+   * Speaking outranks processing, which is the reverse of the obvious reading
+   * — but `isProcessing` is the page's `isSending`, and that stays true for the
+   * *whole* streamed reply, while audio starts partway through it. Checking it
+   * first meant the control showed "Processing your answer" with a spinner
+   * while the interviewer was audibly talking, and the speaking state was only
+   * ever reachable in the gap after the request settled.
+   */
+  const state = isRecording
+    ? "recording"
+    : isSpeakingTts
+      ? "speaking"
+      : isProcessing
+        ? "processing"
         : "idle";
 
   const caption = {

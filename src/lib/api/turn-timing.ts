@@ -15,6 +15,8 @@
 export type TurnStage =
   | "retrieval"
   | "analysis"
+  /** What the reply actually waited for the verdict, deadline included. */
+  | "steer_wait"
   | "interviewer_ttft"
   | "interviewer_total"
   | "persist"

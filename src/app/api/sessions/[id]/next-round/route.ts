@@ -2,7 +2,12 @@ import { parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import { createSession, getSession, listTurnAnalyses } from "@/lib/db/sessions";
+import {
+  createSession,
+  getSession,
+  listTurnAnalyses,
+  listSessionsInLoop,
+} from "@/lib/db/sessions";
 import { listPersonas } from "@/lib/db/personas";
 import { buildLoopBrief } from "@/lib/loop-brief";
 import type { AnalysisResult } from "@/lib/response-analyzer";
@@ -135,6 +140,31 @@ export async function POST(_request: Request, ctx: RouteParams) {
       ]),
     );
     const loopId = readLoopProgress(previous)?.loopId ?? crypto.randomUUID();
+
+    /**
+     * One next round per source session.
+     *
+     * Nothing marked the previous session as advanced, so a double-click — or a
+     * retry after a slow response — created a second round-2 session, each with
+     * its own transcript and its own report. Where `previous` carries no loop
+     * progress the two do not even share a `loop_id`, because the fallback
+     * above mints a fresh one per call.
+     *
+     * Checked by looking for a session that already lists `previous` as
+     * completed, which is exactly what this handler is about to write.
+     */
+    const existing = (await listSessionsInLoop(supabase, loopId)).find(
+      (candidate) =>
+        candidate.id !== previous.id &&
+        readLoopProgress(candidate)?.completedSessionIds?.includes(previous.id),
+    );
+
+    if (existing) {
+      return NextResponse.json(
+        { session: existing, launchMeta: readLaunchMeta(existing) },
+        { status: 200 },
+      );
+    }
 
     const roundPersona = activeRound.personaLibraryId
       ? (await listPersonas(supabase, user.id)).find(
