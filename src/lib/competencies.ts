@@ -145,7 +145,11 @@ export function parseCoverage(value: unknown): CompetencyCoverage {
 
   const cleaned: Record<string, number> = {};
   for (const [id, score] of Object.entries(covered)) {
-    if (typeof score === "number" && Number.isFinite(score) && getCompetency(id)) {
+    if (
+      typeof score === "number" &&
+      Number.isFinite(score) &&
+      getCompetency(id)
+    ) {
       cleaned[id] = score;
     }
   }
@@ -161,6 +165,49 @@ export function uncoveredCompetencies(
 export function coveragePercent(coverage: CompetencyCoverage): number {
   return Math.round(
     (Object.keys(coverage.covered).length / COMPETENCIES.length) * 100,
+  );
+}
+
+export interface CompetencyHistory {
+  competency: Competency;
+  /** Sessions in which a question touched this competency. */
+  sessions: number;
+}
+
+/**
+ * How often each competency has come up, across every session.
+ *
+ * Coverage has always been recorded per session and shown on that session's
+ * report — which answers "did this interview touch delegation?" but not the
+ * question a candidate preparing for a real interview actually has: "what have
+ * I still never been asked about?"
+ *
+ * Nothing new is stored for this. `competency_coverage` is already a column on
+ * every session and already travels in the list the analytics page fetches; it
+ * was simply never looked at more than one session at a time.
+ *
+ * Returned sorted rarest-first, because the useful end of this list is the
+ * bottom of it.
+ */
+export function aggregateCoverage(
+  coverages: readonly unknown[],
+): CompetencyHistory[] {
+  const counts = new Map<string, number>();
+
+  for (const raw of coverages) {
+    const { covered } = parseCoverage(raw);
+    for (const id of Object.keys(covered)) {
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+  }
+
+  return COMPETENCIES.map((competency) => ({
+    competency,
+    sessions: counts.get(competency.id) ?? 0,
+  })).sort(
+    (a, b) =>
+      a.sessions - b.sessions ||
+      a.competency.label.localeCompare(b.competency.label),
   );
 }
 
@@ -220,8 +267,9 @@ export function formatCoverageSteer(
   // toward conflict then failure, so an "improvised" interview came out
   // identical for every user.
   const offset = Object.keys(coverage.covered).length % remaining.length;
-  const picks = Array.from({ length: Math.min(max, remaining.length) }, (_, i) =>
-    remaining[(offset + i) % remaining.length],
+  const picks = Array.from(
+    { length: Math.min(max, remaining.length) },
+    (_, i) => remaining[(offset + i) % remaining.length],
   );
   return [
     `- Competencies not yet explored in this interview: ${picks

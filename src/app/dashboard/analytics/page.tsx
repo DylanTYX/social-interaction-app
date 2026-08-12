@@ -1,5 +1,7 @@
 "use client";
 
+import { CompetencyHistoryCard } from "@/components/dashboard/competency-history-card";
+import { aggregateCoverage, type CompetencyHistory } from "@/lib/competencies";
 import { useMemo } from "react";
 import Link from "next/link";
 import {
@@ -66,6 +68,8 @@ interface AnalyticsModel {
   scenarioBuckets: ScenarioBucket[];
   daysActive: number;
   dimensionSeries: DimensionSeries[];
+  /** Every competency with how many sessions have touched it, rarest first. */
+  competencyHistory: CompetencyHistory[];
 }
 
 function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
@@ -162,6 +166,10 @@ function buildModel(sessions: InterviewSessionSummary[]): AnalyticsModel {
     scenarioBuckets,
     daysActive: days.size,
     dimensionSeries,
+    // Uses data every session already carried; nothing new is stored for it.
+    competencyHistory: aggregateCoverage(
+      sessions.map((entry) => entry.competencyCoverage),
+    ),
   };
 }
 
@@ -505,6 +513,11 @@ export default function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+
+      <CompetencyHistoryCard
+        history={model.competencyHistory}
+        totalSessions={model.total}
+      />
 
       <Card className="shadow-soft">
         <CardHeader>
