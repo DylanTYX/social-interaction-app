@@ -20,11 +20,7 @@ import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 
 export type BootstrapStatus =
-  | "loading"
-  | "ready"
-  | "redirect-setup"
-  | "redirect-voice"
-  | "error";
+  "loading" | "ready" | "redirect-setup" | "redirect-voice" | "error";
 
 export interface InterviewBootstrap {
   status: BootstrapStatus;
@@ -64,6 +60,13 @@ export interface ResumedTranscript {
     createdAt: string;
   }>;
   analyses: AnalysisResult[];
+  /** The interviewer's most recent decision, or null for a fresh session. */
+  lastDecision: LastTurnDecision | null;
+}
+
+export interface LastTurnDecision {
+  strategy: string | null;
+  confidence: number | null;
 }
 
 const DEFAULT = createDefaultInterviewSetup();
@@ -75,7 +78,11 @@ function readResumedTranscript(payload: {
     content: string;
     createdAt: string;
   }>;
-  turnAnalyses?: Array<{ analysis: unknown }>;
+  turnAnalyses?: Array<{
+    analysis: unknown;
+    strategy?: string | null;
+    confidence?: number | null;
+  }>;
 }): ResumedTranscript {
   return {
     messages: (payload.messages ?? []).map((row) => ({
@@ -89,6 +96,21 @@ function readResumedTranscript(payload: {
     analyses: (payload.turnAnalyses ?? [])
       .map((row) => row.analysis as AnalysisResult)
       .filter((analysis): analysis is AnalysisResult => Boolean(analysis)),
+    /**
+     * The interviewer's last decision, which the server has always persisted
+     * and the client has always discarded — the type above declared only
+     * `analysis`. After a reload the state panel showed a blank decision
+     * history on a session with six follow-ups behind it.
+     */
+    lastDecision: (() => {
+      const last = (payload.turnAnalyses ?? []).at(-1);
+      if (!last) return null;
+      return {
+        strategy: typeof last.strategy === "string" ? last.strategy : null,
+        confidence:
+          typeof last.confidence === "number" ? last.confidence : null,
+      };
+    })(),
   };
 }
 
@@ -120,9 +142,7 @@ function launchToBootstrap(
     scenarioValue: scenarioOverride ?? launch.scenarioValue,
     customScenarioBrief: launch.customScenarioBrief ?? "",
     streamResponses:
-      streamOverride === null
-        ? launch.streamResponses
-        : streamOverride === "1",
+      streamOverride === null ? launch.streamResponses : streamOverride === "1",
     liveCoachingEnabled:
       launch.liveCoachingEnabled ?? DEFAULT.liveCoachingEnabled,
     interviewLoop: normalizeInterviewLoop(
@@ -146,7 +166,11 @@ function sessionRowToLaunch(
     jobDescriptionId: string | null;
   },
   launch: SessionLaunchMeta | null,
-  jobDescription: { id: string; title: string; roleTitle: string | null } | null,
+  jobDescription: {
+    id: string;
+    title: string;
+    roleTitle: string | null;
+  } | null,
 ): InterviewLaunchPayload {
   const jdEnabled = Boolean(session.jobDescriptionId || jobDescription);
   const base: InterviewSetupState = {
@@ -155,7 +179,7 @@ function sessionRowToLaunch(
     customScenarioBrief:
       launch?.customScenarioBrief ??
       (session.scenarioValue === "custom"
-        ? session.scenarioDescription ?? ""
+        ? (session.scenarioDescription ?? "")
         : ""),
     streamResponses: launch?.streamResponses ?? DEFAULT.streamResponses,
     liveCoachingEnabled:
@@ -229,7 +253,11 @@ export function useInterviewSessionBootstrap(
               content: string;
               createdAt: string;
             }>;
-            turnAnalyses?: Array<{ analysis: unknown }>;
+            turnAnalyses?: Array<{
+              analysis: unknown;
+              strategy?: string | null;
+              confidence?: number | null;
+            }>;
           };
 
           const launch = sessionRowToLaunch(

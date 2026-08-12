@@ -21,8 +21,14 @@ function daysSince(iso: string): number {
  */
 export function getSuggestedNextSession(
   sessions: InterviewSessionSummary[],
-  options?: { hasJobDescriptions?: boolean; hasVoiceSessions?: boolean },
+  options?: {
+    /** `undefined` means "not known" — e.g. the library failed to load. */
+    hasJobDescriptions?: boolean;
+    hasVoiceSessions?: boolean;
+  },
 ): SessionRecommendation | null {
+  // Unknown is treated as "no", which only ever costs the user an *extra*
+  // suggestion — never a wrong one.
   const hasJds = options?.hasJobDescriptions ?? false;
   const hasVoice = options?.hasVoiceSessions ?? false;
 

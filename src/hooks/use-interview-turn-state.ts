@@ -17,9 +17,10 @@ import {
   buildInterviewMetrics,
   type InterviewMetrics,
 } from "@/lib/interview-metrics";
-import type {
-  AnalysisResult,
-  InterviewStrategy,
+import {
+  isInterviewStrategy,
+  type AnalysisResult,
+  type InterviewStrategy,
 } from "@/lib/response-analyzer";
 import {
   appendDimensionSnapshot,
@@ -125,6 +126,14 @@ export function useInterviewTurnState(input: {
   targetTurns?: number;
   /** Restored from `interview_turn_analyses` when resuming. */
   initialAnalyses?: AnalysisResult[];
+  /**
+   * The interviewer's last decision before a reload. Persisted per turn all
+   * along; the client simply never read it back.
+   */
+  initialDecision?: {
+    strategy: string | null;
+    confidence: number | null;
+  } | null;
 }): InterviewTurnState {
   const { sessionId, personaName } = input;
   const targetTurns = input.targetTurns ?? DEFAULT_TARGET_TURNS;
@@ -179,10 +188,23 @@ export function useInterviewTurnState(input: {
   const [lastDecisionReason, setLastDecisionReason] = useState<string | null>(
     null,
   );
+  /**
+   * Seeded from the restored turn, not left null.
+   *
+   * These are only ever written when a turn lands, so after a reload the state
+   * panel rendered an empty decision history for a session that had six
+   * follow-ups behind it, and the anti-repetition display had nothing to show
+   * until the next answer.
+   */
   const [lastStrategy, setLastStrategy] = useState<InterviewStrategy | null>(
-    null,
+    () => {
+      const restoredStrategy = input.initialDecision?.strategy;
+      return isInterviewStrategy(restoredStrategy) ? restoredStrategy : null;
+    },
   );
-  const [lastConfidence, setLastConfidence] = useState<number | null>(null);
+  const [lastConfidence, setLastConfidence] = useState<number | null>(
+    () => input.initialDecision?.confidence ?? null,
+  );
 
   // Restored history arrives asynchronously — after this hook's first render —
   // so it cannot be a `useState` initial value and does not need an effect to
@@ -230,7 +252,11 @@ export function useInterviewTurnState(input: {
       const nextState = advanced;
       const nextAnalyses = [...effectiveAnalyses, analysis];
       const nextMetrics = {
-        ...buildInterviewMetrics({ analyses: nextAnalyses, state: nextState }),
+        ...buildInterviewMetrics({
+          analyses: nextAnalyses,
+          state: nextState,
+          restoredTurns,
+        }),
         // The real id is not known when this hook first renders.
         sessionId: sessionId ?? nextState.sessionId,
       };
@@ -287,6 +313,7 @@ export function useInterviewTurnState(input: {
       ...buildInterviewMetrics({
         analyses: effectiveAnalyses,
         state: completedState,
+        restoredTurns,
       }),
       sessionId: sessionId ?? completedState.sessionId,
     };
@@ -311,7 +338,13 @@ export function useInterviewTurnState(input: {
     }
 
     return averageScore;
-  }, [effectiveAnalyses, effectiveSnapshots, sessionId, identifiedState]);
+  }, [
+    effectiveAnalyses,
+    effectiveSnapshots,
+    sessionId,
+    identifiedState,
+    restoredTurns,
+  ]);
 
   return {
     sessionState: identifiedState,
