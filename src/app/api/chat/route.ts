@@ -104,6 +104,16 @@ const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
  * Set `STEER_DEADLINE_MS=0` to wait indefinitely, which is the old behaviour.
  */
 const STEER_DEADLINE_MS = Number(process.env.STEER_DEADLINE_MS ?? 4000);
+
+/**
+ * How long the *turn* will wait for a scorer that missed the steering deadline.
+ *
+ * By this point the interviewer stream has already run, so the analysis has had
+ * seconds of extra time and is almost always ready. The bound exists for the
+ * case where it is not: past it the turn is persisted unscored rather than
+ * holding the reply — and, in voice, the microphone — open indefinitely.
+ */
+const PERSIST_DEADLINE_MS = Number(process.env.PERSIST_DEADLINE_MS ?? 3000);
 // Enforces the "2-5 sentences" guidance and bounds cost per turn.
 const INTERVIEWER_MAX_TOKENS = 320;
 // Below this, an answer is treated as trivial ("yes", "ready") and skipped by
@@ -544,6 +554,15 @@ function createStreamingResponse(
   task: (
     onChunk: (chunk: string) => void,
   ) => Promise<{ result: ChatTurnResponse; finalize: () => Promise<void> }>,
+  /**
+   * Runs on every exit, including a failed turn.
+   *
+   * Token accounting lives here rather than inside `finalize` because
+   * `finalize` is only *returned* once the turn has fully succeeded — so a
+   * failing `appendTurn` used to unwind past it, and an OpenAI completion that
+   * had already been billed was recorded nowhere.
+   */
+  alwaysFinalize: () => Promise<void>,
 ): Response {
   const encoder = new TextEncoder();
   let clientGone = false;
@@ -599,6 +618,12 @@ function createStreamingResponse(
           formatSseEvent("error", { error: "Failed to generate response." }),
         );
       } finally {
+        try {
+          await alwaysFinalize();
+        } catch (error) {
+          console.error("[POST /api/chat] usage flush failed:", error);
+        }
+
         if (!clientGone) {
           try {
             controller.close();
@@ -933,19 +958,28 @@ export async function POST(request: Request) {
         // scorer. Collect it so the turn is still scored in the transcript and
         // the report, and derive its strategy locally (that part is free) so
         // the next turn's anti-repetition still has something to work with.
-        let persistedAnalysis = analysis;
-        let persistedStrategy = strategy;
-        let persistedConfidence = confidence;
-
-        if (!persistedAnalysis && steeringMissedDeadline) {
-          persistedAnalysis = await analysisPromise;
-          if (persistedAnalysis) {
-            const late = decideInterviewAction(
-              persistedAnalysis,
-              decisionContextFor(),
-            );
-            persistedStrategy = late.strategy;
-            persistedConfidence = late.confidence;
+        if (!analysis && steeringMissedDeadline) {
+          // Bounded a second time. `raceDeadline` deliberately keeps the
+          // promise alive, and `analyzeResponse` has no timeout of its own, so
+          // awaiting it bare here would put an unbounded model call back
+          // between the last token and `done` — which in voice is the
+          // microphone staying shut.
+          const late = await raceDeadline(analysisPromise, PERSIST_DEADLINE_MS);
+          if (late) {
+            const decision = decideInterviewAction(late, decisionContextFor());
+            // Promoted to the turn's verdict, not just the row's. These are
+            // what the response carries, and the client drops the entire turn
+            // when `analysis` or `strategy` is null — so a slow scorer used to
+            // cost the turn its score, its coaching hint *and* its place in the
+            // progress counter, on the client only. The database had it.
+            analysis = late;
+            strategy = decision.strategy;
+            decisionReason = decision.reason;
+            confidence = decision.confidence;
+            shouldEscalate = decision.shouldEscalate;
+            shouldSlowDown = decision.shouldSlowDown;
+            followupSummary = summarizeFollowup(decision.strategy, late);
+            microFeedback = deriveMicroFeedback(late);
           }
         }
 
@@ -954,16 +988,13 @@ export async function POST(request: Request) {
           sessionId,
           userMessage,
           aiMessage,
-          persistedAnalysis
+          analysis
             ? {
-                analysis: persistedAnalysis as unknown as Record<
-                  string,
-                  unknown
-                >,
-                roundType: persistedAnalysis.roundType ?? roundType ?? null,
-                overallScore: persistedAnalysis.overallScore,
-                strategy: persistedStrategy,
-                confidence: persistedConfidence,
+                analysis: analysis as unknown as Record<string, unknown>,
+                roundType: analysis.roundType ?? roundType ?? null,
+                overallScore: analysis.overallScore,
+                strategy,
+                confidence,
               }
             : null,
         );
@@ -1041,10 +1072,6 @@ export async function POST(request: Request) {
         } catch (error) {
           console.warn("Competency coverage update failed:", error);
         }
-
-        // Best-effort by construction; it cannot throw.
-        await usage.flush(supabase, { userId: user.id, sessionId });
-        timer.log({ sessionId, roundType });
       };
 
       return {
@@ -1070,16 +1097,37 @@ export async function POST(request: Request) {
       };
     };
 
+    /**
+     * Accounting, on every exit including a failed turn.
+     *
+     * Deliberately outside `buildResult`: that function only *returns*
+     * `finalize` once the turn has fully succeeded, so a throw anywhere in it —
+     * a failing `appendTurn`, most realistically — used to unwind past the
+     * flush, and an OpenAI completion that had already been billed was recorded
+     * nowhere. `usage.flush` is best-effort by construction and cannot throw.
+     */
+    const flushAccounting = async () => {
+      await usage.flush(supabase, { userId: user.id, sessionId });
+      timer.log({ sessionId, roundType });
+    };
+
     if (streamResponse) {
-      return createStreamingResponse((onChunk) => buildResult(onChunk));
+      return createStreamingResponse(
+        (onChunk) => buildResult(onChunk),
+        flushAccounting,
+      );
     }
 
     // The non-streaming path is only reached after a stream already failed, so
     // an extra second there is irrelevant and a complete JSON statement of the
     // turn is worth more than an early return.
-    const { result, finalize } = await buildResult();
-    await finalize();
-    return NextResponse.json(result);
+    try {
+      const { result, finalize } = await buildResult();
+      await finalize();
+      return NextResponse.json(result);
+    } finally {
+      await flushAccounting();
+    }
   } catch (error) {
     return handleRouteError("POST /api/chat", error);
   }
