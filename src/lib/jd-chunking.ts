@@ -57,10 +57,20 @@ export function chunkJobDescription(rawText: string): JobDescriptionChunk[] {
 
 export function buildJobDescriptionTitle(input: {
   roleTitle?: string | null;
+  company?: string | null;
   rawText: string;
 }): string {
   const roleTitle = input.roleTitle?.trim();
+  const company = input.company?.trim();
+
+  // "Data Analyst at Monzo" reads as a title; either half alone is ambiguous
+  // once the library holds more than a few. The fallback below is a guess at
+  // best — it takes the first line of the pasted text between 4 and 80
+  // characters, which for a careers-page paste is very often "About the role"
+  // — so anything the user actually told us beats it.
+  if (roleTitle && company) return `${roleTitle} at ${company}`;
   if (roleTitle) return roleTitle;
+  if (company) return company;
 
   const firstUsefulLine = normalizeText(input.rawText)
     .split("\n")

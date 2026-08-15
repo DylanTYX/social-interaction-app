@@ -10,6 +10,11 @@ export interface JobDescriptionRecord {
   id: string;
   title: string;
   roleTitle: string | null;
+  /** Employer, so two postings for the same role are tellable apart. */
+  company: string | null;
+  /** Where the posting lives, for going back to it later. */
+  sourceUrl: string | null;
+  notes: string | null;
   sourceType: "text";
   rawText: string;
   createdAt: string;
@@ -28,6 +33,9 @@ interface JobDescriptionRow {
   id: string;
   title: string;
   role_title: string | null;
+  company: string | null;
+  source_url: string | null;
+  notes: string | null;
   source_type: "text";
   raw_text: string;
   created_at: string;
@@ -43,13 +51,16 @@ interface MatchRow {
 }
 
 const JOB_DESCRIPTION_COLUMNS =
-  "id, title, role_title, source_type, raw_text, created_at, updated_at";
+  "id, title, role_title, company, source_url, notes, source_type, raw_text, created_at, updated_at";
 
 function rowToJobDescription(row: JobDescriptionRow): JobDescriptionRecord {
   return {
     id: row.id,
     title: row.title,
     roleTitle: row.role_title,
+    company: row.company,
+    sourceUrl: row.source_url,
+    notes: row.notes,
     sourceType: row.source_type,
     rawText: row.raw_text,
     createdAt: row.created_at,
@@ -62,6 +73,8 @@ export async function createJobDescription(input: {
   userId: string;
   rawText: string;
   roleTitle?: string | null;
+  company?: string | null;
+  sourceUrl?: string | null;
   usage?: UsageCollector;
 }): Promise<JobDescriptionRecord> {
   const rawText = input.rawText.trim();
@@ -76,6 +89,7 @@ export async function createJobDescription(input: {
 
   const title = buildJobDescriptionTitle({
     roleTitle: input.roleTitle,
+    company: input.company,
     rawText,
   });
 
@@ -85,6 +99,8 @@ export async function createJobDescription(input: {
       user_id: input.userId,
       title,
       role_title: input.roleTitle?.trim() || null,
+      company: input.company?.trim() || null,
+      source_url: input.sourceUrl?.trim() || null,
       raw_text: rawText,
       source_type: "text",
     })
@@ -136,19 +152,103 @@ export async function createJobDescription(input: {
 
 export async function listJobDescriptions(
   supabase: SupabaseClient,
-  options: { limit?: number } = {},
+  options: { limit?: number; query?: string; company?: string } = {},
 ): Promise<JobDescriptionRecord[]> {
-  const { limit = 20 } = options;
-  const { data, error } = await supabase
+  const { limit = 20, query, company } = options;
+  let request = supabase
     .from("job_descriptions")
     .select(JOB_DESCRIPTION_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("created_at", { ascending: false });
+
+  // Filtered in Postgres rather than in the page, matching `listSessions`. The
+  // library is capped at 50 rows a page, so a client-side filter would silently
+  // search only the page you happened to have loaded.
+  if (company) request = request.eq("company", company);
+
+  const trimmed = query?.trim();
+  if (trimmed) {
+    // `%`, `,` and parens would otherwise break out of the `or` filter's own
+    // syntax — same escaping, and same reason, as the sessions list.
+    const safe = trimmed.replace(/[%,()]/g, " ");
+    request = request.or(
+      `title.ilike.%${safe}%,role_title.ilike.%${safe}%,company.ilike.%${safe}%`,
+    );
+  }
+
+  const { data, error } = await request.limit(limit);
 
   if (error) throw error;
   return (data ?? []).map((row) =>
     rowToJobDescription(row as JobDescriptionRow),
   );
+}
+
+/**
+ * Edit a JD's metadata. Never its text.
+ *
+ * `raw_text` is deliberately not updatable here. It is chunked and embedded at
+ * creation, and changing it without re-running both would leave the retrieval
+ * index describing a document that no longer exists — the chunks would keep
+ * answering questions from the old posting while the library showed the new
+ * one. Replacing the text means creating a new JD, which is what the UI offers.
+ *
+ * An explicitly-passed empty string clears a field; an omitted key leaves it
+ * alone. That distinction is why the payload is built key by key rather than
+ * spread — `{ company: undefined }` in a PostgREST update is a write of null,
+ * not a no-op.
+ */
+export async function updateJobDescription(
+  supabase: SupabaseClient,
+  id: string,
+  patch: {
+    title?: string;
+    roleTitle?: string | null;
+    company?: string | null;
+    sourceUrl?: string | null;
+    notes?: string | null;
+  },
+): Promise<JobDescriptionRecord | null> {
+  const payload: Record<string, string | null> = {};
+  if (patch.title !== undefined) payload.title = patch.title.trim();
+  if (patch.roleTitle !== undefined)
+    payload.role_title = patch.roleTitle?.trim() || null;
+  if (patch.company !== undefined)
+    payload.company = patch.company?.trim() || null;
+  if (patch.sourceUrl !== undefined)
+    payload.source_url = patch.sourceUrl?.trim() || null;
+  if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
+
+  if (Object.keys(payload).length === 0) {
+    return getJobDescription(supabase, id);
+  }
+
+  const { data, error } = await supabase
+    .from("job_descriptions")
+    .update(payload)
+    .eq("id", id)
+    .select(JOB_DESCRIPTION_COLUMNS)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? rowToJobDescription(data as JobDescriptionRow) : null;
+}
+
+/**
+ * The distinct companies in the user's library, for the filter dropdown.
+ *
+ * Read from the rows already fetched rather than a separate `select distinct`:
+ * the library is capped at 50, so the page holds the whole set anyway and a
+ * second round trip would buy nothing.
+ */
+export function distinctCompanies(
+  items: ReadonlyArray<{ company: string | null }>,
+): string[] {
+  const seen = new Set<string>();
+  for (const item of items) {
+    const company = item.company?.trim();
+    if (company) seen.add(company);
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b));
 }
 
 export async function getJobDescription(

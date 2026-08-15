@@ -31,7 +31,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 20, max: 50 });
 
-    const jobDescriptions = await listJobDescriptions(supabase, { limit });
+    // Filtering runs in Postgres. The list is capped at 50 rows, so a filter
+    // applied in the page would only ever search the page you had loaded.
+    const jobDescriptions = await listJobDescriptions(supabase, {
+      limit,
+      query: searchParams.get("query")?.slice(0, 200) ?? undefined,
+      company: searchParams.get("company")?.slice(0, 200) ?? undefined,
+    });
     return NextResponse.json({ jobDescriptions });
   } catch (error) {
     return handleRouteError("GET /api/job-descriptions", error);
@@ -41,6 +47,8 @@ export async function GET(request: Request) {
 interface ParsedJobDescriptionPayload {
   rawText: string;
   roleTitle: string | null;
+  company: string | null;
+  sourceUrl: string | null;
 }
 
 async function parsePayload(
@@ -50,30 +58,41 @@ async function parsePayload(
 
   if (contentType.includes("multipart/form-data")) {
     const { rawText, fields } = await parsePdfUpload(request, {
-      textFields: ["roleTitle"],
+      textFields: ["roleTitle", "company", "sourceUrl"],
       minChars: MIN_JOB_DESCRIPTION_CHARS,
       tooLittleTextMessage:
         "Could not extract enough text from the PDF. The file may be image-only or scanned; paste the description as text instead.",
     });
-    return { rawText, roleTitle: fields.roleTitle ?? null };
+    return {
+      rawText,
+      roleTitle: fields.roleTitle ?? null,
+      company: fields.company ?? null,
+      sourceUrl: fields.sourceUrl ?? null,
+    };
   }
 
   const body = await readJsonBody<{
     rawText?: unknown;
     roleTitle?: unknown;
+    company?: unknown;
+    sourceUrl?: unknown;
   }>(request);
 
+  const readText = (value: unknown) =>
+    typeof value === "string" && value.trim() ? value.trim() : null;
+
   const rawText = typeof body.rawText === "string" ? body.rawText.trim() : "";
-  const roleTitle =
-    typeof body.roleTitle === "string" && body.roleTitle.trim()
-      ? body.roleTitle.trim()
-      : null;
 
   if (!rawText) {
     throw new ClientVisibleError("Missing rawText.");
   }
 
-  return { rawText, roleTitle };
+  return {
+    rawText,
+    roleTitle: readText(body.roleTitle),
+    company: readText(body.company),
+    sourceUrl: readText(body.sourceUrl),
+  };
 }
 
 export async function POST(request: Request) {
@@ -89,7 +108,8 @@ export async function POST(request: Request) {
     );
     if (limited) return limited;
 
-    const { rawText, roleTitle } = await parsePayload(request);
+    const { rawText, roleTitle, company, sourceUrl } =
+      await parsePayload(request);
 
     if (rawText.length < MIN_JOB_DESCRIPTION_CHARS) {
       return badRequest(
@@ -111,6 +131,8 @@ export async function POST(request: Request) {
       userId: user.id,
       rawText,
       roleTitle,
+      company,
+      sourceUrl,
       usage,
     });
     await usage.flush(supabase);
