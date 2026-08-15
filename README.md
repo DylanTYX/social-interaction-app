@@ -129,7 +129,7 @@ npm run dev
 | `npm run eval:persona` | **Persona differentiation harness** — free and offline by default; `--live` makes billed calls |
 | `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
 
-`npm test` currently runs 257 tests, including route-handler tests that
+`npm test` currently runs 426 tests, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
 and tests on every push and pull request (`.github/workflows/ci.yml`).
 
