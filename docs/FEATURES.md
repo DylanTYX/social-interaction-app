@@ -32,13 +32,16 @@ works better.
 
 **Documents (optional)** — attach either or both:
 
-- **A job description** — paste it or upload a PDF. Questions are then tailored
-  to that role's actual responsibilities, and the round builder on the next step
-  can suggest a matching set of rounds. Record the company and the interviewer
-  speaks as someone who works there — without inventing anything about it that
-  the posting does not say. **Tidy this up** strips the navigation, cookie
-  notices and boilerplate that come with a copied careers page, tells you how
-  much it removed, and can be undone in one click.
+- **A job description** — use one you have saved, or add a new one by pasting
+  it or uploading a PDF. Questions are then tailored to that role's actual
+  responsibilities, and the round builder on the next step can suggest a
+  matching set of rounds. Record the company and the interviewer speaks as
+  someone who works there — without inventing anything about it that the posting
+  does not say. **Tidy this up** strips the navigation, cookie notices and
+  boilerplate that come with a copied careers page, tells you how much it
+  removed, and can be undone in one click. **Preview** shows exactly what is
+  stored, so you can tell two postings for the same role apart and check what a
+  tidy-up left behind.
 - **Your CV** — paste it or upload a PDF. The interviewer asks about your real
   background and pressure-tests the claims on it, rather than inventing
   experience you don't have.
@@ -189,6 +192,28 @@ sessions. Job descriptions are searchable, filterable by company, and editable
 after saving — including the title, which is otherwise guessed from the first
 line of whatever was pasted. Deleting one says first how many interviews still
 in progress are using it; those keep running but lose their grounding.
+
+### One library, two ways in
+
+There is a single job-description library. The setup wizard picks a document
+from it or adds one to it — it never keeps a private copy, and a job description
+is never attached to one session only. Anything you add mid-setup is saved and
+reusable, which is why the wizard says so at the point of adding.
+
+That rule decides what can be changed and when:
+
+- **Company, title, role, link and notes** are copied into the session when it
+  launches. Editing them later is always allowed, and never disturbs an
+  interview already under way.
+- **The text** is read from the search index on every single turn. Editing it
+  re-indexes the document, so it is refused while any interview using it is
+  still in progress — otherwise the first half of that interview would be
+  grounded on one version and the second half on another, with both scored onto
+  the same report. Finish or abandon those interviews and the edit goes through.
+
+The same reasoning is why deleting is warned about rather than silently allowed,
+and why a job description deleted mid-interview makes the session say so instead
+of carrying on as though nothing changed.
 
 **Weekly goal** — set a target number of sessions and track your streak. Both
 count sessions you actually practised in, not ones you opened and closed.
