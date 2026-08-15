@@ -202,6 +202,25 @@ function SetupWizard() {
         ) ?? null)
       : null;
   const jobDescriptionText = selectedJobDescription?.rawText ?? "";
+  /**
+   * The setup as the Review step should describe it.
+   *
+   * Same substitution `launchInterview` makes, so what the user reads before
+   * launching is what the session is actually created with. Reading the config's
+   * `savedTitle` here meant Review asserted the old title while the session was
+   * created with the new one.
+   */
+  const reviewSetup: InterviewSetupState = selectedJobDescription
+    ? {
+        ...setup,
+        jobDescription: {
+          ...setup.jobDescription,
+          savedTitle: selectedJobDescription.title,
+          company: selectedJobDescription.company ?? "",
+          roleTitle: selectedJobDescription.roleTitle ?? "",
+        },
+      }
+    : setup;
 
   // Persist setup as the user moves through the wizard so a refresh keeps
   // their progress. Wait until after the stored setup is hydrated so we don't
@@ -418,6 +437,28 @@ function SetupWizard() {
         jobDescriptionId = setup.jobDescription.savedId;
       }
 
+      /**
+       * The setup as it should be recorded, with the job-description fields
+       * re-read from the library row.
+       *
+       * Every writer below takes this rather than `setup`. Refreshing only the
+       * `launch_meta` call left `saveInterviewLaunch` — the sessionStorage
+       * payload the interview screen actually boots from — spreading the config
+       * copies, so a company renamed on the library page reached the server but
+       * not the screen.
+       */
+      const refreshedSetup: InterviewSetupState = {
+        ...setup,
+        jobDescription: {
+          ...setup.jobDescription,
+          savedTitle: jobDescriptionTitle,
+          company:
+            selectedJobDescription?.company ?? setup.jobDescription.company,
+          roleTitle:
+            selectedJobDescription?.roleTitle ?? setup.jobDescription.roleTitle,
+        },
+      };
+
       let resumeId: string | null = null;
       let resumeTitle: string | null = setup.resume.savedTitle;
 
@@ -475,32 +516,18 @@ function SetupWizard() {
           jobDescriptionId,
           resumeId,
           personaConfig: setup.personaConfig,
-          // Built from a setup whose job-description fields have been refreshed
-          // from the library row, so the interviewer is briefed with the
-          // company as it is now rather than as it was when this was picked.
-          launchMeta: buildLaunchMetaFromSetup({
-            ...setup,
-            jobDescription: {
-              ...setup.jobDescription,
-              savedTitle: jobDescriptionTitle,
-              company:
-                selectedJobDescription?.company ?? setup.jobDescription.company,
-              roleTitle:
-                selectedJobDescription?.roleTitle ??
-                setup.jobDescription.roleTitle,
-            },
-          }),
+          launchMeta: buildLaunchMetaFromSetup(refreshedSetup),
         }),
       });
 
       const { session } = await readJson<{ session: { id: string } }>(response);
 
       saveInterviewLaunch({
-        ...setup,
+        ...refreshedSetup,
         practiceMode: launchPracticeMode,
         sessionId: session.id,
         jobDescription: {
-          ...setup.jobDescription,
+          ...refreshedSetup.jobDescription,
           savedId: jobDescriptionId,
           savedTitle: jobDescriptionTitle,
         },
@@ -780,7 +807,7 @@ function SetupWizard() {
 
           {currentStep === "review" && (
             <FinalizeStep
-              setup={setup}
+              setup={reviewSetup}
               onUpdate={updateSetup}
               onMicCheck={checkMicrophone}
               microphoneStatus={microphoneStatus}

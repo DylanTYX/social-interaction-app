@@ -148,6 +148,10 @@ export function useJobDescriptions(
         const payload = await readJson<ApiPayload>(response);
         const jd = payload.jobDescription;
         if (!jd) throw new Error("Server returned no job description.");
+        // Clear whatever a previous failure left behind. Only `refresh` used to
+        // do this, so a save that succeeded on the second try still rendered
+        // the first try's red message underneath it.
+        setError(null);
         setItems((current) => [jd, ...current]);
         return jd;
       } catch (err) {
@@ -178,6 +182,10 @@ export function useJobDescriptions(
         const payload = await readJson<ApiPayload>(response);
         const jd = payload.jobDescription;
         if (!jd) throw new Error("Server returned no job description.");
+        // Clear whatever a previous failure left behind. Only `refresh` used to
+        // do this, so a save that succeeded on the second try still rendered
+        // the first try's red message underneath it.
+        setError(null);
         setItems((current) => [jd, ...current]);
         return jd;
       } catch (err) {

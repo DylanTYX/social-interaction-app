@@ -226,17 +226,19 @@ function normalizeJobDescriptionConfig(
     company: jobDescription?.company ?? defaults.company,
     sourceUrl: jobDescription?.sourceUrl ?? defaults.sourceUrl,
     /**
-     * A chosen job description wins over a draft, always.
+     * Always empty. The field is vestigial for job descriptions.
      *
-     * These are the only two states that matter — composing something new, or
-     * having picked one — and letting both hold a value is what allowed them to
-     * disagree. A blob written by an older build can carry both (paste mode
-     * stored the text, then launch set an id elsewhere), and `LoopStep` reads
-     * `rawText` to decide whether it can suggest rounds, so a stale draft
-     * sitting behind a selected job description would have it suggesting rounds
-     * from the wrong document.
+     * It used to hold a draft that the wizard composed in place and turned into
+     * a record at launch. Creation now happens in a dialog that owns its own
+     * draft, and nothing reads this: the picker doesn't, `launchInterview`
+     * doesn't, and `LoopStep` takes its text from the library row. Leaving a
+     * value here would only mean storage carrying text no surface can show —
+     * which is exactly what a blob written by an older build contains.
+     *
+     * Kept on the type because `ResumeSetupConfig` shares the shape and resumes
+     * still compose in place.
      */
-    rawText: savedId ? "" : (jobDescription?.rawText ?? defaults.rawText),
+    rawText: "",
     savedId,
     savedTitle: jobDescription?.savedTitle ?? defaults.savedTitle,
   };
