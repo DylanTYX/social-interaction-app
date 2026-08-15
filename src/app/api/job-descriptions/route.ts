@@ -14,11 +14,11 @@ import {
   unauthorized,
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
+import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { UsageCollector } from "@/lib/api/token-usage";
 
 export const runtime = "nodejs";
 
-const MAX_JOB_DESCRIPTION_CHARS = 30_000;
 const MIN_JOB_DESCRIPTION_CHARS = 80;
 
 export async function GET(request: Request) {

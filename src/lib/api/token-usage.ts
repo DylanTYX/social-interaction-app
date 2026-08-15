@@ -21,7 +21,9 @@ export type LlmCallSite =
   | "embedding"
   | "coach"
   // One-off at document upload, not on the per-turn hot path.
-  | "resume-profile";
+  | "resume-profile"
+  // Also upload-time: stripping page furniture out of a pasted job posting.
+  | "jd-clean";
 
 /** The shape OpenAI returns on both chat completions and embeddings. */
 export interface OpenAIUsage {
