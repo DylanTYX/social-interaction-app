@@ -250,6 +250,40 @@ export async function listSessions(
 }
 
 /**
+ * How many of the user's sessions are attached to one job description.
+ *
+ * Exists to answer a question the delete dialog could not: deleting a JD nulls
+ * `job_description_id` on every session using it and cascades the JD's chunks,
+ * so an interview still in progress loses its grounding the moment it resumes.
+ * The dialog said "Existing transcripts are unaffected", which is true of the
+ * message rows and reads as though nothing in flight is harmed.
+ *
+ * A count query rather than `listSessions` with a new filter: that path selects
+ * 23 columns plus an aggregate join over `interview_turn_analyses` to build a
+ * page of cards, and this needs one integer. Same shape as
+ * `countJobDescriptionChunks`, and `sessions_job_description_idx` (migration
+ * 0002) already covers the predicate.
+ *
+ * RLS scopes it to the caller, so there is no `user_id` filter here.
+ */
+export async function countSessionsForJobDescription(
+  supabase: SupabaseClient,
+  jobDescriptionId: string,
+  options: { status?: SessionStatus } = {},
+): Promise<number> {
+  let request = supabase
+    .from("interview_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("job_description_id", jobDescriptionId);
+
+  if (options.status) request = request.eq("status", options.status);
+
+  const { count, error } = await request;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * Every session belonging to one interview loop, in the order it was run.
  *
  * Backed by `sessions_loop_idx`. Before migration 0009 the loop id lived inside
