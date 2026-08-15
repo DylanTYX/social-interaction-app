@@ -271,14 +271,24 @@ export default function JobDescriptionsPage() {
               </Button>
             </div>
           ) : sortedItems.length === 0 ? (
+            /**
+             * Describes the state; it does not issue instructions.
+             *
+             * It used to be titled "Add a job description to ground the
+             * interview" with a "Start an interview with a JD" button pointing
+             * at the wizard. Both were wrong from here. The button was circular
+             * — you have none, so the wizard would send you straight back to
+             * add one — and the title told you to do something this card cannot
+             * do, while the form that does it sat directly above, on screen.
+             *
+             * The description went too: this page already explains chunking and
+             * embedding in the add card's header, and saying it a third time is
+             * how a page ends up feeling cluttered.
+             */
             <EmptyStateCard
               icon={<FileText className="h-6 w-6" />}
-              title="Add a job description to ground the interview"
-              description="Paste the posting or upload a PDF once — we'll pull the most relevant bullets into each question."
-              primaryAction={{
-                label: "Start an interview with a JD",
-                href: "/simulate/setup",
-              }}
+              title="No saved job descriptions yet"
+              description="Anything you add above is saved here, ready to reuse in any interview."
             />
           ) : (
             sortedItems.map((item, index) => {
