@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { FileText, Trash2, Upload, Sparkles } from "lucide-react";
+import {
+  ExternalLink,
+  FileText,
+  Pencil,
+  Search,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
@@ -21,9 +29,19 @@ import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { JobDescriptionEditDialog } from "@/components/dashboard/job-description-edit-dialog";
+import {
   useJobDescriptions,
+  type JobDescriptionSummary,
   type JobDescriptionUsage,
 } from "@/hooks/use-job-descriptions";
+import { distinctCompanies } from "@/lib/db/job-descriptions";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
@@ -61,6 +79,18 @@ function describeDeleteConsequences(
 }
 
 export default function JobDescriptionsPage() {
+  const [query, setQuery] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("all");
+
+  // Debounced so a refetch does not fire on every keystroke — the same 300ms
+  // the sessions page uses. Filtering runs in Postgres, so each change is a
+  // request rather than an array pass.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const {
     items,
     status,
@@ -68,9 +98,24 @@ export default function JobDescriptionsPage() {
     refresh,
     uploadText,
     uploadPdf,
+    update,
     remove,
     countUsage,
-  } = useJobDescriptions();
+  } = useJobDescriptions({ query: debouncedQuery || undefined });
+
+  /**
+   * The company filter runs here rather than in Postgres, unlike the search.
+   *
+   * The two are not symmetrical. Search narrows a set the client cannot see all
+   * of, so it has to run server-side or it would only ever search the rows that
+   * happened to load. The company dropdown is *built from the loaded rows* — you
+   * can only pick a company you can already see — so filtering it here is
+   * complete by construction, and keeping it out of the fetch means `items`
+   * stays the unfiltered set the options are derived from. Deriving options
+   * from a server-filtered list would collapse the dropdown to whichever
+   * company you had picked, with no way back to "all".
+   */
+  const companyOptions = useMemo(() => distinctCompanies(items), [items]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
@@ -109,19 +154,30 @@ export default function JobDescriptionsPage() {
   // list responds the moment the user confirms rather than after a round trip.
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [roleTitle, setRoleTitle] = useState("");
+  const [company, setCompany] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<JobDescriptionSummary | null>(null);
+
+  // Read from the debounced value, not the raw input: it decides which *empty*
+  // state to show, and it must agree with the filters the list was fetched
+  // with. Keying it on `query` would flash "no matches" during the 300ms
+  // before the request that finds them has even gone out.
+  const hasFilters = debouncedQuery.trim() !== "" || companyFilter !== "all";
 
   // `updatedAt` desc, numerically. It was `createdAt` with `localeCompare`,
   // which meant editing an entry never moved it — and personas, the sibling
   // library page, has always sorted by `updatedAt`.
   const sortedItems = useMemo(
     () =>
-      [...items].sort(
-        (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
-      ),
-    [items],
+      items
+        .filter(
+          (item) => companyFilter === "all" || item.company === companyFilter,
+        )
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
+    [items, companyFilter],
   );
 
   const handlePasteSubmit = async () => {
@@ -134,12 +190,11 @@ export default function JobDescriptionsPage() {
     const created = await uploadText({
       rawText: pastedText,
       roleTitle: roleTitle.trim() || null,
+      company: company.trim() || null,
+      sourceUrl: sourceUrl.trim() || null,
     });
     setSubmitting(false);
-    if (created) {
-      setPastedText("");
-      setRoleTitle("");
-    }
+    if (created) clearForm();
   };
 
   const handleUploadFile = async (file: File) => {
@@ -148,12 +203,19 @@ export default function JobDescriptionsPage() {
     const created = await uploadPdf({
       file,
       roleTitle: roleTitle.trim() || null,
+      company: company.trim() || null,
+      sourceUrl: sourceUrl.trim() || null,
     });
     setSubmitting(false);
-    if (created) {
-      setRoleTitle("");
-    }
+    if (created) clearForm();
   };
+
+  function clearForm() {
+    setPastedText("");
+    setRoleTitle("");
+    setCompany("");
+    setSourceUrl("");
+  }
 
   return (
     <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
@@ -205,13 +267,38 @@ export default function JobDescriptionsPage() {
             </ChoiceChip>
           </div>
 
+          {/* Company first: it is the field that makes a library of more than
+              a few postings navigable, and the one the title falls back to. */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="jd-company">Company (optional)</Label>
+              <Input
+                id="jd-company"
+                placeholder="e.g. Monzo"
+                value={company}
+                onChange={(event) => setCompany(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role-title">Applied role title (optional)</Label>
+              <Input
+                id="role-title"
+                placeholder="e.g. Senior Product Manager"
+                value={roleTitle}
+                onChange={(event) => setRoleTitle(event.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="role-title">Applied role title (optional)</Label>
+            <Label htmlFor="jd-source-url">Link to the posting (optional)</Label>
             <Input
-              id="role-title"
-              placeholder="e.g. Senior Product Manager"
-              value={roleTitle}
-              onChange={(event) => setRoleTitle(event.target.value)}
+              id="jd-source-url"
+              type="url"
+              inputMode="url"
+              placeholder="https://..."
+              value={sourceUrl}
+              onChange={(event) => setSourceUrl(event.target.value)}
             />
           </div>
 
@@ -289,7 +376,39 @@ export default function JobDescriptionsPage() {
             Pick any of these inside the interview setup wizard.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-4">
+          {/* Hidden until there is enough to search. A filter bar above three
+              rows is furniture. */}
+          {(items.length > 0 || hasFilters) && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative min-w-50 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search title, role, or company..."
+                  aria-label="Search job descriptions"
+                  className="pl-9"
+                />
+              </div>
+              {companyOptions.length > 0 && (
+                <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                  <SelectTrigger className="w-50" aria-label="Filter by company">
+                    <SelectValue placeholder="Company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All companies</SelectItem>
+                    {companyOptions.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           {status === "loading" && sortedItems.length === 0 ? (
             <DocumentListSkeleton />
           ) : status === "error" ? (
@@ -302,6 +421,26 @@ export default function JobDescriptionsPage() {
               description={error ?? "Something went wrong."}
               onRetry={() => void refresh()}
             />
+          ) : sortedItems.length === 0 && hasFilters ? (
+            // A distinct state from an empty library: telling someone who has
+            // twenty saved postings to "add their first one" because they typed
+            // a typo would be nonsense.
+            <div className="rounded-xl border border-dashed border-border p-6 text-center">
+              <p className="text-sm font-medium text-gray-800">
+                No job descriptions match those filters
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  setQuery("");
+                  setCompanyFilter("all");
+                }}
+              >
+                Clear filters
+              </Button>
+            </div>
           ) : sortedItems.length === 0 ? (
             <EmptyStateCard
               icon={<FileText className="h-6 w-6" />}
@@ -331,11 +470,40 @@ export default function JobDescriptionsPage() {
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {item.title}
                     </p>
+                    {/* Company leads the secondary line — it is what tells two
+                        postings for the same role apart. Parts are assembled
+                        and joined rather than interpolated with separators, so
+                        a missing one does not leave a stranded "·". */}
                     <p className="text-xs text-gray-500 truncate">
-                      {item.roleTitle ?? "No role title"} ·{" "}
-                      {formatDateTime(item.createdAt)}
+                      {[
+                        item.company,
+                        item.roleTitle,
+                        formatDateTime(item.createdAt),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
+                  {item.sourceUrl && (
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="shrink-0 rounded-md p-2 text-muted-foreground opacity-60 transition-opacity hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                      aria-label={`Open the posting for ${item.title} in a new tab`}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => setEditing(item)}
+                    aria-label={`Edit ${item.title}`}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -351,6 +519,14 @@ export default function JobDescriptionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <JobDescriptionEditDialog
+        item={editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+        onSave={async (id, patch) => Boolean(await update(id, patch))}
+      />
 
       <ConfirmDeleteDialog
         open={pendingDelete !== null}

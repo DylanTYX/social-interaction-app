@@ -67,7 +67,6 @@ export interface JobDescriptionUsage {
 
 export interface JobDescriptionFilters {
   query?: string;
-  company?: string;
 }
 
 /**
@@ -83,7 +82,6 @@ async function loadJobDescriptions(
 ): Promise<JobDescriptionSummary[]> {
   const params = new URLSearchParams({ limit: "50" });
   if (filters.query?.trim()) params.set("query", filters.query.trim());
-  if (filters.company) params.set("company", filters.company);
 
   const response = await fetch(`/api/job-descriptions?${params}`, {
     cache: "no-store",
@@ -120,11 +118,8 @@ export function useJobDescriptions(
   // render. `useLibraryList` refetches whenever `load` changes, which is
   // exactly the behaviour wanted here — and callers that pass no filters get a
   // stable loader and the old behaviour untouched.
-  const { query, company } = filters;
-  const load = useCallback(
-    () => loadJobDescriptions({ query, company }),
-    [query, company],
-  );
+  const { query } = filters;
+  const load = useCallback(() => loadJobDescriptions({ query }), [query]);
 
   const { items, status, error, refresh, setItems, setError } = useLibraryList(
     load,

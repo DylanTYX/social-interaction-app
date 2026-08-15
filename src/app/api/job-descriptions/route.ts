@@ -31,12 +31,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 20, max: 50 });
 
-    // Filtering runs in Postgres. The list is capped at 50 rows, so a filter
-    // applied in the page would only ever search the page you had loaded.
+    // Search runs in Postgres. The list is capped at 50 rows, so searching in
+    // the page would only ever look at the rows that happened to load.
     const jobDescriptions = await listJobDescriptions(supabase, {
       limit,
       query: searchParams.get("query")?.slice(0, 200) ?? undefined,
-      company: searchParams.get("company")?.slice(0, 200) ?? undefined,
     });
     return NextResponse.json({ jobDescriptions });
   } catch (error) {

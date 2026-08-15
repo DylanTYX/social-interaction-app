@@ -152,19 +152,19 @@ export async function createJobDescription(input: {
 
 export async function listJobDescriptions(
   supabase: SupabaseClient,
-  options: { limit?: number; query?: string; company?: string } = {},
+  options: { limit?: number; query?: string } = {},
 ): Promise<JobDescriptionRecord[]> {
-  const { limit = 20, query, company } = options;
+  const { limit = 20, query } = options;
   let request = supabase
     .from("job_descriptions")
     .select(JOB_DESCRIPTION_COLUMNS)
     .order("created_at", { ascending: false });
 
-  // Filtered in Postgres rather than in the page, matching `listSessions`. The
-  // library is capped at 50 rows a page, so a client-side filter would silently
-  // search only the page you happened to have loaded.
-  if (company) request = request.eq("company", company);
-
+  // Search runs in Postgres rather than in the page: the library is capped at
+  // 50 rows, so a client-side search would only ever look at the rows that
+  // happened to load. The company filter is the opposite case and stays on the
+  // client — its dropdown is built from the loaded rows, so it is complete by
+  // construction. See the library page.
   const trimmed = query?.trim();
   if (trimmed) {
     // `%`, `,` and parens would otherwise break out of the `or` filter's own
