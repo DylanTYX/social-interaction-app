@@ -364,6 +364,8 @@ function SetupWizard() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               roleTitle: setup.jobDescription.roleTitle,
+              company: setup.jobDescription.company,
+              sourceUrl: setup.jobDescription.sourceUrl,
               rawText: setup.jobDescription.rawText,
             }),
           });

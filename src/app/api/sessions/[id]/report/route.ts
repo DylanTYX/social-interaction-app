@@ -52,6 +52,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
       id: string;
       title: string;
       roleTitle: string | null;
+      company: string | null;
     } | null = null;
     if (session.jobDescriptionId) {
       const record = await getJobDescription(
@@ -63,6 +64,7 @@ export async function GET(_request: Request, ctx: RouteParams) {
           id: record.id,
           title: record.title,
           roleTitle: record.roleTitle,
+          company: record.company,
         };
       }
     }
