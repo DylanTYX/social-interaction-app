@@ -10,7 +10,6 @@ import {
   Search,
   Sparkles,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -40,6 +39,7 @@ import { JobDescriptionEditDialog } from "@/components/dashboard/job-description
 import { JobDescriptionPreviewDialog } from "@/components/dashboard/job-description-preview-dialog";
 import { TidyJobDescription } from "@/components/setup/tidy-job-description";
 import { Field } from "@/components/ui/field";
+import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
 import {
   useJobDescriptions,
   type JobDescriptionSummary,
@@ -90,7 +90,6 @@ export default function JobDescriptionsPage() {
    */
   const companyOptions = useMemo(() => distinctCompanies(items), [items]);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   /**
@@ -322,40 +321,12 @@ export default function JobDescriptionsPage() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) {
-                    void handleUploadFile(file);
-                  }
-                }}
-              />
-              <div className="flex flex-col items-center gap-2 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-                  <Upload className="h-5 w-5" />
-                </div>
-                <p className="text-sm font-medium text-gray-800">
-                  Upload a PDF job description
-                </p>
-                <p className="text-xs text-gray-500">
-                  Image-only PDFs are not supported in this version.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={submitting}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {submitting ? "Uploading..." : "Choose PDF"}
-                </Button>
-              </div>
-            </div>
+            <PdfDropZone
+              onSelect={(file) => void handleUploadFile(file)}
+              busy={submitting}
+              label="Upload a PDF job description"
+              hint="Image-only PDFs are not supported in this version."
+            />
           )}
 
           {(formError || error) && (

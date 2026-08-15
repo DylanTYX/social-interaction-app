@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CheckCircle2, Eye, FileText, Trash2, Upload } from "lucide-react";
+import { CheckCircle2, Eye, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
   type JobDescriptionUsage,
 } from "@/hooks/use-job-descriptions";
 import { TidyJobDescription } from "@/components/setup/tidy-job-description";
+import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
 import { JobDescriptionPreviewDialog } from "@/components/dashboard/job-description-preview-dialog";
 import { describeJobDescriptionDelete } from "@/lib/job-description-copy";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,6 @@ export function JobDescriptionPicker({
 }: JobDescriptionPickerProps) {
   const { items, status, error, uploadText, uploadPdf, remove, countUsage } =
     useJobDescriptions();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<JobDescriptionSummary | null>(
@@ -208,7 +208,6 @@ export function JobDescriptionPicker({
               value={value}
               onChange={onChange}
               busy={busy}
-              fileInputRef={fileInputRef}
               onSavePaste={handleSavePaste}
               onSelectFile={handleSelectFile}
               onCancel={items.length > 0 ? () => setAdding(false) : undefined}
@@ -362,7 +361,6 @@ function AddPanel({
   value,
   onChange,
   busy,
-  fileInputRef,
   onSavePaste,
   onSelectFile,
   onCancel,
@@ -370,7 +368,6 @@ function AddPanel({
   value: JobDescriptionSetupConfig;
   onChange: (next: JobDescriptionSetupConfig) => void;
   busy: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onSavePaste: () => void;
   onSelectFile: (file: File) => void;
   onCancel?: () => void;
@@ -490,40 +487,12 @@ function AddPanel({
           </Button>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border bg-muted/50 p-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) onSelectFile(file);
-            }}
-          />
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Upload className="h-5 w-5" />
-            </div>
-            <p className="text-sm font-medium text-gray-800">
-              Upload a PDF job description
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Text is extracted and embedded automatically. Image-only PDFs are
-              not supported in this version.
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {busy ? "Uploading..." : "Choose PDF"}
-            </Button>
-          </div>
-        </div>
+        <PdfDropZone
+          onSelect={onSelectFile}
+          busy={busy}
+          label="Upload a PDF job description"
+          hint="Text is extracted and embedded automatically. Image-only PDFs are not supported in this version."
+        />
       )}
 
       {/* Stated because it is otherwise a surprise: the wizard writes to the
