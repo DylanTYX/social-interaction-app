@@ -17,13 +17,24 @@ export interface VoiceSetupConfig {
 
 export type JobDescriptionSetupMode = "paste" | "upload" | "saved";
 
+/**
+ * How a job description is attached to a session.
+ *
+ * There is one library. The wizard either picks a row from it or adds one to
+ * it; it never holds a private copy, and a job description is never
+ * session-only. Everything below follows from that.
+ *
+ * The fields used to mean three different things depending on `mode`, and the
+ * three modes mixed two verbs — "paste" and "upload" both *created* a record
+ * while "saved" *selected* one. Once `savedId` was set the mode was decorative,
+ * which is how a job description picked from the library could end up rendering
+ * as an uploaded PDF, complete with a Replace button, and launch cleanly.
+ */
 export interface JobDescriptionSetupConfig {
   enabled: boolean;
   /**
-   * How the user is providing the JD content:
-   *   - "paste"  → typed/pasted text in `rawText`; record is created at launch.
-   *   - "upload" → PDF was uploaded and a record already exists; `savedId` is set.
-   *   - "saved"  → user picked an existing record from their library.
+   * Which add-method the picker is showing. **UI state only** — nothing outside
+   * the picker may branch on it, and launch does not read it.
    */
   mode: JobDescriptionSetupMode;
   roleTitle: string;
@@ -33,13 +44,18 @@ export interface JobDescriptionSetupConfig {
    */
   company: string;
   sourceUrl: string;
+  /**
+   * An unsaved draft, meaningful only while composing a new job description.
+   * Cleared the moment one is saved or selected — see `savedId`.
+   */
   rawText: string;
   /**
-   * Optional reference to an existing `job_descriptions` row. Set whenever
-   * `mode` is "upload" or "saved".
+   * The chosen `job_descriptions` row. **This is the only field that decides
+   * which job description a session runs against**, and the only one launch
+   * reads.
    */
   savedId: string | null;
-  /** Friendly label shown in summaries (file name, picked title, etc.). */
+  /** Friendly label shown in summaries. */
   savedTitle: string | null;
 }
 
@@ -201,14 +217,27 @@ function normalizeJobDescriptionConfig(
       ? jobDescription.mode
       : defaults.mode;
 
+  const savedId = jobDescription?.savedId ?? defaults.savedId;
+
   return {
     enabled: Boolean(jobDescription?.enabled),
     mode,
     roleTitle: jobDescription?.roleTitle ?? defaults.roleTitle,
     company: jobDescription?.company ?? defaults.company,
     sourceUrl: jobDescription?.sourceUrl ?? defaults.sourceUrl,
-    rawText: jobDescription?.rawText ?? defaults.rawText,
-    savedId: jobDescription?.savedId ?? defaults.savedId,
+    /**
+     * A chosen job description wins over a draft, always.
+     *
+     * These are the only two states that matter — composing something new, or
+     * having picked one — and letting both hold a value is what allowed them to
+     * disagree. A blob written by an older build can carry both (paste mode
+     * stored the text, then launch set an id elsewhere), and `LoopStep` reads
+     * `rawText` to decide whether it can suggest rounds, so a stale draft
+     * sitting behind a selected job description would have it suggesting rounds
+     * from the wrong document.
+     */
+    rawText: savedId ? "" : (jobDescription?.rawText ?? defaults.rawText),
+    savedId,
     savedTitle: jobDescription?.savedTitle ?? defaults.savedTitle,
   };
 }

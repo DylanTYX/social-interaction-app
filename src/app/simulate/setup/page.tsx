@@ -37,6 +37,7 @@ import {
   type PersonaLibraryEntry,
 } from "@/lib/persona-library";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
+import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { LoopStep } from "@/components/setup/loop-step";
 import { ContextStep } from "@/components/setup/context-step";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -173,6 +174,28 @@ function SetupWizard() {
   } = usePersonaLibrary();
 
   const personaLibraryLoading = personaLibraryStatus === "loading";
+
+  /**
+   * The selected job description's text, for the Rounds step's "suggest from
+   * job description" action.
+   *
+   * It used to read `setup.jobDescription.rawText`, which only ever holds a
+   * *draft* — both the upload and the library paths cleared it — so the suggest
+   * button was silently unavailable for every saved and uploaded job
+   * description, which is to say for almost all of them. Now that a chosen job
+   * description is always a library row, the text comes from the library.
+   *
+   * A second `useJobDescriptions()` alongside the picker's own, and so a second
+   * GET of at most fifty rows on this page. Cheap, and the alternative —
+   * threading the hook's whole surface down through `ContextStep` into the
+   * picker — couples three components to avoid one small request.
+   */
+  const { items: jobDescriptionLibrary } = useJobDescriptions();
+  const jobDescriptionText = setup.jobDescription.enabled
+    ? (jobDescriptionLibrary.find(
+        (item) => item.id === setup.jobDescription.savedId,
+      )?.rawText ?? "")
+    : "";
 
   // Persist setup as the user moves through the wizard so a refresh keeps
   // their progress. Wait until after the stored setup is hydrated so we don't
@@ -349,55 +372,31 @@ function SetupWizard() {
         setup.interviewLoop,
       );
       let jobDescriptionId: string | null = null;
-      let jobDescriptionTitle: string | null = setup.jobDescription.savedTitle;
+      // Constant now that launch no longer creates a job description and so no
+      // longer learns a title back from the server.
+      const jobDescriptionTitle: string | null =
+        setup.jobDescription.savedTitle;
 
+      /**
+       * Launch selects; it never creates.
+       *
+       * It used to POST a new job description whenever the mode was "paste",
+       * and the id it got back went only into the sessionStorage launch payload
+       * — `saveInterviewSetup(setup)` above runs *before* this, so the setup the
+       * wizard rehydrates from never learned a row existed. Launching twice
+       * from the same draft therefore created two identical rows and paid for
+       * two chunk-and-embed runs, with no dedupe anywhere to catch it.
+       *
+       * The picker now saves on an explicit action, so by the time we are here
+       * a job description in play always has an id.
+       */
       if (setup.jobDescription.enabled) {
-        if (setup.jobDescription.mode === "paste") {
-          if (setup.jobDescription.rawText.trim().length < 80) {
-            throw new Error(
-              "Paste at least 80 characters of job description text.",
-            );
-          }
-
-          const jdResponse = await fetch("/api/job-descriptions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roleTitle: setup.jobDescription.roleTitle,
-              company: setup.jobDescription.company,
-              sourceUrl: setup.jobDescription.sourceUrl,
-              rawText: setup.jobDescription.rawText,
-            }),
-          });
-
-          if (!jdResponse.ok) {
-            const detail = (await jdResponse.json().catch(() => null)) as {
-              error?: string;
-            } | null;
-            throw new Error(
-              detail?.error ??
-                `Failed to prepare job description context (HTTP ${jdResponse.status}).`,
-            );
-          }
-
-          const { jobDescription } = (await jdResponse.json()) as {
-            jobDescription: { id: string; title: string };
-          };
-          jobDescriptionId = jobDescription.id;
-          jobDescriptionTitle = jobDescription.title;
-        } else if (
-          setup.jobDescription.mode === "upload" ||
-          setup.jobDescription.mode === "saved"
-        ) {
-          if (!setup.jobDescription.savedId) {
-            throw new Error(
-              setup.jobDescription.mode === "upload"
-                ? "Upload a PDF before launching."
-                : "Pick a saved job description before launching.",
-            );
-          }
-          jobDescriptionId = setup.jobDescription.savedId;
+        if (!setup.jobDescription.savedId) {
+          throw new Error(
+            "Choose or add a job description before launching, or turn it off.",
+          );
         }
+        jobDescriptionId = setup.jobDescription.savedId;
       }
 
       let resumeId: string | null = null;
@@ -593,14 +592,11 @@ function SetupWizard() {
           ? ""
           : "Describe the role in at least 20 characters.";
       }
-      if (setup.jobDescription.enabled) {
-        if (setup.jobDescription.mode === "paste") {
-          if (setup.jobDescription.rawText.trim().length < 80) {
-            return "Paste at least 80 characters of the job description, or turn it off.";
-          }
-        } else if (!setup.jobDescription.savedId) {
-          return "Choose or upload a job description, or turn it off.";
-        }
+      // One condition, because there is now one thing to check: a job
+      // description is either chosen or it is not. `mode` is the picker's own
+      // display state and says nothing about whether we can launch.
+      if (setup.jobDescription.enabled && !setup.jobDescription.savedId) {
+        return "Choose or add a job description, or turn it off.";
       }
       if (setup.resume.enabled) {
         if (setup.resume.mode === "paste") {
@@ -707,9 +703,7 @@ function SetupWizard() {
             <LoopStep
               value={setup.interviewLoop}
               practiceMode={setup.practiceMode}
-              jobDescriptionText={
-                setup.jobDescription.enabled ? setup.jobDescription.rawText : ""
-              }
+              jobDescriptionText={jobDescriptionText}
               personaLibrary={personaLibrary}
               onChange={(interviewLoop) => updateSetup({ interviewLoop })}
             />
