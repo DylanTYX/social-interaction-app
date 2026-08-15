@@ -176,7 +176,10 @@ export default function DrillsPage() {
    */
   useEffect(() => {
     if (loading) {
-      coachingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      coachingRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }, [loading]);
 
@@ -190,173 +193,171 @@ export default function DrillsPage() {
 
   return (
     <div className="space-y-6 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
-      {/* The gradient stays full-bleed; the reading column is nested inside it,
-          so the page does not become a pale stripe on the shell's gray. Without
-          a cap, coaching prose ran the full width of the main column — roughly
-          1300px on a 1440px screen. Capped twice over: this column bounds the
-          cards, and `max-w-prose` inside `CoachingResult` bounds the paragraphs. */}
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <PageHeader
-          eyebrow="Quick drills"
-          title="One question. Instant feedback."
-          description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
-          icon={<Dumbbell className="h-6 w-6" />}
-          iconColor="pink"
-        />
+      {/* Full width, like every other dashboard page.
+          A `max-w-5xl` reading column was tried here and removed: the readability
+          problem it solved is already solved one level down, where the prose
+          blocks inside `CoachingResult` carry `max-w-prose`. Capping the page as
+          well only made drills the one dashboard route with its own width rule. */}
+      <PageHeader
+        eyebrow="Quick drills"
+        title="One question. Instant feedback."
+        description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
+        icon={<Dumbbell className="h-6 w-6" />}
+        iconColor="pink"
+      />
 
-        {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
-            `aria-pressed` and no focus-visible ring, so selection was conveyed by
-            colour alone and a keyboard user got nothing. The shared component has
-            existed for exactly this and was only used in the setup wizard. */}
-        <div className="flex flex-wrap gap-2">
+      {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
+          `aria-pressed` and no focus-visible ring, so selection was conveyed by
+          colour alone and a keyboard user got nothing. The shared component has
+          existed for exactly this and was only used in the setup wizard. */}
+      <div className="flex flex-wrap gap-2">
+        <ChoiceChip
+          selected={category === "all"}
+          onClick={() => handleCategory("all")}
+        >
+          All
+        </ChoiceChip>
+        {DRILL_CATEGORIES.map((cat) => (
           <ChoiceChip
-            selected={category === "all"}
-            onClick={() => handleCategory("all")}
+            key={cat.id}
+            selected={category === cat.id}
+            onClick={() => handleCategory(cat.id)}
           >
-            All
+            {cat.label}
           </ChoiceChip>
-          {DRILL_CATEGORIES.map((cat) => (
-            <ChoiceChip
-              key={cat.id}
-              selected={category === cat.id}
-              onClick={() => handleCategory(cat.id)}
+        ))}
+      </div>
+
+      {/* Answer above, coaching below, both full width.
+
+          This was `lg:grid-cols-2`, and grid stretches: the coaching card runs
+          300-400px taller than this one, so the answer card grew that much dead
+          whitespace beneath an 8-row textarea. `Card` is `flex flex-col gap-6`
+          with no `flex-1` anywhere, so the slack pooled at the bottom rather
+          than being absorbed. Matched heights and that whitespace were the same
+          fact, and only one of them could be kept.
+
+          The split's one real benefit was the candidate's own answer sitting
+          beside the tightened rewrite. That comparison moved *inside* the
+          coaching block, where the two halves are the same text twice and so
+          cannot reproduce the mismatch that made this layout wrong.
+
+          `persona-step.tsx` made the same call for the same reason. */}
+      <Card className="shadow-soft">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-2">
+            <Badge variant="outline" className="capitalize">
+              {meta.label}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => requestNewQuestion()}
+              className="gap-1.5 text-gray-500"
             >
-              {cat.label}
-            </ChoiceChip>
-          ))}
-        </div>
-
-        {/* Answer above, coaching below, both full width.
-
-            This was `lg:grid-cols-2`, and grid stretches: the coaching card runs
-            300-400px taller than this one, so the answer card grew that much dead
-            whitespace beneath an 8-row textarea. `Card` is `flex flex-col gap-6`
-            with no `flex-1` anywhere, so the slack pooled at the bottom rather
-            than being absorbed. Matched heights and that whitespace were the same
-            fact, and only one of them could be kept.
-
-            The split's one real benefit was the candidate's own answer sitting
-            beside the tightened rewrite. That comparison moved *inside* the
-            coaching block, where the two halves are the same text twice and so
-            cannot reproduce the mismatch that made this layout wrong.
-
-            `persona-step.tsx` made the same call for the same reason. */}
-        <Card className="shadow-soft">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <Badge variant="outline" className="capitalize">
-                {meta.label}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => requestNewQuestion()}
-                className="gap-1.5 text-gray-500"
-              >
-                <Shuffle className="h-3.5 w-3.5" />
-                New question
-              </Button>
-            </div>
-            <CardTitle className="pt-2 text-xl leading-snug">
-              {question.prompt}
-            </CardTitle>
-            <CardDescription>{meta.blurb}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Six rows rather than eight: the textarea spans the whole card
-                now, and `field-sizing-content` grows it from there as you type. */}
-            <Textarea
-              ref={answerRef}
-              aria-label="Your answer"
-              value={answer}
-              onChange={(event) => setAnswer(event.target.value)}
-              placeholder="Type your answer out loud, as if you were in the room…"
-              rows={6}
-              className="resize-none"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {answer.trim().length < 10
-                  ? "Write a bit more to get feedback"
-                  : `${answer.trim().split(/\s+/).length} words`}
-              </span>
-              <Button
-                onClick={() => void handleSubmit()}
-                disabled={answer.trim().length < 10 || loading}
-                className="gap-2"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Reviewing…
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    Get feedback
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Absent entirely until there is something in it.
-
-            Side by side, an empty state filled a column that existed anyway. Full
-            width and below the fold, a dashed placeholder would be a large box
-            promising something the user has not asked for yet — and its copy was
-            already carried by the page description above and by a button that
-            says "Get feedback". */}
-        {hasCoaching && (
-          <Card
-            ref={coachingRef}
-            className={cn("scroll-mt-8 shadow-soft", CONTENT_ENTER)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                Coaching
-              </CardTitle>
-              <CardDescription>
-                {answerEdited
-                  ? "You have edited your answer since this feedback — get feedback again to refresh it."
-                  : "A model answer, your answer tightened, and what to fix."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loading && <CoachingResultSkeleton />}
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              {result && (
+              <Shuffle className="h-3.5 w-3.5" />
+              New question
+            </Button>
+          </div>
+          <CardTitle className="pt-2 text-xl leading-snug">
+            {question.prompt}
+          </CardTitle>
+          <CardDescription>{meta.blurb}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Six rows rather than eight: the textarea spans the whole card
+              now, and `field-sizing-content` grows it from there as you type. */}
+          <Textarea
+            ref={answerRef}
+            aria-label="Your answer"
+            value={answer}
+            onChange={(event) => setAnswer(event.target.value)}
+            placeholder="Type your answer out loud, as if you were in the room…"
+            rows={6}
+            className="resize-none"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {answer.trim().length < 10
+                ? "Write a bit more to get feedback"
+                : `${answer.trim().split(/\s+/).length} words`}
+            </span>
+            <Button
+              onClick={() => void handleSubmit()}
+              disabled={answer.trim().length < 10 || loading}
+              className="gap-2"
+            >
+              {loading ? (
                 <>
-                  <CoachingResult
-                    result={result}
-                    originalAnswer={submittedAnswer}
-                  />
-                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                    <Button
-                      variant="ghost"
-                      onClick={handleRevise}
-                      className="gap-2 text-gray-500"
-                    >
-                      <PenLine className="h-4 w-4" />
-                      Revise this answer
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => nextQuestion()}
-                      className="gap-2"
-                    >
-                      <Shuffle className="h-4 w-4" />
-                      Next question
-                    </Button>
-                  </div>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Reviewing…
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Get feedback
                 </>
               )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Absent entirely until there is something in it.
+
+          Side by side, an empty state filled a column that existed anyway. Full
+          width and below the fold, a dashed placeholder would be a large box
+          promising something the user has not asked for yet — and its copy was
+          already carried by the page description above and by a button that
+          says "Get feedback". */}
+      {hasCoaching && (
+        <Card
+          ref={coachingRef}
+          className={cn("scroll-mt-8 shadow-soft", CONTENT_ENTER)}
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              Coaching
+            </CardTitle>
+            <CardDescription>
+              {answerEdited
+                ? "You have edited your answer since this feedback — get feedback again to refresh it."
+                : "A model answer, your answer tightened, and what to fix."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading && <CoachingResultSkeleton />}
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {result && (
+              <>
+                <CoachingResult
+                  result={result}
+                  originalAnswer={submittedAnswer}
+                />
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                  <Button
+                    variant="ghost"
+                    onClick={handleRevise}
+                    className="gap-2 text-gray-500"
+                  >
+                    <PenLine className="h-4 w-4" />
+                    Revise this answer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => nextQuestion()}
+                    className="gap-2"
+                  >
+                    <Shuffle className="h-4 w-4" />
+                    Next question
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <ConfirmDeleteDialog
         open={pendingSwitch !== null}
