@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ExternalLink,
+  Eye,
   FileText,
   Pencil,
   Search,
@@ -36,6 +37,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JobDescriptionEditDialog } from "@/components/dashboard/job-description-edit-dialog";
+import { JobDescriptionPreviewDialog } from "@/components/dashboard/job-description-preview-dialog";
+import { TidyJobDescription } from "@/components/setup/tidy-job-description";
+import { Field } from "@/components/ui/field";
 import {
   useJobDescriptions,
   type JobDescriptionSummary,
@@ -129,6 +133,9 @@ export default function JobDescriptionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [editing, setEditing] = useState<JobDescriptionSummary | null>(null);
+  const [previewing, setPreviewing] = useState<JobDescriptionSummary | null>(
+    null,
+  );
 
   // Read from the debounced value, not the raw input: it decides which *empty*
   // state to show, and it must agree with the filters the list was fetched
@@ -272,20 +279,41 @@ export default function JobDescriptionsPage() {
           </div>
 
           {mode === "paste" ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="paste-text">Job description text</Label>
-                <span className="text-xs text-gray-500">
-                  {pastedText.trim().length} chars
-                </span>
-              </div>
-              <Textarea
-                id="paste-text"
-                placeholder="Paste responsibilities, requirements, and context..."
-                value={pastedText}
-                onChange={(event) => setPastedText(event.target.value)}
-                className="min-h-40 resize-y"
+            <div className="space-y-4">
+              {/* `Field` owns the label row and its right-aligned counter. This
+                  was one of the three sites that rebuilt that as its own
+                  `flex justify-between`, which field.tsx names directly. */}
+              <Field
+                label="Job description text"
+                htmlFor="paste-text"
+                aside={
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {pastedText.trim().length} chars
+                  </span>
+                }
+              >
+                <Textarea
+                  id="paste-text"
+                  placeholder="Paste responsibilities, requirements, and context..."
+                  value={pastedText}
+                  onChange={(event) => setPastedText(event.target.value)}
+                  className="min-h-40 resize-y"
+                />
+              </Field>
+
+              {/* Also here, not only in the wizard. The two entry points were
+                  offering different capabilities for the same job. */}
+              <TidyJobDescription
+                rawText={pastedText}
+                onApply={(result) => {
+                  setPastedText(result.cleanedText);
+                  // Filled in only, never overwritten: what was typed beats
+                  // what was inferred from the page.
+                  setCompany((current) => current || (result.company ?? ""));
+                  setRoleTitle((current) => current || (result.roleTitle ?? ""));
+                }}
               />
+
               <Button
                 onClick={() => void handlePasteSubmit()}
                 disabled={submitting}
@@ -468,6 +496,15 @@ export default function JobDescriptionsPage() {
                     variant="ghost"
                     size="icon"
                     className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => setPreviewing(item)}
+                    aria-label={`Preview ${item.title}`}
+                  >
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => setEditing(item)}
                     aria-label={`Edit ${item.title}`}
                   >
@@ -488,6 +525,13 @@ export default function JobDescriptionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <JobDescriptionPreviewDialog
+        item={previewing}
+        onOpenChange={(open) => {
+          if (!open) setPreviewing(null);
+        }}
+      />
 
       <JobDescriptionEditDialog
         item={editing}

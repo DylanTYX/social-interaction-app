@@ -22,21 +22,24 @@ export interface JobDescriptionPatch {
   company: string | null;
   sourceUrl: string | null;
   notes: string | null;
+  /** Sent only when actually changed; re-embedding is not free. */
+  rawText?: string;
 }
 
 /**
- * Edit a saved job description's metadata.
- *
- * The text itself is not editable, and that is a data-integrity constraint
- * rather than an oversight: `raw_text` is chunked and embedded once at
- * creation, so editing it without re-running both would leave the retrieval
- * index answering from a document the library no longer displays. Replacing the
- * text means saving a new JD.
+ * Edit a saved job description.
  *
  * Until this existed there was no update path at all, which mattered most for
  * the title — it is derived, not entered, falling back to the first line of the
  * pasted text between 4 and 80 characters. Paste from a careers page and the
  * library shows "About the role", permanently.
+ *
+ * The text is editable, with one rule the server enforces and this explains:
+ * not while an interview using it is still in progress. Metadata is
+ * snapshotted into the session at launch, so changing it later cannot disturb a
+ * running interview; the chunks are read live on every turn, so re-embedding
+ * them mid-session would ground the first half of an interview on one document
+ * and the second half on another, both landing on the same report.
  */
 export function JobDescriptionEditDialog({
   item,
@@ -88,8 +91,11 @@ function EditForm({
   const [company, setCompany] = useState(item.company ?? "");
   const [sourceUrl, setSourceUrl] = useState(item.sourceUrl ?? "");
   const [notes, setNotes] = useState(item.notes ?? "");
+  const [rawText, setRawText] = useState(item.rawText);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const textChanged = rawText.trim() !== item.rawText.trim();
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -99,23 +105,42 @@ function EditForm({
       return;
     }
 
-    setSaving(true);
-    setError(null);
-    // Empty string clears the field; the route distinguishes that from an
-    // absent key, which leaves it alone.
-    const ok = await onSave(item.id, {
-      title: title.trim(),
-      roleTitle: roleTitle.trim() || null,
-      company: company.trim() || null,
-      sourceUrl: sourceUrl.trim() || null,
-      notes: notes.trim() || null,
-    });
-    setSaving(false);
-    if (!ok) {
-      setError("Could not save those changes. Try again.");
+    if (textChanged && rawText.trim().length < 80) {
+      setError("The job description needs at least 80 characters.");
       return;
     }
-    onOpenChange(false);
+
+    setSaving(true);
+    setError(null);
+    try {
+      // Empty string clears the field; the route distinguishes that from an
+      // absent key, which leaves it alone. `rawText` is omitted entirely when
+      // unchanged, so an ordinary metadata edit never triggers a re-embed.
+      const ok = await onSave(item.id, {
+        title: title.trim(),
+        roleTitle: roleTitle.trim() || null,
+        company: company.trim() || null,
+        sourceUrl: sourceUrl.trim() || null,
+        notes: notes.trim() || null,
+        ...(textChanged ? { rawText: rawText.trim() } : {}),
+      });
+      if (!ok) {
+        setError("Could not save those changes. Try again.");
+        return;
+      }
+      onOpenChange(false);
+    } catch (err) {
+      // The refusal arrives here — it names how many interviews are in the way,
+      // which is the actionable part and belongs beside the field, not in a
+      // banner over the list behind this dialog.
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not save those changes. Try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -123,8 +148,8 @@ function EditForm({
       <DialogHeader className="text-left">
         <DialogTitle>Edit job description</DialogTitle>
         <DialogDescription>
-          The posting text itself cannot be changed — it is embedded for
-          retrieval when you save it. Add a new one to replace the text.
+          Editing the text re-indexes it for retrieval, which is refused while
+          an interview using it is still in progress.
         </DialogDescription>
       </DialogHeader>
 
@@ -180,6 +205,25 @@ function EditForm({
             onChange={(event) => setNotes(event.target.value)}
             placeholder="Anything worth remembering — referrer, salary band, what to emphasise."
             className="min-h-24 resize-y"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="edit-jd-text">Job description text</Label>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {rawText.trim().length.toLocaleString()} chars
+              {/* Named as soon as it differs, because the consequence is not
+                  obvious: this is the edit that costs an embedding run and the
+                  one the server can refuse. */}
+              {textChanged && " · will be re-indexed"}
+            </span>
+          </div>
+          <Textarea
+            id="edit-jd-text"
+            value={rawText}
+            onChange={(event) => setRawText(event.target.value)}
+            className="min-h-48 resize-y font-mono text-xs leading-relaxed"
           />
         </div>
 

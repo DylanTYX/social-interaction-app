@@ -40,7 +40,12 @@ export interface UseJobDescriptions {
     company?: string | null;
     sourceUrl?: string | null;
   }) => Promise<JobDescriptionSummary | null>;
-  /** Metadata only — the text is chunked and embedded at creation. */
+  /**
+   * Metadata always; the text only when no interview using it is mid-way — the
+   * chunks are read live on every turn, so re-embedding under a running session
+   * would change its grounding halfway through. Rejects with the server's
+   * message, which names the count.
+   */
   update: (
     id: string,
     patch: {
@@ -49,6 +54,7 @@ export interface UseJobDescriptions {
       company?: string | null;
       sourceUrl?: string | null;
       notes?: string | null;
+      rawText?: string;
     },
   ) => Promise<JobDescriptionSummary | null>;
   remove: (id: string) => Promise<boolean>;
@@ -201,15 +207,18 @@ export function useJobDescriptions(
         );
         return jd;
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to update job description.",
-        );
-        return null;
+        // Rethrown rather than swallowed into the library-level error banner.
+        // A refusal is about the dialog the user is standing in and needs to be
+        // shown there, next to the field it refused — `readJson` has already
+        // turned the 409 body into this message, count and all.
+        throw err instanceof Error
+          ? err
+          : new Error("Failed to update job description.");
       }
     },
-    [setItems, setError],
+    // No `setError`: this one rethrows rather than writing the library-level
+    // error, so the dialog can show the refusal beside the field it refused.
+    [setItems],
   );
 
   const remove = useCallback<UseJobDescriptions["remove"]>(

@@ -1,12 +1,15 @@
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import { parseUuid } from "@/lib/api/query";
+import { parseBoundedString, parseUuid } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   deleteJobDescription,
   getJobDescription,
+  JobDescriptionInUseError,
   updateJobDescription,
 } from "@/lib/db/job-descriptions";
+import { UsageCollector } from "@/lib/api/token-usage";
+import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { readJsonBody } from "@/lib/api/read-json";
 import {
   ClientVisibleError,
@@ -48,7 +51,12 @@ export async function GET(_request: Request, ctx: RouteParams) {
 }
 
 /** Generous, but bounded — these are labels, not documents. */
-const MAX_FIELD_CHARS = { title: 200, roleTitle: 200, company: 200, notes: 2000 };
+const MAX_FIELD_CHARS = {
+  title: 200,
+  roleTitle: 200,
+  company: 200,
+  notes: 2000,
+};
 const MAX_URL_CHARS = 2000;
 
 function readOptionalString(
@@ -120,31 +128,60 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       }
     }
 
-    const updated = await updateJobDescription(supabase, id, {
-      ...(title !== undefined ? { title } : {}),
-      ...(body.roleTitle !== undefined
-        ? {
-            roleTitle: readOptionalString(
-              body,
-              "roleTitle",
-              MAX_FIELD_CHARS.roleTitle,
-            ),
-          }
-        : {}),
-      ...(body.company !== undefined
-        ? {
-            company: readOptionalString(
-              body,
-              "company",
-              MAX_FIELD_CHARS.company,
-            ),
-          }
-        : {}),
-      ...(sourceUrl !== undefined ? { sourceUrl } : {}),
-      ...(body.notes !== undefined
-        ? { notes: readOptionalString(body, "notes", MAX_FIELD_CHARS.notes) }
-        : {}),
-    });
+    /**
+     * The one field that changes what a *running* interview reads.
+     *
+     * Company and title are snapshotted into `launch_meta` at launch, so
+     * editing those mid-session is harmless. The chunks are queried live on
+     * every turn, so re-embedding them underneath an unfinished interview would
+     * ground its first turns on one document and its last on another. The db
+     * layer refuses that outright; this turns the refusal into a 409 carrying
+     * the count, so the user knows how many interviews to finish first.
+     */
+    const rawText =
+      typeof body.rawText === "string"
+        ? parseBoundedString(body.rawText, {
+            field: "rawText",
+            max: MAX_JOB_DESCRIPTION_CHARS,
+          })
+        : undefined;
+
+    // Costs an embedding run, so record it the way every other model call is.
+    const usage = new UsageCollector();
+
+    const updated = await updateJobDescription(
+      supabase,
+      id,
+      {
+        ...(rawText !== undefined && rawText !== null ? { rawText } : {}),
+        ...(title !== undefined ? { title } : {}),
+        ...(body.roleTitle !== undefined
+          ? {
+              roleTitle: readOptionalString(
+                body,
+                "roleTitle",
+                MAX_FIELD_CHARS.roleTitle,
+              ),
+            }
+          : {}),
+        ...(body.company !== undefined
+          ? {
+              company: readOptionalString(
+                body,
+                "company",
+                MAX_FIELD_CHARS.company,
+              ),
+            }
+          : {}),
+        ...(sourceUrl !== undefined ? { sourceUrl } : {}),
+        ...(body.notes !== undefined
+          ? { notes: readOptionalString(body, "notes", MAX_FIELD_CHARS.notes) }
+          : {}),
+      },
+      { userId: user.id, usage },
+    );
+
+    await usage.flush(supabase);
 
     if (!updated) {
       return notFound();
@@ -152,6 +189,15 @@ export async function PATCH(request: Request, ctx: RouteParams) {
 
     return NextResponse.json({ jobDescription: updated });
   } catch (error) {
+    // 409 rather than 500: the request was well-formed and the server is fine.
+    // The state of the world simply says no, and the count is the actionable
+    // part of that.
+    if (error instanceof JobDescriptionInUseError) {
+      return NextResponse.json(
+        { error: error.message, inProgress: error.inProgress },
+        { status: 409 },
+      );
+    }
     return handleRouteError("PATCH /api/job-descriptions/[id]", error);
   }
 }
