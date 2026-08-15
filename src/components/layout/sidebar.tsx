@@ -301,70 +301,87 @@ export function Sidebar() {
           </span>
         </div>
 
-        {/* The one thing this app is for.
+        {/* Actions, ruled off from the destinations below.
 
-            A sidebar lists places you go and return to with state; starting an
-            interview is a verb that produces a session. Pinning it as an action
-            above the destinations is the Linear/Notion pattern for creation.
+            "New interview" and the search box are things you *do*; everything
+            under the rule is somewhere you *go*. Nothing said so: all three
+            blocks sat 8px apart, so the search box read as the first item of
+            the nav list while looking nothing like one — a bordered, filled
+            control directly above six plain rows. That mismatch was the
+            grouping being wrong, not the styling.
 
-            The mobile bar keeps its Practice tab. The sidebar is `hidden
-            lg:flex`, so dropping it there too would leave no way to start an
-            interview below `lg` — which is exactly the regression an earlier
-            attempt at this shipped. */}
-        <div className="p-2 pb-0">
-          <Button
-            asChild
-            className="w-full gap-2"
-            size={isCollapsed ? "icon" : "default"}
-          >
-            <Link
-              href="/simulate/setup"
-              aria-label="Start a new interview"
-              className="overflow-hidden"
+            A rule rather than restyling the search to match the nav: it is a
+            control, and the same `border-gray-100` already separates the logo
+            above, so the sidebar now reads as three groups instead of one long
+            column with an odd item in it. */}
+        <div className="border-b border-gray-100 pb-3">
+          {/* The one thing this app is for.
+
+              A sidebar lists places you go and return to with state; starting an
+              interview is a verb that produces a session. Pinning it as an action
+              above the destinations is the Linear/Notion pattern for creation.
+
+              The mobile bar keeps its Practice tab. The sidebar is `hidden
+              lg:flex`, so dropping it there too would leave no way to start an
+              interview below `lg` — which is exactly the regression an earlier
+              attempt at this shipped. */}
+          <div className="p-2 pb-0">
+            <Button
+              asChild
+              className="w-full gap-2"
+              size={isCollapsed ? "icon" : "default"}
             >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span
-                className={cn(
-                  "truncate transition-[max-width,opacity] duration-300 ease-soft",
-                  isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
-                )}
+              <Link
+                href="/simulate/setup"
+                aria-label="Start a new interview"
+                className="overflow-hidden"
               >
-                New interview
-              </span>
-            </Link>
-          </Button>
-        </div>
+                <Plus className="h-4 w-4 shrink-0" />
+                <span
+                  className={cn(
+                    "truncate transition-[max-width,opacity] duration-300 ease-soft",
+                    isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+                  )}
+                >
+                  New interview
+                </span>
+              </Link>
+            </Button>
+          </div>
 
-        {/* Command palette trigger */}
-        <div className="p-2 pb-0">
-          <button
-            type="button"
-            data-tour="search"
-            onClick={() =>
-              window.dispatchEvent(new Event("open-command-palette"))
-            }
-            className={cn(
-              "flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-500",
-              "hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150",
-              isCollapsed && "justify-center px-2",
-            )}
-            aria-label="Open command palette"
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            {!isCollapsed && (
-              <>
-                <span className="flex-1 text-left">Search…</span>
-                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  ⌘K
-                </kbd>
-              </>
-            )}
-          </button>
+          {/* Command palette trigger */}
+          <div className="p-2 pb-0">
+            <button
+              type="button"
+              data-tour="search"
+              onClick={() =>
+                window.dispatchEvent(new Event("open-command-palette"))
+              }
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-500",
+                "hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150",
+                isCollapsed && "justify-center px-2",
+              )}
+              aria-label="Open command palette"
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1 text-left">Search…</span>
+                  <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    ⌘K
+                  </kbd>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Main Navigation */}
         <nav
-          className="flex-1 p-2 space-y-1 overflow-y-auto"
+          // `pt-3` rather than `p-2`, so the rule above has room on both sides
+          // and the group reads as a group.
+          className="flex-1 p-2 pt-3 space-y-1 overflow-y-auto"
           aria-label="Primary"
           data-tour="nav"
         >
