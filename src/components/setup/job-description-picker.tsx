@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Eye, FileText, Trash2 } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { AlertCircle, ArrowUpRight, Eye, FileText, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,10 +34,9 @@ import {
   type JobDescriptionDraft,
 } from "@/components/dashboard/job-description-add-form";
 import { JobDescriptionPreviewDialog } from "@/components/dashboard/job-description-preview-dialog";
-import { describeJobDescriptionDelete } from "@/lib/job-description-copy";
+import { cn } from "@/lib/utils";
 import type {
   JobDescriptionSummary,
-  JobDescriptionUsage,
   UseJobDescriptions,
 } from "@/hooks/use-job-descriptions";
 import type { JobDescriptionSetupConfig } from "@/lib/interview-setup";
@@ -75,7 +75,7 @@ export function JobDescriptionPicker({
   /** The wizard's single library instance. */
   library: UseJobDescriptions;
 }) {
-  const { items, status, error, refresh, remove, countUsage } = library;
+  const { items, status, error, refresh } = library;
 
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<JobDescriptionDraft>(emptyDraft);
@@ -83,11 +83,6 @@ export function JobDescriptionPicker({
   const [previewing, setPreviewing] = useState<JobDescriptionSummary | null>(
     null,
   );
-  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  const [pendingUsage, setPendingUsage] = useState<
-    JobDescriptionUsage | null | undefined
-  >(undefined);
-  const usageRequestRef = useRef(0);
 
   const creator = useJobDescriptionCreator(library);
 
@@ -153,15 +148,6 @@ export function JobDescriptionPicker({
     closeAddDialog();
   };
 
-  const openDeleteDialog = (id: string) => {
-    const requestId = usageRequestRef.current + 1;
-    usageRequestRef.current = requestId;
-    setPendingDelete(id);
-    setPendingUsage(undefined);
-    void countUsage(id).then((usage) => {
-      if (usageRequestRef.current === requestId) setPendingUsage(usage);
-    });
-  };
 
   const handleCreated = (created: JobDescriptionSummary | null) => {
     if (!created) return;
@@ -224,124 +210,118 @@ export function JobDescriptionPicker({
               description={error ?? "Something went wrong."}
               onRetry={() => void refresh()}
             />
-          ) : selected ? (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {selected.title}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {[selected.company, selected.roleTitle]
-                    .filter(Boolean)
-                    .join(" · ") || "Saved in your library"}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setPreviewing(selected)}
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Preview
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={clearSelection}
-              >
-                Change
-              </Button>
-            </div>
           ) : status === "loading" && items.length === 0 ? (
             <div className="space-y-2">
               {[0, 1].map((index) => (
-                <Skeleton key={index} className="h-16 bg-muted" />
+                <Skeleton key={index} className="h-14 bg-muted" />
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
-              {items.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border bg-muted/50 p-4 text-center text-sm text-muted-foreground">
-                  No saved job descriptions yet.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex items-center gap-2 rounded-lg border border-border bg-white p-3 transition-colors duration-150 hover:bg-accent"
+            /**
+             * One persistent list. Choosing moves the dot and changes nothing
+             * else — no panel swaps in for the list, no button appears or
+             * disappears, so the card does not resize as you make up your mind.
+             * That was the complaint, and it came from rendering a one-line
+             * "chosen" panel in place of an N-row list.
+             *
+             * Capped and scrollable so the height is set by the container
+             * rather than by how many documents you happen to have saved.
+             */
+            <div className="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+              {items.map((item) => {
+                const isActive = item.id === value.savedId;
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "group flex items-center gap-3 p-3 transition-colors duration-150",
+                      isActive ? "bg-blue-50/70" : "bg-white hover:bg-accent",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => select(item)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      aria-pressed={isActive}
                     >
-                      <button
-                        type="button"
-                        onClick={() => select(item)}
-                        className="min-w-0 flex-1 text-left"
+                      {/* A radio, not a tick: these are alternatives, and only
+                          one of them can be in play. */}
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
+                          isActive
+                            ? "border-blue-600 bg-blue-600"
+                            : "border-slate-300 bg-white",
+                        )}
                       >
-                        <p className="truncate text-sm font-medium text-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            "block truncate text-sm",
+                            isActive
+                              ? "font-medium text-blue-900"
+                              : "text-foreground",
+                          )}
+                        >
                           {item.title}
-                        </p>
-                        {/* Company first, matching the library page — it is
-                            what tells two postings for one role apart. */}
-                        <p className="truncate text-xs text-muted-foreground">
-                          {[
-                            item.company,
-                            item.roleTitle,
-                            new Date(item.createdAt).toLocaleDateString(),
-                          ]
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {[item.company, item.roleTitle]
                             .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                      </button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        onClick={() => setPreviewing(item)}
-                        aria-label={`Preview ${item.title}`}
-                      >
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        onClick={() => openDeleteDialog(item.id)}
-                        aria-label={`Delete ${item.title}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                            .join(" · ") ||
+                            new Date(item.createdAt).toLocaleDateString()}
+                        </span>
+                      </span>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      onClick={() => setPreviewing(item)}
+                      aria-label={`Preview ${item.title}`}
+                    >
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+                );
+              })}
 
+              {/* Always the last row, so it is never something that appears or
+                  vanishes. When the library is empty it is the only row, and
+                  its label carries the empty state — one element doing both
+                  jobs rather than a paragraph plus a button. */}
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="flex w-full items-center justify-center gap-2 p-3 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="h-4 w-4" />
+                {items.length === 0
+                  ? "No job descriptions yet — add your first"
+                  : "Add a job description"}
+              </button>
             </div>
           )}
 
-          {/* Outside every branch on purpose. It used to live inside the list,
-              so a failed load or a slow first fetch left a user with no way to
-              add anything — while `blockedReason` was telling them to "choose or
-              add a job description". An instruction you cannot follow. */}
-          {!selected && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setAdding(true)}
+          {/* Editing, renaming and deleting live in the library. Keeping them
+              out of here is what lets this card be one list and nothing else. */}
+          <div className="flex justify-end">
+            <Link
+              href="/dashboard/job-descriptions"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground"
             >
-              Add a new job description
-            </Button>
-          )}
+              Manage in library
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
 
-          {/* Mutation failures — a rejected upload, a failed delete — are
-              written to the library-level error, which the branch above only
-              renders when the *load* failed. Without this they were silent: the
-              dialog closed its spinner and nothing said why nothing happened. */}
+          {/* Mutation failures — a rejected upload — are written to the
+              library-level error, which the branch above only renders when the
+              *load* failed. Without this they were silent. */}
           {status !== "error" && error && !adding && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -404,27 +384,6 @@ export function JobDescriptionPicker({
         }}
       />
 
-      {/* The same guarded dialog the library page uses. Deleting from the
-          wizard used to remove a job description on one click, with no
-          confirmation and no word about the interviews still using it. */}
-      <ConfirmDeleteDialog
-        open={pendingDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingDelete(null);
-            setPendingUsage(undefined);
-          }
-        }}
-        title="Delete this job description?"
-        description={describeJobDescriptionDelete(pendingUsage)}
-        onConfirm={async () => {
-          const targetId = pendingDelete;
-          setPendingDelete(null);
-          if (!targetId) return;
-          const ok = await remove(targetId);
-          if (ok && value.savedId === targetId) clearSelection();
-        }}
-      />
     </Card>
   );
 }
