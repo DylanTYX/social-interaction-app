@@ -102,6 +102,7 @@ prefix:
 - round-type guidance ("how to run this kind of round")
 - the loop handover brief, if this is round 2+
 - the resume profile
+- the hiring company, when the job description records one
 - the job description **only when it was inlined whole**
 
 **Volatile** — changes turn to turn, so it must come after:
@@ -314,6 +315,39 @@ designed compression, not truncation, and carries no such risk.
   the same row-level security as every other table — the RPC filters on
   `auth.uid()` inside the database, which an external store could not do. Token
   cost was never the constraint that would justify losing that.
+- **Fetching a job description from a pasted URL.** Proposed as a nicer
+  alternative to pasting the text. It works on Greenhouse, Lever and most
+  server-rendered careers pages, and fails on the three places most postings
+  actually live: LinkedIn and Indeed put an auth wall and bot detection in front
+  of it and prohibit it by terms of service, and Workday renders the posting
+  client-side so the fetched HTML contains none of it. A feature that fails on
+  the big names reads as broken rather than partial, and the fix for the Workday
+  case is a headless browser that still would not get past LinkedIn.
+
+  `POST /api/job-descriptions/clean` is the version that does work. The browser
+  has already rendered the page, so pasting carries the text out of any source;
+  the model's job is only to drop the furniture that comes with it.
+
+### The JD tidy-up is not a cost saving
+
+Worth stating plainly, because it is the kind of change that gets justified with
+the wrong number. Cleaning a posting costs roughly **$0.0009** and saves roughly
+**$0.00002** of embedding — about thirty times more than it returns. Per-turn
+prompt size does not move at all, because retrieval is hard-capped at four
+chunks whether the document has four or forty.
+
+What it buys is retrieval quality and latency:
+
+- Boilerplate chunks compete for those four slots on **every turn of every
+  session** using that JD. A seven-chunk posting where three chunks are EEO
+  statement, benefits and "about us" is drawing four slots from a pool that is
+  43% noise.
+- Crossing below `SMALL_JD_CHUNK_LIMIT` (4) switches the JD to the inline path,
+  which removes a per-turn embedding round-trip entirely and makes the context
+  lossless rather than a top-4 gamble against `MIN_SIMILARITY`.
+
+The cost is paid once at upload and amortised across every turn of every session
+the JD is ever used in.
 
 ---
 
@@ -331,3 +365,4 @@ designed compression, not truncation, and carries no such risk.
 | Deterministic text counting              | `src/lib/text-metrics.ts`                    |
 | Input length caps                        | `src/lib/api/input-limits.ts`                |
 | Coach answer cache                       | `supabase/migrations/0010_coach_answers.sql` |
+| JD tidy-up (boilerplate stripping)       | `src/app/api/job-descriptions/clean/route.ts` |
