@@ -127,13 +127,14 @@ npm run dev
 | `npm test` | Vitest unit tests — pure logic only, no network |
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
 | `npm run eval:persona` | **Persona differentiation harness** — free and offline by default; `--live` makes billed calls |
+| `npm run eval:coach` | **Coaching quality harness** — free and offline by default; `--live` makes billed calls |
 | `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
 
 `npm test` currently runs 426 tests, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
 and tests on every push and pull request (`.github/workflows/ci.yml`).
 
-The last three are **operator tooling, not product features**. They are not
+The last four are **operator tooling, not product features**. They are not
 imported by any route, so Next bundles none of them, and a lint rule in
 `eslint.config.mjs` fails the build if anything under `src/app` or
 `src/components` tries. See `docs/DEMO.md` → "Who can see what".
@@ -156,6 +157,24 @@ reach the output, using a judge that is never told which persona wrote the text.
 `cost-report` is the only thing in this project that multiplies tokens by a
 rate. It also reports what the same traffic *would* have cost with no cache
 hits, which is the only honest way to state a caching saving.
+
+### Coaching quality
+
+```bash
+npm run eval:coach                  # prompt diff + rubric coverage, no API calls
+npm run eval:coach -- --live        # + score uplift, measured by the analyzer
+```
+
+`eval:coach` exists because the coach behind Quick drills was the one LLM call
+in the app graded against nothing — one sentence of rubric guidance covering six
+round types, no score, no baseline. Its deterministic half compares the prompt
+against the two-branch version it replaced, reproduced verbatim in the harness
+as a control: rubric coverage went from **20/29 criteria to 29/29**, with
+`screening` and `hr` previously naming *none* of the criteria the analyzer
+scores them on. Its `--live` half measures whether the coach's rewrite scores
+higher than the candidate's own answer — using the analyzer as scorer, which is
+circular in two nameable ways that `docs/COACHING.md` sets out rather than
+hides.
 
 ### The evaluation harness
 
@@ -271,6 +290,8 @@ before scaling out.
   verify it**
 - `docs/EVALUATION.md` — **how the analyzer's scoring is validated, and the
   limits of that validation**
+- `docs/COACHING.md` — **how the coach generates a response, the rubric behind
+  it, and how that is measured**
 - `docs/DEPLOYMENT.md` — Vercel + Supabase deployment runbook
 - `docs/UAT.md` — user-acceptance test plan and exit criteria
 - `docs/UAT-tester-handout.md` — participant script

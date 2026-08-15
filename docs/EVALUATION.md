@@ -208,7 +208,11 @@ State these rather than let a reader find them:
   that has been run with real markers, every accuracy figure here means
   "agreement with one person".
 - **It tests the analyzer only.** Not the interviewer's questions, not persona
-  behaviour, not follow-up adaptivity, not the summariser, not the coach.
+  behaviour, not follow-up adaptivity, not the summariser. The coach used to be
+  on this list too; it now has its own harness and its own document — see
+  [`COACHING.md`](COACHING.md) and `npm run eval:coach`. That harness uses *this*
+  analyzer as its scorer, which is a weaker form of evidence than it looks;
+  COACHING.md says why at length.
 - **The answers, the labels and the rubric all come from the same author**, so
   this measures internal consistency more than external validity.
 
