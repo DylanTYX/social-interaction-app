@@ -8,6 +8,9 @@ export interface JobDescriptionSummary {
   id: string;
   title: string;
   roleTitle: string | null;
+  company: string | null;
+  sourceUrl: string | null;
+  notes: string | null;
   sourceType: "text";
   rawText: string;
   createdAt: string;
@@ -28,11 +31,26 @@ export interface UseJobDescriptions {
   uploadText: (input: {
     rawText: string;
     roleTitle?: string | null;
+    company?: string | null;
+    sourceUrl?: string | null;
   }) => Promise<JobDescriptionSummary | null>;
   uploadPdf: (input: {
     file: File;
     roleTitle?: string | null;
+    company?: string | null;
+    sourceUrl?: string | null;
   }) => Promise<JobDescriptionSummary | null>;
+  /** Metadata only — the text is chunked and embedded at creation. */
+  update: (
+    id: string,
+    patch: {
+      title?: string;
+      roleTitle?: string | null;
+      company?: string | null;
+      sourceUrl?: string | null;
+      notes?: string | null;
+    },
+  ) => Promise<JobDescriptionSummary | null>;
   remove: (id: string) => Promise<boolean>;
   /**
    * How many sessions a delete would strip this JD from, for the confirm
@@ -47,13 +65,27 @@ export interface JobDescriptionUsage {
   completed: number;
 }
 
+export interface JobDescriptionFilters {
+  query?: string;
+  company?: string;
+}
+
 /**
  * `limit=50` is explicit because omitting it silently took the route's fallback
  * of 20 while the cap is 50 — so a 21st saved item was unreachable from both
  * this page and the setup wizard's picker.
+ *
+ * Filters go to the server for the same reason: with the list capped, filtering
+ * in the page would only ever search the 50 rows that happened to load.
  */
-async function loadJobDescriptions(): Promise<JobDescriptionSummary[]> {
-  const response = await fetch("/api/job-descriptions?limit=50", {
+async function loadJobDescriptions(
+  filters: JobDescriptionFilters = {},
+): Promise<JobDescriptionSummary[]> {
+  const params = new URLSearchParams({ limit: "50" });
+  if (filters.query?.trim()) params.set("query", filters.query.trim());
+  if (filters.company) params.set("company", filters.company);
+
+  const response = await fetch(`/api/job-descriptions?${params}`, {
     cache: "no-store",
   });
 
@@ -80,22 +112,37 @@ async function loadJobDescriptions(): Promise<JobDescriptionSummary[]> {
  * Manages the user's job description library. Mirrors the persona library
  * hook so callers in the wizard can treat both consistently.
  */
-export function useJobDescriptions(): UseJobDescriptions {
+export function useJobDescriptions(
+  filters: JobDescriptionFilters = {},
+): UseJobDescriptions {
+  // Destructured into primitives so the loader identity tracks the filter
+  // *values*, not the identity of an object literal a caller re-creates every
+  // render. `useLibraryList` refetches whenever `load` changes, which is
+  // exactly the behaviour wanted here — and callers that pass no filters get a
+  // stable loader and the old behaviour untouched.
+  const { query, company } = filters;
+  const load = useCallback(
+    () => loadJobDescriptions({ query, company }),
+    [query, company],
+  );
+
   const { items, status, error, refresh, setItems, setError } = useLibraryList(
-    loadJobDescriptions,
+    load,
     "Failed to load job descriptions.",
   );
 
   const uploadText = useCallback<UseJobDescriptions["uploadText"]>(
-    async ({ rawText, roleTitle }) => {
+    async ({ rawText, roleTitle, company, sourceUrl }) => {
       try {
-        // Explicit, because omitting it silently took the route's fallback of 20
-        // while the cap is 50 — so a 21st saved item was unreachable from both
-        // this page and the setup wizard's picker.
-        const response = await fetch("/api/job-descriptions?limit=50", {
+        const response = await fetch("/api/job-descriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rawText, roleTitle: roleTitle ?? null }),
+          body: JSON.stringify({
+            rawText,
+            roleTitle: roleTitle ?? null,
+            company: company ?? null,
+            sourceUrl: sourceUrl ?? null,
+          }),
         });
         const payload = await readJson<ApiPayload>(response);
         const jd = payload.jobDescription;
@@ -115,18 +162,15 @@ export function useJobDescriptions(): UseJobDescriptions {
   );
 
   const uploadPdf = useCallback<UseJobDescriptions["uploadPdf"]>(
-    async ({ file, roleTitle }) => {
+    async ({ file, roleTitle, company, sourceUrl }) => {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        if (roleTitle && roleTitle.trim()) {
-          formData.append("roleTitle", roleTitle.trim());
-        }
+        if (roleTitle?.trim()) formData.append("roleTitle", roleTitle.trim());
+        if (company?.trim()) formData.append("company", company.trim());
+        if (sourceUrl?.trim()) formData.append("sourceUrl", sourceUrl.trim());
 
-        // Explicit, because omitting it silently took the route's fallback of 20
-        // while the cap is 50 — so a 21st saved item was unreachable from both
-        // this page and the setup wizard's picker.
-        const response = await fetch("/api/job-descriptions?limit=50", {
+        const response = await fetch("/api/job-descriptions", {
           method: "POST",
           body: formData,
         });
@@ -137,6 +181,36 @@ export function useJobDescriptions(): UseJobDescriptions {
         return jd;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to upload PDF.");
+        return null;
+      }
+    },
+    [setItems, setError],
+  );
+
+  const update = useCallback<UseJobDescriptions["update"]>(
+    async (id, patch) => {
+      try {
+        const response = await fetch(`/api/job-descriptions/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const payload = await readJson<ApiPayload>(response);
+        const jd = payload.jobDescription;
+        if (!jd) throw new Error("Server returned no job description.");
+        // Replaced in place rather than refetched: the row is already the
+        // server's own copy, so a round trip would only re-sort the list under
+        // the user for no new information.
+        setItems((current) =>
+          current.map((item) => (item.id === id ? jd : item)),
+        );
+        return jd;
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to update job description.",
+        );
         return null;
       }
     },
@@ -203,6 +277,7 @@ export function useJobDescriptions(): UseJobDescriptions {
     refresh,
     uploadText,
     uploadPdf,
+    update,
     remove,
     countUsage,
   };

@@ -101,4 +101,38 @@ describe("buildJobDescriptionTitle", () => {
       buildJobDescriptionTitle({ roleTitle: null, rawText: "ab" }),
     ).toBe("Job description");
   });
+
+  it("combines role and company when both are known", () => {
+    // Either half alone stops being enough once the library holds several
+    // postings for the same role.
+    expect(
+      buildJobDescriptionTitle({
+        roleTitle: "Data Analyst",
+        company: "  Monzo  ",
+        rawText: "Anything at all",
+      }),
+    ).toBe("Data Analyst at Monzo");
+  });
+
+  it("uses the company alone rather than guessing from the text", () => {
+    // The first-line heuristic would pick "About the role" here. Anything the
+    // user actually told us beats a guess.
+    expect(
+      buildJobDescriptionTitle({
+        roleTitle: null,
+        company: "Monzo",
+        rawText: "About the role\n\nWe are hiring...",
+      }),
+    ).toBe("Monzo");
+  });
+
+  it("ignores a blank company", () => {
+    expect(
+      buildJobDescriptionTitle({
+        roleTitle: null,
+        company: "   ",
+        rawText: "Senior Platform Engineer\n\nAbout the role...",
+      }),
+    ).toBe("Senior Platform Engineer");
+  });
 });
