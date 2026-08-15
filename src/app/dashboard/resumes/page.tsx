@@ -230,12 +230,12 @@ export default function ResumesPage() {
           ) : sortedItems.length === 0 ? (
             <EmptyStateCard
               icon={<FileUser className="h-6 w-6" />}
-              title="Add your resume to personalize the interview"
-              description="Paste it or upload a PDF once — the interviewer will ask about your real projects and experience."
-              primaryAction={{
-                label: "Start an interview with your resume",
-                href: "/simulate/setup",
-              }}
+              // Same correction as the job-description page, for the same
+              // reason: the button sent someone with no CV to the wizard to
+              // start an interview with one, and the form that actually solves
+              // it is directly above this card.
+              title="No saved CVs yet"
+              description="Anything you add above is saved here, ready to reuse in any interview."
             />
           ) : (
             sortedItems.map((item, index) => {
