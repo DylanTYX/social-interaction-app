@@ -20,18 +20,91 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
-import { useJobDescriptions } from "@/hooks/use-job-descriptions";
+import {
+  useJobDescriptions,
+  type JobDescriptionUsage,
+} from "@/hooks/use-job-descriptions";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 
+/**
+ * What the user is about to lose, stated as specifically as we can manage.
+ *
+ * The old copy ended "Existing transcripts are unaffected." True of the message
+ * rows, and it reads as "nothing in flight is harmed" — which is exactly wrong
+ * for an interview still in progress. Those sessions survive the delete (the FK
+ * is `on delete set null`) but lose their grounding the moment they resume: no
+ * job context in the interviewer's prompt, and none in the scoring pass either,
+ * so the rest of the session is judged against a different bar than the start
+ * of it.
+ *
+ * Follows the two-beat shape used for session deletes: state what goes, then
+ * append the downstream consequence only when it actually applies. While the
+ * count is loading or if it failed, say the general thing rather than guessing
+ * — a wrong number here is worse than no number.
+ */
+function describeDeleteConsequences(
+  usage: JobDescriptionUsage | null | undefined,
+): string {
+  const base =
+    "This also deletes its embedded chunks, so interviews can no longer retrieve context from it. Completed transcripts and their scores are unaffected.";
+
+  if (!usage || usage.inProgress === 0) return base;
+
+  const count =
+    usage.inProgress === 1
+      ? "1 interview that is still in progress uses"
+      : `${usage.inProgress} interviews that are still in progress use`;
+
+  return `${base} ${count} it, and will carry on without it when you resume.`;
+}
+
 export default function JobDescriptionsPage() {
-  const { items, status, error, refresh, uploadText, uploadPdf, remove } =
-    useJobDescriptions();
+  const {
+    items,
+    status,
+    error,
+    refresh,
+    uploadText,
+    uploadPdf,
+    remove,
+    countUsage,
+  } = useJobDescriptions();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  /**
+   * What deleting the pending JD would affect, fetched when the dialog opens.
+   *
+   * `undefined` while in flight and `null` if the request failed — the dialog
+   * distinguishes them from a real zero, because "no interviews use this" and
+   * "we could not find out" must not read the same.
+   */
+  const [pendingUsage, setPendingUsage] = useState<
+    JobDescriptionUsage | null | undefined
+  >(undefined);
+  /**
+   * Discards a usage reply that arrives after the dialog has moved to another
+   * JD — same guard, and same reason, as the one in `useLibraryList`. Open A,
+   * close it, open B quickly and A's slower reply would otherwise land as B's
+   * count.
+   */
+  const usageRequestRef = useRef(0);
+
+  const openDeleteDialog = (id: string) => {
+    const requestId = usageRequestRef.current + 1;
+    usageRequestRef.current = requestId;
+    setPendingDelete(id);
+    setPendingUsage(undefined);
+    // Started on the click rather than from an effect, so it has the time the
+    // dialog spends animating in. `countUsage` never rejects — a failure
+    // resolves to null and the copy falls back to the general form.
+    void countUsage(id).then((usage) => {
+      if (usageRequestRef.current === requestId) setPendingUsage(usage);
+    });
+  };
   // The row being animated out. Set before the request goes out, so the
   // list responds the moment the user confirms rather than after a round trip.
   const [exitingId, setExitingId] = useState<string | null>(null);
@@ -267,7 +340,7 @@ export default function JobDescriptionsPage() {
                     variant="ghost"
                     size="icon"
                     className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    onClick={() => setPendingDelete(item.id)}
+                    onClick={() => openDeleteDialog(item.id)}
                     aria-label="Delete job description"
                   >
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -282,10 +355,13 @@ export default function JobDescriptionsPage() {
       <ConfirmDeleteDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
+          if (!open) {
+            setPendingDelete(null);
+            setPendingUsage(undefined);
+          }
         }}
         title="Delete this job description?"
-        description="This also deletes its embedded chunks, so interviews can no longer retrieve context from it. Existing transcripts are unaffected."
+        description={describeDeleteConsequences(pendingUsage)}
         onConfirm={async () => {
           const targetId = pendingDelete;
           setPendingDelete(null);

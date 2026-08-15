@@ -34,6 +34,17 @@ export interface UseJobDescriptions {
     roleTitle?: string | null;
   }) => Promise<JobDescriptionSummary | null>;
   remove: (id: string) => Promise<boolean>;
+  /**
+   * How many sessions a delete would strip this JD from, for the confirm
+   * dialog. Returns null if the count could not be fetched, which callers
+   * should treat as "say nothing" rather than "say zero".
+   */
+  countUsage: (id: string) => Promise<JobDescriptionUsage | null>;
+}
+
+export interface JobDescriptionUsage {
+  inProgress: number;
+  completed: number;
 }
 
 /**
@@ -153,6 +164,38 @@ export function useJobDescriptions(): UseJobDescriptions {
     [setItems, setError],
   );
 
+  /**
+   * Deliberately does not call `setError`.
+   *
+   * `error` here is the library-level one the page renders as a full
+   * error card in place of the list. A failed count is not that: it is a
+   * detail missing from a dialog the user opened, and blowing away the list
+   * behind it would be a wildly disproportionate response. Returning null lets
+   * the dialog fall back to its generic copy, which is still accurate — just
+   * less specific.
+   */
+  const countUsage = useCallback<UseJobDescriptions["countUsage"]>(
+    async (id) => {
+      try {
+        const response = await fetch(`/api/job-descriptions/${id}/usage`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return null;
+        const payload = (await response.json()) as Partial<JobDescriptionUsage>;
+        if (
+          typeof payload.inProgress !== "number" ||
+          typeof payload.completed !== "number"
+        ) {
+          return null;
+        }
+        return { inProgress: payload.inProgress, completed: payload.completed };
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
   return {
     items,
     status,
@@ -161,5 +204,6 @@ export function useJobDescriptions(): UseJobDescriptions {
     uploadText,
     uploadPdf,
     remove,
+    countUsage,
   };
 }
