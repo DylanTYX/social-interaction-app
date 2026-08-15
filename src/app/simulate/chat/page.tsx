@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Code2,
-  FileText,
   MessageSquare,
   Settings2,
 } from "lucide-react";
@@ -59,6 +58,7 @@ import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import { CoachingRail } from "@/components/chat/coaching-rail";
+import { JobDescriptionChip } from "@/components/chat/job-description-chip";
 import { resolveAnswerFormat, type AnswerFormat } from "@/lib/interview-rounds";
 
 type DisplayMessage = {
@@ -626,17 +626,10 @@ function ChatSimulateInner() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {initialState.jobDescriptionTitle && (
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
-              title={initialState.jobDescriptionTitle}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              <span className="max-w-40 truncate">
-                {initialState.jobDescriptionTitle}
-              </span>
-            </span>
-          )}
+          <JobDescriptionChip
+            title={initialState.jobDescriptionTitle}
+            missing={initialState.jobDescriptionMissing}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="shadow-soft">

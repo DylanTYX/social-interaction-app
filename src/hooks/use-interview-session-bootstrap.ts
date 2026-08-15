@@ -41,6 +41,20 @@ export interface InterviewBootstrap {
   } | null;
   voiceConfig: VoiceSetupConfig;
   /**
+   * The session was configured with a job description that no longer exists.
+   *
+   * Deleting a JD nulls `interview_sessions.job_description_id` (the FK is
+   * `on delete set null`), but `launch_meta` keeps the snapshot taken at launch
+   * — still saying `enabled: true` with the now-dead `savedId`. Resuming used
+   * to trust the snapshot outright, so the screen showed a confident "grounded
+   * on this JD" chip for a document contributing nothing to the prompt or to
+   * scoring. A wrong answer stated positively is worse than a missing one.
+   *
+   * Callers should say so rather than silently dropping the chip: the change in
+   * how the interviewer behaves is otherwise unexplainable from the UI.
+   */
+  jobDescriptionMissing: boolean;
+  /**
    * Transcript and scoring history restored from the server, when this load
    * resumed an existing session.
    *
@@ -118,6 +132,7 @@ function readResumedTranscript(payload: {
 function launchToBootstrap(
   launch: InterviewLaunchPayload,
   searchParams: ReadonlyURLSearchParams,
+  jobDescriptionMissing = false,
 ): InterviewBootstrap {
   const scenarioOverride = searchParams.get("scenario");
   const streamOverride = searchParams.get("stream");
@@ -153,8 +168,41 @@ function launchToBootstrap(
     sessionId: launch.sessionId,
     jobDescriptionTitle: jobDescriptionRef?.title ?? null,
     jobDescriptionRef,
+    jobDescriptionMissing,
     voiceConfig: launch.voiceConfig,
   };
+}
+
+/**
+ * Was this session set up with a job description that has since been deleted?
+ *
+ * Three sources disagree only in this one case. `launch_meta` is a snapshot of
+ * the setup taken at launch and never revised; `session.jobDescriptionId` and
+ * the live lookup are both current. Deleting a JD nulls the column (the FK is
+ * `on delete set null`) and cascades its chunks, but leaves the snapshot naming
+ * a document that no longer exists.
+ *
+ * Both current sources are checked rather than just the column, because they
+ * fail independently: the column is null when the row is gone, and the lookup
+ * returns null when the row is gone *or* unreadable. Requiring both to be empty
+ * keeps this from firing on a transient read failure and wrongly telling a user
+ * their JD was deleted.
+ *
+ * Exported for its test — the situation takes several minutes and a destructive
+ * action to reproduce by hand, which is exactly the kind of path that rots.
+ */
+export function isJobDescriptionMissing(
+  launch: SessionLaunchMeta | null,
+  session: { jobDescriptionId: string | null },
+  jobDescription: { id: string } | null,
+): boolean {
+  const snapshot = launch?.jobDescription;
+  return Boolean(
+    snapshot?.enabled &&
+      snapshot.savedId &&
+      !jobDescription &&
+      !session.jobDescriptionId,
+  );
 }
 
 function sessionRowToLaunch(
@@ -172,8 +220,25 @@ function sessionRowToLaunch(
     title: string;
     roleTitle: string | null;
   } | null,
-): InterviewLaunchPayload {
+): { launch: InterviewLaunchPayload; jobDescriptionMissing: boolean } {
   const jdEnabled = Boolean(session.jobDescriptionId || jobDescription);
+
+  /**
+   * The one place that sees all three sources of truth, and therefore the only
+   * place the disagreement between them can be resolved.
+   *
+   * Correcting the snapshot here fixes three things at once, because everything
+   * downstream flows through this return value: the chip stops asserting a JD
+   * that is gone, `launchToBootstrap` produces a null `jobDescriptionRef`, and
+   * `saveInterviewLaunch` stops writing the ghost back into localStorage where
+   * it would resurface in "Edit setup" and in the next session launched.
+   */
+  const jobDescriptionMissing = isJobDescriptionMissing(
+    launch,
+    session,
+    jobDescription,
+  );
+
   const base: InterviewSetupState = {
     ...DEFAULT,
     scenarioValue: session.scenarioValue,
@@ -193,16 +258,25 @@ function sessionRowToLaunch(
     personaLibraryId: launch?.personaLibraryId,
     practiceMode: session.practiceMode === "voice" ? "voice" : "text",
     voiceConfig: launch?.voiceConfig ?? DEFAULT.voiceConfig,
-    jobDescription: launch?.jobDescription ?? {
-      ...DEFAULT.jobDescription,
-      enabled: jdEnabled,
-      savedId: jobDescription?.id ?? session.jobDescriptionId,
-      savedTitle: jobDescription?.title ?? null,
-      roleTitle: jobDescription?.roleTitle ?? "",
-    },
+    jobDescription: jobDescriptionMissing
+      ? // Deleted out from under the session. Reset to "no JD" rather than
+        // carrying the dead reference forward — the interview is genuinely
+        // running without one from here on, and this is what makes that true
+        // in the UI and in anything relaunched from this config.
+        { ...DEFAULT.jobDescription, enabled: false }
+      : (launch?.jobDescription ?? {
+          ...DEFAULT.jobDescription,
+          enabled: jdEnabled,
+          savedId: jobDescription?.id ?? session.jobDescriptionId,
+          savedTitle: jobDescription?.title ?? null,
+          roleTitle: jobDescription?.roleTitle ?? "",
+        }),
   };
 
-  return { ...base, sessionId: session.id };
+  return {
+    launch: { ...base, sessionId: session.id },
+    jobDescriptionMissing,
+  };
 }
 
 export function useInterviewSessionBootstrap(
@@ -221,6 +295,7 @@ export function useInterviewSessionBootstrap(
     sessionId: null,
     jobDescriptionTitle: null,
     jobDescriptionRef: null,
+    jobDescriptionMissing: false,
     voiceConfig: DEFAULT.voiceConfig,
     resumed: null,
   }));
@@ -258,7 +333,7 @@ export function useInterviewSessionBootstrap(
             }>;
           }>(response);
 
-          const launch = sessionRowToLaunch(
+          const { launch, jobDescriptionMissing } = sessionRowToLaunch(
             payload.session,
             payload.launch,
             payload.jobDescription,
@@ -277,10 +352,11 @@ export function useInterviewSessionBootstrap(
             return;
           }
 
+          // `launch` is already reconciled, so a deleted JD is not written back.
           saveInterviewLaunch(launch);
           if (!cancelled) {
             setBootstrap({
-              ...launchToBootstrap(launch, searchParams),
+              ...launchToBootstrap(launch, searchParams, jobDescriptionMissing),
               resumed: readResumedTranscript(payload),
             });
           }
@@ -302,6 +378,7 @@ export function useInterviewSessionBootstrap(
               sessionId: resumeId,
               jobDescriptionTitle: null,
               jobDescriptionRef: null,
+              jobDescriptionMissing: false,
               voiceConfig: DEFAULT.voiceConfig,
               resumed: null,
             });

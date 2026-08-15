@@ -783,6 +783,22 @@ export async function POST(request: Request) {
         ? `${previousSignal.nextFocus}\n${userMessage}`
         : userMessage;
 
+    /**
+     * The launch snapshot names a JD the session no longer points at.
+     *
+     * Only reachable one way: the JD was deleted mid-session, and the FK
+     * (`on delete set null`) cleared the column while `launch_meta` kept the
+     * record of what the interview was configured with. Worth a line in the
+     * log, because from here the turn is built and *scored* without job
+     * context, and `{ context: null }` below is otherwise indistinguishable
+     * from a session that never had a JD at all.
+     */
+    if (launchMeta?.jobDescription?.enabled && !session.jobDescriptionId) {
+      console.warn(
+        `[chat] session ${session.id} was configured with a job description that has since been deleted; continuing without job context`,
+      );
+    }
+
     const [jobDescription, resumeRecord] = await timer.time(
       "retrieval",
       true,
