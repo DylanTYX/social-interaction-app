@@ -8,6 +8,7 @@ import { ModeCards } from "@/components/setup/mode-cards";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
 import { ResumePicker } from "@/components/setup/resume-picker";
 import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
+import type { UseJobDescriptions } from "@/hooks/use-job-descriptions";
 
 /**
  * Everything the interviewer needs before it can ask anything: how you want to
@@ -48,11 +49,19 @@ import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
 
 export function ContextStep({
   setup,
+  jobDescriptionLibrary,
   quickStarts,
   onUpdate,
   onModeChange,
 }: {
   setup: InterviewSetupState;
+  /**
+   * The wizard's single job-description library instance, passed down rather
+   * than mounted in the picker. Two `useJobDescriptions()` on one screen means
+   * two copies of a mutable list, and adding a document updates only one of
+   * them — which is how creating one in the wizard came to disable Continue.
+   */
+  jobDescriptionLibrary: UseJobDescriptions;
   quickStarts: ReadonlyArray<{ id: string; label: string; template: string }>;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
   /**
@@ -136,6 +145,7 @@ export function ContextStep({
       <JobDescriptionPicker
         value={setup.jobDescription}
         onChange={(next) => onUpdate({ jobDescription: next })}
+        library={jobDescriptionLibrary}
       />
 
       <ResumePicker

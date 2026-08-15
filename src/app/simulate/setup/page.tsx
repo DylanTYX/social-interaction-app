@@ -176,26 +176,32 @@ function SetupWizard() {
   const personaLibraryLoading = personaLibraryStatus === "loading";
 
   /**
-   * The selected job description's text, for the Rounds step's "suggest from
-   * job description" action.
+   * The wizard's one job-description library, passed down to the picker.
    *
-   * It used to read `setup.jobDescription.rawText`, which only ever holds a
-   * *draft* — both the upload and the library paths cleared it — so the suggest
-   * button was silently unavailable for every saved and uploaded job
-   * description, which is to say for almost all of them. Now that a chosen job
-   * description is always a library row, the text comes from the library.
-   *
-   * A second `useJobDescriptions()` alongside the picker's own, and so a second
-   * GET of at most fifty rows on this page. Cheap, and the alternative —
-   * threading the hook's whole surface down through `ContextStep` into the
-   * picker — couples three components to avoid one small request.
+   * Deliberately a single instance. The picker used to mount its own, so the
+   * page and the card held separate copies of the same mutable list: adding a
+   * document updated the card's copy while the launch gate read the page's,
+   * and creating a job description in the wizard disabled Continue on the
+   * grounds that a row three seconds old was "no longer in your library". Two
+   * owners of one list cannot be kept in sync after the fact, so there is one.
    */
-  const { items: jobDescriptionLibrary } = useJobDescriptions();
-  const jobDescriptionText = setup.jobDescription.enabled
-    ? (jobDescriptionLibrary.find(
-        (item) => item.id === setup.jobDescription.savedId,
-      )?.rawText ?? "")
-    : "";
+  const jobDescriptions = useJobDescriptions();
+  /**
+   * The job description this wizard is currently pointing at, resolved against
+   * the one library instance rather than trusted from the config.
+   *
+   * The config carries copies of `company` and `savedTitle` taken when it was
+   * chosen, and those go stale the moment the document is renamed on the
+   * library page. Everything downstream — the Rounds step's suggestion, the
+   * launch snapshot, the gate below — reads the row instead.
+   */
+  const selectedJobDescription =
+    setup.jobDescription.enabled && setup.jobDescription.savedId
+      ? (jobDescriptions.items.find(
+          (item) => item.id === setup.jobDescription.savedId,
+        ) ?? null)
+      : null;
+  const jobDescriptionText = selectedJobDescription?.rawText ?? "";
 
   // Persist setup as the user moves through the wizard so a refresh keeps
   // their progress. Wait until after the stored setup is hydrated so we don't
@@ -372,10 +378,18 @@ function SetupWizard() {
         setup.interviewLoop,
       );
       let jobDescriptionId: string | null = null;
-      // Constant now that launch no longer creates a job description and so no
-      // longer learns a title back from the server.
+      /**
+       * Read from the library row, not from the config's copy of it.
+       *
+       * `savedTitle` and `company` are snapshotted onto the config when a
+       * document is chosen, and go stale the moment it is renamed on the
+       * library page — leaving the session's `launch_meta`, the report header
+       * and the interviewer's own briefing all naming an employer the user has
+       * since corrected. The row is the source of truth; the config only
+       * remembers which row.
+       */
       const jobDescriptionTitle: string | null =
-        setup.jobDescription.savedTitle;
+        selectedJobDescription?.title ?? setup.jobDescription.savedTitle;
 
       /**
        * Launch selects; it never creates.
@@ -394,6 +408,11 @@ function SetupWizard() {
         if (!setup.jobDescription.savedId) {
           throw new Error(
             "Choose or add a job description before launching, or turn it off.",
+          );
+        }
+        if (!selectedJobDescription) {
+          throw new Error(
+            "That job description is no longer in your library. Choose another, or turn it off.",
           );
         }
         jobDescriptionId = setup.jobDescription.savedId;
@@ -456,7 +475,21 @@ function SetupWizard() {
           jobDescriptionId,
           resumeId,
           personaConfig: setup.personaConfig,
-          launchMeta: buildLaunchMetaFromSetup(setup),
+          // Built from a setup whose job-description fields have been refreshed
+          // from the library row, so the interviewer is briefed with the
+          // company as it is now rather than as it was when this was picked.
+          launchMeta: buildLaunchMetaFromSetup({
+            ...setup,
+            jobDescription: {
+              ...setup.jobDescription,
+              savedTitle: jobDescriptionTitle,
+              company:
+                selectedJobDescription?.company ?? setup.jobDescription.company,
+              roleTitle:
+                selectedJobDescription?.roleTitle ??
+                setup.jobDescription.roleTitle,
+            },
+          }),
         }),
       });
 
@@ -592,11 +625,29 @@ function SetupWizard() {
           ? ""
           : "Describe the role in at least 20 characters.";
       }
-      // One condition, because there is now one thing to check: a job
-      // description is either chosen or it is not. `mode` is the picker's own
-      // display state and says nothing about whether we can launch.
-      if (setup.jobDescription.enabled && !setup.jobDescription.savedId) {
-        return "Choose or add a job description, or turn it off.";
+      // A job description is either chosen or it is not. `mode` is the picker's
+      // own display state and says nothing about whether we can launch.
+      if (setup.jobDescription.enabled) {
+        if (!setup.jobDescription.savedId) {
+          return "Choose or add a job description, or turn it off.";
+        }
+        /**
+         * The chosen id must still resolve to a row.
+         *
+         * `savedId` is persisted in localStorage, so deleting that job
+         * description from the library page leaves the wizard pointing at a row
+         * that no longer exists. Without this the gate passed, and
+         * `interview_sessions.job_description_id` references
+         * `job_descriptions(id)` — so launching failed on a foreign-key
+         * violation, which reaches the user as an opaque server error at the
+         * one moment they are trying to start an interview.
+         *
+         * Only enforced once the library has loaded; while it is in flight the
+         * absence means nothing.
+         */
+        if (jobDescriptions.status === "ready" && !selectedJobDescription) {
+          return "That job description is no longer in your library. Choose another, or turn it off.";
+        }
       }
       if (setup.resume.enabled) {
         if (setup.resume.mode === "paste") {
@@ -687,6 +738,7 @@ function SetupWizard() {
           {currentStep === "context" && (
             <ContextStep
               setup={setup}
+              jobDescriptionLibrary={jobDescriptions}
               quickStarts={BRIEF_QUICK_STARTS}
               onModeChange={updateMode}
               onUpdate={(partial) =>
