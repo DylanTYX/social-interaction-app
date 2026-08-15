@@ -233,12 +233,15 @@ export function JobDescriptionPicker({
              */
             <div
               className={cn(
-                "max-h-64 divide-y divide-border overflow-y-auto rounded-lg border",
-                // Dashed when there is nothing in it, matching how every other
-                // empty state in the app is drawn.
-                items.length === 0
-                  ? "border-dashed border-border bg-muted/40"
-                  : "border-border",
+                // Separate rounded rows rather than one divided block. That is
+                // how the library page draws the same documents, and how the CV
+                // picker beside this one draws its own — a divided container was
+                // this card inventing a third treatment for the same thing.
+                //
+                // Capped and scrolled so the height comes from the container
+                // rather than from how many documents happen to be saved.
+                "max-h-64 space-y-2 overflow-y-auto",
+                items.length > 0 && "pr-1",
               )}
             >
               {items.map((item) => {
@@ -247,8 +250,10 @@ export function JobDescriptionPicker({
                   <div
                     key={item.id}
                     className={cn(
-                      "group flex items-center gap-3 p-3 transition-colors duration-150",
-                      isActive ? "bg-blue-50/70" : "bg-white hover:bg-accent",
+                      "group flex items-center gap-3 rounded-lg border p-3 transition-colors duration-150",
+                      isActive
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-border bg-white hover:bg-accent",
                     )}
                   >
                     <button
@@ -306,8 +311,10 @@ export function JobDescriptionPicker({
               {items.length === 0 && (
                 /* The message and the way out of it, together and centred.
                    An empty box that only *describes* the emptiness makes you
-                   hunt elsewhere for the fix. */
-                <div className="flex flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+                   hunt elsewhere for the fix — which is exactly what the CV
+                   picker still does, telling you to go click a different
+                   control. */
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">
                   <p className="text-sm text-muted-foreground">
                     No saved job descriptions yet
                   </p>
