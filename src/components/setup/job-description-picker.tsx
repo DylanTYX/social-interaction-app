@@ -24,6 +24,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
@@ -147,7 +152,6 @@ export function JobDescriptionPicker({
     }
     closeAddDialog();
   };
-
 
   const handleCreated = (created: JobDescriptionSummary | null) => {
     if (!created) return;
@@ -300,31 +304,59 @@ export function JobDescriptionPicker({
               })}
 
               {items.length === 0 && (
-                <p className="p-6 text-center text-sm text-muted-foreground">
-                  No saved job descriptions yet
-                </p>
+                /* The message and the way out of it, together and centred.
+                   An empty box that only *describes* the emptiness makes you
+                   hunt elsewhere for the fix. */
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No saved job descriptions yet
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setAdding(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add a job description
+                  </Button>
+                </div>
               )}
             </div>
           )}
 
-          {/* Below the list, never inside it, and never conditional. Gating it
-              on whether something was selected is what made the card resize as
-              you chose — and folding it into the empty-state row made one
-              control carry two meanings. It is simply always here. */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setAdding(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add a job description
-          </Button>
+          <div className="flex items-center justify-between gap-3">
+            {/* Once the list speaks for itself the label is redundant, so this
+                shrinks to an icon. Never conditional on *selection* though —
+                that is what made the card resize as you chose. It changes only
+                when the library goes from empty to not, which happens once.
 
-          {/* Editing, renaming and deleting live in the library. Keeping them
-              out of here is what lets this card be one list and nothing else. */}
-          <div className="flex justify-end">
+                Labelled through the tooltip and `aria-label` rather than left
+                to be guessed: a bare glyph is only honest when the surrounding
+                context already says what it adds, and it still has to say so to
+                a screen reader. */}
+            {items.length > 0 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAdding(true)}
+                    aria-label="Add a job description"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add a job description</TooltipContent>
+              </Tooltip>
+            ) : (
+              <span />
+            )}
+
+            {/* Editing, renaming and deleting live in the library. Keeping
+                them out of here is what lets this card be one list. */}
             <Link
               href="/dashboard/job-descriptions"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground"
@@ -398,7 +430,6 @@ export function JobDescriptionPicker({
           if (!open) setPreviewing(null);
         }}
       />
-
     </Card>
   );
 }
