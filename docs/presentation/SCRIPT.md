@@ -54,11 +54,11 @@ Also fill in on slide 1: **your supervisor's name and the date**.
 
 # Section 1 — the talk
 
-**Five slides, 959 words — about 6:24 at a rehearsed 150 wpm** (nearer 6:00 if you
-speak quickly). The demo is the main event, so this stays lean.
+**Five slides, 1025 words — about 6:50 at a rehearsed 150 wpm**
+(nearer 6:13 if you speak quickly). The demo is the main event, so the talk stays lean.
 
 These are the same words embedded as speaker notes in the `.pptx`. Both are
-generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart.
+generated from the `SLIDES` array in `build-deck.mjs`, so they cannot drift apart.
 
 **Slides 2, 3 and 4 carry the argument.** If you are running long, compress slide 1
 (the problem is one line — say it once) and the closing half of slide 5.
@@ -107,6 +107,10 @@ generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart
 > interviewer's prompt, which the candidate never sees. Then the next question
 > streams back.
 >
+> Why that order? A verdict that only arrives at the end of the interview
+> cannot change the interview. Scoring before generating is what makes the
+> questioning adaptive rather than scripted.
+>
 > Three engineering points. Scoring is bounded at four seconds — I measured
 > the turn before changing it, rather than guessing. Past that deadline the
 > question starts unsteered, but the verdict is still collected and stored, so
@@ -121,7 +125,7 @@ generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart
 
 ---
 
-### Slide 3 · What I can prove — `2:29`  ★
+### Slide 3 · What I can prove — `2:41`  ★
 
 > This is the claim I can prove, and the one I'd most like you to look at.
 >
@@ -149,7 +153,7 @@ generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart
 
 ---
 
-### Slide 4 · What it costs — `3:51`  ★
+### Slide 4 · What it costs — `4:03`  ★
 
 > Second — I don't estimate what this costs. I measure it.
 >
@@ -176,7 +180,7 @@ generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart
 
 ---
 
-### Slide 5 · Status, limits, and the demo — `5:17`
+### Slide 5 · Status, limits, and the demo — `5:29`
 
 > Finally, where it honestly stands.
 >
@@ -187,9 +191,11 @@ generated from the `TALK` object in `build-deck.mjs`, so they cannot drift apart
 >
 > Built but not yet measured, and I'll be direct. I wrote an evaluation
 > harness for scoring accuracy, with eighteen hand-authored fixtures and
-> defined metrics. The results aren't collected yet. Same for user acceptance
-> testing: the plan, the handout and the exit criteria are written; no
-> participants have been through it.
+> defined metrics. The results aren't collected yet — not because the harness
+> doesn't work, but because every run is billed, and I wanted the metrics and
+> the fixture set settled first so the first run is the real one rather than a
+> pilot. Same for user acceptance testing: the plan, the handout and the exit
+> criteria are written; no participants have been through it.
 >
 > Some things are deliberately out of scope — submitted code is reviewed,
 > never executed, and it's English only.
