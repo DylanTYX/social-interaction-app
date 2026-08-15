@@ -36,28 +36,36 @@ export function CoachingRail({
   return (
     <div
       className={cn(
-        "relative hidden shrink-0 overflow-hidden border-l border-slate-200/80 transition-[width] duration-300 ease-soft xl:block",
+        "relative hidden shrink-0 border-l border-slate-200/80 transition-[width] duration-300 ease-soft xl:block",
         open ? "w-112 bg-transparent" : "w-12 bg-white/80 backdrop-blur",
       )}
     >
-      {/* Kept mounted so the panel is revealed and clipped by the animating
-          width rather than blinking in at the end of it. `inert` covers both
-          focus and the accessibility tree in one attribute. */}
-      <div
-        inert={!open}
-        aria-hidden={!open}
-        className={cn(
-          // 28rem: the panel's 26rem plus this container's 1rem of padding on
-          // each side, so the open width is exactly what the content needs.
-          "h-full w-112 p-4 transition-opacity duration-200 ease-soft",
-          open ? "opacity-100 delay-100" : "opacity-0",
-        )}
-      >
-        <LiveFeedbackSidebar
-          metrics={turn.metrics}
-          analyses={turn.analyses}
-          followupPrompt={turn.lastFollowupPrompt}
-        />
+      {/* The clip lives here rather than on the element above, which is the
+          whole reason for this wrapper. The toggle is positioned to straddle
+          the rail's left border — half of it sits outside — so an
+          `overflow-hidden` on the parent sliced the button down the middle.
+          Clipping the panel and containing the toggle are two different jobs
+          and need two different boxes. */}
+      <div className="h-full w-full overflow-hidden">
+        {/* Kept mounted so the panel is revealed and clipped by the animating
+            width rather than blinking in at the end of it. `inert` covers both
+            focus and the accessibility tree in one attribute. */}
+        <div
+          inert={!open}
+          aria-hidden={!open}
+          className={cn(
+            // 28rem: the panel's 26rem plus this container's 1rem of padding on
+            // each side, so the open width is exactly what the content needs.
+            "h-full w-112 p-4 transition-opacity duration-200 ease-soft",
+            open ? "opacity-100 delay-100" : "opacity-0",
+          )}
+        >
+          <LiveFeedbackSidebar
+            metrics={turn.metrics}
+            analyses={turn.analyses}
+            followupPrompt={turn.lastFollowupPrompt}
+          />
+        </div>
       </div>
 
       {/* One button that moves, rather than two that swap. Straddles the left
