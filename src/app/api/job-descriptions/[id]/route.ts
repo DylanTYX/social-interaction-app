@@ -99,6 +99,29 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     const id = parseUuid(rawId, "id");
     const body = await readJsonBody<Record<string, unknown>>(request);
 
+    /**
+     * Establish the row exists and is ours *before* doing anything expensive.
+     *
+     * RLS scopes every statement below to the caller, which is why nothing here
+     * could ever corrupt another user's job description — but "cannot corrupt"
+     * is not the same as "declines to try". Without this check a PATCH naming
+     * any UUID at all would: run a full embedding pass and bill for it, update
+     * zero rows without error (PostgREST does not treat a 0-row update as a
+     * failure), then attempt a chunk insert scoped to *the caller's* user_id but
+     * *the supplied* job_description_id. That insert is stopped only by
+     * `unique(job_description_id, chunk_index)` colliding with the victim's
+     * existing chunks — so a job description that happens to be chunkless, a
+     * state `replaceJobDescriptionChunks` can itself produce, would accept
+     * attacker-authored chunks and serve them into the owner's next interview.
+     *
+     * It also stops leaking whether an id exists (404 either way now), and
+     * stops arbitrary embedding spend against ids the caller has no claim to.
+     */
+    const existing = await getJobDescription(supabase, id);
+    if (!existing) {
+      return notFound();
+    }
+
     const title = readOptionalString(body, "title", MAX_FIELD_CHARS.title);
     // The only field that cannot be cleared: every list, picker and chip in the
     // app renders it, and `title` is `not null` in the schema.
@@ -138,50 +161,73 @@ export async function PATCH(request: Request, ctx: RouteParams) {
      * layer refuses that outright; this turns the refusal into a 409 carrying
      * the count, so the user knows how many interviews to finish first.
      */
-    const rawText =
-      typeof body.rawText === "string"
-        ? parseBoundedString(body.rawText, {
-            field: "rawText",
-            max: MAX_JOB_DESCRIPTION_CHARS,
-          })
-        : undefined;
+    let rawText: string | undefined;
+    if ("rawText" in body) {
+      // Held to the same standard as every other field. It used to be read as
+      // `typeof body.rawText === "string" ? ... : undefined`, so `null`, a
+      // number, or an empty string all fell through to "key absent" and
+      // returned 200 with the text silently unchanged — while `roleTitle: 12`
+      // 400s. A no-op that reports success is the worst of the three answers,
+      // because the client believes the edit landed.
+      if (typeof body.rawText !== "string") {
+        throw new ClientVisibleError("rawText must be a string.", 400);
+      }
+      const parsed = parseBoundedString(body.rawText, {
+        field: "rawText",
+        max: MAX_JOB_DESCRIPTION_CHARS,
+      });
+      if (parsed === null) {
+        throw new ClientVisibleError("rawText cannot be empty.", 400);
+      }
+      rawText = parsed;
+    }
 
     // Costs an embedding run, so record it the way every other model call is.
     const usage = new UsageCollector();
 
-    const updated = await updateJobDescription(
-      supabase,
-      id,
-      {
-        ...(rawText !== undefined && rawText !== null ? { rawText } : {}),
-        ...(title !== undefined ? { title } : {}),
-        ...(body.roleTitle !== undefined
-          ? {
-              roleTitle: readOptionalString(
-                body,
-                "roleTitle",
-                MAX_FIELD_CHARS.roleTitle,
-              ),
-            }
-          : {}),
-        ...(body.company !== undefined
-          ? {
-              company: readOptionalString(
-                body,
-                "company",
-                MAX_FIELD_CHARS.company,
-              ),
-            }
-          : {}),
-        ...(sourceUrl !== undefined ? { sourceUrl } : {}),
-        ...(body.notes !== undefined
-          ? { notes: readOptionalString(body, "notes", MAX_FIELD_CHARS.notes) }
-          : {}),
-      },
-      { userId: user.id, usage },
-    );
-
-    await usage.flush(supabase);
+    let updated;
+    try {
+      updated = await updateJobDescription(
+        supabase,
+        id,
+        {
+          ...(rawText !== undefined ? { rawText } : {}),
+          ...(title !== undefined ? { title } : {}),
+          ...(body.roleTitle !== undefined
+            ? {
+                roleTitle: readOptionalString(
+                  body,
+                  "roleTitle",
+                  MAX_FIELD_CHARS.roleTitle,
+                ),
+              }
+            : {}),
+          ...(body.company !== undefined
+            ? {
+                company: readOptionalString(
+                  body,
+                  "company",
+                  MAX_FIELD_CHARS.company,
+                ),
+              }
+            : {}),
+          ...(sourceUrl !== undefined ? { sourceUrl } : {}),
+          ...(body.notes !== undefined
+            ? {
+                notes: readOptionalString(body, "notes", MAX_FIELD_CHARS.notes),
+              }
+            : {}),
+        },
+        { userId: user.id, usage },
+      );
+    } finally {
+      // In a `finally` because the embedding call inside runs *before* both of
+      // the points that can throw — the chunk delete and the chunk insert. Left
+      // after the await, a failed re-index meant the tokens were billed by
+      // OpenAI and recorded nowhere, which is exactly the under-reporting the
+      // usage table exists to prevent.
+      await usage.flush(supabase);
+    }
 
     if (!updated) {
       return notFound();
