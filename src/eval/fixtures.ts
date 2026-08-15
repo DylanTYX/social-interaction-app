@@ -24,6 +24,37 @@ export const BAND_RANGES: Record<QualityBand, [number, number]> = {
   strong: [68, 100],
 };
 
+/**
+ * Where one band ends and the next begins, for classifying a single score.
+ *
+ * `BAND_RANGES` overlap on purpose — `weak` runs to 45 and `mediocre` starts at
+ * 40 — because they express the tolerance a *label* is checked against, and a
+ * scorer landing at 42 on a weak answer should not be marked wrong. That is the
+ * right shape for grading the analyzer and the wrong shape for putting a single
+ * number into exactly one bucket, so the overlaps are split down the middle
+ * here. Derived rather than written out, so moving a band moves both.
+ *
+ * Lives here rather than in `run-rater-sheet.ts`, where it started, because the
+ * coach harness needs it too: "did the rewrite move up a band?" is the same
+ * question a rater's number asks.
+ */
+const WEAK_MEDIOCRE_CUT = (BAND_RANGES.weak[1] + BAND_RANGES.mediocre[0]) / 2;
+const MEDIOCRE_STRONG_CUT =
+  (BAND_RANGES.mediocre[1] + BAND_RANGES.strong[0]) / 2;
+
+export const BANDS: QualityBand[] = ["weak", "mediocre", "strong"];
+
+export function bandForScore(score: number): QualityBand {
+  if (score < WEAK_MEDIOCRE_CUT) return "weak";
+  if (score <= MEDIOCRE_STRONG_CUT) return "mediocre";
+  return "strong";
+}
+
+/** Band as a rank, so "did this move up a band?" is subtraction. */
+export function bandRank(band: QualityBand): number {
+  return BANDS.indexOf(band);
+}
+
 export interface EvalFixture {
   id: string;
   roundType: InterviewRoundType;
