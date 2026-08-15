@@ -34,7 +34,11 @@ works better.
 
 - **A job description** — paste it or upload a PDF. Questions are then tailored
   to that role's actual responsibilities, and the round builder on the next step
-  can suggest a matching set of rounds.
+  can suggest a matching set of rounds. Record the company and the interviewer
+  speaks as someone who works there — without inventing anything about it that
+  the posting does not say. **Tidy this up** strips the navigation, cookie
+  notices and boilerplate that come with a copied careers page, tells you how
+  much it removed, and can be undone in one click.
 - **Your CV** — paste it or upload a PDF. The interviewer asks about your real
   background and pressure-tests the claims on it, rather than inventing
   experience you don't have.
@@ -178,7 +182,10 @@ a weakness. A single session is shown as its own score rather than as an
 interview.
 
 **Libraries** — saved personas, job descriptions and CVs, reusable across
-sessions.
+sessions. Job descriptions are searchable, filterable by company, and editable
+after saving — including the title, which is otherwise guessed from the first
+line of whatever was pasted. Deleting one says first how many interviews still
+in progress are using it; those keep running but lose their grounding.
 
 **Weekly goal** — set a target number of sessions and track your streak. Both
 count sessions you actually practised in, not ones you opened and closed.
