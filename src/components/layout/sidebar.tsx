@@ -181,15 +181,11 @@ function NavItem({
         "text-sm font-medium",
         // Centering when collapsed
         isCollapsed && "justify-center px-2",
-        // Active state: one fill, and nothing else.
-        //
-        // This used to carry a fill, a border *and* a shadow simultaneously,
-        // plus the icon stroke-weight shift below — four treatments to say the
-        // one thing "you are here". The border was the worst of them: 1px on a
-        // box that inactive items do not have, so every item shifted a pixel as
-        // the active row moved. The stroke shift stays because it is free and
-        // survives at `w-16`, where the fill is the only other cue.
-        isActive && "bg-blue-50 text-blue-700",
+        // Active state
+        isActive && [
+          "bg-blue-50 text-blue-700",
+          "shadow-soft border border-blue-100",
+        ],
         // Inactive state with hover
         !isActive && ["text-gray-600", "hover:bg-gray-50 hover:text-gray-900"],
         // Transition
@@ -347,13 +343,9 @@ export function Sidebar() {
             onClick={() =>
               window.dispatchEvent(new Event("open-command-palette"))
             }
-            // Borderless until hovered. With a border *and* a fill this read as
-            // a third card stacked between the button and the nav, so the eye
-            // met three boxes before the first destination. It is a control,
-            // not a container.
             className={cn(
-              "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-500",
-              "hover:bg-gray-50 hover:text-gray-700 transition-colors duration-150",
+              "flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-500",
+              "hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150",
               isCollapsed && "justify-center px-2",
             )}
             aria-label="Open command palette"
@@ -362,9 +354,7 @@ export function Sidebar() {
             {!isCollapsed && (
               <>
                 <span className="flex-1 text-left">Search…</span>
-                {/* `bg-gray-100`, not `bg-white` on a border: the trigger no
-                    longer has a fill of its own for a white chip to sit on. */}
-                <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   ⌘K
                 </kbd>
               </>
@@ -409,19 +399,15 @@ export function Sidebar() {
               isCollapsed && "justify-center",
             )}
           >
-            {/* Flat, not the logo's gradient.
-                The three-stop gradient and its coloured shadow were rendered
-                twice in a 256px column — here and on the logo tile — which is
-                what made the sidebar read as busy rather than as structured.
-                The mark at the top is the one that earns it; an avatar is a
-                label, so it takes a single tone. */}
             <Link
               href="/dashboard/settings"
               className={cn(
                 "flex items-center justify-center shrink-0",
                 "h-8 w-8 rounded-lg",
-                "bg-gray-100 text-gray-700 text-xs font-semibold",
-                "hover:bg-gray-200 transition-colors",
+                "bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600",
+                "text-white text-xs font-semibold",
+                "shadow-md shadow-indigo-600/25",
+                "hover:opacity-90 transition-opacity",
               )}
               aria-label="Account settings"
             >
