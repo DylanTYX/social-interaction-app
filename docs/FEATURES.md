@@ -179,7 +179,10 @@ a weakness. A single session is shown as its own score rather than as an
 "average".
 
 **Drills** — single questions to practise against without setting up a full
-interview.
+interview. You get **coaching, not a score**: tips, your own answer rewritten
+next to what you wrote, and a model answer. Drills deliberately skip the
+0-100 analyzer — there is no session to score against and no interviewer to
+adapt. If you want a number, run a round.
 
 **Libraries** — saved personas, job descriptions and CVs, reusable across
 sessions. Job descriptions are searchable, filterable by company, and editable
@@ -207,6 +210,9 @@ Worth knowing up front:
 - **Delivery metrics aren't saved.** Pace, fillers and pauses appear under your
   answer during a voice session but don't reach the report.
 - **No hire/no-hire verdict.** You get scores and feedback, not a decision.
+- **Drill coaching has not been validated end to end.** The rubric behind it is
+  measured (`npm run eval:coach`), but whether the coaching actually makes you
+  better is not — see `docs/COACHING.md`, "What has not been measured".
 - **English only**, despite personas having a nationality.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
