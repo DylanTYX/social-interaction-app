@@ -3,7 +3,13 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, FileText, Settings2, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Settings2,
+  AlertCircle,
+  Volume2,
+} from "lucide-react";
 
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
@@ -178,6 +184,28 @@ function VoiceSimulateInner() {
   const voiceConfigRef = useRef(voiceConfig);
   const isRecordingRef = useRef(false);
   const sessionCompleteRef = useRef(false);
+  /**
+   * Set by `onPlaybackError` for the duration of one `speakAiMessage` call.
+   *
+   * The queue path detects a blocked or dead playback and reports it, but it
+   * reports it *out of band* — the speak promise still resolves. Without this
+   * flag the caller cannot tell a message that was read aloud from one that
+   * was silently swallowed, which is the whole reason the opening greeting
+   * failed unnoticed.
+   */
+  const playbackFailedRef = useRef(false);
+  /**
+   * The greeting the browser refused to play, kept so a tap can replay it.
+   *
+   * Autoplay needs a user gesture, and the opening greeting is the first audio
+   * in the document — fired from an effect after an `await`, with nothing on
+   * the stack that counts. Entering via the setup wizard carries sticky
+   * activation from the microphone-check click, which is why this only bites
+   * on a reload, a bookmark or a shared `?session=` link.
+   */
+  const [blockedAudioMessage, setBlockedAudioMessage] = useState<string | null>(
+    null,
+  );
 
   // Silence detection. `lastSpeechAtRef` is restamped on every recognition
   // event including interim ones, which is the high-frequency "still talking"
@@ -300,11 +328,13 @@ function VoiceSimulateInner() {
      *
      * The token lasts nine minutes and this used to run exactly once, while the
      * default round is fifteen. At T+9:00 `isInitialized()` started returning
-     * false, and the two things that check it both fail *silently*:
-     * `tryAutoStartRecording` returns early, and `speak()` throws into a
-     * `console.warn`. The result was an interview where, nine minutes in, the
-     * interviewer stopped talking and the microphone stopped opening — with no
-     * error on screen and no recovery short of a reload.
+     * false, and the two things that check it both used to fail *silently*:
+     * `tryAutoStartRecording` returned early, and the one-shot `speak()` threw
+     * into a `console.warn`. The result was an interview where, nine minutes
+     * in, the interviewer stopped talking and the microphone stopped opening —
+     * with no error on screen and no recovery short of a reload. Both now
+     * report: `tryAutoStartRecording` sets `recordingError`, and the queue path
+     * `speakAiMessage` uses routes a lapsed token to `reportPlaybackFailure`.
      *
      * Renewing at 80% of the advertised lifetime leaves headroom for a slow
      * mint without ever letting the current token lapse first.
@@ -346,6 +376,10 @@ function VoiceSimulateInner() {
     // continues in text — so they go to the inline slot rather than replacing
     // the screen the way a token failure does.
     speechService.onPlaybackError((message) => {
+      // Recorded even when the effect has been torn down: `speakAiMessage`
+      // reads this synchronously after its await and must not conclude that
+      // silence was a successful read.
+      playbackFailedRef.current = true;
       if (cancelled) return;
       setRecordingError(message);
     });
@@ -419,22 +453,65 @@ function VoiceSimulateInner() {
     };
   }, []);
 
-  const speakAiMessage = async (message: string) => {
+  /**
+   * Speak one complete message, and report whether it was actually heard.
+   *
+   * This used to call the one-shot `speak()`, which is why the opening greeting
+   * was silent while every later reply was fine — they were two different
+   * implementations, and only the queue path was ever fixed. The one-shot path
+   * never closed its `SpeakerAudioDestination` while the audio element was
+   * live, so its sole completion signal was a safety timer: a blocked `play()`
+   * and a clean read were indistinguishable to the caller. It also never routed
+   * anything to `reportPlaybackFailure`, so nothing reached the screen either.
+   *
+   * The queue path closes the destination itself, polls for real playback
+   * progress and reports failure — see `waitForQueuePlaybackEnd` in
+   * `speech-service.ts`. Using it here means the greeting gets the same
+   * guarantees as the rest of the interview.
+   *
+   * Returns `false` when the audio did not play, so the caller can offer a tap
+   * to retry instead of opening the microphone on a question nobody heard.
+   */
+  const speakAiMessage = async (message: string): Promise<boolean> => {
+    // TTS off by choice is not a failure; the interview proceeds in text.
     if (!voiceConfigRef.current?.ttsEnabled) {
-      return;
+      return true;
     }
 
     const speechService = speechServiceRef.current;
+    // `flush: true` because the whole message is already in hand — there is no
+    // partial tail to carry, unlike the streaming path.
+    const { sentences } = extractSpeakableSentences(message, { flush: true });
+    const utterances = sentences.length > 0 ? sentences : [message.trim()];
 
+    playbackFailedRef.current = false;
     setIsSpeakingTts(true);
     try {
-      await speechService.speak(
-        message,
-        voiceConfigRef.current.selectedVoiceUri,
-        { ratePercent: paceToRatePercent(activePersonaConfig.pace) },
+      // Fed without awaiting each in turn: `speakQueued` enqueues synchronously
+      // so order is preserved, and letting Azure synthesize sentence N+1 while
+      // N is audible is what keeps the gaps out.
+      const settled = await Promise.allSettled(
+        utterances.map((sentence) =>
+          speechService.speakQueued(
+            sentence,
+            voiceConfigRef.current.selectedVoiceUri,
+            { ratePercent: paceToRatePercent(activePersonaConfig.pace) },
+          ),
+        ),
       );
+
+      await speechService.waitForQueuedPlayback();
+
+      const rejected = settled.find((result) => result.status === "rejected");
+      if (rejected) {
+        console.warn("TTS synthesis failed:", rejected.reason);
+        return false;
+      }
+
+      return !playbackFailedRef.current;
     } catch (ttsError) {
       console.warn("TTS failed:", ttsError);
+      return false;
     } finally {
       if (isMountedRef.current) {
         setIsSpeakingTts(false);
@@ -471,6 +548,32 @@ function VoiceSimulateInner() {
     }
 
     await handleStartRecording();
+  };
+
+  /**
+   * Replay a message the browser refused to autoplay.
+   *
+   * The click is the entire mechanism: it grants the document sticky user
+   * activation, so this attempt and every utterance after it are permitted.
+   * Only reachable when `speakAiMessage` reported that nothing was heard.
+   */
+  const handlePlayBlockedAudio = async () => {
+    const message = blockedAudioMessage;
+    if (!message) return;
+
+    setRecordingError(null);
+    const heard = await speakAiMessage(message);
+    if (!isMountedRef.current) return;
+
+    // Cleared either way. A second failure cannot be an activation problem —
+    // the tap supplied it — so leaving the button up would loop the candidate
+    // on a control that has already done all it can. `onPlaybackError` has put
+    // the real reason in the inline slot.
+    setBlockedAudioMessage(null);
+
+    if (heard && !sessionCompleteRef.current) {
+      await tryAutoStartRecording();
+    }
   };
 
   // Generate an opening greeting once setup is loaded.
@@ -523,11 +626,25 @@ function VoiceSimulateInner() {
 
         setMessages([openingMessage]);
 
-        await speakAiMessage(data.aiMessage);
+        const heard = await speakAiMessage(data.aiMessage);
 
-        if (isMountedRef.current && !sessionCompleteRef.current) {
-          await tryAutoStartRecording();
+        if (!isMountedRef.current || sessionCompleteRef.current) return;
+
+        /**
+         * Do not open the microphone on a question nobody heard.
+         *
+         * This used to run unconditionally, so a candidate whose browser
+         * blocked the greeting was recorded answering a question that had only
+         * ever appeared as text — and the silence watch would then auto-submit
+         * whatever it caught. Offering the tap is both the fix and the thing
+         * that unblocks audio for the rest of the session.
+         */
+        if (!heard) {
+          setBlockedAudioMessage(data.aiMessage);
+          return;
         }
+
+        await tryAutoStartRecording();
       } catch (err) {
         console.warn("Error generating opening greeting:", err);
         if (!isMountedRef.current) return;
@@ -1423,6 +1540,28 @@ function VoiceSimulateInner() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-amber-800">{error}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {blockedAudioMessage && (
+                <Card className="border-sky-200 bg-sky-50/80">
+                  <CardContent className="flex flex-wrap items-center gap-3 py-4">
+                    <Volume2
+                      className="size-5 shrink-0 text-sky-700"
+                      aria-hidden
+                    />
+                    <p className="min-w-48 flex-1 text-sm text-sky-900">
+                      Your browser blocked the interviewer&rsquo;s audio until
+                      you interact with the page.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => void handlePlayBlockedAudio()}
+                      disabled={isSpeakingTts}
+                    >
+                      Tap to hear the interviewer
+                    </Button>
                   </CardContent>
                 </Card>
               )}

@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "eval": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-eval.ts",
     "eval:persona": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-persona-eval.ts",
+    "eval:raters": "tsx src/eval/run-rater-sheet.ts",
     "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts"
   },
   "dependencies": {
