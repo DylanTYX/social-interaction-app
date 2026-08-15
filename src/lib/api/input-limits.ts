@@ -43,6 +43,13 @@ export const MAX_SCENARIO_DESCRIPTION_CHARS = 4_000;
  */
 export const MAX_SUMMARY_CHARS = 4_000;
 
+/**
+ * A pasted job posting. Also the ceiling on what the tidy-up endpoint will
+ * send to a model, which is why it lives here rather than in the route: the two
+ * have to agree, or text that saves cannot be cleaned.
+ */
+export const MAX_JOB_DESCRIPTION_CHARS = 30_000;
+
 /** Any single persona free-text field (name, industry, seniority, a trait). */
 export const MAX_PERSONA_FIELD_CHARS = 200;
 

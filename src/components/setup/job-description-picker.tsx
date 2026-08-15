@@ -20,6 +20,7 @@ import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
+import { TidyJobDescription } from "@/components/setup/tidy-job-description";
 import type {
   JobDescriptionSetupConfig,
   JobDescriptionSetupMode,
@@ -227,6 +228,22 @@ export function JobDescriptionPicker({
                 className="min-h-40 resize-y"
               />
             </Field>
+          )}
+
+          {value.mode === "paste" && (
+            <TidyJobDescription
+              rawText={value.rawText}
+              onApply={(result) =>
+                onChange({
+                  ...value,
+                  rawText: result.cleanedText,
+                  // Only filled in, never overwritten: whatever the user typed
+                  // themselves beats what was inferred from the page.
+                  company: value.company || (result.company ?? ""),
+                  roleTitle: value.roleTitle || (result.roleTitle ?? ""),
+                })
+              }
+            />
           )}
 
           {value.mode === "upload" && (
