@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ModelAnswerResult } from "@/lib/coach-contract";
 
 /**
  * Cached coach model answers. See `supabase/migrations/0010_coach_answers.sql`.
@@ -7,11 +8,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * the rest of `lib/db`, so the snake_case boundary stays in one place.
  */
 
-export interface CoachAnswerPayload {
-  modelAnswer: string;
-  rewrite: string;
-  tips: string[];
-}
+/**
+ * What lands in the `answer` JSONB column.
+ *
+ * An alias rather than its own shape: this cache stores the route's response
+ * verbatim, so if the two ever diverge the cached rows become undecodable by
+ * the client that reads them. Aliasing makes that divergence a type error.
+ */
+export type CoachAnswerPayload = ModelAnswerResult;
 
 const COACH_ANSWER_COLUMNS = "id, turn_index, round_type, answer, created_at";
 

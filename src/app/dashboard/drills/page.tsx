@@ -1,10 +1,10 @@
 "use client";
 
 import { readJson } from "@/lib/api/fetch-json";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dumbbell,
-  Lightbulb,
+  PenLine,
   RefreshCw,
   Send,
   Shuffle,
@@ -13,7 +13,6 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CONTENT_ENTER } from "@/lib/motion";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -34,12 +33,11 @@ import {
   type DrillQuestion,
 } from "@/lib/question-bank";
 import { PageHeader } from "@/components/dashboard/page-header";
-
-interface ModelAnswerResult {
-  modelAnswer: string;
-  rewrite: string;
-  tips: string[];
-}
+import {
+  CoachingResult,
+  CoachingResultSkeleton,
+} from "@/components/coach/coaching-result";
+import type { ModelAnswerResult } from "@/lib/coach-contract";
 
 function pickRandom(
   questions: DrillQuestion[],
@@ -66,6 +64,16 @@ export default function DrillsPage() {
     pickRandom(getQuestionsForCategory("all")),
   );
   const [answer, setAnswer] = useState("");
+  /**
+   * The answer as it was when the request went out.
+   *
+   * A correctness requirement, not a nicety. `handleSubmit` is not one-shot —
+   * you can edit and ask again — and the coaching now renders your answer
+   * *beside* its rewrite. Rendering the live `answer` there would let a
+   * post-feedback edit silently mutate the "Your answer" half while the rewrite
+   * next to it still described the old text, which is a comparison that lies.
+   */
+  const [submittedAnswer, setSubmittedAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ModelAnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +81,15 @@ export default function DrillsPage() {
     category?: DrillCategory | "all";
   } | null>(null);
 
+  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const coachingRef = useRef<HTMLDivElement>(null);
+
   const nextQuestion = (nextCategory?: DrillCategory | "all") => {
     const targetPool =
       nextCategory !== undefined ? getQuestionsForCategory(nextCategory) : pool;
     setQuestion(pickRandom(targetPool, question.id));
     setAnswer("");
+    setSubmittedAnswer("");
     setResult(null);
     setError(null);
   };
@@ -111,6 +123,7 @@ export default function DrillsPage() {
     if (trimmed.length < 10 || loading) return;
 
     setLoading(true);
+    setSubmittedAnswer(trimmed);
     setError(null);
     setResult(null);
     try {
@@ -139,44 +152,95 @@ export default function DrillsPage() {
     }
   };
 
+  /**
+   * The way back up.
+   *
+   * Stacked, the textarea is offscreen from the bottom of the coaching card, so
+   * revising an answer after reading the feedback would mean hunting for it.
+   * `preventScroll` first, because focus otherwise fires an instant jump that
+   * the smooth scroll then has to fight.
+   */
+  const handleRevise = () => {
+    answerRef.current?.focus({ preventScroll: true });
+    answerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  /**
+   * Bring the coaching into view as soon as it is requested.
+   *
+   * Stacked, the card mounts below the fold, so pressing "Get feedback" would
+   * otherwise look like nothing happened. Keyed on `loading` rather than on
+   * `result` deliberately: the skeleton is then what the user watches fill in,
+   * and anchoring at the *start* of the card means a result taller than the
+   * skeleton grows downwards instead of shifting what they are already reading.
+   */
+  useEffect(() => {
+    if (loading) {
+      coachingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [loading]);
+
   const meta = getCategoryMeta(
     question.category === "leadership" ? "leadership" : question.category,
   );
 
+  // Nothing to show before the first submission — see the card below.
+  const hasCoaching = loading || error !== null || result !== null;
+  const answerEdited = result !== null && answer.trim() !== submittedAnswer;
+
   return (
     <div className="space-y-6 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
-      <PageHeader
-        eyebrow="Quick drills"
-        title="One question. Instant feedback."
-        description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
-        icon={<Dumbbell className="h-6 w-6" />}
-        iconColor="pink"
-      />
+      {/* The gradient stays full-bleed; the reading column is nested inside it,
+          so the page does not become a pale stripe on the shell's gray. Without
+          a cap, coaching prose ran the full width of the main column — roughly
+          1300px on a 1440px screen. Capped twice over: this column bounds the
+          cards, and `max-w-prose` inside `CoachingResult` bounds the paragraphs. */}
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <PageHeader
+          eyebrow="Quick drills"
+          title="One question. Instant feedback."
+          description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
+          icon={<Dumbbell className="h-6 w-6" />}
+          iconColor="pink"
+        />
 
-      {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
-          `aria-pressed` and no focus-visible ring, so selection was conveyed by
-          colour alone and a keyboard user got nothing. The shared component has
-          existed for exactly this and was only used in the setup wizard. */}
-      <div className="flex flex-wrap gap-2">
-        <ChoiceChip
-          selected={category === "all"}
-          onClick={() => handleCategory("all")}
-        >
-          All
-        </ChoiceChip>
-        {DRILL_CATEGORIES.map((cat) => (
+        {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
+            `aria-pressed` and no focus-visible ring, so selection was conveyed by
+            colour alone and a keyboard user got nothing. The shared component has
+            existed for exactly this and was only used in the setup wizard. */}
+        <div className="flex flex-wrap gap-2">
           <ChoiceChip
-            key={cat.id}
-            selected={category === cat.id}
-            onClick={() => handleCategory(cat.id)}
+            selected={category === "all"}
+            onClick={() => handleCategory("all")}
           >
-            {cat.label}
+            All
           </ChoiceChip>
-        ))}
-      </div>
+          {DRILL_CATEGORIES.map((cat) => (
+            <ChoiceChip
+              key={cat.id}
+              selected={category === cat.id}
+              onClick={() => handleCategory(cat.id)}
+            >
+              {cat.label}
+            </ChoiceChip>
+          ))}
+        </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Question + answer */}
+        {/* Answer above, coaching below, both full width.
+
+            This was `lg:grid-cols-2`, and grid stretches: the coaching card runs
+            300-400px taller than this one, so the answer card grew that much dead
+            whitespace beneath an 8-row textarea. `Card` is `flex flex-col gap-6`
+            with no `flex-1` anywhere, so the slack pooled at the bottom rather
+            than being absorbed. Matched heights and that whitespace were the same
+            fact, and only one of them could be kept.
+
+            The split's one real benefit was the candidate's own answer sitting
+            beside the tightened rewrite. That comparison moved *inside* the
+            coaching block, where the two halves are the same text twice and so
+            cannot reproduce the mismatch that made this layout wrong.
+
+            `persona-step.tsx` made the same call for the same reason. */}
         <Card className="shadow-soft">
           <CardHeader>
             <div className="flex items-center justify-between gap-2">
@@ -199,12 +263,15 @@ export default function DrillsPage() {
             <CardDescription>{meta.blurb}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Six rows rather than eight: the textarea spans the whole card
+                now, and `field-sizing-content` grows it from there as you type. */}
             <Textarea
+              ref={answerRef}
               aria-label="Your answer"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               placeholder="Type your answer out loud, as if you were in the room…"
-              rows={8}
+              rows={6}
               className="resize-none"
             />
             <div className="flex items-center justify-between">
@@ -234,87 +301,61 @@ export default function DrillsPage() {
           </CardContent>
         </Card>
 
-        {/* Feedback */}
-        <Card className="shadow-soft">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              Coaching
-            </CardTitle>
-            <CardDescription>
-              A model answer, your answer tightened, and what to fix.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!result && !loading && !error && (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-                  <Lightbulb className="h-6 w-6" />
-                </div>
-                <p className="mt-3 text-sm text-gray-500">
-                  Answer the question and your feedback shows up here.
-                </p>
-              </div>
-            )}
-            {loading && (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-20" />
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-20" />
-              </div>
-            )}
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {result && (
-              // The coaching arrives as one block after a wait, so it fades in
-              // rather than replacing the skeleton in a single frame. A real
-              // element, not a fragment: an animation needs a box to apply to,
-              // so the parent's `space-y-4` is restated here.
-              <div className={cn("space-y-4", CONTENT_ENTER)}>
-                {result.tips.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                      What to improve
-                    </p>
-                    <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-gray-700">
-                      {result.tips.map((tip, index) => (
-                        <li key={index}>{tip}</li>
-                      ))}
-                    </ul>
+        {/* Absent entirely until there is something in it.
+
+            Side by side, an empty state filled a column that existed anyway. Full
+            width and below the fold, a dashed placeholder would be a large box
+            promising something the user has not asked for yet — and its copy was
+            already carried by the page description above and by a button that
+            says "Get feedback". */}
+        {hasCoaching && (
+          <Card
+            ref={coachingRef}
+            className={cn("scroll-mt-8 shadow-soft", CONTENT_ENTER)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-amber-500" />
+                Coaching
+              </CardTitle>
+              <CardDescription>
+                {answerEdited
+                  ? "You have edited your answer since this feedback — get feedback again to refresh it."
+                  : "A model answer, your answer tightened, and what to fix."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loading && <CoachingResultSkeleton />}
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              {result && (
+                <>
+                  <CoachingResult
+                    result={result}
+                    originalAnswer={submittedAnswer}
+                  />
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                    <Button
+                      variant="ghost"
+                      onClick={handleRevise}
+                      className="gap-2 text-gray-500"
+                    >
+                      <PenLine className="h-4 w-4" />
+                      Revise this answer
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => nextQuestion()}
+                      className="gap-2"
+                    >
+                      <Shuffle className="h-4 w-4" />
+                      Next question
+                    </Button>
                   </div>
-                )}
-                {result.rewrite && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                      Your answer, tightened
-                    </p>
-                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-gray-700">
-                      {result.rewrite}
-                    </p>
-                  </div>
-                )}
-                {result.modelAnswer && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                      Model answer
-                    </p>
-                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-gray-700">
-                      {result.modelAnswer}
-                    </p>
-                  </div>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => nextQuestion()}
-                  className="w-full gap-2"
-                >
-                  <Shuffle className="h-4 w-4" />
-                  Next question
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <ConfirmDeleteDialog
