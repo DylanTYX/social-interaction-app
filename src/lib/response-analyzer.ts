@@ -245,6 +245,21 @@ function buildAnalysisPrompt(
 Primary rubric: ${rubric}.
 Use the STAR fields below only if they are filled in for this round; otherwise judge against the primary rubric above.
 
+overallScore bands — anchor on these, they are not advisory:
+  0-25   Does not engage the question, or shows no relevant capability.
+  26-45  A real attempt that fails on fundamentals: incorrect, unstructured, or
+         missing the core of what was asked. Effort alone does not lift an
+         answer out of this band.
+  46-65  Partially meets the rubric. The substance is present but shallow,
+         vague, or with significant gaps.
+  66-80  Solid. Meets the rubric with specifics, without being exceptional.
+  81-100 Strong. Specific, well structured, and showing depth beyond the
+         minimum.
+Judge against the rubric, not against fluency or length. A confident,
+well-presented answer that is wrong belongs in the lower bands, and a working
+but flawed attempt is not automatically a middling one — say what is wrong and
+score it accordingly.
+
 Return ONLY valid JSON with this structure:
 {
   ${starBlock}
