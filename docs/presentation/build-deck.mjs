@@ -1,8 +1,16 @@
 /**
- * Generates docs/presentation/FYP-demo.pptx
+ * Generates docs/presentation/FYP-demo.pptx, and rewrites Section 1 of
+ * docs/presentation/SCRIPT.md from the same SLIDES array so the deck's speaker
+ * notes and the rehearsal script can never disagree.
  *
- *   npm i pptxgenjs@4          # not a project dependency — install it wherever
- *   node docs/presentation/build-deck.mjs
+ *   npm i pptxgenjs@4 && node docs/presentation/build-deck.mjs
+ *
+ * pptxgenjs is deliberately NOT a dependency of this project — it has no place
+ * in the app's bundle or its lockfile. Install it anywhere and point at it:
+ *
+ *   PPTXGENJS_PATH=/some/where/node_modules node docs/presentation/build-deck.mjs
+ *
+ * (NODE_PATH is not a reliable substitute; Node ignores it in several setups.)
  *
  * pptxgenjs 4.0.1 ships an ESM build without "type": "module" in its own
  * package.json, so `import pptxgen from "pptxgenjs"` fails under Node. The CJS
@@ -14,9 +22,28 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
-const require = createRequire(import.meta.url);
-const pptxgen = require("pptxgenjs");
+const pptxgen = (() => {
+  const fromHere = createRequire(import.meta.url);
+  try {
+    return fromHere("pptxgenjs");
+  } catch (err) {
+    if (err.code !== "MODULE_NOT_FOUND") throw err;
+    const dir = process.env.PPTXGENJS_PATH;
+    if (!dir) {
+      throw new Error(
+        "pptxgenjs not found.\n" +
+          "  Install it next to this script:  npm i pptxgenjs@4\n" +
+          "  or point at an existing copy:    PPTXGENJS_PATH=/path/to/node_modules",
+      );
+    }
+    // Accept either the node_modules directory itself or its parent: a require
+    // rooted *inside* node_modules resolves upward from the wrong place.
+    const root = path.basename(dir) === "node_modules" ? path.dirname(dir) : dir;
+    return createRequire(path.join(root, "resolve-root.js"))("pptxgenjs");
+  }
+})();
 
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "FYP-demo.pptx");
 
@@ -51,150 +78,154 @@ pptx.company = "ConvoTrainer";
 pptx.title = "ConvoTrainer — FYP Demo";
 
 /* ----------------------------------------------------------------- script
-   Single source of truth for the spoken talk. These strings become the
-   speaker notes, and docs/presentation/SCRIPT.md carries the same words.
-   Sentences marked [cut if behind] bring the talk from ~5:20 to ~4:50.
+   Single source of truth for the spoken talk.
+
+   Running this file derives BOTH the speaker notes embedded in the .pptx AND
+   Section 1 of SCRIPT.md from the array below, so the two cannot drift apart.
+   Edit the talk here and nowhere else.
    ========================================================================= */
 
-const TALK = {
-  s1: `[0:00]  ~177 words
+const WPM = 150;
 
-Good morning. My final year project is ConvoTrainer, an interview practice
-application.
+const SLIDES = [
+  {
+    id: "s1",
+    title: "What it is, and the gap",
+    star: false,
+    extra: "FILL IN before presenting: your supervisor's name and the date.",
+    short: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to pick the next question.",
+    talk: `Good morning. My final year project is ConvoTrainer, an interview practice application.
 
-All three ways of practising today have the same hole. A question bank asks
-the same things in the same order; it never notices that you dodged the
-question. A human adapts perfectly, but isn't available at eleven at night and
-can't be repeated ten times. A general chatbot will role-play, but won't grade
-you against a rubric or push back when you're weak. Nothing connects how you
-answered to what you get asked next. That loop is the project.
+All three ways of practising today have the same hole. A question bank asks the same things in the same order; it never notices that you dodged the question. A human adapts perfectly, but isn't available at eleven at night and can't be repeated ten times. A general chatbot will role-play, but won't grade you against a rubric or push back when you're weak. Nothing connects how you answered to what you get asked next. That loop is the project.
 
-So: you describe the role, optionally attaching the real job description and
-your CV, which are used to ground the questions. You pick the rounds and shape
-the interviewer. Then you interview.
+So: you describe the role, optionally attaching the real job description and your CV, which are used to ground the questions. You pick the rounds and shape the interviewer. Then you interview.
 
-Six round types, each with its own rubric — a system design answer isn't
-judged the way a behavioural one is. Text or voice, with a code editor on
-technical rounds. Afterwards, a scored report with per-answer coaching, model
-answers and competency coverage.
+Six round types, each with its own rubric — a system design answer isn't judged the way a behavioural one is. Text or voice, with a code editor on technical rounds. Afterwards, a scored report with per-answer coaching, model answers and competency coverage.
 
-The rest of the slides are how that works underneath.
+The rest of the slides are how that works underneath.`,
+  },
+  {
+    id: "s2",
+    title: "How a turn works",
+    star: true,
+    extra: "KEY SLIDE — this is the architecture. Do not rush it.",
+    short: null,
+    talk: `This is the centre of the project — one turn, left to right.
 
-FILL IN before presenting: your supervisor's name and the date.
+Your answer arrives at the chat endpoint. Before anything is generated, a second model call scores it against the rubric for that round type, at low temperature, returning JSON.
 
-SHORT VERSION: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to pick the next question."`,
+That verdict goes into a decision engine — ordinary deterministic code, no model involved. It picks one of seven questioning strategies: probe the action, challenge ownership, drill for specificity. It also computes a difficulty target. Those become a private steering block inside the interviewer's prompt, which the candidate never sees. Then the next question streams back.
 
-  s2: `[1:11]  ~196 words  ★
+Why that order? A verdict that only arrives at the end of the interview cannot change the interview. Scoring before generating is what makes the questioning adaptive rather than scripted.
 
-This is the centre of the project — one turn, left to right.
+Three engineering points. Scoring is bounded at four seconds — I measured the turn before changing it, rather than guessing. Past that deadline the question starts unsteered, but the verdict is still collected and stored, so the transcript and the report are unaffected.
 
-Your answer arrives at the chat endpoint. Before anything is generated, a
-second model call scores it against the rubric for that round type, at low
-temperature, returning JSON.
+Both messages and the analysis commit in one Postgres transaction, so a turn can't half-exist.
 
-That verdict goes into a decision engine — ordinary deterministic code, no
-model involved. It picks one of seven questioning strategies: probe the
-action, challenge ownership, drill for specificity. It also computes a
-difficulty target. Those become a private steering block inside the
-interviewer's prompt, which the candidate never sees. Then the next question
-streams back.
+And every interviewer turn runs on the same model. The opening turn used to use a stronger one — but a different model is a different prompt cache, so the session paid full price twice and hit cache neither time.`,
+  },
+  {
+    id: "s3",
+    title: "What I can prove",
+    star: true,
+    extra: "KEY SLIDE — your strongest evidence. Slow down here.",
+    short: null,
+    talk: `This is the claim I can prove, and the one I'd most like you to look at.
 
-Three engineering points. Scoring is bounded at four seconds — I measured the
-turn before changing it, rather than guessing. Past that deadline the question
-starts unsteered, but the verdict is still collected and stored, so the
-transcript and the report are unaffected.
+The persona reaches the model down two paths. Textually, each dial becomes a sentence in the system prompt — and prompt text has no effect you can compute, so you have to measure what comes back.
 
-Both messages and the analysis commit in one Postgres transaction, so a turn
-can't half-exist.
+The numeric path is arithmetic: strictness minus warmth, over four, plus a repetition boost, clamped one to ten. That number is injected as an explicit instruction — aim for difficulty seven out of ten.
 
-And every interviewer turn runs on the same model. The opening turn used to
-use a stronger one — but a different model is a different prompt cache, so the
-session paid full price twice and hit cache neither time.
+On the right is real output. Identical question, identical answer, identical round type. The only variable is who's asking. Yuki, at strictness nine and warmth four, targets seven. Isabella, at warmth nine and pushback four, targets five.
 
-KEY SLIDE — this is the architecture. Do not rush it.`,
+That isn't a sample from a stochastic model, it's a computation — you can do the arithmetic by hand and get the same two numbers, every run, offline. And a test fails if a future edit brings those two personas' dials together, so the comparison can't quietly stop demonstrating anything.
 
-  s3: `[2:29]  ~205 words  ★
+Two limits, before you ask. The dials are coarse: strictness one to ten moves difficulty only five to seven. And scoring deliberately ignores persona — grading shouldn't depend on who asked.`,
+  },
+  {
+    id: "s4",
+    title: "What it costs",
+    star: true,
+    extra: "KEY SLIDE — the negative result is the point, not a caveat.",
+    short: null,
+    talk: `Second — I don't estimate what this costs. I measure it.
 
-This is the claim I can prove, and the one I'd most like you to look at.
+Every OpenAI call records its token usage, including how much was served from cache, into a Postgres table as the call happens. A command-line tool reads that table and prices it, reporting tokens per call site, cache hit rate, and cost per turn. So any cost figure I give you is a query you can re-run.
 
-The persona reaches the model down two paths. Textually, each dial becomes a
-sentence in the system prompt — and prompt text has no effect you can compute,
-so you have to measure what comes back.
+The most useful result was a negative one. OpenAI only caches a prompt prefix once it reaches 1,024 tokens. I'd deliberately structured the prompt in two layers — stable part first, volatile part last — specifically so caching could engage. Then I measured it: on a bare session the stable prefix is about 590 tokens. Under the floor. It never fires.
 
-The numeric path is arithmetic: strictness minus warmth, over four, plus a
-repetition boost, clamped one to ten. That number is injected as an explicit
-instruction — aim for difficulty seven out of ten.
+I kept the structure, because it costs nothing and it's what makes caching possible once a job description is attached — which is when the prompt is big enough to matter. But the tool reports that it didn't fire, in words, rather than printing a zero I could quietly reinterpret.
 
-On the right is real output. Identical question, identical answer, identical
-round type. The only variable is who's asking. Yuki, at strictness nine and
-warmth four, targets seven. Isabella, at warmth nine and pushback four,
-targets five.
+That's the claim I want to make. Not that this is cheap — a ten-question round is roughly a cent. It's that every model call is instrumented, priced and checkable, including the optimisation that provably doesn't work.`,
+  },
+  {
+    id: "s5",
+    title: "Status, limits, and the demo",
+    star: false,
+    extra: "Stop talking. Start demoing.",
+    short: "299 tests passing in CI, RLS everywhere, voice and text working. The eval harness and the UAT plan are written but not yet run — I'm not going to show you results I don't have.",
+    talk: `Finally, where it honestly stands.
 
-That isn't a sample from a stochastic model, it's a computation — you can do
-the arithmetic by hand and get the same two numbers, every run, offline. And a
-test fails if a future edit brings those two personas' dials together, so the
-comparison can't quietly stop demonstrating anything.
+Built and verified: 299 unit tests across 31 files, all passing in CI on every push alongside typecheck and lint. Ten migrations with row-level security on every table — and retrieval runs through pgvector inside Postgres, so it inherits the same access rules as everything else.
 
-Two limits, before you ask. The dials are coarse: strictness one to ten moves
-difficulty only five to seven. And scoring deliberately ignores persona —
-grading shouldn't depend on who asked.
+Built but not yet measured, and I'll be direct. I wrote an evaluation harness for scoring accuracy, with eighteen hand-authored fixtures and defined metrics. The results aren't collected yet — not because the harness doesn't work, but because every run is billed, and I wanted the metrics and the fixture set settled first so the first run is the real one rather than a pilot. Same for user acceptance testing: the plan, the handout and the exit criteria are written; no participants have been through it.
 
-KEY SLIDE — your strongest evidence. Slow down here.`,
+Some things are deliberately out of scope — submitted code is reviewed, never executed, and it's English only.
 
-  s4: `[3:51]  ~215 words  ★
+The rule I held to throughout: never claim a number I haven't run. That's why the middle column is on this slide rather than left off it.
 
-Second — I don't estimate what this costs. I measure it.
+So, three things to show you, ordered by how much can go wrong. Starting with the one that can't fail.`,
+  },
+];
 
-Every OpenAI call records its token usage, including how much was served from
-cache, into a Postgres table as the call happens. A command-line tool reads
-that table and prices it, reporting tokens per call site, cache hit rate, and
-cost per turn. So any cost figure I give you is a query you can re-run.
+function wordCount(t) {
+  return t.trim().split(/\s+/).length;
+}
 
-The most useful result was a negative one. OpenAI only caches a prompt prefix
-once it reaches 1,024 tokens. I'd deliberately structured the prompt in two
-layers — stable part first, volatile part last — specifically so caching could
-engage. Then I measured it: on a bare session the stable prefix is about 590
-tokens. Under the floor. It never fires.
+function clock(seconds) {
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
-I kept the structure, because it costs nothing and it's what makes caching
-possible once a job description is attached — which is when the prompt is big
-enough to matter. But the tool reports that it didn't fire, in words, rather
-than printing a zero I could quietly reinterpret.
+/** Greedy wrap, preserving blank-line paragraph breaks. */
+function wrap(text, width) {
+  return text
+    .trim()
+    .split(/\n\s*\n/)
+    .map((para) => {
+      const lines = [];
+      let line = "";
+      for (const w of para.split(/\s+/)) {
+        if (line && (line + " " + w).length > width) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = line ? line + " " + w : w;
+        }
+      }
+      if (line) lines.push(line);
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
 
-That's the claim I want to make. Not that this is cheap — a ten-question round
-is roughly a cent. It's that every model call is instrumented, priced and
-checkable, including the optimisation that provably doesn't work.
+let elapsed = 0;
+for (const s of SLIDES) {
+  s.words = wordCount(s.talk);
+  s.at = clock(elapsed);
+  elapsed += (s.words / WPM) * 60;
+}
+const TOTAL_WORDS = SLIDES.reduce((n, s) => n + s.words, 0);
 
-KEY SLIDE — the negative result is the point, not a caveat.`,
-
-  s5: `[5:17]  ~166 words
-
-Finally, where it honestly stands.
-
-Built and verified: 299 unit tests across 31 files, all passing in CI on every
-push alongside typecheck and lint. Ten migrations with row-level security on
-every table — and retrieval runs through pgvector inside Postgres, so it
-inherits the same access rules as everything else.
-
-Built but not yet measured, and I'll be direct. I wrote an evaluation harness
-for scoring accuracy, with eighteen hand-authored fixtures and defined
-metrics. The results aren't collected yet. Same for user acceptance testing:
-the plan, the handout and the exit criteria are written; no participants have
-been through it.
-
-Some things are deliberately out of scope — submitted code is reviewed, never
-executed, and it's English only.
-
-The rule I held to throughout: never claim a number I haven't run. That's why
-the middle column is on this slide rather than left off it.
-
-So, three things to show you, ordered by how much can go wrong. Starting with
-the one that can't fail.
-
-Stop talking. Start demoing.
-
-SHORT VERSION: "299 tests passing in CI, RLS everywhere, voice and text working. The eval harness and the UAT plan are written but not yet run — I'm not going to show you results I don't have."`,
-};
+/** Speaker note = timing header + the talk itself + delivery cues. */
+const TALK = Object.fromEntries(
+  SLIDES.map((s) => {
+    const parts = [`[${s.at}]  ~${s.words} words${s.star ? "  \u2605" : ""}`, "", wrap(s.talk, 78)];
+    if (s.extra) parts.push("", s.extra);
+    if (s.short) parts.push("", `SHORT VERSION: "${s.short}"`);
+    return [s.id, parts.join("\n")];
+  }),
+);
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -473,10 +504,13 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
 
   panel(s, { x: M, y: 4.92, w: CW, h: 0.86, fill: ACCENT_SOFT, edge: ACCENT });
   s.addText(
-    "The score is not just reported at the end. It is an input to the next question.",
+    [
+      { text: "Why score before generating?  ", options: { bold: true, color: ACCENT } },
+      { text: "A verdict that only arrives at the end of the interview cannot change the interview. Scoring first is what makes the questioning adaptive rather than scripted — and bounding it at 4 s is what stops that costing a stalled reply.", options: { color: INK } },
+    ],
     {
       x: M + 0.34, y: 4.92, w: CW - 0.6, h: 0.86,
-      fontFace: SANS, fontSize: 17, bold: true, color: INK, valign: "middle",
+      fontFace: SANS, fontSize: 13, valign: "middle", lineSpacing: 18,
     },
   );
 
@@ -575,7 +609,9 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
   s.addText(
     [
       { text: "Stated limits:  ", options: { bold: true, color: AMBER } },
-      { text: "the dials are coarse — strictness 1→10 moves difficulty only 5→7, and 5/6/7 emit byte-identical prompts. Scoring is persona-blind by design: a strict interviewer and a warm one grade the same answer identically.", options: { color: BODY } },
+      { text: "the dials are coarse — strictness 1→10 moves difficulty only 5→7, and 5/6/7 emit byte-identical prompts. Scoring is persona-blind ", options: { color: BODY } },
+      { text: "by design", options: { color: BODY, italic: true } },
+      { text: ": a strict interviewer and a warm one grade the same answer identically, because grading should not depend on who asked. Persona changes what gets asked next, never what an answer was worth.", options: { color: BODY } },
     ],
     { x: M, y: 5.94, w: CW, h: 0.62, fontFace: SANS, fontSize: 10.5, valign: "top", lineSpacing: 14.5 },
   );
@@ -630,7 +666,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
     [
       { text: "OpenAI caches a prompt prefix only when it reaches 1,024 tokens. I ordered the prompt into a stable layer and a volatile layer so caching ", options: { color: BODY } },
       { text: "can", options: { color: INK, bold: true, italic: true } },
-      { text: " engage. On a bare session the stable prefix is about 590 tokens — under the floor — so it does not fire at all. The tool reports that in words rather than printing a zero for me to spin.", options: { color: BODY } },
+      { text: " engage. On a bare session the stable prefix is about 590 tokens — under the floor — so it does not fire at all. The tool reports that in words, rather than printing a zero for me to reinterpret.", options: { color: BODY } },
     ],
     { x: M + 0.34, y: 3.24, w: CW - 0.7, h: 0.86, fontFace: SANS, fontSize: 12.5, valign: "top", lineSpacing: 18 },
   );
@@ -677,6 +713,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
       color: GREEN,
       soft: GREEN_SOFT,
       h: "Built and verified",
+      why: "“Verified” means a command you can run, or a test that fails when the claim stops being true.",
       rows: [
         "299 tests across 31 files, all passing",
         "CI: typecheck + lint + test on every push",
@@ -690,6 +727,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
       color: AMBER,
       soft: AMBER_SOFT,
       h: "Built, not yet measured",
+      why: "Every run is billed, so I settled the metrics and fixtures first — the first run is the real one, not a pilot.",
       rows: [
         "Scoring-accuracy eval — harness and 18 fixtures written, results not yet collected",
         "UAT — plan, handout and exit criteria written, no participants run yet",
@@ -701,6 +739,7 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
       color: MUTED,
       soft: PANEL,
       h: "Out of scope, on purpose",
+      why: "Each is a bounded, documented trade-off — recorded here rather than found by someone else.",
       rows: [
         "Code is reviewed, never executed",
         "English only",
@@ -723,8 +762,13 @@ function leadList(slide, rows, { x, y, w, h, size = 12.5, gapLine = 1.5 }) {
       if (j < c.rows.length - 1) runs.push({ text: "", options: { breakLine: true, fontSize: 5 } });
     });
     s.addText(runs, {
-      x: x + 0.28, y: 2.22, w: colW - 0.46, h: 2.04,
+      x: x + 0.28, y: 2.22, w: colW - 0.46, h: 1.6,
       fontFace: SANS, fontSize: 10.5, color: BODY, valign: "top", lineSpacing: 14.5,
+    });
+    s.addText(c.why, {
+      x: x + 0.28, y: 3.86, w: colW - 0.46, h: 0.42,
+      fontFace: SANS, fontSize: 9.5, italic: true, color: c.color,
+      valign: "top", lineSpacing: 13,
     });
   });
 
@@ -988,3 +1032,41 @@ appendix(
 
 await pptx.writeFile({ fileName: OUT });
 console.log("wrote", OUT);
+
+/* ---------------------------------------------- SCRIPT.md — section 1 only */
+
+{
+  const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "SCRIPT.md");
+  const md = [
+    "# Section 1 — the talk",
+    "",
+    `**Five slides, ${TOTAL_WORDS} words — about ${clock((TOTAL_WORDS / WPM) * 60)} at a rehearsed ${WPM} wpm**`,
+    `(nearer ${clock((TOTAL_WORDS / 165) * 60)} if you speak quickly). The demo is the main event, so the talk stays lean.`,
+    "",
+    "These are the same words embedded as speaker notes in the `.pptx`. Both are",
+    "generated from the `SLIDES` array in `build-deck.mjs`, so they cannot drift apart.",
+    "",
+    "**Slides 2, 3 and 4 carry the argument.** If you are running long, compress slide 1",
+    "(the problem is one line — say it once) and the closing half of slide 5.",
+    "",
+    "---",
+    "",
+  ];
+  for (const s of SLIDES) {
+    md.push(`### Slide ${s.id.slice(1)} · ${s.title} — \`${s.at}\`${s.star ? "  \u2605" : ""}`, "");
+    for (const para of wrap(s.talk, 76).split("\n\n")) {
+      md.push(...para.split("\n").map((l) => "> " + l), ">");
+    }
+    md.pop();
+    md.push("");
+    if (s.short) md.push(`**Short: "${s.short}"**`, "");
+    md.push("---", "");
+  }
+
+  const cur = fs.readFileSync(SCRIPT, "utf8");
+  const a = cur.indexOf("# Section 1");
+  const b = cur.indexOf("# Section 2");
+  if (a === -1 || b === -1) throw new Error("SCRIPT.md is missing its Section 1/2 markers");
+  fs.writeFileSync(SCRIPT, cur.slice(0, a) + md.join("\n") + "\n" + cur.slice(b));
+  console.log("wrote", SCRIPT, `— section 1, ${TOTAL_WORDS} words, ${clock((TOTAL_WORDS / WPM) * 60)}`);
+}
