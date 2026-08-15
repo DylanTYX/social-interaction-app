@@ -5,6 +5,7 @@ import {
   buildJobDescriptionTitle,
   chunkJobDescription,
 } from "@/lib/jd-chunking";
+import { countSessionsForJobDescription } from "@/lib/db/sessions";
 
 export interface JobDescriptionRecord {
   id: string;
@@ -184,13 +185,99 @@ export async function listJobDescriptions(
 }
 
 /**
- * Edit a JD's metadata. Never its text.
+ * Thrown when a text edit would pull the ground out from under a live session.
  *
- * `raw_text` is deliberately not updatable here. It is chunked and embedded at
- * creation, and changing it without re-running both would leave the retrieval
- * index describing a document that no longer exists — the chunks would keep
- * answering questions from the old posting while the library showed the new
- * one. Replacing the text means creating a new JD, which is what the UI offers.
+ * Its own type so the route can answer 409 with the count rather than a generic
+ * 500 — the user needs to know *why* it refused, and how many interviews they
+ * would have to finish or abandon first.
+ */
+export class JobDescriptionInUseError extends Error {
+  constructor(readonly inProgress: number) {
+    super(
+      inProgress === 1
+        ? "1 interview is still in progress with this job description."
+        : `${inProgress} interviews are still in progress with this job description.`,
+    );
+    this.name = "JobDescriptionInUseError";
+  }
+}
+
+/**
+ * Rewrite a JD's chunks from new text.
+ *
+ * Split out because it is the dangerous half. `unique(job_description_id,
+ * chunk_index)` rules out writing the new set alongside the old, and PostgREST
+ * offers no transaction, so there is a window between the delete and the insert
+ * where the JD has no chunks at all — a state `loadJobDescriptionContext`
+ * reports as "no job context", indistinguishable from never having had one.
+ *
+ * `createJobDescription` guards its version of this by deleting the JD if the
+ * chunk write fails. That is not available here: sessions reference this row,
+ * and destroying it would be far worse than leaving it chunkless.
+ *
+ * Two things make the window acceptable. The caller refuses the edit outright
+ * while any session is in progress, so nothing is reading these chunks. And the
+ * embedding call — the slow, fallible, expensive step — runs *before* the
+ * delete, so the overwhelmingly likely failure happens while the old chunks are
+ * still intact.
+ */
+async function replaceJobDescriptionChunks(input: {
+  supabase: SupabaseClient;
+  userId: string;
+  jobDescriptionId: string;
+  rawText: string;
+  usage?: UsageCollector;
+}): Promise<void> {
+  const chunks = chunkJobDescription(input.rawText);
+  if (chunks.length === 0) {
+    throw new Error("Unable to extract usable text from the job description.");
+  }
+
+  // Before the delete, deliberately. See above.
+  const embeddings = await createEmbeddings(
+    chunks.map((chunk) => chunk.content),
+    input.usage,
+  );
+
+  const { error: deleteError } = await input.supabase
+    .from("job_description_chunks")
+    .delete()
+    .eq("job_description_id", input.jobDescriptionId);
+  if (deleteError) throw deleteError;
+
+  const { error: insertError } = await input.supabase
+    .from("job_description_chunks")
+    .insert(
+      chunks.map((chunk, index) => ({
+        user_id: input.userId,
+        job_description_id: input.jobDescriptionId,
+        chunk_index: index,
+        content: chunk.content,
+        token_estimate: chunk.tokenEstimate,
+        embedding: embeddings[index],
+      })),
+    );
+
+  // Says what actually happened. The row is now chunkless, and a caller that
+  // reported a generic failure would leave the user with a job description that
+  // silently contributes nothing to their next interview.
+  if (insertError) {
+    throw new Error(
+      "The job description text was saved but its search index could not be rebuilt. Edit and save it again to restore it.",
+    );
+  }
+}
+
+/**
+ * Edit a JD's metadata, and optionally its text.
+ *
+ * The text is the one field a *running* session reads live — company and title
+ * are snapshotted into `launch_meta` at launch, the chunks are queried on every
+ * turn. So re-embedding underneath an unfinished interview would ground its
+ * first turns on one document and its last on another, both landing on one
+ * report. That is the defect already fixed once for deleted job descriptions,
+ * and it is why `rawText` here is refused outright while any session using this
+ * job description is in progress, rather than merely warned about.
  *
  * An explicitly-passed empty string clears a field; an omitted key leaves it
  * alone. That distinction is why the payload is built key by key rather than
@@ -206,8 +293,43 @@ export async function updateJobDescription(
     company?: string | null;
     sourceUrl?: string | null;
     notes?: string | null;
+    /** Requires `userId`, and refused while an interview is mid-way. */
+    rawText?: string;
   },
+  options: { userId?: string; usage?: UsageCollector } = {},
 ): Promise<JobDescriptionRecord | null> {
+  if (patch.rawText !== undefined) {
+    const rawText = patch.rawText.trim();
+    if (rawText.length < 80) {
+      throw new Error("Job description must be at least 80 characters.");
+    }
+    if (!options.userId) {
+      throw new Error("A user is required to re-index a job description.");
+    }
+
+    const inProgress = await countSessionsForJobDescription(supabase, id, {
+      status: "in_progress",
+    });
+    if (inProgress > 0) throw new JobDescriptionInUseError(inProgress);
+
+    // The text lands first: if the re-index fails, the library shows what the
+    // user typed and the error tells them to save again, which is recoverable.
+    // The reverse order would show them the old text and hide the fact that the
+    // index no longer matches it.
+    const { error } = await supabase
+      .from("job_descriptions")
+      .update({ raw_text: rawText })
+      .eq("id", id);
+    if (error) throw error;
+
+    await replaceJobDescriptionChunks({
+      supabase,
+      userId: options.userId,
+      jobDescriptionId: id,
+      rawText,
+      usage: options.usage,
+    });
+  }
   const payload: Record<string, string | null> = {};
   if (patch.title !== undefined) payload.title = patch.title.trim();
   if (patch.roleTitle !== undefined)
@@ -218,6 +340,11 @@ export async function updateJobDescription(
     payload.source_url = patch.sourceUrl?.trim() || null;
   if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
 
+  /**
+   * The title is deliberately not re-derived from new text. It may have been
+   * set by hand — that is most of the point of the edit dialog — and silently
+   * replacing it with `buildJobDescriptionTitle`'s guess would undo that.
+   */
   if (Object.keys(payload).length === 0) {
     return getJobDescription(supabase, id);
   }
