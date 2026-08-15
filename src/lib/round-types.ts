@@ -55,6 +55,19 @@ export interface RoundTypeSpec {
   /** Shown under the type picker, and sent to the analyzer as the rubric. */
   rubric: string;
   /**
+   * The interviewer's *first* question of this round, as an instruction.
+   *
+   * Every round used to open with one hardcoded line ending "…and ask if
+   * they're ready to begin", so a technical round and an HR round started
+   * identically, and the candidate's first turn was always the word "yes" —
+   * which `TRIVIAL_ANSWER` skips, so the exchange was never scored. A real
+   * interview opens on a question that belongs to the round it is.
+   *
+   * Phrased as an instruction rather than a verbatim line so the persona still
+   * chooses its own words; see `buildOpeningInstruction`.
+   */
+  opening: string;
+  /**
    * Which scoring and questioning model applies. Drives the analyzer's schema
    * branch and which decision-engine strategy ladder runs.
    */
@@ -90,6 +103,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     label: "Intro / screening",
     rubric: "Clarity, motivation, fit, concision",
     family: "behavioural",
+    opening:
+      "Ask them to introduce themselves and what drew them to this role.",
     playbookId: "screening-fit",
     tags: ["screening", "motivation"],
     supports: { codeEditor: false },
@@ -104,6 +119,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     label: "Behavioral",
     rubric: "STAR, clarity, specificity",
     family: "behavioural",
+    opening:
+      "Ask them to tell you about themselves and how they got to where they are now.",
     playbookId: "behavioral-star",
     tags: ["behavioral", "star"],
     supports: { codeEditor: false },
@@ -118,6 +135,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     label: "HR / People",
     rubric: "Motivation, values fit, logistics, questions for us",
     family: "behavioural",
+    opening:
+      "Ask them to walk you through their background and what they are looking for in their next role.",
     playbookId: "hr-people",
     tags: ["hr", "motivation"],
     supports: { codeEditor: false },
@@ -135,6 +154,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     rubric:
       "Problem framing, approach, correctness, complexity, communication, edge cases, code quality",
     family: "technical",
+    opening:
+      "State the coding problem you want them to solve, concretely and in full, then invite them to think out loud before writing any code.",
     playbookId: "technical-framing",
     tags: ["technical", "framing", "vague"],
     // The only type that gets an editor. Its rubric asks for correctness,
@@ -153,6 +174,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     rubric:
       "Requirements, architecture, depth, tradeoffs, scalability, communication",
     family: "technical",
+    opening:
+      "State the system you want them to design and the scale it has to handle, then ask how they would approach it.",
     playbookId: "system-design",
     tags: ["system_design", "architecture", "technical"],
     // Deliberately prose. Without execution or a diagram surface, an editor
@@ -169,6 +192,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     label: "Case / problem solving",
     rubric: "Problem framing, structure, tradeoffs, depth, communication",
     family: "technical",
+    opening:
+      "Set out the business situation concretely — the company, the market, and the decision on the table — then ask how they would structure their thinking.",
     playbookId: "technical-framing",
     tags: ["case", "framing", "vague"],
     supports: { codeEditor: false },

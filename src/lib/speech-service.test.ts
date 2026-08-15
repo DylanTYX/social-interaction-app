@@ -111,6 +111,40 @@ describe("extractSpeakableSentences", () => {
       rest: "",
     });
   });
+
+  /**
+   * The opening greeting now goes through here too.
+   *
+   * It used to take the one-shot `speak()` path, which fed the whole string to
+   * Azure in one call and was silent for reasons documented in `speakAiMessage`.
+   * Routing it through the queue means the greeting is *split* before it is
+   * spoken — so this function losing or reordering a word is now a way for the
+   * candidate to be read a different question than the one on screen.
+   */
+  it("preserves every word of a complete greeting when flushed", () => {
+    const greeting =
+      "Hi, I'm Sarah Chen, a senior product manager on the payments team. " +
+      "I've been here about nine years and I run most of our hiring loops. " +
+      "So, tell me about yourself and what brought you to this role?";
+
+    const { sentences, rest } = extractSpeakableSentences(greeting, {
+      flush: true,
+    });
+
+    expect(rest).toBe("");
+    // Whitespace between utterances is a synthesis boundary, not content.
+    expect(sentences.join(" ").replace(/\s+/g, " ")).toBe(greeting.trim());
+  });
+
+  it("still yields one utterance for a greeting with no terminator", () => {
+    // `speakAiMessage` falls back to the raw message when this returns nothing,
+    // so the contract that matters is "never silently drop the text".
+    const greeting = "Right, let's get started — tell me about yourself";
+
+    const { sentences } = extractSpeakableSentences(greeting, { flush: true });
+
+    expect(sentences).toEqual([greeting]);
+  });
 });
 
 describe("appendUniqueTranscript", () => {

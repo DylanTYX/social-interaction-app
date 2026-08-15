@@ -24,6 +24,11 @@ export interface SessionRecord {
   status: SessionStatus;
   summary: string | null;
   turnCount: number;
+  /**
+   * Answers that were actually scored, or `null` on queries that did not ask.
+   * See `scoredTurnCountFrom` for why this is not the same as `turnCount`.
+   */
+  scoredTurnCount: number | null;
   averageScore: number | null;
   durationMinutes: number | null;
   /** Score metrics only — the server-owned parts are now their own columns. */
@@ -69,6 +74,11 @@ interface SessionRow {
   started_at: string;
   ended_at: string | null;
   created_at: string;
+  /**
+   * Present only on queries using `SESSION_LIST_COLUMNS`. PostgREST returns an
+   * aggregate embed as a single-element array.
+   */
+  interview_turn_analyses?: Array<{ count: number }> | null;
 }
 
 interface MessageRow {
@@ -105,6 +115,38 @@ const SESSION_COLUMNS = `
   created_at
 `;
 
+/**
+ * `SESSION_COLUMNS` plus how many turns of this session were actually scored.
+ *
+ * Deliberately not folded into `SESSION_COLUMNS`. That list is read on the chat
+ * hot path, once per turn, and this adds an aggregate over a second table for
+ * an answer only the history and stats views need.
+ *
+ * PostgREST resolves the embed through the `session_id` foreign key declared in
+ * `0006_turn_analyses.sql`, and `turn_analyses_session_idx` covers it.
+ */
+const SESSION_LIST_COLUMNS = `${SESSION_COLUMNS},
+  interview_turn_analyses(count)
+`;
+
+/**
+ * Turns that produced a score, as opposed to messages exchanged.
+ *
+ * `turn_count` counts *messages* — the opening greeting plus two per exchange —
+ * and it is deliberately kept that way, because `shouldRefreshSummary` and the
+ * transcript window are both arithmetic over messages. But it means a session
+ * padded with answers the analyzer skipped ("yes", "ok", the no-response
+ * placeholder) reaches the `MIN_TURNS_TO_SCORE` threshold without ever having
+ * been graded that many times. Counting the analyses is the honest measure of
+ * "how many answers is this average actually over".
+ */
+function scoredTurnCountFrom(row: SessionRow): number | null {
+  const embedded = row.interview_turn_analyses;
+  if (!Array.isArray(embedded) || embedded.length === 0) return null;
+  const count = embedded[0]?.count;
+  return typeof count === "number" ? count : null;
+}
+
 function rowToSession(row: SessionRow): SessionRecord {
   return {
     id: row.id,
@@ -120,6 +162,7 @@ function rowToSession(row: SessionRow): SessionRecord {
     status: row.status,
     summary: row.summary,
     turnCount: row.turn_count,
+    scoredTurnCount: scoredTurnCountFrom(row),
     averageScore: row.average_score,
     durationMinutes: row.duration_minutes,
     metrics: row.metrics,
@@ -178,7 +221,7 @@ export async function listSessions(
 
   let request = supabase
     .from("interview_sessions")
-    .select(SESSION_COLUMNS, { count: "exact" })
+    .select(SESSION_LIST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (mode) request = request.eq("practice_mode", mode);

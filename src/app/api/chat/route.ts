@@ -29,6 +29,7 @@ import { MAX_USER_MESSAGE_CHARS } from "@/lib/api/input-limits";
 import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
 import { TurnTimer } from "@/lib/api/turn-timing";
 import { generatePersonaPrompt } from "@/lib/persona-engine";
+import { buildOpeningInstruction } from "@/lib/opening-brief";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
   formatPlaybooksForPrompt,
@@ -972,8 +973,10 @@ export async function POST(request: Request) {
           { role: "system", content: prompts.volatilePrompt },
           {
             role: "user",
-            content:
-              "You are about to start the interview. Greet the candidate warmly, briefly introduce yourself and your role, explain the scenario, and ask if they're ready to begin. Keep it concise (2-3 sentences).",
+            content: buildOpeningInstruction({
+              roundType,
+              loopBrief: launchMeta?.loopBrief ?? null,
+            }),
           },
         ]
       : toOpenAIMessages(prompts, recent, userMessage);

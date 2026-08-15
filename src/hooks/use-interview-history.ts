@@ -16,6 +16,13 @@ export interface InterviewSessionSummary {
    * decide whether a session is substantial enough to score.
    */
   turnCount: number;
+  /**
+   * Answers that produced a score. Lower than `turnCount` whenever the analyzer
+   * skipped something — a one-word reply, or the timer's no-response
+   * placeholder — which is why the stats gate on this rather than on messages.
+   * Absent on payloads written before it existed.
+   */
+  scoredTurnCount?: number | null;
   averageScore: number | null;
   durationMinutes: number | null;
   startedAt: string;

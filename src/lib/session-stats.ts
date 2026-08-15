@@ -72,6 +72,18 @@ export interface SessionStats {
  */
 export const MIN_TURNS_TO_SCORE = 6;
 
+/**
+ * The same bar expressed in answers rather than messages.
+ *
+ * Six messages is three exchanges *if every answer was scored*. It was not a
+ * safe assumption: the analyzer skips one-word replies and the response
+ * timer's no-response placeholder, so a session could clear six messages on a
+ * single real answer padded with "yes". Where the scored count is available it
+ * is the honest measure, and `MIN_TURNS_TO_SCORE` is the message-count
+ * fallback for payloads that predate it.
+ */
+export const MIN_SCORED_TURNS = 3;
+
 function scoredOnly(
   sessions: readonly InterviewSessionSummary[],
 ): Array<InterviewSessionSummary & { averageScore: number }> {
@@ -82,7 +94,9 @@ function scoredOnly(
       // on every turn, so an abandoned session already carries one and used to
       // be counted here.
       entry.status === "completed" &&
-      entry.turnCount >= MIN_TURNS_TO_SCORE,
+      (typeof entry.scoredTurnCount === "number"
+        ? entry.scoredTurnCount >= MIN_SCORED_TURNS
+        : entry.turnCount >= MIN_TURNS_TO_SCORE),
   );
 }
 

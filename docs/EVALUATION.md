@@ -7,10 +7,12 @@ the report, the competency coverage — is built on sand.
 
 This document is how that claim gets checked rather than asserted.
 
-> **Status: methodology complete, results not yet collected.**
-> The harness runs against the live OpenAI API and costs real money, so it has
-> to be run deliberately. The command is in [Running it](#running-it) and the
-> tables below have the shape the results go in.
+> **Status: analyzer measured, human validation outstanding.**
+> The scoring run has been collected — 88.9% band accuracy and 41.0 separation
+> at `e50e2e4`, against 55.6% and 13.0 for a keyword baseline. What has _not_
+> been collected is the inter-rater pass, so every accuracy figure below still
+> means "agreement with one person". See
+> [the inter-rater pass](#the-inter-rater-pass).
 
 ---
 
@@ -124,6 +126,43 @@ npm run eval -- --runs=5 --json > docs/artifacts/eval-results.json
 Commit both. The numbers in the Results section below are only claims until the
 run that produced them is in the repository.
 
+### The inter-rater pass
+
+```bash
+npm run eval:raters                     # the blind marking sheet, for the raters
+npm run eval:raters -- --key            # fixture ids and labels, collator only
+npm run eval:raters -- --score=r.json   # agreement report
+```
+
+Calls no API and costs nothing. Give the sheet to two or three people who have
+not seen the labels, collect their numbers, and enter the analyzer's own mean
+scores from `npm run eval` as one more rater in the same file — it is then held
+to exactly the comparison the people are.
+
+The sheet is presented in a hashed order, not file order, because `FIXTURES` is
+grouped by round type and cycles strong/weak/mediocre; a rater working down it
+in file order could infer the intended band from the position. The order is
+stable across prints so two raters' sheets line up.
+
+What comes back:
+
+- **Band agreement and Cohen's kappa** per rater against the labels, and for
+  every pair of raters. Kappa rather than raw agreement, because two raters who
+  both call everything "mediocre" agree 100% of the time and have measured
+  nothing.
+- **Contested answers** — the ones the raters agree on and the label does not.
+  These are labels to move.
+- **Disputed answers** — the ones the raters cannot agree on between themselves.
+  These are fixtures whose band was never well defined.
+
+The decision rule, fixed in advance so the result cannot be read to suit:
+
+| Raters agree with…             | Conclusion                  | Action                      |
+| ------------------------------ | --------------------------- | --------------------------- |
+| analyzer, not label            | the labels are wrong        | move the band, document it  |
+| label, not analyzer            | the analyzer is too lenient | change the prompt           |
+| neither / each other disagrees | the fixture is ambiguous    | rewrite or drop the fixture |
+
 ---
 
 ## Reading the metrics
@@ -145,10 +184,13 @@ two are easy to confuse:
 middle band is wide (40-72), so a scorer that clusters everything near 60
 collects hits it has not earned. The keyword heuristic does precisely that: it
 lands **55.6%** of fixtures in the right band while pulling strong and weak
-apart by only **13 points**, against the analyzer's **36.4**.
+apart by only **13 points**, against the analyzer's **41.0**.
 
-Judged on band accuracy the analyzer looks 7 points better than a regex.
-Judged on separation it is nearly three times better. The second reading is the
+The reason this ordering was adopted is worth keeping, because it was not
+obvious at the time. On the pre-anchoring run the analyzer scored **63.0%**
+band accuracy against the heuristic's 55.6% — judged on that column alone, a
+month of prompt work looked 7 points better than a regex. On separation the same
+run was 36.4 against 13.0, nearly three times better. The second reading was the
 correct one, and the fixtures' own docstring agrees: the claim under test is
 "this separates a strong answer from a weak one", not "this predicts 73".
 
@@ -160,15 +202,57 @@ State these rather than let a reader find them:
   fixture flipping moves band accuracy by 5.6 points, so any change smaller
   than about 11 points is inside the noise.
 - **The labels are one person's judgement and have not been validated.** Band
-  accuracy therefore measures _agreement with the author_, not accuracy. An
-  inter-rater pass — two or three people banding the fixtures blind — is the
-  cheapest thing that would fix this.
+  accuracy therefore measures _agreement with the author_, not accuracy. This is
+  no longer only a caveat — it is the open question behind the two remaining
+  failures, and `npm run eval:raters` prints the sheet that settles it. Until
+  that has been run with real markers, every accuracy figure here means
+  "agreement with one person".
 - **It tests the analyzer only.** Not the interviewer's questions, not persona
   behaviour, not follow-up adaptivity, not the summariser, not the coach.
 - **The answers, the labels and the rubric all come from the same author**, so
   this measures internal consistency more than external validity.
 
 ## Results
+
+### Before / after: anchoring the score scale
+
+The measured change, and the reason the harness exists.
+
+The analyzer prompt asked for `"overallScore": number (0-100)` and said nothing
+about what any part of that range meant. Behavioural rounds got calibration by
+accident — the STAR block forces `present: false` and `quality: 0` on an answer
+with no story, which drags the score down — but no other round type had
+anything equivalent. `e50e2e4` added five explicit band descriptions to the
+cached scaffold, ~213 tokens in, including the line that does the work: _"a
+confident, well-presented answer that is wrong belongs in the lower bands"_.
+
+18 fixtures × 3 runs = 54 analyzer calls per run, `gpt-4o-mini`, $0.018.
+
+| Metric                   | Before (`e50e2e4~1`) | After (`e50e2e4`) | Verdict            |
+| ------------------------ | -------------------- | ----------------- | ------------------ |
+| **Separation**           | 36.4                 | **41.0**          | ✅ wider           |
+| Band accuracy            | 63.0%                | **88.9%**         | ✅ +25.9 pts       |
+| Separation vs. baseline  | 2.8×                 | **3.2×**          | ✅                 |
+| Mean std dev across runs | 0.67                 | 1.39              | ⚠️ slightly worse  |
+| Field completeness       | 100%                 | 100%              | — no schema change |
+
+The std dev column is the honest cost: the model moved from near-identical
+repeats to varying by about a point and a half on a 0-100 scale. That is a
+trade worth taking — a scorer that is perfectly consistent and wrong is not
+useful — but it is a real movement in the wrong direction and is recorded rather
+than omitted.
+
+**All six remaining misses are the same two fixtures, and all six are lenient.**
+`tech-weak-code` returned [50, 50, 55] and `design-weak` returned [55, 55, 55],
+for standard deviations of 2.9 and 0.0. The model is not confused about those
+answers; it is confidently placing them 5-10 points above the `weak` band's
+ceiling of 45. That is a disagreement about where the boundary sits, and this
+harness cannot adjudicate it — see `npm run eval:raters`.
+
+One further caveat the summary does not show: every `mediocre` fixture scored
+between **60 and 65**, a 5-point spread inside a band 32 points wide. They all
+count as hits, but they are hits from a single default value for "middling"
+rather than from discrimination within the band.
 
 ### Before / after: moving counting out of the LLM
 
@@ -181,18 +265,29 @@ whether a smaller schema changed how the model assigns `overallScore`. A schema
 change that quietly degrades scoring is a bad trade at any price, and this is
 the only measurement that can tell the difference.
 
-Run the harness at `9cf6024~1` and at `HEAD`, and record both:
+**This experiment was never run, and the change shipped anyway.** Recorded here
+because that is the honest state, not because it is defensible: the schema was
+changed without measuring whether it degraded scoring, on a harness that existed
+specifically to answer that question.
 
-| Metric                   | Before (`9cf6024~1`) | After (`HEAD`) | Verdict         |
-| ------------------------ | -------------------- | -------------- | --------------- |
-| Band accuracy            | _pending_            | _pending_      | must not drop   |
-| Mean std dev across runs | _pending_            | _pending_      | must not rise   |
-| Strong/weak separation   | _pending_            | _pending_      | must not narrow |
-| Field completeness       | _pending_            | _pending_      | —               |
+To run it: `git stash` any working changes, check out `9cf6024~1`, run the
+harness, then repeat at `9cf6024`.
+
+| Metric                   | Before (`9cf6024~1`) | After (`9cf6024`) | Verdict         |
+| ------------------------ | -------------------- | ----------------- | --------------- |
+| Band accuracy            | _not run_            | _not run_         | must not drop   |
+| Mean std dev across runs | _not run_            | _not run_         | must not rise   |
+| Strong/weak separation   | _not run_            | _not run_         | must not narrow |
+| Field completeness       | _not run_            | _not run_         | —               |
 
 **If band accuracy drops, revert the change and say so.** A ~17% scaffold
 reduction is not worth worse scoring, and reporting a reverted experiment is
 worth more marks than not running it.
+
+The measurement is also now partly redundant: the anchoring run above sits
+downstream of this change and reports 88.9% band accuracy, so whatever the
+schema change cost, the current scorer is not obviously broken by it. That is an
+argument for deprioritising this experiment, not for claiming it was done.
 
 ### Per-round-type accuracy
 
@@ -201,14 +296,23 @@ screening are judged on motivation and fit, which is softer than correctness and
 complexity — expect lower agreement there, and say so rather than hiding it in
 an average.
 
+Measured at `e50e2e4`, 3 runs per fixture:
+
 | Round type    | Fixtures | Band accuracy | Mean std dev |
 | ------------- | -------- | ------------- | ------------ |
-| behavioral    | 5        | _pending_     | _pending_    |
-| technical_swe | 3        | _pending_     | _pending_    |
-| system_design | 3        | _pending_     | _pending_    |
-| screening     | 2        | _pending_     | _pending_    |
-| case          | 2        | _pending_     | _pending_    |
-| hr            | 3        | _pending_     | _pending_    |
+| behavioral    | 5        | 100%          | 1.30         |
+| screening     | 2        | 100%          | 0.00         |
+| case          | 2        | 100%          | 2.30         |
+| hr            | 3        | 100%          | 2.30         |
+| technical_swe | 3        | 67%           | 1.80         |
+| system_design | 3        | 67%           | 0.50         |
+
+The prediction above was wrong, and in an interesting direction. HR and
+screening were expected to score _worst_, because motivation and fit are softer
+to judge than correctness — instead they are perfect, and the two technical
+round types are the only ones that miss. Both misses are a single fixture, and
+both are the leniency case described above: a fluent wrong answer is harder for
+this analyzer than a vague soft one, which is the opposite of the intuition.
 
 ---
 

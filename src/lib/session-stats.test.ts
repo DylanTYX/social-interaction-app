@@ -8,6 +8,7 @@ import {
   formatPracticeMinutes,
   STATS_WINDOW,
   MIN_TURNS_TO_SCORE,
+  MIN_SCORED_TURNS,
 } from "@/lib/session-stats";
 
 function session(
@@ -81,6 +82,44 @@ describe("computeSessionStats", () => {
       session({ averageScore: 80, turnCount: MIN_TURNS_TO_SCORE }),
     ]);
     expect(stats.averageScore).toBe(80);
+  });
+
+  it("prefers scored answers over messages when it knows both", () => {
+    // The residual hole in the message-count gate: the analyzer skips one-word
+    // replies and the timer's no-response placeholder, so a session can clear
+    // twelve messages on a single graded answer. Counting analyses is what
+    // "three answered questions" actually meant.
+    const stats = computeSessionStats([
+      session({ averageScore: 60, turnCount: 12, scoredTurnCount: 5 }),
+      session({ averageScore: 100, turnCount: 12, scoredTurnCount: 1 }),
+    ]);
+
+    expect(stats.averageScore).toBe(60);
+    expect(stats.scoredSessions).toBe(1);
+  });
+
+  it("counts a session exactly at the scored-answer threshold", () => {
+    const stats = computeSessionStats([
+      session({
+        averageScore: 80,
+        turnCount: 12,
+        scoredTurnCount: MIN_SCORED_TURNS,
+      }),
+    ]);
+    expect(stats.averageScore).toBe(80);
+  });
+
+  it("falls back to the message count when the scored count is absent", () => {
+    // Payloads written before the embed existed, and any caller that did not
+    // ask for it. Dropping those sessions from the average would be a worse
+    // answer than the old approximation.
+    const stats = computeSessionStats([
+      session({ averageScore: 65, turnCount: 12, scoredTurnCount: null }),
+      session({ averageScore: 90, turnCount: 2, scoredTurnCount: undefined }),
+    ]);
+
+    expect(stats.averageScore).toBe(65);
+    expect(stats.scoredSessions).toBe(1);
   });
 
   it("does not round the average", () => {
