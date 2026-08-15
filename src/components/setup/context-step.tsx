@@ -32,6 +32,18 @@ import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
  * card above — so two multi-field subsystems read as a single list. They are one
  * card each now, and each card's header *is* its on/off row, which removes the
  * bordered strip that made an enabled picker a box inside a box inside a card.
+ *
+ * The four cards are 32px apart, the scale's between-concerns value, because
+ * that is what they are: how you answer, what the role is, the job description,
+ * the CV. Two of them are large multi-field subsystems, and at the 24px the
+ * other steps use between their cards these ran together.
+ *
+ * That gap lives on a root element here rather than being inherited from the
+ * step container, which is how the other three steps already work. This one was
+ * the exception — it returned a fragment and took whatever the parent gave it —
+ * and it broke the moment anything was inserted between the two: the step
+ * transition wrapper became the container's only child, and the cards collapsed
+ * to no gap at all.
  */
 
 export function ContextStep({
@@ -53,7 +65,7 @@ export function ContextStep({
   const charCount = brief.trim().length;
 
   return (
-    <>
+    <div className="space-y-8">
       <Card className="border border-border shadow-soft">
         <CardHeader>
           <CardTitle className="text-base">
@@ -130,6 +142,6 @@ export function ContextStep({
         value={setup.resume}
         onChange={(next) => onUpdate({ resume: next })}
       />
-    </>
+    </div>
   );
 }

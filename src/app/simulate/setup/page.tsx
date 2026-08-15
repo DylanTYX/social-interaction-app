@@ -670,7 +670,13 @@ function SetupWizard() {
             it. The direction is what makes the wizard feel like one surface you
             are moving along rather than four unrelated screens; a 1rem slide
             stays inside the container's `p-8`, so it cannot cause a horizontal
-            scrollbar mid-transition. */}
+            scrollbar mid-transition.
+
+            Note that this div sits between the `space-y-6` above and the step
+            components, so it — not they — is what that gap now spaces. Each
+            step therefore has to own the rhythm between its own cards, which
+            all four now do. `ContextStep` did not, and adding this wrapper
+            silently collapsed its four cards together. */}
         <div
           key={currentStep}
           className={cn(
