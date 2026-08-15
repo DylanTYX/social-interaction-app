@@ -219,6 +219,8 @@ function buildPromptLayers(input: {
   scenarioContext: string | undefined;
   rollingSummary: string | null;
   jobDescriptionContext: string | null;
+  /** Employer, when the user recorded one. Enables "why us?" to mean anything. */
+  jobDescriptionCompany: string | null;
   /**
    * True when the JD was inlined whole rather than retrieved. A whole document
    * is identical on every turn, so it belongs in the cacheable prefix;
@@ -252,6 +254,15 @@ function buildPromptLayers(input: {
       ? ["", "How to run this kind of round:", input.roundGuidance]
       : []),
     ...(input.loopBrief ? ["", input.loopBrief] : []),
+    // The company sits in the stable layer independently of the JD excerpts,
+    // which are retrieved per turn and may be absent on any given one. It is a
+    // fact about the whole interview, not about this question.
+    ...(input.jobDescriptionCompany
+      ? [
+          "",
+          `You are interviewing on behalf of ${input.jobDescriptionCompany}. Speak as someone who works there. Do not invent specifics about the company — products, culture, headcount, recent news — beyond what the job description below states; if asked something you were not told, say you would rather hear what the candidate already knows about it.`,
+        ]
+      : []),
     ...(stableJobDescription
       ? [
           "",
@@ -968,6 +979,12 @@ export async function POST(request: Request) {
       scenarioContext,
       rollingSummary: session.summary,
       jobDescriptionContext: jobDescription.context,
+      // From the session's own column, not the launch snapshot: a JD deleted
+      // mid-session must not leave the interviewer still claiming to work
+      // somewhere. Null there means the grounding is genuinely gone.
+      jobDescriptionCompany: session.jobDescriptionId
+        ? (launchMeta?.jobDescription?.company?.trim() || null)
+        : null,
       jobDescriptionIsStable: jobDescription.stable,
       roundGuidance: roundPlaybook?.content ?? null,
       loopBrief: launchMeta?.loopBrief ?? null,

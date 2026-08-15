@@ -102,6 +102,7 @@ interface ReportPayload {
     id: string;
     title: string;
     roleTitle: string | null;
+    company: string | null;
   } | null;
 }
 
@@ -346,8 +347,12 @@ export default function SessionReportPage({
               title={jobDescription.title}
             >
               <FileText className="mr-1 h-3 w-3" />
+              {/* Role at company when both are known, which is what the
+                  interviewer was actually told. */}
               <span className="max-w-[180px] truncate">
-                {jobDescription.roleTitle ?? jobDescription.title}
+                {[jobDescription.roleTitle, jobDescription.company]
+                  .filter(Boolean)
+                  .join(" at ") || jobDescription.title}
               </span>
             </Badge>
           )}

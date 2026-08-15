@@ -27,6 +27,12 @@ export interface JobDescriptionSetupConfig {
    */
   mode: JobDescriptionSetupMode;
   roleTitle: string;
+  /**
+   * Employer. Carried through launch into the session snapshot, because the
+   * interviewer is told it — a "why us?" question needs a "us".
+   */
+  company: string;
+  sourceUrl: string;
   rawText: string;
   /**
    * Optional reference to an existing `job_descriptions` row. Set whenever
@@ -114,6 +120,8 @@ function createDefaultJobDescriptionConfig(): JobDescriptionSetupConfig {
     enabled: false,
     mode: "paste",
     roleTitle: "",
+    company: "",
+    sourceUrl: "",
     rawText: "",
     savedId: null,
     savedTitle: null,
@@ -197,6 +205,8 @@ function normalizeJobDescriptionConfig(
     enabled: Boolean(jobDescription?.enabled),
     mode,
     roleTitle: jobDescription?.roleTitle ?? defaults.roleTitle,
+    company: jobDescription?.company ?? defaults.company,
+    sourceUrl: jobDescription?.sourceUrl ?? defaults.sourceUrl,
     rawText: jobDescription?.rawText ?? defaults.rawText,
     savedId: jobDescription?.savedId ?? defaults.savedId,
     savedTitle: jobDescription?.savedTitle ?? defaults.savedTitle,

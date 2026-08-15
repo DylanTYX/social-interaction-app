@@ -64,6 +64,7 @@ export function JobDescriptionPicker({
     const created = await uploadPdf({
       file,
       roleTitle: value.roleTitle,
+      company: value.company,
     });
     setUploading(false);
     if (created) {
@@ -79,12 +80,23 @@ export function JobDescriptionPicker({
     }
   };
 
-  const handlePickSaved = (id: string, title: string) => {
+  const handlePickSaved = (item: {
+    id: string;
+    title: string;
+    company: string | null;
+    roleTitle: string | null;
+  }) => {
     onChange({
       ...value,
       mode: "saved",
-      savedId: id,
-      savedTitle: title,
+      savedId: item.id,
+      savedTitle: item.title,
+      // Copied onto the config so it reaches `launch_meta` and, through it, the
+      // interviewer's prompt. Picking a saved JD is the common path, and
+      // without this the company would only ever be known for a JD created in
+      // the same sitting.
+      company: item.company ?? "",
+      roleTitle: item.roleTitle ?? value.roleTitle,
       rawText: "",
     });
   };
@@ -133,19 +145,38 @@ export function JobDescriptionPicker({
 
       {value.enabled && (
         <CardContent className="space-y-6">
-          <Field label="Applied role title" htmlFor="role-title">
-            <Input
-              id="role-title"
-              placeholder="e.g. Product Manager Intern"
-              value={value.roleTitle}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  roleTitle: event.target.value,
-                })
-              }
-            />
-          </Field>
+          {/* Only shown when a new JD is being created. Picking one from the
+              library means these are already set on the record, and offering
+              editable copies here would imply this screen could change them —
+              it cannot, and the library page is where that lives. */}
+          {value.mode !== "saved" && (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field label="Company" htmlFor="jd-company">
+                <Input
+                  id="jd-company"
+                  placeholder="e.g. Monzo"
+                  value={value.company}
+                  onChange={(event) =>
+                    onChange({ ...value, company: event.target.value })
+                  }
+                />
+              </Field>
+
+              <Field label="Applied role title" htmlFor="role-title">
+                <Input
+                  id="role-title"
+                  placeholder="e.g. Product Manager Intern"
+                  value={value.roleTitle}
+                  onChange={(event) =>
+                    onChange({
+                      ...value,
+                      roleTitle: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+            </div>
+          )}
 
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">
@@ -296,15 +327,24 @@ export function JobDescriptionPicker({
                       >
                         <button
                           type="button"
-                          onClick={() => handlePickSaved(item.id, item.title)}
+                          onClick={() => handlePickSaved(item)}
                           className="flex-1 text-left"
                         >
                           <p className="text-sm font-medium text-foreground">
                             {item.title}
                           </p>
+                          {/* Company first, matching the library page — it is
+                              what distinguishes two postings for one role.
+                              Joined from present parts so a missing one does
+                              not leave a stranded separator. */}
                           <p className="text-xs text-muted-foreground">
-                            {item.roleTitle ?? "No role title"} ·{" "}
-                            {new Date(item.createdAt).toLocaleDateString()}
+                            {[
+                              item.company,
+                              item.roleTitle,
+                              new Date(item.createdAt).toLocaleDateString(),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </p>
                         </button>
                         <Button
