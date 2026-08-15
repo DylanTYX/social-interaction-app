@@ -71,19 +71,24 @@ describe("updateInterviewSetup", () => {
     expect(loadInterviewSetup()?.jobDescription.enabled).toBe(true);
   });
 
-  it("does not let a chosen job description and a draft coexist", () => {
+  it("never restores job-description text, chosen or not", () => {
     /**
-     * The two states the config can be in — composing something new, or having
-     * chosen one — are mutually exclusive, and letting both hold a value is
-     * what allowed them to disagree.
+     * `jobDescription.rawText` is vestigial and must always load as empty.
      *
-     * A blob written by an older build carries exactly this: paste mode stored
-     * the text while launch set the id somewhere else entirely. `LoopStep`
-     * reads `rawText` to decide whether it can suggest rounds, so a stale draft
-     * sitting behind a chosen job description would have it suggesting rounds
-     * from a document the interview is not using.
+     * The wizard used to compose a draft in the card and turn it into a record
+     * at launch. Creation now happens in a dialog that owns its own draft, and
+     * nothing reads this field: not the picker, not `launchInterview`, and not
+     * `LoopStep`, which takes its text from the library row.
+     *
+     * Both directions matter. A blob from an older build can carry a draft
+     * *alongside* a chosen id, and `LoopStep` used to read `rawText` to decide
+     * whether it could suggest rounds — so leftover text would have it
+     * suggesting rounds from a document the interview is not using. And a
+     * draft with no id is text that storage holds but no surface renders,
+     * which is worse than losing it: the user is told nothing and sees nothing.
      */
     const base = createDefaultInterviewSetup();
+
     saveInterviewSetup({
       ...base,
       jobDescription: {
@@ -94,16 +99,10 @@ describe("updateInterviewSetup", () => {
         rawText: "a stale draft left over from an older build",
       },
     });
+    const withSelection = loadInterviewSetup();
+    expect(withSelection?.jobDescription.savedId).toBe("jd-1");
+    expect(withSelection?.jobDescription.rawText).toBe("");
 
-    const stored = loadInterviewSetup();
-    expect(stored?.jobDescription.savedId).toBe("jd-1");
-    expect(stored?.jobDescription.rawText).toBe("");
-  });
-
-  it("keeps an unsaved draft when nothing has been chosen", () => {
-    // The other half of the rule: a draft is exactly what `rawText` is *for*
-    // while composing, so it must survive a reload.
-    const base = createDefaultInterviewSetup();
     saveInterviewSetup({
       ...base,
       jobDescription: {
@@ -113,9 +112,26 @@ describe("updateInterviewSetup", () => {
         rawText: "half a job description, still being pasted",
       },
     });
+    expect(loadInterviewSetup()?.jobDescription.rawText).toBe("");
+  });
 
-    expect(loadInterviewSetup()?.jobDescription.rawText).toBe(
-      "half a job description, still being pasted",
+  it("still restores an unsaved CV draft", () => {
+    // The resume picker does still compose in place, so its `rawText` is live
+    // state rather than a leftover. The two configs share a shape but not a
+    // lifecycle, and the normalizer must keep telling them apart.
+    const base = createDefaultInterviewSetup();
+    saveInterviewSetup({
+      ...base,
+      resume: {
+        ...base.resume,
+        enabled: true,
+        savedId: null,
+        rawText: "half a CV, still being pasted",
+      },
+    });
+
+    expect(loadInterviewSetup()?.resume.rawText).toBe(
+      "half a CV, still being pasted",
     );
   });
 

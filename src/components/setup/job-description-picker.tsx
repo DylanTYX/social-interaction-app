@@ -137,9 +137,16 @@ export function JobDescriptionPicker({
   };
 
   const requestCloseAddDialog = () => {
-    // Only asks when there is something worth losing; below that a dialog would
-    // just be in the way. Same threshold logic as the drills page's guard.
-    if (draft.text.trim().length >= DRAFT_WORTH_KEEPING_CHARS) {
+    // Every field, not just the pasted text — in Upload mode there is never any
+    // text, so a guard that only looked there would throw away a typed company,
+    // role title and posting URL without asking. Still only asks when there is
+    // something worth losing; below that a dialog is just in the way.
+    const hasDraft =
+      draft.text.trim().length >= DRAFT_WORTH_KEEPING_CHARS ||
+      Boolean(draft.company.trim()) ||
+      Boolean(draft.roleTitle.trim()) ||
+      Boolean(draft.sourceUrl.trim());
+    if (hasDraft) {
       setDiscardPrompt(true);
       return;
     }
@@ -313,15 +320,32 @@ export function JobDescriptionPicker({
                 </div>
               )}
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setAdding(true)}
-              >
-                Add a new job description
-              </Button>
             </div>
+          )}
+
+          {/* Outside every branch on purpose. It used to live inside the list,
+              so a failed load or a slow first fetch left a user with no way to
+              add anything — while `blockedReason` was telling them to "choose or
+              add a job description". An instruction you cannot follow. */}
+          {!selected && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAdding(true)}
+            >
+              Add a new job description
+            </Button>
+          )}
+
+          {/* Mutation failures — a rejected upload, a failed delete — are
+              written to the library-level error, which the branch above only
+              renders when the *load* failed. Without this they were silent: the
+              dialog closed its spinner and nothing said why nothing happened. */}
+          {status !== "error" && error && !adding && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
           )}
         </CardContent>
       )}
@@ -344,7 +368,10 @@ export function JobDescriptionPicker({
             draft={draft}
             onDraftChange={setDraft}
             busy={creator.busy}
-            error={creator.error}
+            // `creator.error` is only the client-side length check; every
+            // server failure lands on the library-level error. Both, or an
+            // image-only PDF fails in silence.
+            error={creator.error ?? error}
             submitLabel="Save and use"
             onSubmitText={async () =>
               handleCreated(await creator.submitText(draft))
