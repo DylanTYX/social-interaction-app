@@ -227,7 +227,16 @@ export function JobDescriptionPicker({
              * Capped and scrollable so the height is set by the container
              * rather than by how many documents you happen to have saved.
              */
-            <div className="max-h-64 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+            <div
+              className={cn(
+                "max-h-64 divide-y divide-border overflow-y-auto rounded-lg border",
+                // Dashed when there is nothing in it, matching how every other
+                // empty state in the app is drawn.
+                items.length === 0
+                  ? "border-dashed border-border bg-muted/40"
+                  : "border-border",
+              )}
+            >
               {items.map((item) => {
                 const isActive = item.id === value.savedId;
                 return (
@@ -290,22 +299,28 @@ export function JobDescriptionPicker({
                 );
               })}
 
-              {/* Always the last row, so it is never something that appears or
-                  vanishes. When the library is empty it is the only row, and
-                  its label carries the empty state — one element doing both
-                  jobs rather than a paragraph plus a button. */}
-              <button
-                type="button"
-                onClick={() => setAdding(true)}
-                className="flex w-full items-center justify-center gap-2 p-3 text-sm text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground"
-              >
-                <Plus className="h-4 w-4" />
-                {items.length === 0
-                  ? "No job descriptions yet — add your first"
-                  : "Add a job description"}
-              </button>
+              {items.length === 0 && (
+                <p className="p-6 text-center text-sm text-muted-foreground">
+                  No saved job descriptions yet
+                </p>
+              )}
             </div>
           )}
+
+          {/* Below the list, never inside it, and never conditional. Gating it
+              on whether something was selected is what made the card resize as
+              you chose — and folding it into the empty-state row made one
+              control carry two meanings. It is simply always here. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add a job description
+          </Button>
 
           {/* Editing, renaming and deleting live in the library. Keeping them
               out of here is what lets this card be one list and nothing else. */}
