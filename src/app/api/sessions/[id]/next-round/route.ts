@@ -46,8 +46,26 @@ function launchMetaToSetup(
     personaConfig: PersonaConfig;
     personaId: string | null;
     practiceMode: "text" | "voice";
+    jobDescriptionId: string | null;
   },
 ): InterviewSetupState {
+  /**
+   * The JD can be deleted between rounds of a loop.
+   *
+   * `jobDescriptionId` below is copied from the previous session, where the FK
+   * has already nulled it; `launch.jobDescription` is the snapshot from round
+   * one, which still names the deleted document. Copying the snapshot forward
+   * unchanged handed every later round a reference the new session's own column
+   * contradicted — the same ghost the resume path had, propagated one round at
+   * a time for the length of the loop.
+   */
+  const jobDescription =
+    launch.jobDescription.enabled &&
+    launch.jobDescription.savedId &&
+    !session.jobDescriptionId
+      ? { ...launch.jobDescription, enabled: false, savedId: null }
+      : launch.jobDescription;
+
   return {
     scenarioValue: session.scenarioValue,
     customScenarioBrief: launch.customScenarioBrief,
@@ -58,7 +76,7 @@ function launchMetaToSetup(
     practiceMode: session.practiceMode,
     interviewLoop: launch.interviewLoop,
     voiceConfig: launch.voiceConfig,
-    jobDescription: launch.jobDescription,
+    jobDescription,
     resume: launch.resume ?? createDefaultResumeConfig(),
   };
 }

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  FileText,
   Settings2,
   AlertCircle,
   Volume2,
@@ -19,6 +18,7 @@ import { useInterviewTurnState } from "@/hooks/use-interview-turn-state";
 import { useResumedSession } from "@/hooks/use-resumed-session";
 import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import { CoachingRail } from "@/components/chat/coaching-rail";
+import { JobDescriptionChip } from "@/components/chat/job-description-chip";
 import {
   NO_RESPONSE_MESSAGE,
   type ChatTurnResponse,
@@ -1371,17 +1371,10 @@ function VoiceSimulateInner() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {bootstrap.jobDescriptionTitle && (
-            <span
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
-              title={bootstrap.jobDescriptionTitle}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              <span className="max-w-40 truncate">
-                {bootstrap.jobDescriptionTitle}
-              </span>
-            </span>
-          )}
+          <JobDescriptionChip
+            title={bootstrap.jobDescriptionTitle}
+            missing={bootstrap.jobDescriptionMissing}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="shadow-soft">
