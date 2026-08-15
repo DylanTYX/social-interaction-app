@@ -52,6 +52,8 @@ import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
 import { TurnScore, toTurnFeedback } from "@/components/report/turn-score";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
+import { CoachingResult } from "@/components/coach/coaching-result";
+import type { ModelAnswerResult } from "@/lib/coach-contract";
 import { parseCoverage } from "@/lib/competencies";
 
 interface MessageRecord {
@@ -651,12 +653,6 @@ export default function SessionReportPage({
   );
 }
 
-interface ModelAnswerResult {
-  modelAnswer: string;
-  rewrite: string;
-  tips: string[];
-}
-
 /**
  * On-demand coaching for a single answer in the report transcript. Kept lazy
  * (only fetches when the user asks) so we never spend tokens on turns the user
@@ -740,42 +736,11 @@ function TurnCoaching({
             </p>
           )}
           {error && <p className="text-xs text-red-600">{error}</p>}
-          {result && (
-            <>
-              {result.tips.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                    What to improve
-                  </p>
-                  <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-700">
-                    {result.tips.map((tip, index) => (
-                      <li key={index}>{tip}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {result.rewrite && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                    Your answer, tightened
-                  </p>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                    {result.rewrite}
-                  </p>
-                </div>
-              )}
-              {result.modelAnswer && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                    Model answer
-                  </p>
-                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700">
-                    {result.modelAnswer}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+          {/* No `originalAnswer`: the answer bubble is rendered a few rows above
+              this in the transcript, so the before/after pair would duplicate it
+              — and would put an amber panel on this amber background. The
+              rewrite renders alone here, exactly as it did before. */}
+          {result && <CoachingResult result={result} className="space-y-3" />}
         </div>
       )}
     </div>
