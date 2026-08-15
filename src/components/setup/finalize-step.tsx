@@ -117,19 +117,15 @@ export function FinalizeStep({
           />
           <SummaryRow
             label="Job description"
-            value={(() => {
-              if (!setup.jobDescription.enabled) return "Not used";
-              if (
-                setup.jobDescription.mode === "saved" ||
-                setup.jobDescription.mode === "upload"
-              ) {
-                return setup.jobDescription.savedTitle ?? "Selected";
-              }
-              const length = setup.jobDescription.rawText.trim().length;
-              return length > 0
-                ? `Pasted text (${length} chars)`
-                : "Pending paste";
-            })()}
+            // Names the document or says there isn't one. It used to branch on
+            // `mode`, which meant clicking "From library" without picking
+            // anything reported "Selected" — a review step asserting a choice
+            // that had not been made.
+            value={
+              setup.jobDescription.enabled
+                ? (setup.jobDescription.savedTitle ?? "None chosen")
+                : "Not used"
+            }
           />
           <SummaryRow
             label="CV"
