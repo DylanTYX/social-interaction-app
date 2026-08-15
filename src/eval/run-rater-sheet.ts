@@ -27,53 +27,20 @@
  * Costs nothing and calls no API: it prints text and does arithmetic.
  */
 
-import { BAND_RANGES, FIXTURES, type QualityBand } from "@/eval/fixtures";
+import {
+  BANDS,
+  bandForScore,
+  FIXTURES,
+  type QualityBand,
+} from "@/eval/fixtures";
+import { presentationOrder } from "@/eval/blind-order";
 import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 import { readFileSync } from "node:fs";
 
-/**
- * Where one band ends and the next begins, for classifying a rater's number.
- *
- * `BAND_RANGES` overlap on purpose — `weak` runs to 45 and `mediocre` starts at
- * 40 — because they express the tolerance a *label* is checked against, and a
- * scorer landing at 42 on a weak answer should not be marked wrong. That is the
- * right shape for grading the analyzer and the wrong shape for putting a
- * human's 42 into exactly one bucket, so the overlaps are split down the middle
- * here. Derived rather than written out, so moving a band moves both.
- */
-const WEAK_MEDIOCRE_CUT = (BAND_RANGES.weak[1] + BAND_RANGES.mediocre[0]) / 2;
-const MEDIOCRE_STRONG_CUT =
-  (BAND_RANGES.mediocre[1] + BAND_RANGES.strong[0]) / 2;
-
-const BANDS: QualityBand[] = ["weak", "mediocre", "strong"];
-
-export function bandForScore(score: number): QualityBand {
-  if (score < WEAK_MEDIOCRE_CUT) return "weak";
-  if (score <= MEDIOCRE_STRONG_CUT) return "mediocre";
-  return "strong";
-}
-
-/**
- * Present the fixtures in an order that hides the pattern.
- *
- * `FIXTURES` is grouped by round type and cycles strong/weak/mediocre, so a
- * rater working down it in file order can infer the intended band from the
- * position without reading the answer. A hash rather than a shuffle because
- * every rater must receive the *same* sheet — their numbers have to line up
- * when they are collated, and a re-print after a crash must not renumber.
- */
-function presentationOrder<T extends { id: string }>(items: readonly T[]): T[] {
-  const hash = (value: string) => {
-    // FNV-1a. Any stable spread will do; this one is short and dependency-free.
-    let h = 0x811c9dc5;
-    for (let i = 0; i < value.length; i += 1) {
-      h ^= value.charCodeAt(i);
-      h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return h;
-  };
-  return [...items].sort((a, b) => hash(a.id) - hash(b.id));
-}
+// `bandForScore` moved to `fixtures.ts` and `presentationOrder` to
+// `blind-order.ts` when the coach harness needed both. Re-exported so anything
+// that imported them from here still resolves.
+export { bandForScore, presentationOrder };
 
 function printSheet(): void {
   const ordered = presentationOrder(FIXTURES);

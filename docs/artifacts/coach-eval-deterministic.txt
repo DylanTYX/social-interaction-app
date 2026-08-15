@@ -1,0 +1,35 @@
+> DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-coach-eval.ts
+
+========================================================================
+DETERMINISTIC — no API calls, identical on every run
+========================================================================
+
+'before' is the two-branch prompt this replaced, reproduced verbatim in
+this file as a control. No checkout needed.
+
+Prompt differentiation across round types
+  distinct system prompts     6 of 6        (before: 4 of 6)
+  lines shared by all six     11
+  lines unique to behavioral     11
+  lines unique to technical_swe  11
+  lines unique to system_design  11
+  lines unique to case           11
+  lines unique to screening      11
+  lines unique to hr             11
+
+Rubric coverage — criteria from ROUND_TYPE_SPECS.rubric named in the prompt
+  (the criteria the analyzer will actually score the answer on)
+
+  behavioral      3/3   (before 2/3)  <-- was silent here
+  technical_swe   7/7   (before 7/7)
+  system_design   6/6   (before 6/6)
+  case            5/5   (before 5/5)
+  screening       4/4   (before 0/4)  <-- was silent here
+  hr              4/4   (before 0/4)  <-- was silent here
+
+  total                 29/29   (before 20/29)
+
+Estimated system-prompt size  ~517 tokens, cached per round type
+
+Deterministic layer only. Add --live to run the coach and the analyzer,
+which costs money and needs OPENAI_API_KEY.
