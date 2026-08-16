@@ -31,13 +31,13 @@ export default function DashboardError({
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-8">
       <div className="max-w-md text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive-muted text-destructive">
           <AlertTriangle className="h-6 w-6" />
         </div>
-        <h1 className="mt-4 text-xl font-semibold text-gray-900">
+        <h1 className="mt-4 text-xl font-semibold text-slate-900">
           This page hit an error
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-slate-600">
           Nothing was lost — your sessions and settings are stored server-side.
           Try again, or head back to the dashboard.
         </p>

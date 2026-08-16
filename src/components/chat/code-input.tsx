@@ -168,7 +168,7 @@ export function CodeInput({
         rows={2}
         placeholder="Optional: talk through your approach, assumptions, or complexity…"
         aria-label="Notes on your approach"
-        className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 text-sm outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+        className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 text-sm outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-muted"
       />
 
       <div className="flex items-center justify-between">

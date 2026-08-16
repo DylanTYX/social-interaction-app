@@ -58,11 +58,11 @@ export function StatCounter({
 
   return (
     <div ref={ref}>
-      <p className="text-3xl font-bold text-gray-900">
+      <p className="text-3xl font-bold text-slate-900">
         {display}
         {suffix}
       </p>
-      <p className="text-sm text-gray-600">{label}</p>
+      <p className="text-sm text-slate-600">{label}</p>
     </div>
   );
 }

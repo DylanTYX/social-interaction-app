@@ -227,8 +227,8 @@ export function PersonaStep({
                       // from across a room, which matters when this is on a
                       // projector.
                       isActive
-                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
-                        : "border-border hover:border-blue-300 hover:bg-accent",
+                        ? "border-primary bg-primary-subtle ring-2 ring-primary/20"
+                        : "border-border hover:border-primary-border hover:bg-accent",
                     )}
                   >
                     {/* Grouped, then spaced. This was six blocks at one flat
@@ -266,7 +266,7 @@ export function PersonaStep({
                             four dials reflow the moment you picked a persona. */}
                           {isActive && (
                             <span
-                              className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white"
+                              className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary ring-2 ring-white"
                               aria-hidden
                             >
                               <Check className="h-2.5 w-2.5 text-white" />
@@ -734,7 +734,7 @@ function SliderField({
         aria-valuetext={`${value} out of 10`}
         aria-describedby={`${id}-help`}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full accent-blue-600"
+        className="w-full accent-primary"
       />
       <span id={`${id}-help`} className="sr-only">
         {helper}

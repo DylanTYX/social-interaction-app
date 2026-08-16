@@ -35,7 +35,7 @@ export function CompetencyHistoryCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Competency coverage</CardTitle>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-slate-500">
           {totalSessions === 0
             ? "Once you have practised, this shows which competencies you have and have not been asked about."
             : neverPractised.length > 0
@@ -59,8 +59,8 @@ export function CompetencyHistoryCard({
                     className={cn(
                       "truncate",
                       isBlindSpot
-                        ? "font-medium text-amber-700"
-                        : "text-gray-700",
+                        ? "font-medium text-warning-emphasis"
+                        : "text-slate-700",
                     )}
                   >
                     {competency.label}
@@ -68,7 +68,7 @@ export function CompetencyHistoryCard({
                   <span
                     className={cn(
                       "shrink-0 text-xs",
-                      isBlindSpot ? "text-amber-700" : "text-gray-500",
+                      isBlindSpot ? "text-warning-emphasis" : "text-slate-500",
                     )}
                   >
                     {isBlindSpot
@@ -76,11 +76,11 @@ export function CompetencyHistoryCard({
                       : `${sessions} session${sessions === 1 ? "" : "s"}`}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-100">
+                <div className="h-1.5 rounded-full bg-slate-100">
                   <div
                     className={cn(
                       "h-1.5 rounded-full transition-all",
-                      isRare ? "bg-amber-400" : "bg-blue-500",
+                      isRare ? "bg-warning" : "bg-primary",
                     )}
                     style={{ width: `${width}%` }}
                   />

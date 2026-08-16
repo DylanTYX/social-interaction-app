@@ -33,7 +33,7 @@ export function SessionListSkeleton({ rows = 4 }: { rows?: number }) {
 
 function PersonaCardSkeleton() {
   return (
-    <Card className="border border-gray-200/60">
+    <Card className="border border-slate-200/60">
       <CardHeader>
         <div className="flex items-start gap-4">
           <Pulse className="h-14 w-14 shrink-0 rounded-xl" />
@@ -81,7 +81,7 @@ export function PersonaGridSkeleton({ count = 6 }: { count?: number }) {
  */
 function DocumentRowSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
       <Pulse className="h-9 w-9 shrink-0 rounded-lg" />
       <div className="flex-1 space-y-2">
         <Pulse className="h-4 w-1/2 max-w-xs" />

@@ -50,13 +50,13 @@ export function TryQuestion() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-soft-lg">
-      <div className="border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50/60 px-6 py-4">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft-lg">
+      <div className="border-b border-slate-100 bg-linear-to-r from-primary-subtle to-primary-subtle/60 px-6 py-4">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
           <Sparkles className="h-3.5 w-3.5" />
           Try it now — no sign-up
         </p>
-        <p className="mt-1 text-lg font-semibold text-gray-900">{question}</p>
+        <p className="mt-1 text-lg font-semibold text-slate-900">{question}</p>
       </div>
 
       <div className="space-y-4 p-6">
@@ -65,7 +65,7 @@ export function TryQuestion() {
           onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type how you'd actually answer this…"
           rows={5}
-          className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-sm leading-relaxed outline-none transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-sm leading-relaxed outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-muted"
         />
 
         {!feedback ? (
@@ -85,28 +85,28 @@ export function TryQuestion() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+          <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-center gap-4">
               <div
                 className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl text-2xl font-bold tabular-nums ${
                   feedback.score >= 80
-                    ? "bg-emerald-100 text-emerald-700"
+                    ? "bg-success-muted text-success-emphasis"
                     : feedback.score >= 60
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-amber-100 text-amber-700"
+                      ? "bg-primary-muted text-primary-emphasis"
+                      : "bg-warning-muted text-warning-emphasis"
                 }`}
               >
                 {displayScore}
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-slate-900">
                   {feedback.score >= 80
                     ? "Strong answer"
                     : feedback.score >= 60
                       ? "Solid start"
                       : "Room to grow"}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   Quick heuristic score · the full coach goes much deeper
                 </p>
               </div>
@@ -117,7 +117,7 @@ export function TryQuestion() {
                 {feedback.strengths.map((item, index) => (
                   <li
                     key={index}
-                    className="flex items-start gap-2 text-sm text-emerald-700"
+                    className="flex items-start gap-2 text-sm text-success-emphasis"
                   >
                     <Check className="mt-0.5 h-4 w-4 shrink-0" />
                     {item}
@@ -131,9 +131,9 @@ export function TryQuestion() {
                 {feedback.tips.map((item, index) => (
                   <li
                     key={index}
-                    className="flex items-start gap-2 text-sm text-gray-700"
+                    className="flex items-start gap-2 text-sm text-slate-700"
                   >
-                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                     {item}
                   </li>
                 ))}

@@ -212,30 +212,30 @@ function buildMetricChips(
 
 function toneStyles(tone: MetricChip["tone"]): string {
   if (tone === "emerald") {
-    return "from-emerald-500/20 to-emerald-400/5 border-emerald-200/50 text-emerald-800";
+    return "from-success/20 to-success/5 border-success-border/50 text-success-emphasis";
   }
 
   if (tone === "amber") {
-    return "from-amber-500/20 to-amber-400/5 border-amber-200/50 text-amber-800";
+    return "from-warning/20 to-warning/5 border-warning-border/50 text-warning-emphasis";
   }
 
   if (tone === "violet") {
-    return "from-violet-500/20 to-violet-400/5 border-violet-200/50 text-violet-800";
+    return "from-primary/20 to-primary/5 border-primary-border/50 text-primary-emphasis";
   }
 
-  return "from-blue-500/20 to-sky-400/5 border-blue-200/50 text-blue-800";
+  return "from-primary/20 to-primary/5 border-primary-border/50 text-primary-emphasis";
 }
 
 function coachingToneStyle(tone: CoachingItem["tone"]): string {
   if (tone === "warn") {
-    return "border-amber-200/60 bg-amber-50/70";
+    return "border-warning-border/60 bg-warning-subtle/70";
   }
 
   if (tone === "good") {
-    return "border-emerald-200/60 bg-emerald-50/70";
+    return "border-success-border/60 bg-success-subtle/70";
   }
 
-  return "border-sky-200/60 bg-sky-50/70";
+  return "border-primary-border/60 bg-primary-subtle/70";
 }
 
 export function LiveFeedbackSidebar({

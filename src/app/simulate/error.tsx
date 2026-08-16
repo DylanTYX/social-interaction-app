@@ -31,15 +31,15 @@ export default function SimulateError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
       <div className="max-w-md text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive-muted text-destructive">
           <AlertTriangle className="h-6 w-6" />
         </div>
-        <h1 className="mt-4 text-xl font-semibold text-gray-900">
+        <h1 className="mt-4 text-xl font-semibold text-slate-900">
           Something went wrong here
         </h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-slate-600">
           Your interview is saved. Every answer is written to the server as you
           go, and the session link in your address bar picks up where you left
           off.

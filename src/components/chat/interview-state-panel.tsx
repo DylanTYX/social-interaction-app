@@ -90,9 +90,7 @@ export function InterviewStatePanel({
           </Badge>
         </div>
 
-        <p className="text-xs leading-5 text-slate-600">
-          {stageGuidance}
-        </p>
+        <p className="text-xs leading-5 text-slate-600">{stageGuidance}</p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">

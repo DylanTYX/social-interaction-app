@@ -122,23 +122,23 @@ function CollapseToggle({
             // Size and shape
             "h-6 w-6 rounded-full",
             // Visual style
-            "bg-white border border-gray-200 shadow-soft",
+            "bg-white border border-slate-200 shadow-soft",
             // Flexbox centering
             "flex items-center justify-center",
             // Hover and active states
-            "hover:bg-gray-50 hover:border-gray-300 hover:shadow-soft-md",
-            "active:scale-95 active:bg-gray-100",
+            "hover:bg-slate-50 hover:border-slate-300 hover:shadow-soft-md",
+            "active:scale-95 active:bg-slate-100",
             // Focus states (accessibility)
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
             // Transitions
             "transition-all duration-200 ease-out",
           )}
         >
           <Icon
             className={cn(
-              "h-3.5 w-3.5 text-gray-500",
+              "h-3.5 w-3.5 text-slate-500",
               "transition-colors duration-150",
-              "group-hover:text-gray-700",
+              "group-hover:text-slate-700",
             )}
             strokeWidth={2}
           />
@@ -185,11 +185,14 @@ function NavItem({
         isCollapsed && "justify-center px-2",
         // Active state
         isActive && [
-          "bg-blue-50 text-blue-700",
-          "shadow-soft border border-blue-100",
+          "bg-primary-subtle text-primary-emphasis",
+          "shadow-soft border border-primary-muted",
         ],
         // Inactive state with hover
-        !isActive && ["text-gray-600", "hover:bg-gray-50 hover:text-gray-900"],
+        !isActive && [
+          "text-slate-600",
+          "hover:bg-slate-50 hover:text-slate-900",
+        ],
         // Transition
         "transition-all duration-150",
       )}
@@ -198,7 +201,7 @@ function NavItem({
         className={cn(
           "h-5 w-5 shrink-0",
           "transition-colors duration-150",
-          isActive ? "text-blue-600" : "text-gray-500",
+          isActive ? "text-primary" : "text-slate-500",
         )}
         strokeWidth={isActive ? 2.25 : 1.75}
       />
@@ -263,7 +266,7 @@ export function Sidebar() {
           // Layout — hidden on phones; use MobileNav instead
           "relative hidden lg:flex h-full flex-col",
           // Visual style
-          "bg-white border-r border-gray-200/80 shadow-soft",
+          "bg-white border-r border-slate-200/80 shadow-soft",
           // Width with smooth transition
           isCollapsed ? "w-16" : "w-64",
           // Transition (applies to width change)
@@ -277,7 +280,7 @@ export function Sidebar() {
         {/* Logo Section */}
         <div
           className={cn(
-            "flex h-16 items-center overflow-hidden border-b border-gray-100",
+            "flex h-16 items-center overflow-hidden border-b border-slate-100",
             "transition-all duration-300",
             isCollapsed ? "justify-center gap-0 px-2" : "gap-3 px-4",
           )}
@@ -286,15 +289,18 @@ export function Sidebar() {
             className={cn(
               "flex items-center justify-center shrink-0",
               "h-9 w-9 rounded-xl",
-              "bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600",
-              "shadow-lg shadow-blue-600/25",
+              // The brand mark is the brand colour. It used to be a three-stop
+              // blue→purple→indigo gradient, which is the single most prominent
+              // thing on screen arguing that the primary colour is not blue.
+              "bg-primary",
+              "shadow-lg shadow-primary/25",
             )}
           >
             <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
           </div>
           <span
             className={cn(
-              "truncate text-lg font-bold text-gray-900",
+              "truncate text-lg font-bold text-slate-900",
               "transition-[max-width,opacity] duration-300 ease-soft",
               isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
             )}
@@ -313,10 +319,10 @@ export function Sidebar() {
             grouping being wrong, not the styling.
 
             A rule rather than restyling the search to match the nav: it is a
-            control, and the same `border-gray-100` already separates the logo
+            control, and the same `border-slate-100` already separates the logo
             above, so the sidebar now reads as three groups instead of one long
             column with an odd item in it. */}
-        <div className="border-b border-gray-100 pb-3">
+        <div className="border-b border-slate-100 pb-3">
           {/* The one thing this app is for.
 
               A sidebar lists places you go and return to with state; starting an
@@ -360,8 +366,8 @@ export function Sidebar() {
                 window.dispatchEvent(new Event("open-command-palette"))
               }
               className={cn(
-                "flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 text-sm text-gray-500",
-                "hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150",
+                "flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-500",
+                "hover:bg-slate-100 hover:text-slate-700 transition-colors duration-150",
                 isCollapsed && "justify-center px-2",
               )}
               aria-label="Open command palette"
@@ -370,7 +376,7 @@ export function Sidebar() {
               {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left">Search…</span>
-                  <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                     ⌘K
                   </kbd>
                 </>
@@ -410,7 +416,7 @@ export function Sidebar() {
         </div>
 
         {/* User Section */}
-        <div className="border-t border-gray-100 p-2">
+        <div className="border-t border-slate-100 p-2">
           <div
             className={cn(
               "flex items-center gap-3 rounded-lg p-2",
@@ -423,9 +429,12 @@ export function Sidebar() {
               className={cn(
                 "flex items-center justify-center shrink-0",
                 "h-8 w-8 rounded-lg",
-                "bg-linear-to-br from-blue-600 via-purple-600 to-indigo-600",
+                // Matches the logo mark above. These two ran the same gradient
+                // with *different* shadow colours — blue on one, indigo on the
+                // other — so the app's two most-repeated elements disagreed.
+                "bg-primary",
                 "text-white text-xs font-semibold",
-                "shadow-md shadow-indigo-600/25",
+                "shadow-md shadow-primary/25",
                 "hover:opacity-90 transition-opacity",
               )}
               aria-label="Account settings"
@@ -438,10 +447,10 @@ export function Sidebar() {
                   href="/dashboard/settings"
                   className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
                 >
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-slate-900 truncate">
                     {displayName}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{subline}</p>
+                  <p className="text-xs text-slate-500 truncate">{subline}</p>
                 </Link>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -450,9 +459,9 @@ export function Sidebar() {
                       onClick={() => void handleSignOut()}
                       className={cn(
                         "p-1.5 rounded-md",
-                        "text-muted-foreground hover:text-foreground hover:bg-gray-100",
+                        "text-muted-foreground hover:text-foreground hover:bg-slate-100",
                         "transition-colors duration-150",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       )}
                       aria-label="Sign out"
                     >

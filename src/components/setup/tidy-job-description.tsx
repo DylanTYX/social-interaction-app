@@ -82,9 +82,9 @@ export function TidyJobDescription({
     const percent = Math.round((removed / previous.trim().length) * 100);
 
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-soft">
-        <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-        <p className="flex-1 text-xs text-emerald-900">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-success-border bg-success-subtle/70 px-3 py-2 animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-soft">
+        <Check className="h-4 w-4 shrink-0 text-success" />
+        <p className="flex-1 text-xs text-success-emphasis">
           {/* States the size of the change rather than asserting it was
               correct. The text is right there to read. */}
           {removed > 0
@@ -96,7 +96,7 @@ export function TidyJobDescription({
           variant="ghost"
           size="sm"
           onClick={handleUndo}
-          className="h-7 gap-1.5 text-xs text-emerald-900 hover:bg-emerald-100"
+          className="h-7 gap-1.5 text-xs text-success-emphasis hover:bg-success-muted"
         >
           <X className="h-3.5 w-3.5" />
           Undo

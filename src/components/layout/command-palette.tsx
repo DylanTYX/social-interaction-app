@@ -238,8 +238,8 @@ export function CommandPalette() {
         }}
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
-        <div className="flex items-center gap-2 border-b border-gray-200/80 px-4">
-          <Search className="h-4 w-4 shrink-0 text-gray-400" />
+        <div className="flex items-center gap-2 border-b border-slate-200/80 px-4">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             ref={inputRef}
             value={query}
@@ -251,7 +251,7 @@ export function CommandPalette() {
             placeholder="Search actions…"
             className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">
+          <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">
             esc
           </kbd>
         </div>
@@ -272,14 +272,14 @@ export function CommandPalette() {
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
                     index === activeIndex
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-700 hover:bg-gray-50",
+                      ? "bg-primary-subtle text-primary-emphasis"
+                      : "text-slate-700 hover:bg-slate-50",
                   )}
                 >
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0",
-                      index === activeIndex ? "text-blue-600" : "text-gray-400",
+                      index === activeIndex ? "text-primary" : "text-slate-400",
                     )}
                   />
                   <span className="flex-1 font-medium">{command.label}</span>

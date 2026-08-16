@@ -73,9 +73,9 @@ export function ScoreComparison({
   const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   const tone =
     delta > 0
-      ? "text-emerald-600"
+      ? "text-success"
       : delta < 0
-        ? "text-rose-600"
+        ? "text-destructive"
         : "text-muted-foreground";
   const label =
     delta > 0

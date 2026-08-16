@@ -101,7 +101,7 @@ function SetupLoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
       <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
+        <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
         Preparing setup...
       </div>
     </div>
@@ -791,7 +791,7 @@ function SetupWizard() {
         </div>
 
         {(launchError || personaLibraryError) && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis">
             {launchError ?? personaLibraryError}
           </div>
         )}
@@ -864,18 +864,18 @@ function Stepper({
               onClick={() => isReachable && onStepSelect(step.id)}
               className={`flex h-11 w-full items-center gap-2.5 rounded-lg border px-3 text-left transition-all duration-200 ${
                 isActive
-                  ? "border-blue-300 bg-blue-50 shadow-soft-md"
+                  ? "border-primary-border bg-primary-subtle shadow-soft-md"
                   : isCompleted
-                    ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                    ? "border-success-border bg-success-subtle hover:bg-success-muted"
                     : "border-border bg-white text-muted-foreground cursor-default"
               }`}
             >
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors duration-200 ${
                   isActive
-                    ? "bg-blue-500 text-white"
+                    ? "bg-primary text-white"
                     : isCompleted
-                      ? "bg-emerald-500 text-white"
+                      ? "bg-success text-white"
                       : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -896,7 +896,7 @@ function Stepper({
                   isActive
                     ? "text-foreground"
                     : isCompleted
-                      ? "text-emerald-900"
+                      ? "text-success-emphasis"
                       : "text-muted-foreground"
                 }`}
               >
@@ -909,8 +909,8 @@ function Stepper({
                 isLast
                   ? "invisible"
                   : index < currentIndex
-                    ? "bg-emerald-300"
-                    : "bg-gray-200"
+                    ? "bg-success-border"
+                    : "bg-slate-200"
               }`}
             />
           </li>

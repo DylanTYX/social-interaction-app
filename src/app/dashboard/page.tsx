@@ -153,7 +153,7 @@ export default function DashboardPage() {
     : null;
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="Home"
         title={`Welcome back, ${firstName}`}
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                         <InitialsAvatar name={session.personaName} />
 
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground transition-colors group-hover:text-blue-700">
+                          <p className="truncate font-medium text-foreground transition-colors group-hover:text-primary-emphasis">
                             {session.scenarioTitle ?? session.scenarioValue}
                           </p>
                           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -337,7 +337,7 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="shrink-0 text-right">
-                          <div className="text-lg font-bold tabular-nums text-blue-600">
+                          <div className="text-lg font-bold tabular-nums text-primary">
                             {session.averageScore === null
                               ? "—"
                               : `${session.averageScore}%`}

@@ -96,10 +96,10 @@ export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-gray-200/60 bg-white/90 backdrop-blur-xl shadow-soft">
+      <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-soft">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <MessageSquare className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold">ConvoTrainer</span>
@@ -108,19 +108,19 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <Link
               href="#features"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150"
             >
               Features
             </Link>
             <Link
               href="#how-it-works"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150"
             >
               How it works
             </Link>
             <Link
               href="#demo"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150"
             >
               Demo
             </Link>
@@ -154,20 +154,20 @@ export default function LandingPage() {
         <div className="mx-auto w-full max-w-7xl px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100/50 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 shadow-soft">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary-muted/50 bg-primary-subtle px-4 py-2 text-sm font-semibold text-primary shadow-soft">
                 <Sparkles className="h-4 w-4" />
                 <span>Your AI interview coach</span>
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+                <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
                   Practice interviews.
                   <br />
-                  <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-linear-to-r from-primary to-primary-emphasis bg-clip-text text-transparent">
                     Get hired.
                   </span>
                 </h1>
-                <p className="max-w-xl text-lg leading-relaxed text-gray-600">
+                <p className="max-w-xl text-lg leading-relaxed text-slate-600">
                   Rehearse real interview questions with an AI that adapts to
                   your answers, scores every response, and tells you exactly how
                   to improve — by voice or text, on your own schedule.
@@ -189,7 +189,7 @@ export default function LandingPage() {
                   size="lg"
                   variant="outline"
                   asChild
-                  className="transition-colors duration-150 hover:bg-gray-50"
+                  className="transition-colors duration-150 hover:bg-slate-50"
                 >
                   <Link href="#demo">See it in action</Link>
                 </Button>
@@ -197,13 +197,13 @@ export default function LandingPage() {
 
               <div className="flex items-center gap-8 pt-4">
                 <StatCounter value={2} label="Practice modes" />
-                <div className="h-12 w-px bg-gray-200" />
+                <div className="h-12 w-px bg-slate-200" />
                 <StatCounter value={5} label="Interview round types" />
-                <div className="h-12 w-px bg-gray-200" />
+                <div className="h-12 w-px bg-slate-200" />
                 <StatCounter value={100} suffix="%" label="Free in beta" />
               </div>
 
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-slate-500">
                 Free while in beta · No credit card required
               </p>
             </div>
@@ -217,13 +217,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="bg-gray-50 py-24">
+      <section id="features" className="bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-16 space-y-4 text-center">
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
+            <h2 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl md:text-5xl">
               Everything you need to walk in confident
             </h2>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-600 md:text-xl">
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl">
               A complete loop: realistic questions, honest scoring, and the
               specific feedback that actually moves your performance.
             </p>
@@ -235,7 +235,7 @@ export default function LandingPage() {
               return (
                 <Reveal key={feature.title} delay={(index % 3) * 80}>
                   <Card
-                    className={`h-full border border-gray-200/60 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:shadow-soft-md ${TILE_BORDERS[feature.color]}`}
+                    className={`h-full border border-slate-200/60 transition-all duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:shadow-soft-md ${TILE_BORDERS[feature.color]}`}
                   >
                     <CardHeader>
                       <div
@@ -262,10 +262,10 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-16 space-y-4 text-center">
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
+            <h2 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl md:text-5xl">
               Start practicing in minutes
             </h2>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-600 md:text-xl">
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl">
               No setup headaches — just pick what you&apos;re preparing for and
               start the conversation.
             </p>
@@ -278,13 +278,13 @@ export default function LandingPage() {
                 delay={index * 100}
                 className="space-y-4 text-center"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-600">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary-muted text-2xl font-bold text-primary">
                   {index + 1}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold text-slate-900">
                   {step.title}
                 </h3>
-                <p className="leading-relaxed text-gray-600">
+                <p className="leading-relaxed text-slate-600">
                   {step.description}
                 </p>
               </Reveal>
@@ -294,13 +294,13 @@ export default function LandingPage() {
       </section>
 
       {/* Try one question */}
-      <section id="demo" className="scroll-mt-20 bg-gray-50 py-24">
+      <section id="demo" className="scroll-mt-20 bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-12 space-y-4 text-center">
-            <h2 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl md:text-5xl">
+            <h2 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl md:text-5xl">
               See your score in 10 seconds
             </h2>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-600 md:text-xl">
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl">
               Answer a real interview question right here — no account needed —
               and get instant feedback on structure, specificity, and delivery.
             </p>
@@ -312,7 +312,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-linear-to-br from-blue-600 to-purple-600 py-24">
+      <section className="bg-linear-to-br from-primary to-primary-emphasis py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <Reveal>
             <h2 className="mb-6 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl">
@@ -337,32 +337,32 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <MessageSquare className="h-5 w-5 text-white" />
               </div>
               <span className="text-lg font-bold">ConvoTrainer</span>
             </div>
-            <nav className="flex items-center gap-6 text-sm text-gray-600">
+            <nav className="flex items-center gap-6 text-sm text-slate-600">
               <Link
                 href="#features"
-                className="transition-colors duration-150 hover:text-gray-900"
+                className="transition-colors duration-150 hover:text-slate-900"
               >
                 Features
               </Link>
               <Link
                 href="#how-it-works"
-                className="transition-colors duration-150 hover:text-gray-900"
+                className="transition-colors duration-150 hover:text-slate-900"
               >
                 How it works
               </Link>
               <Link
                 href="/auth/login"
-                className="transition-colors duration-150 hover:text-gray-900"
+                className="transition-colors duration-150 hover:text-slate-900"
               >
                 Sign in
               </Link>
             </nav>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               Built as a research project · Free while in beta
             </p>
           </div>

@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils";
 import { initialsFromName } from "@/lib/format";
+import { TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
 
 interface ChatMessageProps {
   role: "user" | "ai";
@@ -22,8 +23,8 @@ const FEEDBACK_TONE_CLASS: Record<
   NonNullable<ChatMessageProps["feedbackTone"]>,
   string
 > = {
-  positive: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  constructive: "border-amber-200 bg-amber-50 text-amber-900",
+  positive: "border-success-border bg-success-subtle text-success-emphasis",
+  constructive: "border-warning-border bg-warning-subtle text-warning-emphasis",
   neutral: "border-slate-200 bg-slate-50 text-slate-700",
 };
 
@@ -89,7 +90,7 @@ const markdownComponents = {
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+      className="font-medium text-primary underline underline-offset-2 hover:text-primary-emphasis"
     >
       {children}
     </a>
@@ -165,11 +166,20 @@ export const ChatMessage = memo(function ChatMessage({
         isUser && "animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
       )}
     >
-      {/* Avatar */}
+      {/* Avatar.
+          The interviewer's is keyed to their *name*, the same way
+          `InitialsAvatar` does it on the personas page, in the session list and
+          in the picker — so Sarah Chen is the same colour in the transcript as
+          everywhere else. It used to be hardcoded purple, which made every
+          interviewer look identical here and unrelated to their own colour one
+          screen away. The candidate stays primary: that is the app speaking as
+          you, not a persona. */}
       <div
         className={cn(
           "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold",
-          isUser ? "bg-blue-600 text-white" : "bg-purple-100 text-purple-700",
+          isUser
+            ? "bg-primary text-primary-foreground"
+            : TILE_COLORS[tileColorForKey(personaName)],
         )}
       >
         {initials}
@@ -181,7 +191,7 @@ export const ChatMessage = memo(function ChatMessage({
           <span
             className={cn(
               "text-xs font-medium",
-              isUser ? "text-blue-700" : "text-gray-700",
+              isUser ? "text-primary-emphasis" : "text-slate-700",
             )}
           >
             {displayName}
@@ -197,8 +207,8 @@ export const ChatMessage = memo(function ChatMessage({
           className={cn(
             "rounded-2xl px-4 py-2.5 shadow-soft",
             isUser
-              ? "bg-blue-600 text-white rounded-tr-sm"
-              : "bg-white text-gray-900 border border-gray-200/80 rounded-tl-sm",
+              ? "bg-primary text-white rounded-tr-sm"
+              : "bg-white text-slate-900 border border-slate-200/80 rounded-tl-sm",
           )}
         >
           {isUser ? (
@@ -242,7 +252,7 @@ export const ChatMessage = memo(function ChatMessage({
         )}
 
         {isUser && deliveryNote && (
-          <p className="mt-1.5 flex animate-in items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 fade-in-0 slide-in-from-top-1 duration-200">
+          <p className="mt-1.5 flex animate-in items-center gap-1.5 rounded-lg border border-primary-border bg-primary-subtle px-3 py-1.5 text-xs font-medium text-primary-emphasis fade-in-0 slide-in-from-top-1 duration-200">
             <span aria-hidden="true">🎙️</span>
             {deliveryNote}
           </p>

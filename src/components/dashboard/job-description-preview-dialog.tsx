@@ -76,7 +76,7 @@ export function JobDescriptionPreviewDialog({
             href={item.sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="truncate text-xs font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+            className="truncate text-xs font-medium text-primary underline underline-offset-2 hover:text-primary-emphasis"
           >
             {item.sourceUrl}
           </a>

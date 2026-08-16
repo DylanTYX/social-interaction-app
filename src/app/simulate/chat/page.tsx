@@ -3,12 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Code2,
-  MessageSquare,
-  Settings2,
-} from "lucide-react";
+import { ArrowLeft, Code2, MessageSquare, Settings2 } from "lucide-react";
 
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -115,9 +110,9 @@ export default function ChatSimulatePage() {
 
 function ChatLoadingFallback() {
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <div className="flex items-center gap-3 text-sm text-gray-500">
-        <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
+    <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex items-center gap-3 text-sm text-slate-500">
+        <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
         Preparing chat session...
       </div>
     </div>
@@ -586,13 +581,13 @@ function ChatSimulateInner() {
 
   if (bootstrap.status === "error") {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 px-6">
+      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Could not open session</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">{bootstrap.error}</p>
+            <p className="text-sm text-slate-600">{bootstrap.error}</p>
             <Link href="/dashboard/sessions">
               <Button>Back to sessions</Button>
             </Link>
@@ -603,8 +598,8 @@ function ChatSimulateInner() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <div className="h-16 bg-white border-b border-gray-200/80 flex items-center px-6 gap-4 shadow-soft">
+    <div className="h-screen flex flex-col bg-slate-50">
+      <div className="h-16 bg-white border-b border-slate-200/80 flex items-center px-6 gap-4 shadow-soft">
         {/* `asChild` so this renders one <a>, not a <button> nested inside
             one. The nesting was invalid HTML and left the link with no
             accessible name at all, since the only content was an icon. */}
@@ -612,7 +607,7 @@ function ChatSimulateInner() {
           variant="ghost"
           size="icon"
           asChild
-          className="hover:bg-gray-100 transition-colors duration-150"
+          className="hover:bg-slate-100 transition-colors duration-150"
         >
           <Link href="/dashboard" aria-label="Back to dashboard">
             <ArrowLeft className="h-5 w-5" />
@@ -620,7 +615,7 @@ function ChatSimulateInner() {
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-semibold">Chat practice</h1>
-          <p className="text-sm text-gray-500 truncate">
+          <p className="text-sm text-slate-500 truncate">
             {activeScenario.title} • {activePersonaConfig.name} •{" "}
             {streamResponses ? "Streaming enabled" : "Standard mode"}
           </p>
@@ -708,9 +703,9 @@ function ChatSimulateInner() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-sky-50/60">
+      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-primary-subtle/60">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-blue-50/50 px-6 py-4">
+          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-primary-subtle/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
@@ -751,21 +746,21 @@ function ChatSimulateInner() {
               ))}
 
               {error && (
-                <Card className="border-amber-200 bg-amber-50/80">
+                <Card className="border-warning-border bg-warning-subtle/80">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-amber-900">
+                    <CardTitle className="text-sm text-warning-emphasis">
                       Coaching note
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800">{error}</p>
+                    <p className="text-sm text-warning-emphasis">{error}</p>
                   </CardContent>
                 </Card>
               )}
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-breathe rounded-full bg-sky-500" />
+                  <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
                   Generating interviewer response...
                 </div>
               )}

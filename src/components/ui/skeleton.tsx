@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
  *
  * This existed already, eight times over: `page-skeletons.tsx` kept a private
  * `Pulse`, and every other loading state hand-wrote `animate-pulse rounded-lg
- * bg-gray-100` inline. The copies had drifted — some were `bg-gray-100`, some
+ * bg-slate-100` inline. The copies had drifted — some were `bg-slate-100`, some
  * `bg-slate-100`, some `bg-muted`, with three different radii — so loading
  * states looked subtly different depending on which page you were on.
  *
@@ -17,7 +17,7 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="skeleton"
-      className={cn("animate-pulse rounded-lg bg-gray-100", className)}
+      className={cn("animate-pulse rounded-lg bg-slate-100", className)}
       {...props}
     />
   );

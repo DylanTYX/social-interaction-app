@@ -145,26 +145,26 @@ export function AnimatedDemo() {
   }, [completed, typedChars]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-soft-lg">
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft-lg">
       {/* Header bar */}
-      <div className="flex items-center justify-between border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50/60 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-primary-subtle to-primary-subtle/60 px-5 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
             <Mic className="h-4 w-4 text-white" />
           </div>
-          <span className="text-sm font-semibold text-gray-800">
+          <span className="text-sm font-semibold text-slate-800">
             Behavioral round · live
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500">Live score</span>
+          <span className="text-xs font-medium text-slate-500">Live score</span>
           <span
             className={`flex h-9 min-w-[3rem] items-center justify-center rounded-lg px-2 text-lg font-bold tabular-nums transition-colors ${
               score >= 80
-                ? "bg-emerald-100 text-emerald-700"
+                ? "bg-success-muted text-success-emphasis"
                 : score >= 60
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-600"
+                  ? "bg-primary-muted text-primary-emphasis"
+                  : "bg-slate-100 text-slate-600"
             }`}
           >
             {score}
@@ -195,8 +195,8 @@ function DemoBubble({ turn, typing }: { turn: DemoTurn; typing?: boolean }) {
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-soft ${
           isUser
-            ? "rounded-tr-sm bg-blue-600 text-white"
-            : "rounded-tl-sm border border-gray-200/80 bg-gray-50 text-gray-800"
+            ? "rounded-tr-sm bg-primary text-white"
+            : "rounded-tl-sm border border-slate-200/80 bg-slate-50 text-slate-800"
         }`}
       >
         <span
@@ -210,7 +210,7 @@ function DemoBubble({ turn, typing }: { turn: DemoTurn; typing?: boolean }) {
         </span>
       </div>
       {isUser && !typing && turn.note && (
-        <p className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+        <p className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-success-border bg-success-subtle px-2.5 py-1 text-xs font-medium text-success-emphasis">
           <Sparkles className="h-3 w-3" />
           {turn.note}
         </p>

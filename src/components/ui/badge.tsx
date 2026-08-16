@@ -17,12 +17,27 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        /**
+         * Meaning, not brand. These three exist because there was no variant
+         * that meant "good" or "needs attention", so every score band, feedback
+         * chip and status pill in the app hand-wrote its own emerald or amber
+         * triplet on `variant="outline"` — which is how the same "warning" ended
+         * up as three slightly different ambers. Soft-filled rather than solid
+         * so they sit beside body copy without shouting the way `destructive`
+         * does.
+         */
+        success:
+          "border-success-border bg-success-subtle text-success-emphasis",
+        warning:
+          "border-warning-border bg-warning-subtle text-warning-emphasis",
+        danger:
+          "border-destructive-border bg-destructive-subtle text-destructive-emphasis",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  }
+  },
 );
 
 function Badge({

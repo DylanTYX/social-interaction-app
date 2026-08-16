@@ -3,12 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Settings2,
-  AlertCircle,
-  Volume2,
-} from "lucide-react";
+import { ArrowLeft, Settings2, AlertCircle, Volume2 } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
@@ -1272,16 +1267,16 @@ function VoiceSimulateInner() {
 
   if (bootstrap.status === "error") {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 px-6">
-        <Card className="max-w-md border-red-200 bg-red-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
+        <Card className="max-w-md border-destructive-border bg-destructive-subtle">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
+            <CardTitle className="flex items-center gap-2 text-destructive-emphasis">
               <AlertCircle className="h-5 w-5" />
               Could not open session
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-red-800">
+            <p className="text-sm text-destructive-emphasis">
               {bootstrap.error ?? "This session could not be resumed."}
             </p>
             <Link href="/simulate/setup?mode=voice">
@@ -1299,16 +1294,18 @@ function VoiceSimulateInner() {
 
   if (setupError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <Card className="w-96 border-red-200 bg-red-50">
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <Card className="w-96 border-destructive-border bg-destructive-subtle">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
+            <CardTitle className="flex items-center gap-2 text-destructive-emphasis">
               <AlertCircle className="h-5 w-5" />
               Setup error
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-sm text-red-800">{setupError}</p>
+            <p className="mb-4 text-sm text-destructive-emphasis">
+              {setupError}
+            </p>
             <Link href="/simulate/setup?mode=voice">
               <Button variant="outline">Return to setup</Button>
             </Link>
@@ -1347,13 +1344,13 @@ function VoiceSimulateInner() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <div className="h-16 bg-white border-b border-gray-200/80 flex items-center px-6 gap-4 shadow-soft">
+    <div className="h-screen flex flex-col bg-slate-50">
+      <div className="h-16 bg-white border-b border-slate-200/80 flex items-center px-6 gap-4 shadow-soft">
         <Button
           variant="ghost"
           size="icon"
           asChild
-          className="hover:bg-gray-100 transition-colors duration-150"
+          className="hover:bg-slate-100 transition-colors duration-150"
         >
           <Link
             href="/dashboard"
@@ -1365,7 +1362,7 @@ function VoiceSimulateInner() {
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-semibold">Voice practice</h1>
-          <p className="text-sm text-gray-500 truncate">
+          <p className="text-sm text-slate-500 truncate">
             {activeScenario.title} • {activePersonaConfig.name} •{" "}
             {voiceConfig.ttsEnabled ? "TTS on" : "TTS off"}
           </p>
@@ -1444,9 +1441,9 @@ function VoiceSimulateInner() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-sky-50/60">
+      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-primary-subtle/60">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-blue-50/50 px-6 py-4">
+          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-primary-subtle/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
@@ -1467,9 +1464,9 @@ function VoiceSimulateInner() {
                   <>
                     <Badge
                       variant="secondary"
-                      className="h-8 gap-1.5 px-3 text-blue-700 bg-blue-100 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
+                      className="h-8 gap-1.5 px-3 text-primary-emphasis bg-primary-muted animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
                     >
-                      <span className="h-2 w-2 animate-breathe rounded-full bg-blue-500" />
+                      <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
                       Interviewer speaking
                     </Badge>
                     <Button
@@ -1525,26 +1522,26 @@ function VoiceSimulateInner() {
               ))}
 
               {error && (
-                <Card className="border-amber-200 bg-amber-50/80">
+                <Card className="border-warning-border bg-warning-subtle/80">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-amber-900">
+                    <CardTitle className="text-sm text-warning-emphasis">
                       Coaching note
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-amber-800">{error}</p>
+                    <p className="text-sm text-warning-emphasis">{error}</p>
                   </CardContent>
                 </Card>
               )}
 
               {blockedAudioMessage && (
-                <Card className="border-sky-200 bg-sky-50/80">
+                <Card className="border-primary-border bg-primary-subtle/80">
                   <CardContent className="flex flex-wrap items-center gap-3 py-4">
                     <Volume2
-                      className="size-5 shrink-0 text-sky-700"
+                      className="size-5 shrink-0 text-primary-emphasis"
                       aria-hidden
                     />
-                    <p className="min-w-48 flex-1 text-sm text-sky-900">
+                    <p className="min-w-48 flex-1 text-sm text-primary-emphasis">
                       Your browser blocked the interviewer&rsquo;s audio until
                       you interact with the page.
                     </p>
@@ -1561,7 +1558,7 @@ function VoiceSimulateInner() {
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-breathe rounded-full bg-sky-500" />
+                  <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
                   Generating interviewer response...
                 </div>
               )}

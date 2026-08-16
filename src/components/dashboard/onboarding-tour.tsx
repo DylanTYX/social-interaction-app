@@ -124,8 +124,7 @@ export function OnboardingTour() {
   // Place the tooltip below the highlight, or above if it would overflow.
   const tooltipWidth = 320;
   let tooltipTop = highlight ? highlight.top + highlight.height + 12 : 120;
-  const wouldOverflow =
-    highlight && tooltipTop + 180 > window.innerHeight;
+  const wouldOverflow = highlight && tooltipTop + 180 > window.innerHeight;
   if (highlight && wouldOverflow) {
     tooltipTop = Math.max(16, highlight.top - 188);
   }
@@ -143,7 +142,7 @@ export function OnboardingTour() {
       {/* Spotlight: a transparent box with a huge shadow dims everything else. */}
       {highlight ? (
         <div
-          className="pointer-events-none absolute rounded-xl ring-2 ring-blue-400 transition-all duration-300"
+          className="pointer-events-none absolute rounded-xl ring-2 ring-primary transition-all duration-300"
           style={{
             top: highlight.top,
             left: highlight.left,
@@ -158,11 +157,11 @@ export function OnboardingTour() {
 
       {/* Tooltip card */}
       <div
-        className="absolute rounded-xl border border-gray-200 bg-white p-4 shadow-soft-lg"
+        className="absolute rounded-xl border border-slate-200 bg-white p-4 shadow-soft-lg"
         style={{ top: tooltipTop, left: tooltipLeft, width: tooltipWidth }}
       >
-        <p className="text-sm font-semibold text-gray-900">{step.title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-gray-600">
+        <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">
           {step.body}
         </p>
         <div className="mt-4 flex items-center justify-between">
@@ -171,9 +170,7 @@ export function OnboardingTour() {
               <span
                 key={index}
                 className={`h-1.5 rounded-full transition-all ${
-                  index === stepIndex
-                    ? "w-5 bg-blue-600"
-                    : "w-1.5 bg-gray-300"
+                  index === stepIndex ? "w-5 bg-primary" : "w-1.5 bg-slate-300"
                 }`}
               />
             ))}

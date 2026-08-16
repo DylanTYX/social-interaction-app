@@ -118,7 +118,7 @@ export default function ResumesPage() {
   );
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="Library"
         title="CVs"
@@ -138,7 +138,10 @@ export default function ResumesPage() {
       <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileUser className="h-4 w-4 text-teal-600" />
+            {/* Blue, not the page accent — see the matching card on the
+                job-descriptions page. The two are the same action and now look
+                like it. */}
+            <FileUser className="h-4 w-4 text-primary" />
             Add a CV
           </CardTitle>
           <CardDescription>
@@ -177,7 +180,7 @@ export default function ResumesPage() {
               rows is furniture. */}
           {(items.length > 0 || hasFilters) && (
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -205,7 +208,7 @@ export default function ResumesPage() {
             // several saved CVs to "add their first one" because they typed a
             // typo would be nonsense.
             <div className="rounded-xl border border-dashed border-border p-6 text-center">
-              <p className="text-sm font-medium text-gray-800">
+              <p className="text-sm font-medium text-slate-800">
                 No CVs match that search
               </p>
               <Button
@@ -239,18 +242,18 @@ export default function ResumesPage() {
                   )}
                   style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100 text-teal-600 shrink-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-muted text-primary shrink-0">
                     <FileUser className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-slate-900 truncate">
                       {item.title}
                     </p>
                     {/* The version leads the secondary line — it is what tells
                         two CVs for two kinds of role apart. Parts are assembled
                         and joined rather than interpolated with separators, so
                         a missing one does not leave a stranded "·". */}
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-slate-500 truncate">
                       {[
                         item.variant,
                         formatDateTime(item.createdAt),

@@ -33,9 +33,9 @@ export function EmptyStateCard({
   secondaryAction,
 }: EmptyStateCardProps) {
   return (
-    <Card className="border-dashed border-gray-300/80 bg-white/80">
+    <Card className="border-dashed border-slate-300/80 bg-white/80">
       <CardHeader className="justify-items-center pt-8 pb-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-subtle text-primary">
           {icon}
         </div>
         <CardTitle className="pt-3 text-lg">{title}</CardTitle>
@@ -58,9 +58,7 @@ export function EmptyStateCard({
           {secondaryAction &&
             (secondaryAction.href ? (
               <Button variant="outline" asChild>
-                <Link href={secondaryAction.href}>
-                  {secondaryAction.label}
-                </Link>
+                <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
               </Button>
             ) : (
               <Button

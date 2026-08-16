@@ -8,14 +8,15 @@ import type { ModelAnswerResult } from "@/lib/coach-contract";
  *
  * Written twice before this, near-identically: the drills page and the report
  * transcript's `TurnCoaching` disclosure. They had already diverged on palette
- * — `amber-700`/`gray-700` against `amber-800`/`slate-700` — which is drift
- * with no reason behind it rather than two considered choices.
+ * — amber-700/gray-700 against amber-800/slate-700 — which is drift with no
+ * reason behind it rather than two considered choices.
  *
  * Unified on the report's values rather than splitting the difference with a
- * `tone` prop. The report renders on `bg-amber-50/60` and drills on white;
- * `amber-800` clears AA on both, `amber-700` only on white. So one palette is
- * not a compromise here, it is the correct one, and a prop would be two
- * branches earning nothing.
+ * `tone` prop. The report renders on `bg-warning-subtle/60` and drills on
+ * white; the darker rung clears AA on both, the lighter one only on white. So
+ * one palette is not a compromise here, it is the correct one, and a prop would
+ * be two branches earning nothing. That darker rung is now `--warning-emphasis`,
+ * which is what every warning surface in the app resolves to.
  *
  * No `"use client"`: no hooks, no handlers. Both current callers are already
  * client components, and leaving this one unmarked keeps it usable from a
@@ -23,7 +24,8 @@ import type { ModelAnswerResult } from "@/lib/coach-contract";
  */
 
 /** Shared by the labels in both this file's components. */
-const LABEL = "text-xs font-semibold uppercase tracking-wide text-amber-800";
+const LABEL =
+  "text-xs font-semibold uppercase tracking-wide text-warning-emphasis";
 const BODY = "mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700";
 
 /**
@@ -32,8 +34,9 @@ const BODY = "mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700";
  * The right-hand string is lifted from the report disclosure's own container, so
  * "coaching is amber" carries across from a panel the user has already seen.
  */
-const PANEL_ORIGINAL = "rounded-xl border border-gray-200 bg-gray-50/60 p-4";
-const PANEL_REWRITE = "rounded-xl border border-amber-200 bg-amber-50/60 p-4";
+const PANEL_ORIGINAL = "rounded-xl border border-slate-200 bg-slate-50/60 p-4";
+const PANEL_REWRITE =
+  "rounded-xl border border-warning-border bg-warning-subtle/60 p-4";
 
 /**
  * Two columns once the *container* is wide, not the viewport.
@@ -95,7 +98,9 @@ export function CoachingResult({
     // `space-y-4` is the default rhythm; the report's tighter disclosure passes
     // `space-y-3`. `cn` is twMerge and `space-y` is one of its groups, so the
     // override lands without a prop.
-    <div className={cn("@container/coaching space-y-4", CONTENT_ENTER, className)}>
+    <div
+      className={cn("@container/coaching space-y-4", CONTENT_ENTER, className)}
+    >
       {result.tips.length > 0 && (
         <section>
           <SectionLabel>What to improve</SectionLabel>
@@ -117,7 +122,7 @@ export function CoachingResult({
           // written and once tightened, so their heights track each other.
           <section className={COMPARE_GRID}>
             <div className={PANEL_ORIGINAL}>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Your answer
               </h3>
               <p className={BODY}>{originalAnswer}</p>

@@ -195,7 +195,7 @@ export default function SessionReportPage({
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gray-50 px-6 py-8">
+      <div className="min-h-screen bg-slate-50 px-6 py-8">
         <div className="mx-auto max-w-5xl space-y-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-32" />
@@ -207,7 +207,7 @@ export default function SessionReportPage({
 
   if (status === "error" || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 px-6 py-8">
+      <div className="min-h-screen bg-slate-50 px-6 py-8">
         <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-soft-md">
           <h2 className="text-xl font-semibold text-slate-900">
             We couldn&apos;t load that session
@@ -351,7 +351,7 @@ export default function SessionReportPage({
           {jobDescription && (
             <Badge
               variant="outline"
-              className="border-indigo-200 bg-indigo-50 text-indigo-700"
+              className="border-primary-border bg-primary-subtle text-primary-emphasis"
               title={jobDescription.title}
             >
               <FileText className="mr-1 h-3 w-3" />
@@ -491,7 +491,7 @@ export default function SessionReportPage({
       />
 
       {loop?.enabled && currentRound && (
-        <Card className="border-indigo-200/80 bg-indigo-50/40">
+        <Card className="border-primary-border/80 bg-primary-subtle/40">
           <CardHeader>
             <CardTitle className="text-base">
               Round {loop.currentRoundIndex + 1} of {loop.rounds.length}{" "}
@@ -521,7 +521,7 @@ export default function SessionReportPage({
                 Your next interviewer will see a short summary of this round.
               </p>
               {nextRoundError && (
-                <p className="w-full text-sm text-red-600" role="alert">
+                <p className="w-full text-sm text-destructive" role="alert">
                   {nextRoundError}
                 </p>
               )}
@@ -545,7 +545,7 @@ export default function SessionReportPage({
             <CardContent className="pt-0">
               <Link
                 href={`/simulate/loop/${loopId}`}
-                className="text-sm font-medium text-indigo-700 hover:underline"
+                className="text-sm font-medium text-primary hover:underline"
               >
                 See how you are tracking across rounds so far →
               </Link>
@@ -615,7 +615,7 @@ export default function SessionReportPage({
                     <div
                       className={`max-w-2xl rounded-2xl border px-4 py-3 ${
                         isUser
-                          ? "border-blue-200 bg-blue-50 text-slate-900"
+                          ? "border-primary-border bg-primary-subtle text-slate-900"
                           : "border-slate-200 bg-white text-slate-800"
                       }`}
                     >
@@ -727,21 +727,21 @@ function TurnCoaching({
         variant="ghost"
         size="sm"
         onClick={() => void handleToggle()}
-        className="h-7 gap-1.5 text-xs text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+        className="h-7 gap-1.5 text-xs text-warning-emphasis hover:bg-warning-subtle hover:text-warning-emphasis"
       >
         <Lightbulb className="h-3.5 w-3.5" />
         {open ? "Hide coaching" : "See a stronger answer"}
       </Button>
 
       {open && (
-        <div className="mt-2 space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+        <div className="mt-2 space-y-3 rounded-xl border border-warning-border bg-warning-subtle/60 p-4">
           {loading && (
-            <p className="flex items-center gap-2 text-xs text-amber-700">
-              <span className="h-2 w-2 animate-breathe rounded-full bg-amber-500" />
+            <p className="flex items-center gap-2 text-xs text-warning-emphasis">
+              <span className="h-2 w-2 animate-breathe rounded-full bg-warning" />
               Coaching this answer…
             </p>
           )}
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
           {/* No `originalAnswer`: the answer bubble is rendered a few rows above
               this in the transcript, so the before/after pair would duplicate it
               — and would put an amber panel on this amber background. The

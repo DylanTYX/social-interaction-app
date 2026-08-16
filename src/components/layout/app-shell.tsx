@@ -27,7 +27,7 @@ import { CommandPalette } from "@/components/layout/command-palette";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="h-screen flex bg-gray-50">
+      <div className="h-screen flex bg-slate-50">
         <Sidebar />
         {/* `pb-20 lg:pb-0` clears the fixed mobile bar below `lg`. */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">{children}</main>

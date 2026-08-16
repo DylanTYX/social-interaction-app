@@ -138,7 +138,7 @@ export function VoiceInput({
           className={cn(
             "max-h-24 overflow-y-auto rounded-xl border px-3 py-2 text-xs leading-relaxed",
             recordingError
-              ? "border-red-200 bg-red-50/70 text-red-800"
+              ? "border-destructive-border bg-destructive-subtle/70 text-destructive-emphasis"
               : "border-slate-200 bg-slate-50/70 text-slate-600",
           )}
         >
@@ -160,7 +160,7 @@ export function VoiceInput({
         <div className="relative">
           {state === "recording" && (
             <span
-              className="pointer-events-none absolute -inset-1 animate-breathe rounded-full ring-4 ring-red-400/40"
+              className="pointer-events-none absolute -inset-1 animate-breathe rounded-full ring-4 ring-destructive/40"
               aria-hidden="true"
             />
           )}

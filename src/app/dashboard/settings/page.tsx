@@ -425,7 +425,7 @@ function SettingsPageInner() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 mb-6">
+              <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 mb-6">
                 {/* Your own avatar, derived from your name like every other
                     one. It used to be the same fixed purple gradient the
                     persona cards used, so "this is you" and "this is a persona
@@ -436,10 +436,10 @@ function SettingsPageInner() {
                   shape="square"
                 />
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-slate-900">
                     {`${firstName} ${lastName}`.trim() || user.email}
                   </p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
+                  <p className="text-sm text-slate-500">{user.email}</p>
                 </div>
               </div>
 
@@ -473,7 +473,7 @@ function SettingsPageInner() {
                     value={user.email ?? ""}
                     disabled
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     Your email is the one you sign in with.
                   </p>
                 </div>
@@ -488,7 +488,7 @@ function SettingsPageInner() {
                       : "Save profile"}
                   </Button>
                   {profileState.kind === "error" && (
-                    <span className="text-sm text-red-600">
+                    <span className="text-sm text-destructive">
                       {profileState.message}
                     </span>
                   )}
@@ -525,7 +525,7 @@ function SettingsPageInner() {
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <div>
                   <Label
                     htmlFor="settings-stream-responses-by-default"
@@ -533,7 +533,7 @@ function SettingsPageInner() {
                   >
                     Stream responses by default
                   </Label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     Replies appear token-by-token as they&apos;re generated.
                   </p>
                 </div>
@@ -544,7 +544,7 @@ function SettingsPageInner() {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <div>
                   <Label
                     htmlFor="settings-live-coaching-by-default"
@@ -552,7 +552,7 @@ function SettingsPageInner() {
                   >
                     Live coaching by default
                   </Label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     Shows strengths and improvement tips after each reply.
                   </p>
                 </div>
@@ -573,7 +573,7 @@ function SettingsPageInner() {
                     : "Save defaults"}
                 </Button>
                 {defaultsState.kind === "error" && (
-                  <span className="text-sm text-red-600">
+                  <span className="text-sm text-destructive">
                     {defaultsState.message}
                   </span>
                 )}
@@ -591,7 +591,7 @@ function SettingsPageInner() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <div>
                   <Label
                     htmlFor="settings-text-to-speech-enabled"
@@ -599,7 +599,7 @@ function SettingsPageInner() {
                   >
                     Text-to-speech enabled
                   </Label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     Plays the interviewer&apos;s replies as audio.
                   </p>
                 </div>
@@ -615,7 +615,7 @@ function SettingsPageInner() {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <div>
                   <Label
                     htmlFor="settings-speech-to-text-enabled"
@@ -623,7 +623,7 @@ function SettingsPageInner() {
                   >
                     Speech-to-text enabled
                   </Label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     Lets you reply by speaking instead of typing.
                   </p>
                 </div>
@@ -642,7 +642,7 @@ function SettingsPageInner() {
               <div className="space-y-2">
                 <Label htmlFor="settings-default-voice">Default voice</Label>
                 {voiceOptions.length === 0 ? (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-slate-500">
                     No voices available in this browser. The wizard will fall
                     back to the system default.
                   </p>
@@ -696,7 +696,7 @@ function SettingsPageInner() {
                     : "Save voice preferences"}
                 </Button>
                 {voiceState.kind === "error" && (
-                  <span className="text-sm text-red-600">
+                  <span className="text-sm text-destructive">
                     {voiceState.message}
                   </span>
                 )}
@@ -728,12 +728,12 @@ function SettingsPageInner() {
                     : "Send password reset email"}
                 </Button>
                 {resetState.kind === "saved" && (
-                  <span className="text-sm text-emerald-600">
+                  <span className="text-sm text-success">
                     Sent. Check your inbox.
                   </span>
                 )}
                 {resetState.kind === "error" && (
-                  <span className="text-sm text-red-600">
+                  <span className="text-sm text-destructive">
                     {resetState.message}
                   </span>
                 )}
@@ -750,7 +750,7 @@ function SettingsPageInner() {
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </Button>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   Signs you out of this browser. Your data stays in your
                   account.
                 </p>
@@ -781,17 +781,17 @@ function SettingsPageInner() {
                     : "Export my data"}
                 </Button>
                 {exportState.kind === "saved" && (
-                  <span className="text-sm text-emerald-600">
+                  <span className="text-sm text-success">
                     Download started.
                   </span>
                 )}
                 {exportState.kind === "error" && (
-                  <span className="text-sm text-red-600">
+                  <span className="text-sm text-destructive">
                     {exportState.message}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-slate-500">
                 Includes profile, sessions (with full transcripts), personas,
                 and job descriptions as a JSON file.
               </p>
@@ -802,12 +802,12 @@ function SettingsPageInner() {
                   "Azure" appeared in a single rendered string, on a tool whose
                   first setup step invites you to upload your actual CV. */}
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-900">
+                <h3 className="text-sm font-medium text-slate-900">
                   Where your data goes
                 </h3>
-                <ul className="space-y-1.5 text-sm text-gray-500">
+                <ul className="space-y-1.5 text-sm text-slate-500">
                   <li>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-slate-700">
                       Your answers, job descriptions and CV
                     </span>{" "}
                     are sent to OpenAI to generate questions, scores and
@@ -815,7 +815,7 @@ function SettingsPageInner() {
                     API terms, but they do leave this app.
                   </li>
                   <li>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-slate-700">
                       Your voice
                     </span>{" "}
                     is streamed to Microsoft Azure Speech for transcription
@@ -824,7 +824,7 @@ function SettingsPageInner() {
                     only the transcript is.
                   </li>
                   <li>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-slate-700">
                       Transcripts, scores and documents
                     </span>{" "}
                     are kept until you delete them. Deleting a session removes
@@ -836,15 +836,17 @@ function SettingsPageInner() {
 
               <Separator />
 
-              <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 space-y-2">
-                <p className="font-semibold text-red-900">Danger zone</p>
-                <p className="text-sm text-red-800/80">
+              <div className="rounded-xl border border-destructive-border bg-destructive-subtle/50 p-4 space-y-2">
+                <p className="font-semibold text-destructive-emphasis">
+                  Danger zone
+                </p>
+                <p className="text-sm text-destructive-emphasis/80">
                   Permanently delete every interview session and its transcript.
                   Personas and job descriptions are kept.
                 </p>
                 <Button
                   variant="outline"
-                  className="border-red-300 bg-white text-red-700 hover:bg-red-100"
+                  className="border-destructive-border bg-white text-destructive-emphasis hover:bg-destructive-muted"
                   onClick={() => setConfirmWipeOpen(true)}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -866,7 +868,7 @@ function SettingsPageInner() {
             </DialogDescription>
           </DialogHeader>
           {wipeState.kind === "error" && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis">
               {wipeState.message}
             </div>
           )}
@@ -880,7 +882,7 @@ function SettingsPageInner() {
             </Button>
             <Button
               variant="outline"
-              className="border-red-300 bg-red-600 text-white hover:bg-red-700"
+              className="border-destructive-border bg-destructive text-white hover:bg-destructive-emphasis"
               onClick={() => void handleWipeSessions()}
               disabled={wipeState.kind === "saving"}
             >

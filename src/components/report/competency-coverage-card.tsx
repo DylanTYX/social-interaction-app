@@ -59,7 +59,7 @@ export function CompetencyCoverageCard({
             aria-label={`${coveredCount} of ${total} competencies explored`}
           >
             <div
-              className="h-full rounded-full bg-blue-500"
+              className="h-full rounded-full bg-primary"
               style={{ width: `${Math.max(2, percent)}%` }}
             />
           </div>
@@ -78,7 +78,7 @@ export function CompetencyCoverageCard({
               >
                 {isCovered ? (
                   <Check
-                    className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-success"
                     aria-hidden="true"
                   />
                 ) : (

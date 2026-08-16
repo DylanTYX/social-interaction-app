@@ -8,13 +8,7 @@ interface PageHeaderProps {
   icon?: ReactNode;
   /** Color name used for the icon tile (matches Tailwind palette). */
   iconColor?:
-    | "blue"
-    | "purple"
-    | "indigo"
-    | "green"
-    | "orange"
-    | "pink"
-    | "teal";
+    "blue" | "purple" | "indigo" | "green" | "orange" | "pink" | "teal";
   actions?: ReactNode;
 }
 
@@ -43,15 +37,15 @@ export function PageHeader({
         )}
         <div>
           {eyebrow && (
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {eyebrow}
             </p>
           )}
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             {title}
           </h1>
           {description && (
-            <p className="mt-1 max-w-2xl text-gray-600 leading-relaxed">
+            <p className="mt-1 max-w-2xl text-slate-600 leading-relaxed">
               {description}
             </p>
           )}

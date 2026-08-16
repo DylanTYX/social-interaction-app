@@ -64,7 +64,7 @@ export function SilenceIndicator({
       // screen reader mid-transcript.
       aria-live="polite"
       className={cn(
-        "text-xs font-medium text-amber-600 transition-colors duration-150",
+        "text-xs font-medium text-warning transition-colors duration-150",
         className,
       )}
     >
