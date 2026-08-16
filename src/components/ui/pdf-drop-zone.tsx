@@ -4,25 +4,7 @@ import { useRef } from "react";
 import { Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
-
-/**
- * The tinted panel each accent produces.
- *
- * A dashed border and a faint wash, keyed to the document's own accent — the
- * treatment the CV page already used and the one worth keeping. The grey
- * version this replaced read as disabled next to it.
- */
-const ACCENT_PANEL: Record<TileColor, string> = {
-  blue: "border-blue-200 bg-blue-50/40",
-  purple: "border-purple-200 bg-purple-50/40",
-  indigo: "border-indigo-200 bg-indigo-50/40",
-  green: "border-green-200 bg-green-50/40",
-  orange: "border-orange-200 bg-orange-50/40",
-  pink: "border-pink-200 bg-pink-50/40",
-  teal: "border-teal-200 bg-teal-50/40",
-};
 
 /**
  * Choose a PDF to upload.
@@ -37,6 +19,14 @@ const ACCENT_PANEL: Record<TileColor, string> = {
  * slightly different copy) with no reason behind the differences, which is the
  * usual result of four copies rather than one component.
  *
+ * It is deliberately **not** tinted by the document's accent any more. It used
+ * to take an `accent` prop, so the job-description uploader rendered green and
+ * the CV uploader rendered teal — two panels running the same component, doing
+ * the same job, in the same wizard, that looked like different features. The
+ * accent still identifies the document, but it does that once, in the page
+ * header icon; below the header the interaction language is the primary blue
+ * everywhere. Colour says what a thing *is*, blue says what you can *do*.
+ *
  * Despite the name this is not a drop target — nothing in the app has ever
  * accepted a dragged file. The dashed border says otherwise, which is worth
  * fixing, but changing it here would change it in four places at once and that
@@ -48,7 +38,6 @@ export function PdfDropZone({
   busyLabel = "Uploading...",
   label,
   hint,
-  accent,
   className,
 }: {
   onSelect: (file: File) => void;
@@ -56,12 +45,6 @@ export function PdfDropZone({
   busyLabel?: string;
   label: string;
   hint?: string;
-  /**
-   * The document's accent. Required rather than defaulted, so a new caller has
-   * to state which document it belongs to — the drift this component exists to
-   * end started with each surface quietly picking its own colour.
-   */
-  accent: TileColor;
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,8 +52,7 @@ export function PdfDropZone({
   return (
     <div
       className={cn(
-        "rounded-xl border border-dashed p-4",
-        ACCENT_PANEL[accent],
+        "rounded-xl border border-dashed border-primary-border bg-primary-subtle/40 p-4",
         className,
       )}
     >
@@ -89,15 +71,10 @@ export function PdfDropZone({
         }}
       />
       <div className="flex flex-col items-center gap-2 text-center">
-        <div
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full",
-            TILE_COLORS[accent],
-          )}
-        >
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-muted text-primary">
           <Upload className="h-5 w-5" />
         </div>
-        <p className="text-sm font-medium text-gray-800">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         <Button
           type="button"

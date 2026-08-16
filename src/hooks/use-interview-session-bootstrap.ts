@@ -196,16 +196,36 @@ export function isJobDescriptionMissing(
   session: { jobDescriptionId: string | null },
   jobDescription: { id: string } | null,
 ): boolean {
-  const snapshot = launch?.jobDescription;
-  return Boolean(
-    snapshot?.enabled &&
-      snapshot.savedId &&
-      !jobDescription &&
-      !session.jobDescriptionId,
+  return isAttachmentMissing(
+    launch?.jobDescription,
+    session.jobDescriptionId,
+    jobDescription,
   );
 }
 
-function sessionRowToLaunch(
+/** The same question for the CV, which fails the same way for the same reason. */
+export function isResumeMissing(
+  launch: SessionLaunchMeta | null,
+  session: { resumeId: string | null },
+  resume: { id: string } | null,
+): boolean {
+  return isAttachmentMissing(launch?.resume, session.resumeId, resume);
+}
+
+function isAttachmentMissing(
+  snapshot: { enabled?: boolean; savedId?: string | null } | undefined,
+  columnId: string | null,
+  live: { id: string } | null,
+): boolean {
+  return Boolean(snapshot?.enabled && snapshot.savedId && !live && !columnId);
+}
+
+/**
+ * Exported for its test. It is the only place the three sources of truth meet,
+ * and its failure mode is silent: the wrong answer here shows a wrong toggle
+ * rather than throwing.
+ */
+export function sessionRowToLaunch(
   session: {
     id: string;
     practiceMode: string;
@@ -213,6 +233,7 @@ function sessionRowToLaunch(
     scenarioDescription: string | null;
     personaConfig: PersonaConfig;
     jobDescriptionId: string | null;
+    resumeId: string | null;
   },
   launch: SessionLaunchMeta | null,
   jobDescription: {
@@ -220,8 +241,11 @@ function sessionRowToLaunch(
     title: string;
     roleTitle: string | null;
   } | null,
+  resume: { id: string; title: string } | null,
 ): { launch: InterviewLaunchPayload; jobDescriptionMissing: boolean } {
   const jdEnabled = Boolean(session.jobDescriptionId || jobDescription);
+  const resumeEnabled = Boolean(session.resumeId || resume);
+  const resumeMissing = isResumeMissing(launch, session, resume);
 
   /**
    * The one place that sees all three sources of truth, and therefore the only
@@ -270,6 +294,23 @@ function sessionRowToLaunch(
           savedId: jobDescription?.id ?? session.jobDescriptionId,
           savedTitle: jobDescription?.title ?? null,
           roleTitle: jobDescription?.roleTitle ?? "",
+        }),
+    /**
+     * The CV was omitted here entirely.
+     *
+     * `base` spreads `...DEFAULT`, which carries `resume: { enabled: false }`,
+     * and nothing overwrote it — so resuming a session showed the CV toggle off
+     * while the server went on feeding `session.resumeId` into every turn. The
+     * screen and the interview disagreed about whether a CV was attached, and
+     * `saveInterviewLaunch` then wrote the "off" version back to localStorage.
+     */
+    resume: resumeMissing
+      ? { ...DEFAULT.resume, enabled: false }
+      : (launch?.resume ?? {
+          ...DEFAULT.resume,
+          enabled: resumeEnabled,
+          savedId: resume?.id ?? session.resumeId,
+          savedTitle: resume?.title ?? null,
         }),
   };
 
@@ -320,6 +361,7 @@ export function useInterviewSessionBootstrap(
               title: string;
               roleTitle: string | null;
             } | null;
+            resume: { id: string; title: string } | null;
             messages?: Array<{
               id: string;
               role: string;
@@ -337,6 +379,7 @@ export function useInterviewSessionBootstrap(
             payload.session,
             payload.launch,
             payload.jobDescription,
+            payload.resume ?? null,
           );
 
           if (launch.practiceMode !== expectedMode) {

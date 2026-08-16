@@ -1,4 +1,6 @@
 import {
+  createDefaultJobDescriptionConfig,
+  createDefaultResumeConfig,
   normalizeVoiceConfig,
   type InterviewSetupState,
   type VoiceSetupConfig,
@@ -178,6 +180,50 @@ export function readLaunchMeta(
   session: SessionColumns,
 ): SessionLaunchMeta | undefined {
   return session.launchMeta ?? parseSessionMetrics(session.metrics).launch;
+}
+
+/**
+ * Both attachments as they stand *now*, with any deleted one switched off.
+ *
+ * `launch_meta` is a snapshot taken at launch and never revised; the session's
+ * `job_description_id` / `resume_id` columns are current, and both FKs are
+ * `on delete set null`. So after a delete the snapshot still says
+ * `enabled: true` with a `savedId` its own session's column contradicts, and
+ * anything that copies the snapshot forward — the next round of a loop, the
+ * report page's "Practise again" — carries the dead reference into a new
+ * session that would then fail at the foreign key.
+ *
+ * One helper rather than three, because it was already written twice and
+ * getting it right needs both sources: the column alone cannot distinguish
+ * "never had one" from "had one, deleted", and the snapshot alone never learns
+ * about a delete at all.
+ */
+export function withoutDeletedAttachments(
+  launch: SessionLaunchMeta,
+  session: { jobDescriptionId: string | null; resumeId: string | null },
+): Pick<InterviewSetupState, "jobDescription" | "resume"> {
+  // Both defaulted, because a snapshot is whatever was stored: pre-0009 rows
+  // predate the CV entirely, and `sanitizeLaunchMeta` drops a job-description
+  // key it does not recognise. Reading `.enabled` off either one unguarded is
+  // a crash on the next-round path.
+  const jobDescription =
+    launch.jobDescription ?? createDefaultJobDescriptionConfig();
+  const resume = launch.resume ?? createDefaultResumeConfig();
+  return {
+    jobDescription: isDeleted(jobDescription, session.jobDescriptionId)
+      ? { ...jobDescription, enabled: false, savedId: null }
+      : jobDescription,
+    resume: isDeleted(resume, session.resumeId)
+      ? { ...resume, enabled: false, savedId: null, savedTitle: null }
+      : resume,
+  };
+}
+
+function isDeleted(
+  snapshot: { enabled: boolean; savedId?: string | null },
+  columnId: string | null,
+): boolean {
+  return Boolean(snapshot.enabled && snapshot.savedId && !columnId);
 }
 
 export function readLoopProgress(

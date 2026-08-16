@@ -18,9 +18,8 @@ import { Field, fieldHintId } from "@/components/ui/field";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useResumes } from "@/hooks/use-resumes";
+import type { UseResumes } from "@/hooks/use-resumes";
 import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
-import { RESUME_ACCENT } from "@/lib/document-accents";
 import type { ResumeSetupConfig, ResumeSetupMode } from "@/lib/interview-setup";
 
 const TAB_OPTIONS: Array<{ id: ResumeSetupMode; label: string }> = [
@@ -32,10 +31,16 @@ const TAB_OPTIONS: Array<{ id: ResumeSetupMode; label: string }> = [
 interface ResumePickerProps {
   value: ResumeSetupConfig;
   onChange: (next: ResumeSetupConfig) => void;
+  /**
+   * The wizard's single CV library. Mounted by `SetupWizard` and passed down,
+   * never a second `useResumes()` here — two owners of one mutable list is what
+   * made adding a job description in the wizard disable Continue.
+   */
+  library: UseResumes;
 }
 
-export function ResumePicker({ value, onChange }: ResumePickerProps) {
-  const { items, status, error, uploadPdf, remove } = useResumes();
+export function ResumePicker({ value, onChange, library }: ResumePickerProps) {
+  const { items, status, error, uploadPdf, remove } = library;
   const [uploading, setUploading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(
     value.mode === "upload" ? value.savedTitle : null,
@@ -192,7 +197,6 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
                     ? `Uploading ${uploadedFileName}...`
                     : "Uploading..."
                 }
-                accent={RESUME_ACCENT}
                 label="Upload a PDF resume"
                 hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
               />

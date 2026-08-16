@@ -17,6 +17,7 @@ import {
   buildLaunchMetaFromSetup,
   readLaunchMeta,
   readLoopProgress,
+  withoutDeletedAttachments,
 } from "@/lib/session-launch-meta";
 import {
   buildRoundScenarioDescription,
@@ -26,10 +27,7 @@ import {
   ROUND_TYPE_LABELS,
 } from "@/lib/interview-rounds";
 import { resolveScenarioForLaunch } from "@/lib/scenarios";
-import {
-  createDefaultResumeConfig,
-  type InterviewSetupState,
-} from "@/lib/interview-setup";
+import type { InterviewSetupState } from "@/lib/interview-setup";
 import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
@@ -47,25 +45,9 @@ function launchMetaToSetup(
     personaId: string | null;
     practiceMode: "text" | "voice";
     jobDescriptionId: string | null;
+    resumeId: string | null;
   },
 ): InterviewSetupState {
-  /**
-   * The JD can be deleted between rounds of a loop.
-   *
-   * `jobDescriptionId` below is copied from the previous session, where the FK
-   * has already nulled it; `launch.jobDescription` is the snapshot from round
-   * one, which still names the deleted document. Copying the snapshot forward
-   * unchanged handed every later round a reference the new session's own column
-   * contradicted — the same ghost the resume path had, propagated one round at
-   * a time for the length of the loop.
-   */
-  const jobDescription =
-    launch.jobDescription.enabled &&
-    launch.jobDescription.savedId &&
-    !session.jobDescriptionId
-      ? { ...launch.jobDescription, enabled: false, savedId: null }
-      : launch.jobDescription;
-
   return {
     scenarioValue: session.scenarioValue,
     customScenarioBrief: launch.customScenarioBrief,
@@ -76,8 +58,9 @@ function launchMetaToSetup(
     practiceMode: session.practiceMode,
     interviewLoop: launch.interviewLoop,
     voiceConfig: launch.voiceConfig,
-    jobDescription,
-    resume: launch.resume ?? createDefaultResumeConfig(),
+    // Either document can be deleted between rounds of a loop, and the
+    // snapshot from round one would otherwise name it for every round after.
+    ...withoutDeletedAttachments(launch, session),
   };
 }
 

@@ -131,7 +131,7 @@ function createDefaultVoiceConfig(): VoiceSetupConfig {
   };
 }
 
-function createDefaultJobDescriptionConfig(): JobDescriptionSetupConfig {
+export function createDefaultJobDescriptionConfig(): JobDescriptionSetupConfig {
   return {
     enabled: false,
     mode: "paste",
@@ -295,6 +295,41 @@ function normalizeSetup(
     jobDescription: normalizeJobDescriptionConfig(setup.jobDescription),
     resume: normalizeResumeConfig(setup.resume),
   };
+}
+
+/**
+ * Which library row a launch should attach, or why it cannot.
+ *
+ * Launch selects; it never creates. Both documents used to POST a new row when
+ * the mode was "paste", and the id came back only into the sessionStorage
+ * payload — the wizard's own saved setup never learned the row existed, so
+ * launching twice from one draft made two identical rows and paid twice for
+ * whatever processing they needed.
+ *
+ * `selected` is the row looked up in the loaded library, and it is a separate
+ * question from `savedId`: an id that no longer resolves means the document was
+ * deleted from another tab or since the wizard loaded. Without this check that
+ * case reached the foreign key and surfaced as an opaque 500 at launch, after
+ * the user had finished setting the interview up.
+ *
+ * Shared by both documents because the rule is the same one; only the noun in
+ * the message differs.
+ */
+export function resolveLaunchAttachment(
+  noun: "job description" | "CV",
+  config: { enabled: boolean; savedId: string | null },
+  selected: { id: string } | null | undefined,
+): { id: string | null } | { error: string } {
+  if (!config.enabled) return { id: null };
+  if (!config.savedId) {
+    return { error: `Choose or add a ${noun} before launching, or turn it off.` };
+  }
+  if (!selected) {
+    return {
+      error: `That ${noun} is no longer in your library. Choose another, or turn it off.`,
+    };
+  }
+  return { id: config.savedId };
 }
 
 export function createDefaultInterviewSetup(): InterviewSetupState {
