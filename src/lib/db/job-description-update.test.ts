@@ -2,9 +2,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  JobDescriptionInUseError,
   updateJobDescription,
 } from "@/lib/db/job-descriptions";
+import { DocumentInUseError } from "@/lib/db/document-in-use";
 
 /**
  * The rule that makes editing a job description's text safe.
@@ -120,7 +120,7 @@ describe("updateJobDescription with new text", () => {
         { rawText: LONG_TEXT },
         { userId: "user-1" },
       ),
-    ).rejects.toBeInstanceOf(JobDescriptionInUseError);
+    ).rejects.toBeInstanceOf(DocumentInUseError);
 
     // The count is the actionable part — the route turns it into a 409 body so
     // the user knows how many interviews to finish first.

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DocumentInUseError } from "@/lib/db/document-in-use";
 import { createEmbedding, createEmbeddings } from "@/lib/embeddings";
 import type { UsageCollector } from "@/lib/api/token-usage";
 import {
@@ -197,24 +198,6 @@ export async function listJobDescriptions(
 }
 
 /**
- * Thrown when a text edit would pull the ground out from under a live session.
- *
- * Its own type so the route can answer 409 with the count rather than a generic
- * 500 — the user needs to know *why* it refused, and how many interviews they
- * would have to finish or abandon first.
- */
-export class JobDescriptionInUseError extends Error {
-  constructor(readonly inProgress: number) {
-    super(
-      inProgress === 1
-        ? "1 interview is still in progress with this job description."
-        : `${inProgress} interviews are still in progress with this job description.`,
-    );
-    this.name = "JobDescriptionInUseError";
-  }
-}
-
-/**
  * Rewrite a JD's chunks from new text.
  *
  * Split out because it is the dangerous half. `unique(job_description_id,
@@ -322,7 +305,8 @@ export async function updateJobDescription(
     const inProgress = await countSessionsForJobDescription(supabase, id, {
       status: "in_progress",
     });
-    if (inProgress > 0) throw new JobDescriptionInUseError(inProgress);
+    if (inProgress > 0)
+      throw new DocumentInUseError(inProgress, "job description");
 
     // The text lands first: if the re-index fails, the library shows what the
     // user typed and the error tells them to save again, which is recoverable.

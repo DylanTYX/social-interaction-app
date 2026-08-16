@@ -1,10 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DocumentInUseError } from "@/lib/db/document-in-use";
+import { countSessionsForResume } from "@/lib/db/sessions";
 
 export interface ResumeRecord {
   id: string;
   title: string;
   sourceType: "text";
   rawText: string;
+  /**
+   * Which version of the CV this is — "PM version", "IC/backend". The CV
+   * analogue of a job description's role title, and library-only: it never
+   * reaches the interviewer, it exists so two CVs are told apart in a list that
+   * otherwise shows a guessed title and a date.
+   */
+  variant: string | null;
+  /** The user's own note. Library-only, for the same reason. */
+  notes: string | null;
   /**
    * Original length when the upload exceeded `MAX_RESUME_CHARS`, or null when
    * it was stored whole — which is almost always. Kept so the library can go on
@@ -20,6 +31,8 @@ const RESUME_COLUMNS = `
   title,
   source_type,
   raw_text,
+  variant,
+  notes,
   truncated_from,
   created_at,
   updated_at
@@ -30,6 +43,8 @@ interface ResumeRow {
   title: string;
   source_type: "text";
   raw_text: string;
+  variant: string | null;
+  notes: string | null;
   truncated_from: number | null;
   created_at: string;
   updated_at: string;
@@ -41,6 +56,8 @@ function rowToResume(row: ResumeRow): ResumeRecord {
     title: row.title,
     sourceType: row.source_type,
     rawText: row.raw_text,
+    variant: row.variant ?? null,
+    notes: row.notes ?? null,
     truncatedFrom: row.truncated_from ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -87,14 +104,26 @@ function buildResumeTitle(rawText: string): string {
 
 export async function listResumes(
   supabase: SupabaseClient,
-  options: { limit?: number } = {},
+  options: { limit?: number; query?: string } = {},
 ): Promise<ResumeRecord[]> {
-  const { limit = 20 } = options;
-  const { data, error } = await supabase
+  const { limit = 20, query } = options;
+  let request = supabase
     .from("resumes")
     .select(RESUME_COLUMNS)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("created_at", { ascending: false });
+
+  // Search runs in Postgres rather than in the page, for the same reason as the
+  // job-description list: the library is capped at 50 rows, so a client-side
+  // search would only ever look at the rows that happened to load.
+  const trimmed = query?.trim();
+  if (trimmed) {
+    // `%`, `,` and parens would otherwise break out of the `or` filter's own
+    // syntax.
+    const safe = trimmed.replace(/[%,()]/g, " ");
+    request = request.or(`title.ilike.%${safe}%,variant.ilike.%${safe}%`);
+  }
+
+  const { data, error } = await request.limit(limit);
 
   if (error) throw error;
   return (data ?? []).map((row) => rowToResume(row as ResumeRow));
@@ -150,6 +179,83 @@ export async function createResume(input: {
 
   if (error) throw error;
   return rowToResume(data as ResumeRow);
+}
+
+/**
+ * Edit a saved CV.
+ *
+ * Metadata is free to change at any time: `variant`, `notes` and the title are
+ * library-only and never reach a prompt, so nothing in flight can be affected
+ * by them.
+ *
+ * `rawText` is the opposite, and is refused while any interview using this CV
+ * is in progress. The interviewer reads the stored text live on every turn
+ * (`formatResumeForPrompt` is called per request, not snapshotted at launch),
+ * so replacing it mid-interview changes what the candidate is being asked about
+ * halfway through, and the report then scores them against a document that no
+ * longer exists in that form.
+ *
+ * Unlike the job description this is a plain column write: there are no chunks
+ * to re-embed, because the whole CV is inlined rather than retrieved.
+ *
+ * An explicitly-passed empty string clears a field; an omitted key leaves it
+ * alone. That distinction is why the payload is built key by key rather than
+ * spread — `{ notes: undefined }` in a PostgREST update writes null.
+ */
+export async function updateResume(
+  supabase: SupabaseClient,
+  id: string,
+  patch: {
+    title?: string;
+    variant?: string | null;
+    notes?: string | null;
+    /** Refused while an interview using this CV is mid-way. */
+    rawText?: string;
+  },
+): Promise<ResumeRecord | null> {
+  const payload: Record<string, string | number | null> = {};
+
+  if (patch.rawText !== undefined) {
+    const rawText = patch.rawText.trim();
+    if (rawText.length < MIN_RESUME_CHARS) {
+      throw new Error(`Resume must be at least ${MIN_RESUME_CHARS} characters.`);
+    }
+
+    const inProgress = await countSessionsForResume(supabase, id, {
+      status: "in_progress",
+    });
+    if (inProgress > 0) throw new DocumentInUseError(inProgress, "CV");
+
+    // The same cap and the same record of what it cost, so an edit cannot
+    // sneak past a limit the upload path enforces.
+    payload.raw_text = rawText.slice(0, MAX_RESUME_CHARS);
+    payload.truncated_from =
+      rawText.length > MAX_RESUME_CHARS ? rawText.length : null;
+  }
+
+  if (patch.title !== undefined) payload.title = patch.title.trim().slice(0, 120);
+  if (patch.variant !== undefined)
+    payload.variant = patch.variant?.trim() || null;
+  if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
+
+  /**
+   * The title is deliberately not re-derived from new text. It may have been
+   * set by hand — that is most of the point of an edit dialog — and replacing
+   * it with `buildResumeTitle`'s guess would undo that silently.
+   */
+  if (Object.keys(payload).length === 0) {
+    return getResume(supabase, id);
+  }
+
+  const { data, error } = await supabase
+    .from("resumes")
+    .update(payload)
+    .eq("id", id)
+    .select(RESUME_COLUMNS)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? rowToResume(data as ResumeRow) : null;
 }
 
 export async function deleteResume(
