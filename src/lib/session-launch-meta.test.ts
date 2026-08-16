@@ -136,17 +136,17 @@ describe("withoutDeletedAttachments", () => {
     enabled: true,
     savedId: "jd-1",
   };
-  const attachedCv = {
+  const attachedResume = {
     ...createDefaultResumeConfig(),
     enabled: true,
     mode: "saved" as const,
-    savedId: "cv-1",
+    savedId: "resume-1",
     savedTitle: "Jane — 2026",
   };
 
   it("switches off an attachment whose session column has been nulled", () => {
     const result = withoutDeletedAttachments(
-      meta({ jobDescription: attachedJd, resume: attachedCv }),
+      meta({ jobDescription: attachedJd, resume: attachedResume }),
       { jobDescriptionId: null, resumeId: null },
     );
 
@@ -158,17 +158,17 @@ describe("withoutDeletedAttachments", () => {
 
   it("leaves an attachment alone while its column still points at it", () => {
     const result = withoutDeletedAttachments(
-      meta({ jobDescription: attachedJd, resume: attachedCv }),
-      { jobDescriptionId: "jd-1", resumeId: "cv-1" },
+      meta({ jobDescription: attachedJd, resume: attachedResume }),
+      { jobDescriptionId: "jd-1", resumeId: "resume-1" },
     );
 
     expect(result.jobDescription.savedId).toBe("jd-1");
-    expect(result.resume.savedId).toBe("cv-1");
+    expect(result.resume.savedId).toBe("resume-1");
   });
 
   it("drops only the deleted one when the session has both", () => {
     const result = withoutDeletedAttachments(
-      meta({ jobDescription: attachedJd, resume: attachedCv }),
+      meta({ jobDescription: attachedJd, resume: attachedResume }),
       { jobDescriptionId: "jd-1", resumeId: null },
     );
 
@@ -176,7 +176,7 @@ describe("withoutDeletedAttachments", () => {
     expect(result.resume.enabled).toBe(false);
   });
 
-  it("supplies a default CV config for a snapshot taken before the CV existed", () => {
+  it("supplies a default resume config for a snapshot taken before the resume existed", () => {
     const result = withoutDeletedAttachments(meta({ resume: undefined }), {
       jobDescriptionId: null,
       resumeId: null,

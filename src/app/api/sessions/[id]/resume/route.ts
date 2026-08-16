@@ -49,11 +49,11 @@ export async function GET(
     ]);
 
     /**
-     * The live CV, alongside the live job description.
+     * The live resume, alongside the live job description.
      *
      * Neither this lookup nor a `resume` key existed, so the client had nothing
      * to reconcile its snapshot against — and `sessionRowToLaunch` responded by
-     * dropping the CV config entirely, showing the toggle off while the server
+     * dropping the resume config entirely, showing the toggle off while the server
      * went on feeding `session.resumeId` into every turn.
      */
     let resume: { id: string; title: string } | null = null;

@@ -63,7 +63,7 @@ export default function ResumesPage() {
 
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   /**
-   * What deleting the pending CV would affect, fetched when the dialog opens.
+   * What deleting the pending resume would affect, fetched when the dialog opens.
    *
    * `undefined` while in flight and `null` if the request failed — the dialog
    * distinguishes them from a real zero, because "no interviews use this" and
@@ -74,7 +74,7 @@ export default function ResumesPage() {
   >(undefined);
   /**
    * Discards a usage reply that arrives after the dialog has moved to another
-   * CV — same guard, and same reason, as the one in `useLibraryList`.
+   * Resume — same guard, and same reason, as the one in `useLibraryList`.
    */
   const usageRequestRef = useRef(0);
 
@@ -121,8 +121,8 @@ export default function ResumesPage() {
     <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="Library"
-        title="CVs"
-        description="Save the CV you're applying with, and reuse it across interviews. The interviewer reads the one you pick and asks about what's actually on it."
+        title="Resumes"
+        description="Save the resume you're applying with, and reuse it across interviews. The interviewer reads the one you pick and asks about what's actually on it."
         icon={<FileUser className="h-6 w-6" />}
         iconColor={RESUME_ACCENT}
         actions={
@@ -142,7 +142,7 @@ export default function ResumesPage() {
                 job-descriptions page. The two are the same action and now look
                 like it. */}
             <FileUser className="h-4 w-4 text-primary" />
-            Add a CV
+            Add a resume
           </CardTitle>
           <CardDescription>
             Paste it or upload it as a PDF. The text is sent to OpenAI to
@@ -170,7 +170,7 @@ export default function ResumesPage() {
 
       <Card className="shadow-soft">
         <CardHeader>
-          <CardTitle className="text-base">Saved CVs</CardTitle>
+          <CardTitle className="text-base">Saved resumes</CardTitle>
           <CardDescription>
             Pick any of these inside the interview setup wizard.
           </CardDescription>
@@ -185,7 +185,7 @@ export default function ResumesPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search title or version..."
-                aria-label="Search CVs"
+                aria-label="Search resumes"
                 className="pl-9"
               />
             </div>
@@ -199,17 +199,17 @@ export default function ResumesPage() {
             // "add your first one" state and told the user their library was
             // empty when it was actually unreachable.
             <ErrorStateCard
-              title="Couldn't load your CVs"
+              title="Couldn't load your resumes"
               description={error ?? "Something went wrong."}
               onRetry={() => void refresh()}
             />
           ) : sortedItems.length === 0 && hasFilters ? (
             // A distinct state from an empty library: telling someone with
-            // several saved CVs to "add their first one" because they typed a
+            // several saved resumes to "add their first one" because they typed a
             // typo would be nonsense.
             <div className="rounded-xl border border-dashed border-border p-6 text-center">
               <p className="text-sm font-medium text-slate-800">
-                No CVs match that search
+                No resumes match that search
               </p>
               <Button
                 variant="outline"
@@ -224,10 +224,10 @@ export default function ResumesPage() {
             <EmptyStateCard
               icon={<FileUser className="h-6 w-6" />}
               // Describes the state; it does not issue instructions. The button
-              // that used to be here sent someone with no CV to the wizard to
+              // that used to be here sent someone with no resume to the wizard to
               // start an interview with one, while the form that actually
               // solves it sits directly above.
-              title="No saved CVs yet"
+              title="No saved resumes yet"
               description="Anything you add above is saved here, ready to reuse in any interview."
             />
           ) : (
@@ -250,7 +250,7 @@ export default function ResumesPage() {
                       {item.title}
                     </p>
                     {/* The version leads the secondary line — it is what tells
-                        two CVs for two kinds of role apart. Parts are assembled
+                        two resumes for two kinds of role apart. Parts are assembled
                         and joined rather than interpolated with separators, so
                         a missing one does not leave a stranded "·". */}
                     <p className="text-xs text-slate-500 truncate">
@@ -286,7 +286,7 @@ export default function ResumesPage() {
                     size="icon"
                     className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     onClick={() => openDeleteDialog(item.id)}
-                    aria-label="Delete CV"
+                    aria-label="Delete resume"
                   >
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -320,7 +320,7 @@ export default function ResumesPage() {
             setPendingUsage(undefined);
           }
         }}
-        title="Delete this CV?"
+        title="Delete this resume?"
         description={describeResumeDelete(pendingUsage)}
         onConfirm={async () => {
           const targetId = pendingDelete;

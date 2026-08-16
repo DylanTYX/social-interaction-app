@@ -176,7 +176,7 @@ export default function JobDescriptionsPage() {
             {/* Blue, not the page accent. The accent identifies this page once,
                 in the header tile above; repeating it here made the upload card
                 read as a green *feature* rather than as the action on this
-                page — and made the CV page's identical card look like a
+                page — and made the resume page's identical card look like a
                 different one because it was teal. */}
             <FileText className="h-4 w-4 text-primary" />
             Add a job description

@@ -5,7 +5,7 @@ import type { TileColor } from "@/lib/tile-colors";
  *
  * Before this existed, each surface picked its own: the job-description page ran
  * three colours at once — a green header tile, an indigo icon on the add card,
- * green icons on the rows — and the CV page ran a teal header over a purple
+ * green icons on the rows — and the resume page ran a teal header over a purple
  * body. The first fix pushed the header's accent down over the whole page,
  * which made each page internally consistent and created a worse problem: the
  * two pages do the same job through the same components, and one rendered green

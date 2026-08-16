@@ -1,7 +1,7 @@
 import type { ResumeUsage } from "@/hooks/use-resumes";
 
 /**
- * What deleting a CV costs, stated as specifically as we can.
+ * What deleting a resume costs, stated as specifically as we can.
  *
  * Shared by the library page and the setup wizard, which both offer a delete
  * and must not describe it differently — the wizard's used to describe it not
@@ -16,7 +16,7 @@ import type { ResumeUsage } from "@/hooks/use-resumes";
  * generic questions and scored as though that were the plan.
  *
  * That consequence is worse than the job description's, not milder. A deleted
- * JD costs an interview its grounding in one role; a deleted CV costs it every
+ * JD costs an interview its grounding in one role; a deleted resume costs it every
  * question that was ever going to be about this particular person.
  *
  * Two beats, matching the session-delete dialog: state what goes, then append

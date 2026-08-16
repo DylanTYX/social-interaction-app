@@ -13,7 +13,7 @@
 export class DocumentInUseError extends Error {
   constructor(
     readonly inProgress: number,
-    noun: "job description" | "CV",
+    noun: "job description" | "resume",
   ) {
     super(
       inProgress === 1

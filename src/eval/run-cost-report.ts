@@ -233,7 +233,7 @@ async function main() {
         "  Zero cached tokens. This is the predicted result, not a failure:",
         "  OpenAI only caches prefixes of 1,024+ tokens, and the interviewer's",
         "  stable prefix on a bare session is ~590. Attach a job description or",
-        "  a CV and it clears the floor. Compare with --session=<id> either way.",
+        "  a resume and it clears the floor. Compare with --session=<id> either way.",
       ].join("\n"),
     );
   }

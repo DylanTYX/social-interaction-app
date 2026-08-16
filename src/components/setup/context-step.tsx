@@ -17,7 +17,7 @@ import type { UseResumes } from "@/hooks/use-resumes";
  *
  * Merges what used to be two steps and half of a third. "Mode" was a whole step
  * spending two large gradient cards on a binary choice; the job description and
- * CV pickers used to sit on the *last* step, which broke the round builder's
+ * Resume pickers used to sit on the *last* step, which broke the round builder's
  * "Suggest from job description" button — it needed a JD collected two steps
  * after it.
  *
@@ -37,7 +37,7 @@ import type { UseResumes } from "@/hooks/use-resumes";
  *
  * The four cards are 32px apart, the scale's between-concerns value, because
  * that is what they are: how you answer, what the role is, the job description,
- * the CV. Two of them are large multi-field subsystems, and at the 24px the
+ * the resume. Two of them are large multi-field subsystems, and at the 24px the
  * other steps use between their cards these ran together.
  *
  * That gap lives on a root element here rather than being inherited from the
@@ -64,7 +64,7 @@ export function ContextStep({
    * them — which is how creating one in the wizard came to disable Continue.
    */
   jobDescriptionLibrary: UseJobDescriptions;
-  /** Same reasoning, for CVs. */
+  /** Same reasoning, for resumes. */
   resumeLibrary: UseResumes;
   quickStarts: ReadonlyArray<{ id: string; label: string; template: string }>;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;

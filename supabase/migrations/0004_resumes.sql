@@ -1,5 +1,5 @@
--- Resumes / CVs the candidate can attach to a session so the interviewer can
--- ask targeted questions about their actual background and cross-check claims.
+-- Resumes the candidate can attach to a session so the interviewer can ask
+-- targeted questions about their actual background and cross-check claims.
 --
 -- Unlike job descriptions (which are chunked + embedded for RAG retrieval),
 -- resumes are short enough (1-2 pages) to fit in the prompt whole, so we only

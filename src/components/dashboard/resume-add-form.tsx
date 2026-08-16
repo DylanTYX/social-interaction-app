@@ -27,20 +27,20 @@ export function emptyResumeDraft(): ResumeDraft {
 }
 
 /**
- * Everything needed to add a CV, in one place.
+ * Everything needed to add a resume, in one place.
  *
  * The job description's twin, deliberately: the library page and the setup
  * wizard both need this, and near-copies of the same form in two places is what
  * let the two surfaces drift apart in labels, palette and behaviour.
  *
- * Fewer fields than the job description, because a CV has fewer facts about it
+ * Fewer fields than the job description, because a resume has fewer facts about it
  * — no company, no link to a posting. What it does have is a label, and that
- * one matters more here than it does there: a CV's title is *guessed* from the
- * first line of the file, so without a label a library of three CVs reads as
+ * one matters more here than it does there: a resume's title is *guessed* from the
+ * first line of the file, so without a label a library of three resumes reads as
  * three variations on the same name and a date.
  *
  * There is no tidy-up counterpart. That exists to strip navigation and
- * boilerplate off a posting copied from a careers page; a CV is the user's own
+ * boilerplate off a posting copied from a careers page; a resume is the user's own
  * document and every line of it is content.
  *
  * The draft is lifted to the caller for the same reason as the job
@@ -55,7 +55,7 @@ export function ResumeAddForm({
   onSubmitFile,
   busy,
   error,
-  submitLabel = "Save CV",
+  submitLabel = "Save resume",
 }: {
   draft: ResumeDraft;
   onDraftChange: (next: ResumeDraft) => void;
@@ -87,11 +87,11 @@ export function ResumeAddForm({
 
       <Field
         label="Label (optional)"
-        htmlFor="cv-label"
+        htmlFor="resume-label"
         hint="Only you see this. Useful once you keep more than one version."
       >
         <Input
-          id="cv-label"
+          id="resume-label"
           placeholder="e.g. Backend version"
           value={draft.label}
           onChange={(event) => patch({ label: event.target.value })}
@@ -101,8 +101,8 @@ export function ResumeAddForm({
       {draft.method === "paste" ? (
         <div className="space-y-4">
           <Field
-            label="CV text"
-            htmlFor="cv-paste-text"
+            label="Resume text"
+            htmlFor="resume-paste-text"
             aside={
               <span className="text-xs tabular-nums text-muted-foreground">
                 {draft.text.trim().length} chars
@@ -110,7 +110,7 @@ export function ResumeAddForm({
             }
           >
             <Textarea
-              id="cv-paste-text"
+              id="resume-paste-text"
               placeholder="Paste your experience, skills, education, and projects..."
               value={draft.text}
               onChange={(event) => patch({ text: event.target.value })}
@@ -126,7 +126,7 @@ export function ResumeAddForm({
         <PdfDropZone
           onSelect={onSubmitFile}
           busy={busy}
-          label="Upload a PDF CV"
+          label="Upload a PDF resume"
           hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
         />
       )}
@@ -141,7 +141,7 @@ export function ResumeAddForm({
 }
 
 /**
- * The save half, shared so both hosts create CVs identically.
+ * The save half, shared so both hosts create resumes identically.
  *
  * Returns the created row, or null — the hook has already surfaced the error.
  */
@@ -182,7 +182,7 @@ export function useResumeCreator({
   const submitText = async (draft: ResumeDraft) => {
     setError(null);
     if (draft.text.trim().length < MIN_RESUME_CHARS) {
-      setError(`Paste at least ${MIN_RESUME_CHARS} characters of CV text.`);
+      setError(`Paste at least ${MIN_RESUME_CHARS} characters of resume text.`);
       return null;
     }
     setBusy(true);

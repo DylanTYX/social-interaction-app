@@ -206,7 +206,7 @@ function SetupWizard() {
   const jobDescriptionText = selectedJobDescription?.rawText ?? "";
 
   /**
-   * The wizard's one CV library, on the same terms as the job-description one
+   * The wizard's one resume library, on the same terms as the job-description one
    * above: mounted here and passed down, never a second instance in the picker.
    */
   const resumes = useResumes();
@@ -438,15 +438,19 @@ function SetupWizard() {
 
       /**
        * Read from the library row rather than the config's copy, exactly as the
-       * job description is above — a CV renamed on the library page should
+       * job description is above — a resume renamed on the library page should
        * reach the session under its current name.
        */
       const resumeTitle: string | null =
         selectedResume?.title ?? setup.resume.savedTitle;
 
-      const cv = resolveLaunchAttachment("CV", setup.resume, selectedResume);
-      if ("error" in cv) throw new Error(cv.error);
-      const resumeId = cv.id;
+      const resume = resolveLaunchAttachment(
+        "resume",
+        setup.resume,
+        selectedResume,
+      );
+      if ("error" in resume) throw new Error(resume.error);
+      const resumeId = resume.id;
 
       /**
        * The setup as it should be recorded, with both documents' fields re-read
@@ -648,13 +652,13 @@ function SetupWizard() {
       }
       if (setup.resume.enabled) {
         if (!setup.resume.savedId) {
-          return "Choose or add a CV, or turn it off.";
+          return "Choose or add a resume, or turn it off.";
         }
         // Same reasoning as the job description above: a `savedId` from
-        // localStorage can point at a CV deleted since, and without this the
+        // localStorage can point at a resume deleted since, and without this the
         // gate passed and the session insert died on the foreign key.
         if (resumes.status === "ready" && !selectedResume) {
-          return "That CV is no longer in your library. Choose another, or turn it off.";
+          return "That resume is no longer in your library. Choose another, or turn it off.";
         }
       }
       return null;

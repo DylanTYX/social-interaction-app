@@ -17,7 +17,7 @@ import { ClientVisibleError } from "@/lib/api/errors";
  * `runtime = "nodejs"` handler one upload can wedge the instance for everyone.
  */
 
-/** Refused outright above this. A CV or job spec is nowhere near it. */
+/** Refused outright above this. A resume or job spec is nowhere near it. */
 export const MAX_PDF_PAGES = 100;
 
 /**

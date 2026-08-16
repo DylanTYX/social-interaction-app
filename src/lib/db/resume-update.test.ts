@@ -5,7 +5,7 @@ import { MAX_RESUME_CHARS, updateResume } from "@/lib/db/resumes";
 import { DocumentInUseError } from "@/lib/db/document-in-use";
 
 /**
- * The rule that makes editing a CV's text safe, and the job description's twin.
+ * The rule that makes editing a resume's text safe, and the job description's twin.
  *
  * The title, variant and notes never reach a prompt, so changing them cannot
  * disturb a running interview. The text is the opposite: `formatResumeForPrompt`
@@ -50,7 +50,7 @@ function fakeSupabase({ inProgress }: { inProgress: number }) {
         eq: () => builder,
         maybeSingle: async () => ({
           data: {
-            id: "cv-1",
+            id: "resume-1",
             title: "Jane Doe · Resume",
             variant: null,
             notes: null,
@@ -75,13 +75,13 @@ describe("updateResume with new text", () => {
     const { client, recorded } = fakeSupabase({ inProgress: 2 });
 
     await expect(
-      updateResume(client, "cv-1", { rawText: LONG_TEXT }),
+      updateResume(client, "resume-1", { rawText: LONG_TEXT }),
     ).rejects.toBeInstanceOf(DocumentInUseError);
 
     // The count is the actionable part — the route turns it into a 409 body so
     // the user knows how many interviews to finish first.
     await expect(
-      updateResume(client, "cv-1", { rawText: LONG_TEXT }),
+      updateResume(client, "resume-1", { rawText: LONG_TEXT }),
     ).rejects.toMatchObject({ inProgress: 2 });
 
     // And nothing was written. A refusal that had already replaced the text
@@ -90,11 +90,11 @@ describe("updateResume with new text", () => {
   });
 
   it("leaves metadata-only edits alone while a session is in progress", async () => {
-    // Only the text is read live. Refusing to rename a CV mid-interview would
+    // Only the text is read live. Refusing to rename a resume mid-interview would
     // be a restriction with no reason behind it.
     const { client, recorded } = fakeSupabase({ inProgress: 3 });
 
-    await updateResume(client, "cv-1", { variant: "PM version" });
+    await updateResume(client, "resume-1", { variant: "PM version" });
 
     expect(recorded.updates).toEqual([{ variant: "PM version" }]);
     expect(recorded.tables).not.toContain("interview_sessions");
@@ -105,7 +105,7 @@ describe("updateResume with new text", () => {
     // edit dialog.
     const { client, recorded } = fakeSupabase({ inProgress: 0 });
 
-    await updateResume(client, "cv-1", { rawText: LONG_TEXT });
+    await updateResume(client, "resume-1", { rawText: LONG_TEXT });
 
     for (const payload of recorded.updates) {
       expect(payload).not.toHaveProperty("title");
@@ -119,18 +119,18 @@ describe("updateResume with new text", () => {
     const { client, recorded } = fakeSupabase({ inProgress: 0 });
     const oversize = "x".repeat(MAX_RESUME_CHARS + 5_000);
 
-    await updateResume(client, "cv-1", { rawText: oversize });
+    await updateResume(client, "resume-1", { rawText: oversize });
 
     expect(recorded.updates[0].raw_text).toHaveLength(MAX_RESUME_CHARS);
     expect(recorded.updates[0].truncated_from).toBe(oversize.length);
   });
 
   it("clears truncation when the replacement text fits", async () => {
-    // Otherwise a CV shortened once would keep claiming to be shortened after
+    // Otherwise a resume shortened once would keep claiming to be shortened after
     // the user trimmed it themselves and saved again.
     const { client, recorded } = fakeSupabase({ inProgress: 0 });
 
-    await updateResume(client, "cv-1", { rawText: LONG_TEXT });
+    await updateResume(client, "resume-1", { rawText: LONG_TEXT });
 
     expect(recorded.updates[0].truncated_from).toBeNull();
   });
@@ -140,7 +140,7 @@ describe("updateResume with new text", () => {
     // how a dialog that edits one field blanks the rest.
     const { client, recorded } = fakeSupabase({ inProgress: 0 });
 
-    await updateResume(client, "cv-1", { notes: "" });
+    await updateResume(client, "resume-1", { notes: "" });
 
     expect(recorded.updates).toEqual([{ notes: null }]);
   });

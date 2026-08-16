@@ -1,17 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatResumeForPrompt,
-  MAX_RESUME_CHARS,
-} from "@/lib/db/resumes";
+import { formatResumeForPrompt, MAX_RESUME_CHARS } from "@/lib/db/resumes";
 import { describeTruncation } from "@/lib/document-truncation";
 
 /**
- * What the interviewer is given when a CV is attached.
+ * What the interviewer is given when a resume is attached.
  *
  * The defect this pins shipped in migration 0008 and survived until now: a
  * `profile` column held a ~400-token summary written by `gpt-4o-mini`, and
- * `formatResumeForPrompt` returned it *instead of* the CV — an early return,
+ * `formatResumeForPrompt` returned it *instead of* the resume — an early return,
  * not a preference. So the interviewer had never read a candidate's actual
  * document, while its prompt label told it this was "their actual background"
  * and that it should "never invent experience that isn't here".
@@ -22,8 +19,9 @@ import { describeTruncation } from "@/lib/document-truncation";
 
 describe("formatResumeForPrompt", () => {
   it("returns the candidate's own text", () => {
-    const cv = "Jane Doe\nSenior Engineer at Monzo\nLed the payments migration.";
-    expect(formatResumeForPrompt({ rawText: cv })).toBe(cv);
+    const resume =
+      "Jane Doe\nSenior Engineer at Monzo\nLed the payments migration.";
+    expect(formatResumeForPrompt({ rawText: resume })).toBe(resume);
   });
 
   it("ignores a legacy profile column entirely", () => {
@@ -32,33 +30,36 @@ describe("formatResumeForPrompt", () => {
      * that has one must not resurrect the substitution — the type no longer
      * admits `profile`, so this is the runtime half of that guarantee.
      */
-    const cv = "Jane Doe\nLed the payments migration, 800ms p99 to 120ms.";
-    const legacyRow = { rawText: cv, profile: "ROLES / Engineer at a bank" };
+    const resume = "Jane Doe\nLed the payments migration, 800ms p99 to 120ms.";
+    const legacyRow = {
+      rawText: resume,
+      profile: "ROLES / Engineer at a bank",
+    };
 
-    expect(formatResumeForPrompt(legacyRow)).toBe(cv);
+    expect(formatResumeForPrompt(legacyRow)).toBe(resume);
     expect(formatResumeForPrompt(legacyRow)).not.toContain("ROLES");
   });
 
-  it("sends a long CV whole, up to the one remaining ceiling", () => {
-    // The old prompt clip was 6,000 — inside a normal two-page CV, so ordinary
-    // documents were cut rather than runaway ones. A 20,000-character CV must
+  it("sends a long resume whole, up to the one remaining ceiling", () => {
+    // The old prompt clip was 6,000 — inside a normal two-page resume, so ordinary
+    // documents were cut rather than runaway ones. A 20,000-character resume must
     // now arrive intact.
-    const cv = "Delivered a thing that mattered. ".repeat(600);
-    expect(cv.length).toBeGreaterThan(6_000);
-    expect(cv.length).toBeLessThan(MAX_RESUME_CHARS);
+    const resume = "Delivered a thing that mattered. ".repeat(600);
+    expect(resume.length).toBeGreaterThan(6_000);
+    expect(resume.length).toBeLessThan(MAX_RESUME_CHARS);
 
-    expect(formatResumeForPrompt({ rawText: cv })).toBe(cv.trim());
+    expect(formatResumeForPrompt({ rawText: resume })).toBe(resume.trim());
   });
 
   it("marks the cut when a stored row somehow exceeds the ceiling", () => {
     // Unreachable through the upload path, which caps before storing. It stays
     // as a backstop for rows written when the cap was lower — and if it ever
     // fires, the interviewer must be able to see that it did.
-    const cv = "x".repeat(MAX_RESUME_CHARS + 500);
-    const formatted = formatResumeForPrompt({ rawText: cv });
+    const resume = "x".repeat(MAX_RESUME_CHARS + 500);
+    const formatted = formatResumeForPrompt({ rawText: resume });
 
     expect(formatted).toContain("…(resume truncated)");
-    expect(formatted!.length).toBeLessThan(cv.length);
+    expect(formatted!.length).toBeLessThan(resume.length);
   });
 
   it("returns null for nothing at all", () => {
@@ -91,7 +92,7 @@ describe("describeTruncation", () => {
   });
 
   it("gives each document the advice that applies to it", () => {
-    const cv = describeTruncation({
+    const resume = describeTruncation({
       kind: "resume",
       kept: 24_000,
       original: 30_000,
@@ -102,11 +103,11 @@ describe("describeTruncation", () => {
       original: 40_000,
     });
 
-    // A CV is already all content, so the only honest advice is to trim it
+    // A resume is already all content, so the only honest advice is to trim it
     // yourself. A job-description paste is usually mostly page furniture, and
-    // has a one-click fix a CV does not.
-    expect(cv).toContain("trim the CV yourself");
-    expect(cv).not.toContain("Tidy this up");
+    // has a one-click fix a resume does not.
+    expect(resume).toContain("trim the resume yourself");
+    expect(resume).not.toContain("Tidy this up");
     expect(jd).toContain("Tidy this up");
   });
 });

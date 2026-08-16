@@ -234,7 +234,7 @@ export function JobDescriptionPicker({
             <div
               className={cn(
                 // Separate rounded rows rather than one divided block. That is
-                // how the library page draws the same documents, and how the CV
+                // how the library page draws the same documents, and how the resume
                 // picker beside this one draws its own — a divided container was
                 // this card inventing a third treatment for the same thing.
                 //
@@ -311,7 +311,7 @@ export function JobDescriptionPicker({
               {items.length === 0 && (
                 /* The message and the way out of it, together and centred.
                    An empty box that only *describes* the emptiness makes you
-                   hunt elsewhere for the fix — which is exactly what the CV
+                   hunt elsewhere for the fix — which is exactly what the resume
                    picker still does, telling you to go click a different
                    control. */
                 <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">

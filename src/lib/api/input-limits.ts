@@ -46,16 +46,16 @@ export const MAX_SUMMARY_CHARS = 4_000;
 /** Minimum usable resume text length. */
 export const MIN_RESUME_CHARS = 80;
 /**
- * The only ceiling on a CV, and the whole document up to it reaches the
+ * The only ceiling on a resume, and the whole document up to it reaches the
  * interviewer.
  *
  * Six pages, at the 4,000-extracted-characters-per-page end of the estimate.
- * CVs are written to whole page counts and an industry candidate submits one to
+ * Resumes are written to whole page counts and an industry candidate submits one to
  * three, so this is roughly three times the longest real one — a backstop
- * against a paste that is not a CV at all, not a style guide.
+ * against a paste that is not a resume at all, not a style guide.
  *
  * There used to be a second, smaller ceiling: the prompt clipped at 6,000
- * characters, which is *inside* a normal two-page CV, so ordinary documents
+ * characters, which is *inside* a normal two-page resume, so ordinary documents
  * were being cut rather than runaway ones. Two limits where the smaller one
  * silently bit is how the interviewer came to know less than the database did.
  */

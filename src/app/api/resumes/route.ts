@@ -2,11 +2,7 @@ import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { parseLimit } from "@/lib/api/query";
-import {
-  createResume,
-  listResumes,
-  MIN_RESUME_CHARS,
-} from "@/lib/db/resumes";
+import { createResume, listResumes, MIN_RESUME_CHARS } from "@/lib/db/resumes";
 import { parsePdfUpload } from "@/lib/api/uploads";
 import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
@@ -85,12 +81,12 @@ export async function POST(request: Request) {
      *
      * Refusing capped the stored text at exactly the same place truncating
      * does, so it prevented nothing extra — it only stopped the user, and the
-     * user it stopped was the one with a six-page CV who had done nothing
+     * user it stopped was the one with a six-page resume who had done nothing
      * wrong. `createResume` keeps the first `MAX_RESUME_CHARS` and records the
      * original length on `truncated_from`, which the client turns into a
      * notice naming exactly what was dropped and what to do about it.
      *
-     * There is no longer a model call on this path: the CV used to be
+     * There is no longer a model call on this path: the resume used to be
      * distilled into a summary here, and the interviewer read that summary
      * instead of the document. It reads the document now.
      */

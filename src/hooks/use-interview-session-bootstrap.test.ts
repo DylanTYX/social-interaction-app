@@ -56,9 +56,13 @@ describe("isJobDescriptionMissing", () => {
 
   it("is false while the JD still exists", () => {
     expect(
-      isJobDescriptionMissing(ATTACHED, { jobDescriptionId: "jd-1" }, {
-        id: "jd-1",
-      }),
+      isJobDescriptionMissing(
+        ATTACHED,
+        { jobDescriptionId: "jd-1" },
+        {
+          id: "jd-1",
+        },
+      ),
     ).toBe(false);
   });
 
@@ -95,37 +99,49 @@ describe("isJobDescriptionMissing", () => {
       isJobDescriptionMissing(ATTACHED, { jobDescriptionId: "jd-1" }, null),
     ).toBe(false);
     expect(
-      isJobDescriptionMissing(ATTACHED, { jobDescriptionId: null }, {
-        id: "jd-1",
-      }),
+      isJobDescriptionMissing(
+        ATTACHED,
+        { jobDescriptionId: null },
+        {
+          id: "jd-1",
+        },
+      ),
     ).toBe(false);
   });
 
   it("is false for a legacy session with no launch meta", () => {
     // Pre-0009 rows have no snapshot, so there is no claim to contradict.
-    expect(isJobDescriptionMissing(null, { jobDescriptionId: null }, null)).toBe(
-      false,
-    );
+    expect(
+      isJobDescriptionMissing(null, { jobDescriptionId: null }, null),
+    ).toBe(false);
   });
 });
 
 describe("isResumeMissing", () => {
-  // Same predicate, second document. Worth its own cases because the CV
+  // Same predicate, second document. Worth its own cases because the resume
   // reached the wizard through a different path and was the one silently
   // dropped for longer.
-  it("is true when the snapshot names a CV and both current sources are empty", () => {
+  it("is true when the snapshot names a resume and both current sources are empty", () => {
     expect(
-      isResumeMissing(withResume({ enabled: true, savedId: "cv-1" }), {
-        resumeId: null,
-      }, null),
+      isResumeMissing(
+        withResume({ enabled: true, savedId: "resume-1" }),
+        {
+          resumeId: null,
+        },
+        null,
+      ),
     ).toBe(true);
   });
 
-  it("is false while the CV still exists", () => {
+  it("is false while the resume still exists", () => {
     expect(
-      isResumeMissing(withResume({ enabled: true, savedId: "cv-1" }), {
-        resumeId: "cv-1",
-      }, { id: "cv-1" }),
+      isResumeMissing(
+        withResume({ enabled: true, savedId: "resume-1" }),
+        {
+          resumeId: "resume-1",
+        },
+        { id: "resume-1" },
+      ),
     ).toBe(false);
   });
 
@@ -145,26 +161,30 @@ describe("sessionRowToLaunch", () => {
     resumeId: null as string | null,
   };
 
-  it("keeps the CV attached when resuming a session that has one", () => {
+  it("keeps the resume attached when resuming a session that has one", () => {
     // The regression this pins: `base` spread `...DEFAULT`, which carries
     // `resume: { enabled: false }`, and nothing overwrote it — so the wizard
     // showed the toggle off while the server kept feeding `resumeId` into
     // every turn.
     const { launch } = sessionRowToLaunch(
-      { ...SESSION, resumeId: "cv-1" },
-      withResume({ enabled: true, savedId: "cv-1", savedTitle: "Jane — 2026" }),
+      { ...SESSION, resumeId: "resume-1" },
+      withResume({
+        enabled: true,
+        savedId: "resume-1",
+        savedTitle: "Jane — 2026",
+      }),
       null,
-      { id: "cv-1", title: "Jane — 2026" },
+      { id: "resume-1", title: "Jane — 2026" },
     );
 
     expect(launch.resume.enabled).toBe(true);
-    expect(launch.resume.savedId).toBe("cv-1");
+    expect(launch.resume.savedId).toBe("resume-1");
   });
 
-  it("turns the CV off when it was deleted out from under the session", () => {
+  it("turns the resume off when it was deleted out from under the session", () => {
     const { launch } = sessionRowToLaunch(
       SESSION,
-      withResume({ enabled: true, savedId: "cv-1" }),
+      withResume({ enabled: true, savedId: "resume-1" }),
       null,
       null,
     );
@@ -172,12 +192,12 @@ describe("sessionRowToLaunch", () => {
     expect(launch.resume.enabled).toBe(false);
   });
 
-  it("infers a CV from the session column for a legacy row with no snapshot", () => {
+  it("infers a resume from the session column for a legacy row with no snapshot", () => {
     const { launch } = sessionRowToLaunch(
-      { ...SESSION, resumeId: "cv-1" },
+      { ...SESSION, resumeId: "resume-1" },
       null,
       null,
-      { id: "cv-1", title: "Jane — 2026" },
+      { id: "resume-1", title: "Jane — 2026" },
     );
 
     expect(launch.resume.enabled).toBe(true);

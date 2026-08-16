@@ -316,13 +316,15 @@ function normalizeSetup(
  * the message differs.
  */
 export function resolveLaunchAttachment(
-  noun: "job description" | "CV",
+  noun: "job description" | "resume",
   config: { enabled: boolean; savedId: string | null },
   selected: { id: string } | null | undefined,
 ): { id: string | null } | { error: string } {
   if (!config.enabled) return { id: null };
   if (!config.savedId) {
-    return { error: `Choose or add a ${noun} before launching, or turn it off.` };
+    return {
+      error: `Choose or add a ${noun} before launching, or turn it off.`,
+    };
   }
   if (!selected) {
     return {
@@ -376,7 +378,7 @@ export function saveInterviewSetup(setup: InterviewSetupState): void {
  * which replaces the whole blob — and because neither screen has the document
  * config to hand, both passed `DEFAULT_SETUP.jobDescription` and
  * `DEFAULT_SETUP.resume`. So finishing one interview turned your job
- * description and CV back **off**, and you re-attached them by hand before the
+ * description and resume back **off**, and you re-attached them by hand before the
  * next one. Every session.
  *
  * A merge makes the omission harmless: a caller that does not mention a field

@@ -362,7 +362,7 @@ caching has a real chance of firing.
 
 **"Why doesn't caching fire?"**
 Because the prefix is ~590 tokens and the floor is 1,024. It fires once a job
-description or CV is attached, which is exactly when the prompt is large enough
+description or resume is attached, which is exactly when the prompt is large enough
 for it to matter. Padding the prompt to reach the floor would cost more than the
 discount returns — the floor is not a target to game.
 

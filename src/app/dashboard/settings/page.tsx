@@ -800,7 +800,7 @@ function SettingsPageInner() {
 
               {/* Nothing in the product said any of this. Neither "OpenAI" nor
                   "Azure" appeared in a single rendered string, on a tool whose
-                  first setup step invites you to upload your actual CV. */}
+                  first setup step invites you to upload your actual resume. */}
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-slate-900">
                   Where your data goes
@@ -808,7 +808,7 @@ function SettingsPageInner() {
                 <ul className="space-y-1.5 text-sm text-slate-500">
                   <li>
                     <span className="font-medium text-slate-700">
-                      Your answers, job descriptions and CV
+                      Your answers, job descriptions and resume
                     </span>{" "}
                     are sent to OpenAI to generate questions, scores and
                     coaching. They are not used to train their models under the

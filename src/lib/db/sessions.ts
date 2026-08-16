@@ -280,9 +280,9 @@ export async function countSessionsForJobDescription(
 }
 
 /**
- * The same count for a CV, backed by `sessions_resume_idx` (migration 0004).
+ * The same count for a resume, backed by `sessions_resume_idx` (migration 0004).
  *
- * The CV needs it for two things: the same delete warning, and the refusal in
+ * The resume needs it for two things: the same delete warning, and the refusal in
  * `updateResume` — the interviewer re-reads the stored text on every turn, so
  * an edit mid-interview is not merely confusing, it changes the document the
  * candidate is being questioned on while they are answering.

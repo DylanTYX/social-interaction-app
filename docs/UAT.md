@@ -57,7 +57,7 @@ Use the template in **Section 6** (copy into Notes, WhatsApp, or a shared doc).
 | Sessions history           | `/dashboard/sessions`                             | Yes                  |
 | Personas                   | `/dashboard/personas`                             | Yes                  |
 | Job descriptions library   | `/dashboard/job-descriptions`                     | Yes                  |
-| CV library                 | `/dashboard/resumes`                              | Yes                  |
+| Resume library                 | `/dashboard/resumes`                              | Yes                  |
 | Analytics                  | `/dashboard/analytics`                            | Yes                  |
 | Tips & guides              | `/dashboard/help`                                 | Yes                  |
 | Settings                   | `/dashboard/settings`                             | Yes                  |
@@ -118,11 +118,11 @@ _One tester, one fresh account._
 | I3  | Persona                  | Pick or customize persona         | Persona name/style affects tone (subjective) | ☐     |       |
 | I4  | Job description — paste  | Paste JD text in setup            | Questions feel role-aware (subjective)       | ☐     |       |
 | I5  | Job description — saved  | Select saved JD from library      | No duplicate upload needed                   | ☐     |       |
-| I6  | CV — add in wizard       | **Add a CV** → paste → Save and use | Saved to the library *and* selected; no duplicate row on a second launch | ☐     |       |
-| I7  | CV — PDF                 | Upload text-based PDF CV          | Text extracted; launch succeeds              | ☐     |       |
-| I8  | CV — bad PDF             | Scanned/image-only PDF            | Clear error; paste fallback suggested        | ☐     |       |
-| I8b | CV — deleted underneath  | Pick a CV, delete it in the library, return | Warning in the card and Continue blocked — never a 500 at launch | ☐     |       |
-| I8c | CV — over-length         | Paste more than 24,000 characters | Saved with a notice naming what was dropped; the library row keeps saying so | ☐     |       |
+| I6  | resume — add in wizard       | **Add a resume** → paste → Save and use | Saved to the library *and* selected; no duplicate row on a second launch | ☐     |       |
+| I7  | resume — PDF                 | Upload text-based PDF resume          | Text extracted; launch succeeds              | ☐     |       |
+| I8  | resume — bad PDF             | Scanned/image-only PDF            | Clear error; paste fallback suggested        | ☐     |       |
+| I8b | resume — deleted underneath  | Pick a resume, delete it in the library, return | Warning in the card and Continue blocked — never a 500 at launch | ☐     |       |
+| I8c | resume — over-length         | Paste more than 24,000 characters | Saved with a notice naming what was dropped; the library row keeps saying so | ☐     |       |
 | I9  | Interview loop           | Multi-round loop if exposed in UI | Report offers “next round” when applicable   | ☐     |       |
 | I10 | Back / refresh mid-setup | Browser back during wizard        | No corrupted state; can restart              | ☐     |       |
 
@@ -162,8 +162,8 @@ _One tester, one fresh account._
 | R5  | Next round         | If multi-round configured                     | Starts next round without error                                 | ☐     |       |
 | R6  | Per-answer scores  | Scroll the transcript                         | Each of your answers shows its own score plus strengths/gaps    | ☐     |       |
 | R7  | Difficulty context | Read under the overall score                  | Names the interviewer's difficulty band and what it means       | ☐     |       |
-| R8  | Practise again     | Click **Practise again**                      | Wizard opens pre-filled with the same brief, persona, JD and CV | ☐     |       |
-| R9  | Config survives    | After R8, finish a session, reopen the wizard | Job description and CV are still attached                       | ☐     |       |
+| R8  | Practise again     | Click **Practise again**                      | Wizard opens pre-filled with the same brief, persona, JD and resume | ☐     |       |
+| R9  | Config survives    | After R8, finish a session, reopen the wizard | Job description and resume are still attached                       | ☐     |       |
 | R6  | Broken link        | Visit `/simulate/report/fake-id`              | Friendly error, not blank page                                  | ☐     |       |
 
 ### 4.7 Libraries & drills
@@ -173,9 +173,9 @@ _One tester, one fresh account._
 | L1  | Personas CRUD       | Create / edit / delete custom persona | Persists after reload                                                    | ☐     |       |
 | L2  | Job descriptions    | Paste + save; list shows entry        | Usable in setup picker                                                   | ☐     |       |
 | L3  | Job description PDF | Upload valid PDF                      | Extracted; appears in list                                               | ☐     |       |
-| L4  | CVs                 | Paste + save; edit; delete            | Usable in the setup picker; edits move the row to the top                | ☐     |       |
-| L4b | CV edit refused     | Start a session with a CV, leave it mid-way, edit that CV's text | Refused, naming how many interviews are in the way; renaming it still works | ☐     |       |
-| L4c | CV delete warning   | Delete a CV used by an unfinished session | Dialog says how many in-progress interviews carry on without it          | ☐     |       |
+| L4  | resumes                 | Paste + save; edit; delete            | Usable in the setup picker; edits move the row to the top                | ☐     |       |
+| L4b | resume edit refused     | Start a session with a resume, leave it mid-way, edit that resume's text | Refused, naming how many interviews are in the way; renaming it still works | ☐     |       |
+| L4c | resume delete warning   | Delete a resume used by an unfinished session | Dialog says how many in-progress interviews carry on without it          | ☐     |       |
 | L5  | Quick drills        | Open drills → complete one question   | Feedback shown; return to list                                           | ☐     |       |
 | L6  | Sessions list       | Open past session from list           | Correct report or resume path                                            | ☐     |       |
 | L7  | Analytics           | After 2+ sessions                     | Charts/stats populate                                                    | ☐     |       |
