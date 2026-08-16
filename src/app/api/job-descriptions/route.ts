@@ -14,7 +14,6 @@ import {
   unauthorized,
 } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { UsageCollector } from "@/lib/api/token-usage";
 
 export const runtime = "nodejs";
@@ -116,11 +115,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (rawText.length > MAX_JOB_DESCRIPTION_CHARS) {
-      return badRequest(
-        `Job description is too long. Keep it under ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()} characters for now.`,
-      );
-    }
+    // Over-length pastes are shortened by `createJobDescription`, not refused.
+    // Refusing capped the stored text in exactly the same place, so it
+    // prevented nothing and only blocked the user — and here the fix is usually
+    // one click of Tidy this up, which the notice says.
 
     // Chunk embedding is the single most expensive one-off in the app; record
     // it rather than leaving upload cost invisible.

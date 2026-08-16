@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
 import { Textarea } from "@/components/ui/textarea";
 import { TidyJobDescription } from "@/components/setup/tidy-job-description";
+import { describeTruncation } from "@/lib/document-truncation";
 import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
 
 /** Enough text to be worth a confirmation before throwing it away. */
@@ -197,6 +199,24 @@ export function useJobDescriptionCreator({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Says so when the upload was shortened.
+   *
+   * The save succeeded, so this is a notice rather than an error — but it has
+   * to be said at all, because the user believes the whole document went in and
+   * the interviewer will only ever see the part that did. `truncatedFrom` also
+   * persists on the row, so the library keeps saying it after this disappears.
+   */
+  const reportTruncation = (created: JobDescriptionSummary | null) => {
+    if (!created?.truncatedFrom) return;
+    const notice = describeTruncation({
+      kind: "jobDescription",
+      kept: created.rawText.length,
+      original: created.truncatedFrom,
+    });
+    if (notice) toast.warning(notice, { duration: 12_000 });
+  };
+
   const metadata = (draft: JobDescriptionDraft) => ({
     roleTitle: draft.roleTitle.trim() || null,
     company: draft.company.trim() || null,
@@ -215,6 +235,7 @@ export function useJobDescriptionCreator({
       ...metadata(draft),
     });
     setBusy(false);
+    reportTruncation(created);
     return created;
   };
 
@@ -223,6 +244,7 @@ export function useJobDescriptionCreator({
     setBusy(true);
     const created = await uploadPdf({ file, ...metadata(draft) });
     setBusy(false);
+    reportTruncation(created);
     return created;
   };
 

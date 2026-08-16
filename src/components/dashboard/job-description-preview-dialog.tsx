@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { describeTruncationBadge } from "@/lib/document-truncation";
 import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
 
 /**
@@ -39,6 +40,9 @@ export function JobDescriptionPreviewDialog({
         item.company,
         item.roleTitle,
         `${item.rawText.length.toLocaleString()} characters`,
+        // Long after the upload notice has gone, this is the only thing that
+        // says the interviewer is reading a partial document.
+        describeTruncationBadge(item.truncatedFrom),
       ]
         .filter(Boolean)
         .join(" · ")

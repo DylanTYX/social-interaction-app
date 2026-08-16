@@ -1,12 +1,10 @@
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { UsageCollector } from "@/lib/api/token-usage";
 import { parseLimit } from "@/lib/api/query";
 import {
   createResume,
   listResumes,
-  MAX_RESUME_CHARS,
   MIN_RESUME_CHARS,
 } from "@/lib/db/resumes";
 import { parsePdfUpload } from "@/lib/api/uploads";
@@ -79,25 +77,26 @@ export async function POST(request: Request) {
         `Resume must contain at least ${MIN_RESUME_CHARS} characters of text.`,
       );
     }
-    if (rawText.length > MAX_RESUME_CHARS) {
-      return badRequest(
-        `Resume is too long. Keep it under ${MAX_RESUME_CHARS.toLocaleString()} characters.`,
-      );
-    }
-
-    // `createResume` distils the CV into a compact profile with a model call.
-    // It has always accepted a collector; this route never passed one, so the
-    // profile call was missing from `llm_usage` entirely. Mirrors what
-    // POST /api/job-descriptions already does for its embedding batch.
-    const usage = new UsageCollector();
+    /**
+     * Over-length uploads are shortened, not refused.
+     *
+     * Refusing capped the stored text at exactly the same place truncating
+     * does, so it prevented nothing extra — it only stopped the user, and the
+     * user it stopped was the one with a six-page CV who had done nothing
+     * wrong. `createResume` keeps the first `MAX_RESUME_CHARS` and records the
+     * original length on `truncated_from`, which the client turns into a
+     * notice naming exactly what was dropped and what to do about it.
+     *
+     * There is no longer a model call on this path: the CV used to be
+     * distilled into a summary here, and the interviewer read that summary
+     * instead of the document. It reads the document now.
+     */
     const resume = await createResume({
       supabase,
       userId: user.id,
       rawText,
       title,
-      usage,
     });
-    await usage.flush(supabase);
 
     return NextResponse.json({ resume }, { status: 201 });
   } catch (error) {

@@ -11,6 +11,8 @@ export interface JobDescriptionSummary {
   company: string | null;
   sourceUrl: string | null;
   notes: string | null;
+  /** Original length when the upload was shortened; null when stored whole. */
+  truncatedFrom: number | null;
   sourceType: "text";
   rawText: string;
   createdAt: string;

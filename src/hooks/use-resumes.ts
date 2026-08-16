@@ -9,6 +9,8 @@ export interface ResumeSummary {
   title: string;
   sourceType: "text";
   rawText: string;
+  /** Original length when the upload was shortened; null when stored whole. */
+  truncatedFrom: number | null;
   createdAt: string;
   updatedAt: string;
 }

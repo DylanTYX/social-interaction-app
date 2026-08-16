@@ -20,9 +20,12 @@ export type LlmCallSite =
   | "summary"
   | "embedding"
   | "coach"
-  // One-off at document upload, not on the per-turn hot path.
-  | "resume-profile"
-  // Also upload-time: stripping page furniture out of a pasted job posting.
+  // Upload-time: stripping page furniture out of a pasted job posting.
+  //
+  // `resume-profile` used to sit here too. It distilled a CV into a summary the
+  // interviewer read *instead of* the CV, which is why it is gone rather than
+  // merely unused. The DB check constraint still permits the value, so historic
+  // rows keep reporting correctly in the cost report.
   | "jd-clean";
 
 /** The shape OpenAI returns on both chat completions and embeddings. */
