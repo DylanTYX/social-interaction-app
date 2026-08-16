@@ -153,7 +153,7 @@ export default function JobDescriptionsPage() {
   );
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="Library"
         title="Job descriptions"
@@ -173,7 +173,12 @@ export default function JobDescriptionsPage() {
       <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4 text-green-600" />
+            {/* Blue, not the page accent. The accent identifies this page once,
+                in the header tile above; repeating it here made the upload card
+                read as a green *feature* rather than as the action on this
+                page — and made the CV page's identical card look like a
+                different one because it was teal. */}
+            <FileText className="h-4 w-4 text-primary" />
             Add a job description
           </CardTitle>
           <CardDescription>
@@ -213,7 +218,7 @@ export default function JobDescriptionsPage() {
           {(items.length > 0 || hasFilters) && (
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative min-w-50 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
@@ -224,7 +229,10 @@ export default function JobDescriptionsPage() {
               </div>
               {companyOptions.length > 0 && (
                 <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                  <SelectTrigger className="w-50" aria-label="Filter by company">
+                  <SelectTrigger
+                    className="w-50"
+                    aria-label="Filter by company"
+                  >
                     <SelectValue placeholder="Company" />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,7 +265,7 @@ export default function JobDescriptionsPage() {
             // twenty saved postings to "add their first one" because they typed
             // a typo would be nonsense.
             <div className="rounded-xl border border-dashed border-border p-6 text-center">
-              <p className="text-sm font-medium text-gray-800">
+              <p className="text-sm font-medium text-slate-800">
                 No job descriptions match those filters
               </p>
               <Button
@@ -304,18 +312,18 @@ export default function JobDescriptionsPage() {
                   )}
                   style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-100 text-green-600 shrink-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-muted text-primary shrink-0">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-slate-900 truncate">
                       {item.title}
                     </p>
                     {/* Company leads the secondary line — it is what tells two
                         postings for the same role apart. Parts are assembled
                         and joined rather than interpolated with separators, so
                         a missing one does not leave a stranded "·". */}
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-slate-500 truncate">
                       {[
                         item.company,
                         item.roleTitle,

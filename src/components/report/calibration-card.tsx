@@ -80,7 +80,7 @@ export function CalibrationCard({
     <Card className="border-slate-200/80 bg-white print:hidden">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gauge className="h-4 w-4 text-blue-600" />
+          <Gauge className="h-4 w-4 text-primary" />
           How did you think you did?
         </CardTitle>
         <CardDescription>
@@ -104,7 +104,7 @@ export function CalibrationCard({
             aria-valuetext={`${guess} percent`}
             disabled={revealed}
             onChange={(event) => setGuess(Number(event.target.value))}
-            className="mt-2 w-full accent-blue-600 disabled:opacity-60"
+            className="mt-2 w-full accent-primary disabled:opacity-60"
           />
         </div>
 
@@ -130,7 +130,7 @@ export function CalibrationCard({
                 </p>
                 {/* `tabular-nums` so the counting digits do not jitter the
                     layout on their way up. */}
-                <p className="text-2xl font-bold tabular-nums text-blue-600">
+                <p className="text-2xl font-bold tabular-nums text-primary">
                   {revealedBy === "user" ? countedScore : finalScore}%
                 </p>
               </div>
@@ -147,7 +147,7 @@ export function CalibrationCard({
                   "animate-in fade-in-0 slide-in-from-bottom-1 duration-300 delay-700 fill-mode-both",
               )}
             >
-              <Sparkles className="h-4 w-4 text-amber-500" />
+              <Sparkles className="h-4 w-4 text-warning" />
               {calibrationLabel} ({gap} point gap)
             </p>
           </div>

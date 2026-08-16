@@ -49,10 +49,10 @@ export function RoundProgression({ points }: { points: Point[] }) {
               className={`w-full rounded-t-md ${
                 typeof point.score === "number"
                   ? point.score >= 75
-                    ? "bg-emerald-500"
+                    ? "bg-success"
                     : point.score >= 55
-                      ? "bg-blue-500"
-                      : "bg-amber-500"
+                      ? "bg-primary"
+                      : "bg-warning"
                   : "bg-slate-200"
               }`}
               style={{ height: `${height}px` }}

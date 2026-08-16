@@ -187,9 +187,9 @@ export function JobDescriptionPicker({
       {value.enabled && (
         <CardContent className="space-y-4">
           {selectionMissing && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-              <p className="flex-1 text-xs text-amber-900">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle/70 p-3">
+              <AlertCircle className="h-5 w-5 shrink-0 text-warning" />
+              <p className="flex-1 text-xs text-warning-emphasis">
                 The job description you had chosen is no longer in your library.
                 Pick another one, or turn this off.
               </p>
@@ -197,7 +197,7 @@ export function JobDescriptionPicker({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-amber-900 hover:bg-amber-100"
+                className="text-warning-emphasis hover:bg-warning-muted"
                 onClick={clearSelection}
               >
                 Dismiss
@@ -252,7 +252,7 @@ export function JobDescriptionPicker({
                     className={cn(
                       "group flex items-center gap-3 rounded-lg border p-3 transition-colors duration-150",
                       isActive
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-primary bg-primary-subtle"
                         : "border-border bg-white hover:bg-accent",
                     )}
                   >
@@ -269,7 +269,7 @@ export function JobDescriptionPicker({
                         className={cn(
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
                           isActive
-                            ? "border-blue-600 bg-blue-600"
+                            ? "border-primary bg-primary"
                             : "border-slate-300 bg-white",
                         )}
                       >
@@ -280,7 +280,7 @@ export function JobDescriptionPicker({
                           className={cn(
                             "block truncate text-sm",
                             isActive
-                              ? "font-medium text-blue-900"
+                              ? "font-medium text-primary-emphasis"
                               : "text-foreground",
                           )}
                         >

@@ -4,7 +4,6 @@ import { CheckCircle2, CircleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { sanitizeNotes } from "@/lib/response-analyzer";
-import { cn } from "@/lib/utils";
 
 /**
  * The score and verdict for one answer.
@@ -46,11 +45,19 @@ export function toTurnFeedback(
   };
 }
 
-/** Bands, not a gradient — a 2-point difference should not change the colour. */
-function scoreTone(score: number) {
-  if (score >= 75) return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (score >= 55) return "border-amber-200 bg-amber-50 text-amber-800";
-  return "border-red-200 bg-red-50 text-red-800";
+/**
+ * Bands, not a gradient — a 2-point difference should not change the colour.
+ *
+ * Returns a `Badge` variant rather than a class triplet. The triplet it used to
+ * return was one of about a dozen hand-written emerald/amber/red sets scattered
+ * across the report, the transcript and the coaching rail, which is how the same
+ * "needs attention" ended up as four different ambers. The meaning lives in
+ * `badge.tsx` now; this function only decides which meaning applies.
+ */
+function scoreTone(score: number): "success" | "warning" | "danger" {
+  if (score >= 75) return "success";
+  if (score >= 55) return "warning";
+  return "danger";
 }
 
 export function TurnScore({ feedback }: { feedback: TurnFeedback }) {
@@ -67,26 +74,23 @@ export function TurnScore({ feedback }: { feedback: TurnFeedback }) {
     <div className="mt-2 flex max-w-2xl flex-col gap-2">
       {overallScore !== null && (
         <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={cn("font-semibold", scoreTone(overallScore))}
-          >
+          <Badge variant={scoreTone(overallScore)} className="font-semibold">
             {Math.round(overallScore)}%
           </Badge>
-          <span className="text-xs text-slate-500">this answer</span>
+          <span className="text-xs text-muted-foreground">this answer</span>
         </div>
       )}
 
       {(strengths.length > 0 || gaps.length > 0) && (
         <ul className="space-y-1 text-xs leading-relaxed">
           {strengths.map((note) => (
-            <li key={note} className="flex gap-1.5 text-emerald-800">
+            <li key={note} className="flex gap-1.5 text-success-emphasis">
               <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <span>{note}</span>
             </li>
           ))}
           {gaps.map((note) => (
-            <li key={note} className="flex gap-1.5 text-amber-800">
+            <li key={note} className="flex gap-1.5 text-warning-emphasis">
               <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
               <span>{note}</span>
             </li>

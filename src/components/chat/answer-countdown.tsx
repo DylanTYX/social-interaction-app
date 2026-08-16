@@ -77,7 +77,7 @@ export function AnswerCountdown({
     <div
       className={cn(
         "text-xs font-medium transition-colors duration-150",
-        warning ? "text-red-600" : "text-slate-500",
+        warning ? "text-destructive" : "text-slate-500",
         className,
       )}
     >

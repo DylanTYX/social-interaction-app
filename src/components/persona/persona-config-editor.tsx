@@ -9,10 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type {
-  CommunicationStyle,
-  PersonaConfig,
-} from "@/lib/persona-engine";
+import type { CommunicationStyle, PersonaConfig } from "@/lib/persona-engine";
 
 const STYLES: Array<{ value: CommunicationStyle; label: string }> = [
   { value: "direct", label: "Direct" },
@@ -26,7 +23,10 @@ interface PersonaConfigEditorProps {
   onChange: (patch: Partial<PersonaConfig>) => void;
 }
 
-export function PersonaConfigEditor({ value, onChange }: PersonaConfigEditorProps) {
+export function PersonaConfigEditor({
+  value,
+  onChange,
+}: PersonaConfigEditorProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-2 sm:col-span-2">
@@ -127,7 +127,7 @@ export function PersonaConfigEditor({ value, onChange }: PersonaConfigEditorProp
             })
           }
         />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500">
           Higher = faster questions, less breathing room.
         </p>
       </div>
@@ -147,7 +147,7 @@ export function PersonaConfigEditor({ value, onChange }: PersonaConfigEditorProp
             })
           }
         />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500">
           Higher = challenges claims and probes for evidence.
         </p>
       </div>

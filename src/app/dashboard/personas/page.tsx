@@ -45,12 +45,7 @@ import {
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import { cn } from "@/lib/utils";
-import {
-  CONTENT_ENTER,
-  ROW_ENTER,
-  ROW_EXIT,
-  staggerDelay,
-} from "@/lib/motion";
+import { CONTENT_ENTER, ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
@@ -148,7 +143,7 @@ export default function PersonasPage() {
   const isLoading = status === "loading" && library.length === 0;
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="Library"
         title="Personas"
@@ -311,14 +306,14 @@ export default function PersonasPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Globe className="h-4 w-4 text-gray-400" />
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <Globe className="h-4 w-4 text-slate-400" />
                     <span className="truncate">
                       {entry.config.nationality} · {entry.config.industry}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Briefcase className="h-4 w-4 text-gray-400" />
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <Briefcase className="h-4 w-4 text-slate-400" />
                     <span className="capitalize truncate">
                       {entry.config.communicationStyle} ·{" "}
                       {entry.config.yearsExperience} yrs
@@ -331,7 +326,7 @@ export default function PersonasPage() {
                     <Badge
                       key={trait}
                       variant="outline"
-                      className="bg-gray-50/80"
+                      className="bg-slate-50/80"
                     >
                       {trait}
                     </Badge>
@@ -339,13 +334,15 @@ export default function PersonasPage() {
                 </div>
 
                 {entry.config.boundaries.length > 0 && (
-                  <p className="text-xs leading-5 text-gray-500">
-                    <span className="font-medium text-gray-900">Dislikes:</span>{" "}
+                  <p className="text-xs leading-5 text-slate-500">
+                    <span className="font-medium text-slate-900">
+                      Dislikes:
+                    </span>{" "}
                     {entry.config.boundaries.slice(0, 3).join(", ")}
                   </p>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 pt-1">
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 pt-1">
                   <span>Strict {entry.config.strictness}/10</span>
                   <span>Warm {entry.config.warmth}/10</span>
                   <span>Pace {entry.config.pace ?? 5}/10</span>

@@ -44,12 +44,7 @@ import {
 } from "@/hooks/use-interview-history";
 import { formatRelativeDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import {
-  CONTENT_ENTER,
-  ROW_ENTER,
-  ROW_EXIT,
-  staggerDelay,
-} from "@/lib/motion";
+import { CONTENT_ENTER, ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { toast } from "sonner";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 
@@ -57,9 +52,9 @@ type ModeFilter = "all" | "text" | "voice";
 type StatusFilter = "all" | "in_progress" | "completed" | "abandoned";
 
 const STATUS_TONE: Record<InterviewSessionSummary["status"], string> = {
-  in_progress: "border-orange-200 bg-orange-50 text-orange-700",
-  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  abandoned: "border-gray-200 bg-gray-50 text-gray-600",
+  in_progress: "border-warning-border bg-warning-subtle text-warning-emphasis",
+  completed: "border-success-border bg-success-subtle text-success-emphasis",
+  abandoned: "border-slate-200 bg-slate-50 text-slate-600",
 };
 
 const STATUS_LABEL: Record<InterviewSessionSummary["status"], string> = {
@@ -144,7 +139,7 @@ export default function SessionsLibraryPage() {
   const isLoading = status === "loading" && sessions.length === 0;
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       <PageHeader
         eyebrow="History"
         title="Your interview sessions"
@@ -164,7 +159,7 @@ export default function SessionsLibraryPage() {
       <Card className="shadow-soft">
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -297,7 +292,7 @@ export default function SessionsLibraryPage() {
                     <InitialsAvatar name={session.personaName} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-gray-900 truncate">
+                        <p className="font-medium text-slate-900 truncate">
                           {session.scenarioTitle ?? session.scenarioValue}
                         </p>
                         <Badge
@@ -307,7 +302,7 @@ export default function SessionsLibraryPage() {
                           {STATUS_LABEL[session.status]}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                      <p className="mt-1 text-sm text-slate-500 flex items-center gap-2 flex-wrap">
                         <span>{session.personaName}</span>
                         <span>·</span>
                         <span>{formatRelativeDate(session.createdAt)}</span>
@@ -319,7 +314,7 @@ export default function SessionsLibraryPage() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-lg font-bold text-blue-600">
+                      <div className="text-lg font-bold text-primary">
                         {session.averageScore === null
                           ? "—"
                           : `${session.averageScore}%`}

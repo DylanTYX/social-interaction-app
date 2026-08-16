@@ -103,17 +103,20 @@ export function OnboardingDialog() {
               className="h-auto flex-col items-start gap-1 py-3 text-left"
               onClick={() => handlePick(goal.id)}
             >
-              <span className="font-semibold text-gray-900">{goal.title}</span>
-              <span className="text-xs font-normal text-gray-500">
+              <span className="font-semibold text-slate-900">{goal.title}</span>
+              <span className="text-xs font-normal text-slate-500">
                 {goal.description}
               </span>
             </Button>
           ))}
         </div>
-        <Button variant="ghost" onClick={() => {
-          markOnboardingComplete();
-          setOpen(false);
-        }}>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            markOnboardingComplete();
+            setOpen(false);
+          }}
+        >
           Skip for now
         </Button>
       </DialogContent>

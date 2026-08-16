@@ -33,7 +33,7 @@ interface Guide {
 const GUIDES: Guide[] = [
   {
     icon: Target,
-    color: "bg-blue-100 text-blue-600",
+    color: "bg-primary-muted text-primary",
     title: "The STAR method",
     description:
       "The structure behavioral interviewers look for. Use it for any 'tell me about a time…' question.",
@@ -58,7 +58,7 @@ const GUIDES: Guide[] = [
   },
   {
     icon: BarChart3,
-    color: "bg-purple-100 text-purple-600",
+    color: "bg-primary-muted text-primary",
     title: "How scoring works",
     description:
       "Every answer is scored on the dimensions a real interviewer weighs.",
@@ -83,7 +83,7 @@ const GUIDES: Guide[] = [
   },
   {
     icon: Lightbulb,
-    color: "bg-amber-100 text-amber-600",
+    color: "bg-primary-muted text-primary",
     title: "Technical & system design",
     description:
       "Technical rounds aren't scored on STAR — they're scored on how you think.",
@@ -108,7 +108,7 @@ const GUIDES: Guide[] = [
   },
   {
     icon: Mic,
-    color: "bg-indigo-100 text-indigo-600",
+    color: "bg-primary-muted text-primary",
     title: "Voice delivery",
     description: "Voice mode measures how you sound, not just what you say.",
     points: [
@@ -134,7 +134,7 @@ const GUIDES: Guide[] = [
 
 export default function HelpPage() {
   return (
-    <div className="space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
+    <div className="space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50 p-8">
       {/* Was a hand-rolled copy of PageHeader's exact eyebrow and h1 classes,
           minus `leading-relaxed` on the description and with the icon crammed
           into the eyebrow instead of its own tile. The only dashboard page not
@@ -151,7 +151,7 @@ export default function HelpPage() {
         {GUIDES.map((guide) => {
           const Icon = guide.icon;
           return (
-            <Card key={guide.title} className="border-gray-200/80">
+            <Card key={guide.title} className="border-slate-200/80">
               <CardHeader>
                 <div
                   className={`mb-3 flex h-11 w-11 items-center justify-center rounded-lg ${guide.color}`}
@@ -165,10 +165,10 @@ export default function HelpPage() {
                 <dl className="space-y-3">
                   {guide.points.map((point) => (
                     <div key={point.label} className="flex gap-3">
-                      <dt className="w-24 shrink-0 text-sm font-semibold text-gray-900">
+                      <dt className="w-24 shrink-0 text-sm font-semibold text-slate-900">
                         {point.label}
                       </dt>
-                      <dd className="flex-1 text-sm leading-relaxed text-gray-600">
+                      <dd className="flex-1 text-sm leading-relaxed text-slate-600">
                         {point.body}
                       </dd>
                     </div>
@@ -180,17 +180,17 @@ export default function HelpPage() {
         })}
       </div>
 
-      <Card className="shadow-soft bg-linear-to-br from-blue-50 via-white to-indigo-50/40">
+      <Card className="shadow-soft bg-linear-to-br from-primary-subtle via-white to-primary-subtle/40">
         <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-700 shadow-soft">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 shadow-soft">
               <Command className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">Pro tip: ⌘K</p>
-              <p className="text-sm text-gray-600">
+              <p className="font-semibold text-slate-900">Pro tip: ⌘K</p>
+              <p className="text-sm text-slate-600">
                 Press{" "}
-                <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs font-medium">
+                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium">
                   ⌘K
                 </kbd>{" "}
                 anywhere to jump to a page or start practicing instantly.

@@ -475,7 +475,7 @@ function RoundCard({
                 onChange={(event) =>
                   onChange({ durationMinutes: Number(event.target.value) })
                 }
-                className="w-full accent-blue-600"
+                className="w-full accent-primary"
               />
             </div>
           </Field>

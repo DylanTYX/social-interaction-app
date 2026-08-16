@@ -241,7 +241,7 @@ export function FinalizeStep({
         <Card className="border border-border shadow-soft">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Mic className="h-4 w-4 text-blue-600" />
+              <Mic className="h-4 w-4 text-primary" />
               Voice readiness
             </CardTitle>
             <CardDescription>
@@ -252,7 +252,7 @@ export function FinalizeStep({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-border bg-white p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Volume2 className="h-4 w-4 text-blue-600" />
+                  <Volume2 className="h-4 w-4 text-primary" />
                   Text-to-speech
                 </div>
                 <div className="flex items-center justify-between gap-3">
@@ -275,7 +275,7 @@ export function FinalizeStep({
 
               <div className="rounded-xl border border-border bg-white p-3">
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Mic className="h-4 w-4 text-blue-600" />
+                  <Mic className="h-4 w-4 text-primary" />
                   Speech-to-text
                 </div>
                 <div className="flex items-center justify-between gap-3">
@@ -338,13 +338,13 @@ export function FinalizeStep({
               </p>
             </div>
 
-            <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-3">
+            <div className="rounded-xl border border-dashed border-primary-border bg-primary-subtle/40 p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-foreground">
                   <CheckCircle2
                     className={`h-4 w-4 ${
                       microphoneStatus === "ready"
-                        ? "text-emerald-500"
+                        ? "text-success"
                         : "text-muted-foreground"
                     }`}
                   />
@@ -368,8 +368,8 @@ export function FinalizeStep({
                 <p
                   className={`mt-2 text-xs ${
                     microphoneStatus === "failed"
-                      ? "text-red-600"
-                      : "text-emerald-700"
+                      ? "text-destructive"
+                      : "text-success-emphasis"
                   }`}
                 >
                   {microphoneMessage}
@@ -405,7 +405,7 @@ function NextStep({
 }) {
   return (
     <div className="flex gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-muted text-primary">
         <Icon className="h-4 w-4" />
       </div>
       <div className="space-y-1">

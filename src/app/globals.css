@@ -20,14 +20,17 @@
   --color-destructive: var(--destructive);
   /* Semantic meaning, never blue. See `:root` for the reasoning. */
   --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-muted: var(--destructive-muted);
   --color-destructive-border: var(--destructive-border);
   --color-destructive-emphasis: var(--destructive-emphasis);
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);
+  --color-success-muted: var(--success-muted);
   --color-success-border: var(--success-border);
   --color-success-emphasis: var(--success-emphasis);
   --color-warning: var(--warning);
   --color-warning-subtle: var(--warning-subtle);
+  --color-warning-muted: var(--warning-muted);
   --color-warning-border: var(--warning-border);
   --color-warning-emphasis: var(--warning-emphasis);
   --color-accent-foreground: var(--accent-foreground);
@@ -172,14 +175,17 @@
    */
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-subtle: oklch(0.971 0.013 17.38);
+  --destructive-muted: oklch(0.936 0.032 17.717);
   --destructive-border: oklch(0.885 0.062 18.334);
   --destructive-emphasis: oklch(0.396 0.141 25.723);
   --success: oklch(0.596 0.145 163.225);
   --success-subtle: oklch(0.979 0.021 166.113);
+  --success-muted: oklch(0.95 0.052 163.051);
   --success-border: oklch(0.905 0.093 164.15);
   --success-emphasis: oklch(0.432 0.095 166.913);
   --warning: oklch(0.666 0.179 58.318);
   --warning-subtle: oklch(0.987 0.022 95.277);
+  --warning-muted: oklch(0.962 0.059 95.617);
   --warning-border: oklch(0.924 0.12 95.746);
   --warning-emphasis: oklch(0.414 0.112 45.904);
   --border: oklch(0.929 0.013 255.508);

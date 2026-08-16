@@ -37,14 +37,14 @@ export function ErrorStateCard({
   return (
     <Card
       role="alert"
-      className="border-red-200 bg-red-50/60 text-red-900"
+      className="border-destructive-border bg-destructive-subtle/60 text-destructive-emphasis"
     >
       <CardHeader className="justify-items-center pt-8 pb-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive-muted text-destructive">
           <AlertTriangle className="h-6 w-6" />
         </div>
         <CardTitle className="pt-3 text-lg">{title}</CardTitle>
-        <CardDescription className="mx-auto max-w-md text-balance text-red-800/80">
+        <CardDescription className="mx-auto max-w-md text-balance text-destructive-emphasis/80">
           {description?.trim() ||
             "Something went wrong fetching your data. Your work is safe — this is a display problem."}
         </CardDescription>
@@ -54,7 +54,7 @@ export function ErrorStateCard({
           <Button
             type="button"
             variant="outline"
-            className="gap-1.5 border-red-300 bg-white hover:bg-red-50"
+            className="gap-1.5 border-destructive-border bg-white hover:bg-destructive-subtle"
             onClick={onRetry}
             disabled={retrying}
           >

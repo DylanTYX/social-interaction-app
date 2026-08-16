@@ -104,8 +104,8 @@ export function ModeCards({
               "flex h-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
               "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
               isActive
-                ? "border-blue-500 bg-blue-50"
-                : "border-border bg-background hover:border-blue-300 hover:bg-accent",
+                ? "border-primary bg-primary-subtle"
+                : "border-border bg-background hover:border-primary-border hover:bg-accent",
             )}
           >
             <div className="flex items-center justify-between gap-2">

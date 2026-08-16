@@ -192,7 +192,7 @@ export default function DrillsPage() {
   const answerEdited = result !== null && answer.trim() !== submittedAnswer;
 
   return (
-    <div className="space-y-6 bg-linear-to-br from-gray-50 via-white to-gray-50/50 p-8">
+    <div className="space-y-6 bg-linear-to-br from-slate-50 via-white to-slate-50/50 p-8">
       {/* Full width, like every other dashboard page.
           A `max-w-5xl` reading column was tried here and removed: the readability
           problem it solved is already solved one level down, where the prose
@@ -253,7 +253,7 @@ export default function DrillsPage() {
               variant="ghost"
               size="sm"
               onClick={() => requestNewQuestion()}
-              className="gap-1.5 text-gray-500"
+              className="gap-1.5 text-slate-500"
             >
               <Shuffle className="h-3.5 w-3.5" />
               New question
@@ -317,7 +317,7 @@ export default function DrillsPage() {
         >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-amber-500" />
+              <Sparkles className="h-5 w-5 text-warning" />
               Coaching
             </CardTitle>
             <CardDescription>
@@ -328,7 +328,7 @@ export default function DrillsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {loading && <CoachingResultSkeleton />}
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             {result && (
               <>
                 <CoachingResult
@@ -339,7 +339,7 @@ export default function DrillsPage() {
                   <Button
                     variant="ghost"
                     onClick={handleRevise}
-                    className="gap-2 text-gray-500"
+                    className="gap-2 text-slate-500"
                   >
                     <PenLine className="h-4 w-4" />
                     Revise this answer

@@ -194,7 +194,7 @@ function ScoreSparkline({
    */
   if (points.length < MIN_POINTS_FOR_TREND) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-6 text-center text-sm text-gray-500">
+      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500">
         {points.length === 0
           ? "Complete a few scored sessions to see how you are tracking."
           : `${points.length} scored session${points.length === 1 ? "" : "s"} so far — ${MIN_POINTS_FOR_TREND} shows a trend.`}
@@ -294,7 +294,7 @@ function DimensionSparkline({ series }: { series: DimensionSeries }) {
   // of them is two answers.
   if (series.values.length < MIN_POINTS_FOR_TREND) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-200 p-4 text-xs text-gray-500">
+      <div className="rounded-lg border border-dashed border-slate-200 p-4 text-xs text-slate-500">
         {series.label}: not enough data yet
       </div>
     );
@@ -323,8 +323,8 @@ function DimensionSparkline({ series }: { series: DimensionSeries }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-800">{series.label}</span>
-        <span className="text-gray-500">{Math.round(latest)}%</span>
+        <span className="font-medium text-slate-800">{series.label}</span>
+        <span className="text-slate-500">{Math.round(latest)}%</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-16 w-full">
         <path
@@ -365,7 +365,7 @@ export default function AnalyticsPage() {
   // progress" rather than "we could not fetch it" — so bail out entirely.
   if (status === "error") {
     return (
-      <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+      <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
         {header}
         <ErrorStateCard
           title="Couldn't load your analytics"
@@ -377,7 +377,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
+    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
       {header}
 
       {isLoading ? (
@@ -393,15 +393,15 @@ export default function AnalyticsPage() {
           <Card className="shadow-soft">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-gray-600">Sessions</p>
+                <p className="text-sm font-medium text-slate-600">Sessions</p>
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.blue}`}
                 >
                   <Target className="h-5 w-5" />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{model.total}</p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="text-3xl font-bold text-slate-900">{model.total}</p>
+              <p className="mt-1 text-xs text-slate-500">
                 {model.completed} scored
               </p>
             </CardContent>
@@ -410,17 +410,17 @@ export default function AnalyticsPage() {
           <Card className="shadow-soft">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-gray-600">Avg score</p>
+                <p className="text-sm font-medium text-slate-600">Avg score</p>
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.purple}`}
                 >
                   <TrendingUp className="h-5 w-5" />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-slate-900">
                 {formatAverageScore(model.averageScore)}
               </p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-slate-500">
                 Best:{" "}
                 {model.bestScore === null
                   ? "—"
@@ -432,7 +432,7 @@ export default function AnalyticsPage() {
           <Card className="shadow-soft">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-slate-600">
                   Practice time
                 </p>
                 <div
@@ -441,10 +441,10 @@ export default function AnalyticsPage() {
                   <Clock className="h-5 w-5" />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-slate-900">
                 {formatPracticeMinutes(model.totalMinutes)}
               </p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-slate-500">
                 Across {model.daysActive} day
                 {model.daysActive === 1 ? "" : "s"}
               </p>
@@ -454,20 +454,20 @@ export default function AnalyticsPage() {
           <Card className="shadow-soft">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-gray-600">Mode mix</p>
+                <p className="text-sm font-medium text-slate-600">Mode mix</p>
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-lg ${TILE_COLORS.orange}`}
                 >
                   <Mic className="h-5 w-5" />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-slate-900">
                 {model.voiceCount}
-                <span className="ml-1 text-base font-normal text-gray-500">
+                <span className="ml-1 text-base font-normal text-slate-500">
                   voice
                 </span>
               </p>
-              <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+              <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
                 <MessageSquare className="h-3 w-3" />
                 {model.textCount} text
               </p>
@@ -500,7 +500,7 @@ export default function AnalyticsPage() {
           {model.dimensionSeries.every(
             (series) => series.values.length < MIN_POINTS_FOR_TREND,
           ) ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               Complete a few more scored answers in text mode to see
               per-dimension trends.
             </p>
@@ -528,7 +528,7 @@ export default function AnalyticsPage() {
         </CardHeader>
         <CardContent>
           {model.scenarioBuckets.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               Complete a session to see scenario breakdown.
             </p>
           ) : (
@@ -541,10 +541,10 @@ export default function AnalyticsPage() {
                 return (
                   <div key={bucket.title} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-700 truncate">
+                      <span className="font-medium text-slate-700 truncate">
                         {bucket.title}
                       </span>
-                      <span className="text-gray-500 shrink-0 ml-3">
+                      <span className="text-slate-500 shrink-0 ml-3">
                         {bucket.count} session
                         {bucket.count === 1 ? "" : "s"}
                         {/* An "average" of one session is that session's
@@ -556,9 +556,9 @@ export default function AnalyticsPage() {
                             : ""}
                       </span>
                     </div>
-                    <div className="h-2 rounded-full bg-gray-100">
+                    <div className="h-2 rounded-full bg-slate-100">
                       <div
-                        className="h-2 rounded-full bg-linear-to-r from-blue-500 to-indigo-500"
+                        className="h-2 rounded-full bg-primary"
                         style={{ width: `${widthPct}%` }}
                       />
                     </div>

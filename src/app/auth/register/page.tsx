@@ -80,7 +80,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card className="w-full max-w-md border border-gray-200/80 shadow-soft-lg bg-white">
+    <Card className="w-full max-w-md border border-slate-200/80 shadow-soft-lg bg-white">
       <CardHeader className="space-y-2">
         <CardTitle as="h1" className="text-2xl font-bold">
           Create account
@@ -102,7 +102,7 @@ export default function RegisterPage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               />
             </div>
             <div className="space-y-2">
@@ -115,7 +115,7 @@ export default function RegisterPage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               />
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             />
           </div>
 
@@ -144,9 +144,9 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              inputClassName="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 pr-10"
+              inputClassName="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 pr-10"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               Must be at least 8 characters.
             </p>
           </div>
@@ -154,13 +154,13 @@ export default function RegisterPage() {
           {errorMessage && (
             <div
               role="alert"
-              className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
             >
               {errorMessage}
             </div>
           )}
           {infoMessage && (
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <div className="rounded-md border border-success-border bg-success-subtle px-3 py-2 text-sm text-success-emphasis">
               {infoMessage}
             </div>
           )}
@@ -175,11 +175,11 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <div className="text-center text-sm text-gray-600">
+        <div className="text-center text-sm text-slate-600">
           Already have an account?{" "}
           <Link
             href="/auth/login"
-            className="text-blue-600 hover:text-blue-700 font-semibold"
+            className="text-primary hover:text-primary-emphasis font-semibold"
           >
             Sign in
           </Link>

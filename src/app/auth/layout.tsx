@@ -8,8 +8,11 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      {/* Left Pane - Stable Gradient Panel */}
-      <div className="hidden lg:flex flex-col justify-center items-center bg-linear-to-br from-blue-600 via-purple-600 to-indigo-700 p-12 relative overflow-hidden">
+      {/* Left Pane — the brand panel. One hue: this is the first screen a new
+          user sees, and it used to run blue→purple→indigo, which taught them
+          the brand colour was "a gradient" before the app taught them it was
+          blue. */}
+      <div className="hidden lg:flex flex-col justify-center items-center bg-linear-to-br from-primary to-primary-emphasis p-12 relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
@@ -121,7 +124,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Pane - Form Area */}
-      <div className="flex items-center justify-center p-8 lg:p-12 bg-gray-50">
+      <div className="flex items-center justify-center p-8 lg:p-12 bg-slate-50">
         {children}
       </div>
     </div>

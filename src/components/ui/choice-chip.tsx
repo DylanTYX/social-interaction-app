@@ -45,7 +45,7 @@ export function ChoiceChip({
         "inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm transition-colors",
         "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
         selected
-          ? "border-blue-500 bg-blue-50 text-blue-700"
+          ? "border-primary bg-primary-subtle text-primary-emphasis"
           : "border-border bg-background text-muted-foreground hover:bg-accent",
         className,
       )}

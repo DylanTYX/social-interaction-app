@@ -226,7 +226,7 @@ export default function LoopReportPage({
               )}
               <Link
                 href={`/simulate/report/${round.sessionId}`}
-                className="inline-block text-sm font-medium text-blue-600 hover:underline"
+                className="inline-block text-sm font-medium text-primary hover:underline"
               >
                 View full round report →
               </Link>
@@ -293,7 +293,7 @@ function ThemeList({
           <li
             key={item}
             className={`text-sm ${
-              tone === "positive" ? "text-emerald-700" : "text-slate-700"
+              tone === "positive" ? "text-success-emphasis" : "text-slate-700"
             }`}
           >
             {item}
