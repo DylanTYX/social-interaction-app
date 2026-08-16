@@ -42,9 +42,11 @@ works better.
   removed, and can be undone in one click. **Preview** shows exactly what is
   stored, so you can tell two postings for the same role apart and check what a
   tidy-up left behind.
-- **Your CV** — paste it or upload a PDF. The interviewer asks about your real
-  background and pressure-tests the claims on it, rather than inventing
-  experience you don't have.
+- **Your CV** — paste it or upload a PDF. The interviewer reads the document
+  itself, whole, and asks about your real background and pressure-tests the
+  claims on it, rather than inventing experience you don't have. **Preview**
+  shows exactly what was stored, which matters most for a PDF: extraction is
+  not always what you saw on the page.
 
 Both are saved to your library and reusable across sessions.
 
@@ -188,32 +190,36 @@ next to what you wrote, and a model answer. Drills deliberately skip the
 adapt. If you want a number, run a round.
 
 **Libraries** — saved personas, job descriptions and CVs, reusable across
-sessions. Job descriptions are searchable, filterable by company, and editable
-after saving — including the title, which is otherwise guessed from the first
-line of whatever was pasted. Deleting one says first how many interviews still
-in progress are using it; those keep running but lose their grounding.
+sessions. Both document libraries are searchable and editable after saving —
+including the title, which is otherwise guessed from the first line of whatever
+was pasted. Job descriptions are filterable by company; CVs carry a version
+label instead, since people keep one CV per kind of role and the list otherwise
+shows a guessed name and a date. Deleting either says first how many interviews
+still in progress are using it; those keep running without it.
 
 ### One library, two ways in
 
-There is a single job-description library. The setup wizard picks a document
-from it or adds one to it — it never keeps a private copy, and a job description
-is never attached to one session only. Anything you add mid-setup is saved and
-reusable, which is why the wizard says so at the point of adding.
+There is one library per document, and the same rule governs both. The setup
+wizard picks from a library or adds to it — it never keeps a private copy, and
+a document is never attached to one session only. Anything you add mid-setup is
+saved and reusable, which is why the wizard says so at the point of adding.
 
 That rule decides what can be changed and when:
 
-- **Company, title, role, link and notes** are copied into the session when it
-  launches. Editing them later is always allowed, and never disturbs an
-  interview already under way.
-- **The text** is read from the search index on every single turn. Editing it
-  re-indexes the document, so it is refused while any interview using it is
-  still in progress — otherwise the first half of that interview would be
-  grounded on one version and the second half on another, with both scored onto
-  the same report. Finish or abandon those interviews and the edit goes through.
+- **Labels** — a job description's company, role and link; a CV's version and
+  notes; the title of either — are copied into the session when it launches.
+  Editing them later is always allowed, and never disturbs an interview already
+  under way.
+- **The text** is read fresh on every single turn: a job description through its
+  search index, a CV inlined whole. Editing it is refused while any interview
+  using it is still in progress — otherwise the first half of that interview
+  would be grounded on one version and the second half on another, with both
+  scored onto the same report. Finish or abandon those interviews and the edit
+  goes through.
 
 The same reasoning is why deleting is warned about rather than silently allowed,
-and why a job description deleted mid-interview makes the session say so instead
-of carrying on as though nothing changed.
+and why a document deleted mid-interview makes the session say so instead of
+carrying on as though nothing changed.
 
 **Weekly goal** — set a target number of sessions and track your streak. Both
 count sessions you actually practised in, not ones you opened and closed.

@@ -129,19 +129,16 @@ export function FinalizeStep({
           />
           <SummaryRow
             label="CV"
-            value={(() => {
-              if (!setup.resume.enabled) return "Not used";
-              if (
-                setup.resume.mode === "saved" ||
-                setup.resume.mode === "upload"
-              ) {
-                return setup.resume.savedTitle ?? "Selected";
-              }
-              const length = setup.resume.rawText.trim().length;
-              return length > 0
-                ? `Pasted text (${length} chars)`
-                : "Pending paste";
-            })()}
+            // Same rule as the row above, and it had the same defect: this
+            // branched on `mode` and reported "Selected" for a library tab
+            // nothing had been picked from, or "Pasted text (n chars)" for a
+            // paste that no longer becomes anything — the picker saves to the
+            // library now, so a CV in play always has a title.
+            value={
+              setup.resume.enabled
+                ? (setup.resume.savedTitle ?? "None chosen")
+                : "Not used"
+            }
           />
         </CardContent>
       </Card>
