@@ -43,6 +43,24 @@ export const MAX_SCENARIO_DESCRIPTION_CHARS = 4_000;
  */
 export const MAX_SUMMARY_CHARS = 4_000;
 
+/** Minimum usable resume text length. */
+export const MIN_RESUME_CHARS = 80;
+/**
+ * The only ceiling on a CV, and the whole document up to it reaches the
+ * interviewer.
+ *
+ * Six pages, at the 4,000-extracted-characters-per-page end of the estimate.
+ * CVs are written to whole page counts and an industry candidate submits one to
+ * three, so this is roughly three times the longest real one — a backstop
+ * against a paste that is not a CV at all, not a style guide.
+ *
+ * There used to be a second, smaller ceiling: the prompt clipped at 6,000
+ * characters, which is *inside* a normal two-page CV, so ordinary documents
+ * were being cut rather than runaway ones. Two limits where the smaller one
+ * silently bit is how the interviewer came to know less than the database did.
+ */
+export const MAX_RESUME_CHARS = 24_000;
+
 /**
  * A pasted job posting. Also the ceiling on what the tidy-up endpoint will
  * send to a model, which is why it lives here rather than in the route: the two

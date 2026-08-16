@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { FileUser, Trash2, Sparkles } from "lucide-react";
+import { Eye, FileUser, Pencil, Search, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
@@ -14,36 +13,102 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
-import { useResumes } from "@/hooks/use-resumes";
+import { ResumeEditDialog } from "@/components/dashboard/resume-edit-dialog";
+import { ResumePreviewDialog } from "@/components/dashboard/resume-preview-dialog";
+import {
+  emptyResumeDraft,
+  ResumeAddForm,
+  useResumeCreator,
+  type ResumeDraft,
+} from "@/components/dashboard/resume-add-form";
+import {
+  useResumes,
+  type ResumeSummary,
+  type ResumeUsage,
+} from "@/hooks/use-resumes";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
-import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
+import { describeResumeDelete } from "@/lib/resume-copy";
+import { describeTruncationBadge } from "@/lib/document-truncation";
 import { RESUME_ACCENT } from "@/lib/document-accents";
 
 export default function ResumesPage() {
-  const { items, status, error, refresh, uploadText, uploadPdf, remove } =
-    useResumes();
+  const [query, setQuery] = useState("");
 
-  const [mode, setMode] = useState<"paste" | "upload">("paste");
+  // Debounced so a refetch does not fire on every keystroke — the same 300ms
+  // the sessions page uses. Filtering runs in Postgres, so each change is a
+  // request rather than an array pass.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const {
+    items,
+    status,
+    error,
+    refresh,
+    uploadText,
+    uploadPdf,
+    update,
+    remove,
+    countUsage,
+  } = useResumes({ query: debouncedQuery || undefined });
+
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  /**
+   * What deleting the pending CV would affect, fetched when the dialog opens.
+   *
+   * `undefined` while in flight and `null` if the request failed — the dialog
+   * distinguishes them from a real zero, because "no interviews use this" and
+   * "we could not find out" must not read the same.
+   */
+  const [pendingUsage, setPendingUsage] = useState<
+    ResumeUsage | null | undefined
+  >(undefined);
+  /**
+   * Discards a usage reply that arrives after the dialog has moved to another
+   * CV — same guard, and same reason, as the one in `useLibraryList`.
+   */
+  const usageRequestRef = useRef(0);
+
+  const openDeleteDialog = (id: string) => {
+    const requestId = usageRequestRef.current + 1;
+    usageRequestRef.current = requestId;
+    setPendingDelete(id);
+    setPendingUsage(undefined);
+    // Started on the click rather than from an effect, so it has the time the
+    // dialog spends animating in. `countUsage` never rejects — a failure
+    // resolves to null and the copy falls back to the general form.
+    void countUsage(id).then((usage) => {
+      if (usageRequestRef.current === requestId) setPendingUsage(usage);
+    });
+  };
+
   // The row being animated out. Set before the request goes out, so the
   // list responds the moment the user confirms rather than after a round trip.
   const [exitingId, setExitingId] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [pastedText, setPastedText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ResumeDraft>(emptyResumeDraft);
+  const creator = useResumeCreator({ uploadText, uploadPdf });
+  const [editing, setEditing] = useState<ResumeSummary | null>(null);
+  const [previewing, setPreviewing] = useState<ResumeSummary | null>(null);
+
+  // Read from the debounced value, not the raw input: it decides which *empty*
+  // state to show, and it must agree with the filters the list was fetched
+  // with. Keying it on `query` would flash "no matches" during the 300ms
+  // before the request that finds them has even gone out.
+  const hasFilters = debouncedQuery.trim() !== "";
 
   // `updatedAt` desc, numerically. It was `createdAt` with `localeCompare`,
   // which meant editing an entry never moved it — and personas, the sibling
-  // library page, has always sorted by `updatedAt`.
+  // library page, has always sorted by `updatedAt`. Until the PATCH route
+  // existed there was nothing that could move a row; now there is.
   const sortedItems = useMemo(
     () =>
       [...items].sort(
@@ -52,40 +117,12 @@ export default function ResumesPage() {
     [items],
   );
 
-  const handlePasteSubmit = async () => {
-    setFormError(null);
-    if (pastedText.trim().length < 80) {
-      setFormError("Paste at least 80 characters of resume text.");
-      return;
-    }
-    setSubmitting(true);
-    const created = await uploadText({
-      rawText: pastedText,
-      title: title.trim() || null,
-    });
-    setSubmitting(false);
-    if (created) {
-      setPastedText("");
-      setTitle("");
-    }
-  };
-
-  const handleUploadFile = async (file: File) => {
-    setFormError(null);
-    setSubmitting(true);
-    const created = await uploadPdf({ file, title: title.trim() || null });
-    setSubmitting(false);
-    if (created) {
-      setTitle("");
-    }
-  };
-
   return (
     <div className="p-8 space-y-8 bg-linear-to-br from-gray-50 via-white to-gray-50/50">
       <PageHeader
         eyebrow="Library"
-        title="Resumes"
-        description="Upload or paste your resume so the interviewer can ask targeted questions about your real experience and pressure-test the claims on it."
+        title="CVs"
+        description="Save the CV you're applying with, and reuse it across interviews. The interviewer reads the one you pick and asks about what's actually on it."
         icon={<FileUser className="h-6 w-6" />}
         iconColor={RESUME_ACCENT}
         actions={
@@ -102,91 +139,55 @@ export default function ResumesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileUser className="h-4 w-4 text-teal-600" />
-            Add a resume
+            Add a CV
           </CardTitle>
           <CardDescription>
-            Stored as plain text and sent to the interviewer so questions can
-            reference your background. The text is processed by OpenAI to
-            generate questions and feedback, so don&apos;t include anything you
-            wouldn&apos;t want sent to a third party.
+            Paste it or upload it as a PDF. The text is sent to OpenAI to
+            generate questions, so don&apos;t include anything you wouldn&apos;t
+            want sent to a third party.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* One accent per document, declared in `document-accents.ts`. This
-              page used to run a teal header over a purple body, so it did not
-              match its own heading, let alone the job-description page. */}
-          <div className="flex flex-wrap gap-2">
-            <ChoiceChip
-              selected={mode === "paste"}
-              onClick={() => setMode("paste")}
-            >
-              Paste text
-            </ChoiceChip>
-            <ChoiceChip
-              selected={mode === "upload"}
-              onClick={() => setMode("upload")}
-            >
-              Upload PDF
-            </ChoiceChip>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="resume-title">Label (optional)</Label>
-            <Input
-              id="resume-title"
-              placeholder="e.g. Jane Doe — 2026"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-
-          {mode === "paste" ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="paste-text">Resume text</Label>
-                <span className="text-xs text-gray-500">
-                  {pastedText.trim().length} chars
-                </span>
-              </div>
-              <Textarea
-                id="paste-text"
-                placeholder="Paste your experience, skills, education, and projects..."
-                value={pastedText}
-                onChange={(event) => setPastedText(event.target.value)}
-                className="min-h-40 resize-y"
-              />
-              <Button
-                onClick={() => void handlePasteSubmit()}
-                disabled={submitting}
-              >
-                {submitting ? "Saving..." : "Save resume"}
-              </Button>
-            </div>
-          ) : (
-            <PdfDropZone
-              onSelect={(file) => void handleUploadFile(file)}
-              busy={submitting}
-              label="Upload a PDF resume"
-              hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
-            />
-          )}
-
-          {(formError || error) && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {formError ?? error}
-            </div>
-          )}
+        <CardContent>
+          <ResumeAddForm
+            draft={draft}
+            onDraftChange={setDraft}
+            busy={creator.busy}
+            error={creator.error ?? error}
+            onSubmitText={async () => {
+              const created = await creator.submitText(draft);
+              if (created) setDraft(emptyResumeDraft());
+            }}
+            onSubmitFile={async (file) => {
+              const created = await creator.submitFile(draft, file);
+              if (created) setDraft(emptyResumeDraft());
+            }}
+          />
         </CardContent>
       </Card>
 
       <Card className="shadow-soft">
         <CardHeader>
-          <CardTitle className="text-base">Saved resumes</CardTitle>
+          <CardTitle className="text-base">Saved CVs</CardTitle>
           <CardDescription>
-            Attach any of these inside the interview setup wizard.
+            Pick any of these inside the interview setup wizard.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-4">
+          {/* Hidden until there is enough to search. A filter bar above three
+              rows is furniture. */}
+          {(items.length > 0 || hasFilters) && (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search title or version..."
+                aria-label="Search CVs"
+                className="pl-9"
+              />
+            </div>
+          )}
+
           {status === "loading" && sortedItems.length === 0 ? (
             <DocumentListSkeleton />
           ) : status === "error" ? (
@@ -195,17 +196,34 @@ export default function ResumesPage() {
             // "add your first one" state and told the user their library was
             // empty when it was actually unreachable.
             <ErrorStateCard
-              title="Couldn't load your resumes"
+              title="Couldn't load your CVs"
               description={error ?? "Something went wrong."}
               onRetry={() => void refresh()}
             />
+          ) : sortedItems.length === 0 && hasFilters ? (
+            // A distinct state from an empty library: telling someone with
+            // several saved CVs to "add their first one" because they typed a
+            // typo would be nonsense.
+            <div className="rounded-xl border border-dashed border-border p-6 text-center">
+              <p className="text-sm font-medium text-gray-800">
+                No CVs match that search
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setQuery("")}
+              >
+                Clear search
+              </Button>
+            </div>
           ) : sortedItems.length === 0 ? (
             <EmptyStateCard
               icon={<FileUser className="h-6 w-6" />}
-              // Same correction as the job-description page, for the same
-              // reason: the button sent someone with no CV to the wizard to
-              // start an interview with one, and the form that actually solves
-              // it is directly above this card.
+              // Describes the state; it does not issue instructions. The button
+              // that used to be here sent someone with no CV to the wizard to
+              // start an interview with one, while the form that actually
+              // solves it sits directly above.
               title="No saved CVs yet"
               description="Anything you add above is saved here, ready to reuse in any interview."
             />
@@ -228,16 +246,44 @@ export default function ResumesPage() {
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {item.title}
                     </p>
+                    {/* The version leads the secondary line — it is what tells
+                        two CVs for two kinds of role apart. Parts are assembled
+                        and joined rather than interpolated with separators, so
+                        a missing one does not leave a stranded "·". */}
                     <p className="text-xs text-gray-500 truncate">
-                      {formatDateTime(item.createdAt)}
+                      {[
+                        item.variant,
+                        formatDateTime(item.createdAt),
+                        describeTruncationBadge(item.truncatedFrom),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    onClick={() => setPendingDelete(item.id)}
-                    aria-label="Delete resume"
+                    onClick={() => setPreviewing(item)}
+                    aria-label={`Preview ${item.title}`}
+                  >
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => setEditing(item)}
+                    aria-label={`Edit ${item.title}`}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                    onClick={() => openDeleteDialog(item.id)}
+                    aria-label="Delete CV"
                   >
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -248,13 +294,31 @@ export default function ResumesPage() {
         </CardContent>
       </Card>
 
+      <ResumePreviewDialog
+        item={previewing}
+        onOpenChange={(open) => {
+          if (!open) setPreviewing(null);
+        }}
+      />
+
+      <ResumeEditDialog
+        item={editing}
+        onOpenChange={(open) => {
+          if (!open) setEditing(null);
+        }}
+        onSave={async (id, patch) => Boolean(await update(id, patch))}
+      />
+
       <ConfirmDeleteDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
-          if (!open) setPendingDelete(null);
+          if (!open) {
+            setPendingDelete(null);
+            setPendingUsage(undefined);
+          }
         }}
-        title="Delete this resume?"
-        description="The extracted text is removed permanently. Interviews that already used it keep their transcripts."
+        title="Delete this CV?"
+        description={describeResumeDelete(pendingUsage)}
         onConfirm={async () => {
           const targetId = pendingDelete;
           setPendingDelete(null);

@@ -69,7 +69,9 @@ const navigation = [
     icon: FileText,
   },
   {
-    name: "Resumes",
+    // "CVs", not "Resumes": the wizard card, the delete dialog and every
+    // truncation notice call it a CV, and one feature should have one name.
+    name: "CVs",
     href: "/dashboard/resumes",
     icon: FileUser,
   },
