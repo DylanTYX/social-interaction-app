@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { FileUser, Trash2, Upload, Sparkles } from "lucide-react";
+import { FileUser, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
@@ -24,12 +24,13 @@ import { useResumes } from "@/hooks/use-resumes";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
+import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
+import { RESUME_ACCENT } from "@/lib/document-accents";
 
 export default function ResumesPage() {
   const { items, status, error, refresh, uploadText, uploadPdf, remove } =
     useResumes();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"paste" | "upload">("paste");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   // The row being animated out. Set before the request goes out, so the
@@ -86,7 +87,7 @@ export default function ResumesPage() {
         title="Resumes"
         description="Upload or paste your resume so the interviewer can ask targeted questions about your real experience and pressure-test the claims on it."
         icon={<FileUser className="h-6 w-6" />}
-        iconColor="teal"
+        iconColor={RESUME_ACCENT}
         actions={
           <Button asChild>
             <Link href="/simulate/setup">
@@ -100,7 +101,7 @@ export default function ResumesPage() {
       <Card className="shadow-soft">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileUser className="h-4 w-4 text-purple-600" />
+            <FileUser className="h-4 w-4 text-teal-600" />
             Add a resume
           </CardTitle>
           <CardDescription>
@@ -111,10 +112,9 @@ export default function ResumesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* The last hand-rolled chips. These were ~34px with no
-              `aria-pressed` and no focus ring, so selection was colour-only —
-              and each page picked a different accent (purple here) that
-              matched neither its own header tile nor the other page. */}
+          {/* One accent per document, declared in `document-accents.ts`. This
+              page used to run a teal header over a purple body, so it did not
+              match its own heading, let alone the job-description page. */}
           <div className="flex flex-wrap gap-2">
             <ChoiceChip
               selected={mode === "paste"}
@@ -163,40 +163,13 @@ export default function ResumesPage() {
               </Button>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-purple-200 bg-purple-50/40 p-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) {
-                    void handleUploadFile(file);
-                  }
-                }}
-              />
-              <div className="flex flex-col items-center gap-2 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                  <Upload className="h-5 w-5" />
-                </div>
-                <p className="text-sm font-medium text-gray-800">
-                  Upload a PDF resume
-                </p>
-                <p className="text-xs text-gray-500">
-                  Image-only PDFs are not supported in this version.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={submitting}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {submitting ? "Uploading..." : "Choose PDF"}
-                </Button>
-              </div>
-            </div>
+            <PdfDropZone
+              onSelect={(file) => void handleUploadFile(file)}
+              busy={submitting}
+              accent={RESUME_ACCENT}
+              label="Upload a PDF resume"
+              hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
+            />
           )}
 
           {(formError || error) && (
@@ -249,7 +222,7 @@ export default function ResumesPage() {
                   )}
                   style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-600 shrink-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100 text-teal-600 shrink-0">
                     <FileUser className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
