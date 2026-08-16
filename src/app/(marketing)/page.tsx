@@ -95,7 +95,6 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/90 backdrop-blur-xl shadow-soft">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
@@ -216,7 +215,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
       <section id="features" className="bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-16 space-y-4 text-center">
@@ -258,7 +256,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
       <section id="how-it-works" className="py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-16 space-y-4 text-center">
@@ -293,7 +290,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Try one question */}
       <section id="demo" className="scroll-mt-20 bg-slate-50 py-24">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal className="mb-12 space-y-4 text-center">
@@ -332,7 +328,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t bg-white py-12">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">

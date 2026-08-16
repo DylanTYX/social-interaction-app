@@ -359,7 +359,6 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
 export function getPersonaConfig(nameOrAlias: string): PersonaConfig | null {
   const normalized = nameOrAlias.toLowerCase().trim();
 
-  // Direct match
   if (normalized in PRESET_PERSONAS) {
     return PRESET_PERSONAS[normalized as keyof typeof PRESET_PERSONAS];
   }

@@ -4,36 +4,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ModelAnswerResult } from "@/lib/coach-contract";
 
 /**
- * The rendered output of `/api/coach/model-answer`.
+ * The rendered output of `/api/coach/model-answer`, shared by the drills page
+ * and the report transcript's `TurnCoaching` disclosure.
  *
- * Written twice before this, near-identically: the drills page and the report
- * transcript's `TurnCoaching` disclosure. They had already diverged on palette
- * — amber-700/gray-700 against amber-800/slate-700 — which is drift with no
- * reason behind it rather than two considered choices.
- *
- * Unified on the report's values rather than splitting the difference with a
- * `tone` prop. The report renders on `bg-warning-subtle/60` and drills on
- * white; the darker rung clears AA on both, the lighter one only on white. So
- * one palette is not a compromise here, it is the correct one, and a prop would
- * be two branches earning nothing. That darker rung is now `--warning-emphasis`,
- * which is what every warning surface in the app resolves to.
- *
- * No `"use client"`: no hooks, no handlers. Both current callers are already
- * client components, and leaving this one unmarked keeps it usable from a
- * server component if a third caller ever wants it.
+ * One palette rather than a `tone` prop: the report sits on
+ * `bg-warning-subtle/60` and drills on white, and only the darker rung clears
+ * AA on both.
  */
 
-/** Shared by the labels in both this file's components. */
 const LABEL =
   "text-xs font-semibold uppercase tracking-wide text-warning-emphasis";
 const BODY = "mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-700";
 
-/**
- * The before/after pair's two panels.
- *
- * The right-hand string is lifted from the report disclosure's own container, so
- * "coaching is amber" carries across from a panel the user has already seen.
- */
 const PANEL_ORIGINAL = "rounded-xl border border-slate-200 bg-slate-50/60 p-4";
 const PANEL_REWRITE =
   "rounded-xl border border-warning-border bg-warning-subtle/60 p-4";
@@ -41,25 +23,19 @@ const PANEL_REWRITE =
 /**
  * Two columns once the *container* is wide, not the viewport.
  *
- * This distinction is load-bearing. In the report, this component renders inside
- * `w-full max-w-2xl` — a ~640px box that sits on a viewport wide enough to
- * satisfy any `md:` or `lg:` query, so a viewport breakpoint would split a
- * 640px box into two 300px columns. Container queries are core in Tailwind v4
- * and `card.tsx` already uses a named one.
- *
- * `@3xl` (768px) rather than `@2xl` (672px): at `@2xl` a ~1100px viewport
- * produces ~350px columns, roughly 50 characters, which is too narrow to read
- * two passages side by side. `@3xl` keeps every two-column instance at ≥376px.
+ * In the report this renders inside `max-w-2xl` — a ~640px box on a viewport
+ * wide enough to satisfy any `md:` query, so a viewport breakpoint would split
+ * it into two 300px columns. `@3xl` rather than `@2xl` keeps every two-column
+ * instance at ≥376px, since ~350px is too narrow to read two passages side by
+ * side.
  */
 const COMPARE_GRID = "grid gap-4 @3xl/coaching:grid-cols-2";
 
 /**
- * `h3` rather than `p` for the section labels, for the reason `CardTitle`
- * already argues: these pages had almost no headings, so a screen-reader user
- * jumping by heading got the page title and then nothing. Both call sites render
- * this under an `h2` (`CardTitle`), so `h3` is the right level and skips none.
- * Preflight resets it to inherited size and weight, and both classes here are
- * explicit, so it is a visual no-op.
+ * `h3` for the reason `CardTitle` already argues: these pages had almost no
+ * headings, so a screen-reader user jumping by heading got the page title and
+ * nothing else. Both call sites render this under an `h2`, so the level skips
+ * none. Visually a no-op.
  */
 function SectionLabel({
   children,
@@ -114,12 +90,9 @@ export function CoachingResult({
 
       {result.rewrite &&
         (compare ? (
-          // Original first in source order, so before → after reads correctly
-          // both across at `@3xl` and down below it.
-          //
-          // Grid stretch is wanted here and is not the bug this component was
-          // built to fix: these two panels hold the same text twice, once as
-          // written and once tightened, so their heights track each other.
+          // Original first, so before → after reads correctly across at
+          // `@3xl` and down below it. Grid stretch is wanted: both panels hold
+          // the same text, so their heights track.
           <section className={COMPARE_GRID}>
             <div className={PANEL_ORIGINAL}>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -150,13 +123,9 @@ export function CoachingResult({
 }
 
 /**
- * The loading placeholder for `CoachingResult`.
- *
- * Deliberately in the same file as the thing it stands in for. The version this
- * replaces was four generic bars that looked nothing like what arrived, so the
- * skeleton→result swap reflowed the page every time. Reproducing the real
- * structure — including the pair and its container query — means the swap is a
- * fill, not a jump.
+ * Kept beside `CoachingResult` so it cannot drift from it. The four generic
+ * bars this replaces looked nothing like what arrived, so every swap reflowed
+ * the page.
  */
 export function CoachingResultSkeleton({
   compare = true,

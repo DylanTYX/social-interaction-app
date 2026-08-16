@@ -1,5 +1,5 @@
 /**
- * Coaching quality harness.
+ * Coaching quality harness. Full method and limitations: `docs/COACHING.md`.
  *
  *   npm run eval:coach                    # deterministic only, free, offline
  *   npm run eval:coach -- --live          # + coach and analyzer calls
@@ -7,59 +7,25 @@
  *   npm run eval:coach -- --live --only=hr
  *   npm run eval:coach -- --live --json
  *
- * Answers the question `docs/EVALUATION.md` has always declined to: **is the
- * coaching any good?** Until now that document ended its scope list with "not
- * the coach", and the coach was the only LLM call in the app graded against
- * nothing — one sentence of rubric guidance with two branches covering six
- * round types, no score, no baseline, no harness.
- *
- * ---
- *
- * **The load-bearing idea.** Coaching output is prose, so there is no band to
- * compare it against the way `run-eval.ts` compares a score. The strongest move
- * available is to make the coach's own output an input to a scorer that was
- * validated independently and earlier: `analyzeResponse`, measured at 88.9%
- * band accuracy and 41.0 separation against a 13.0 keyword baseline. So
+ * Coaching is prose, so there is no band to compare against the way
+ * `run-eval.ts` compares a score. Instead the coach's output becomes an input
+ * to a scorer validated earlier and separately:
  *
  *     uplift = analyzer(rewrite) − analyzer(original), paired per fixture
  *
- * A coach that does not raise the score is not coaching, and this number can
- * come back at zero or negative. That is the property that makes it worth
- * reporting.
+ * The null model is the *identity coach* — a rewrite that changes nothing
+ * scores zero uplift by construction — so scoring the original N times is both
+ * the "before" arm and the analyzer's noise floor. Uplift below that floor
+ * means nothing.
  *
- * **The null model is not a constant.** It is the *identity coach*: a coach
- * whose rewrite is the candidate's answer unchanged has an uplift of exactly
- * zero by construction. Scoring the original N times therefore *is* the control
- * arm, and the standard deviation of those scores is the analyzer's test-retest
- * noise floor. Uplift only counts for anything if it clears that floor. The
- * second control is `scoreAnswerHeuristically().tips` — a regex that also emits
- * tips — which is the null model for the tips claim, exactly as
- * `answer-heuristics.ts` is the control baseline in `run-eval.ts`.
+ * **The judge is not independent.** It scores against the same rubric string
+ * the coach is instructed with, and shares the leniency toward fluent-but-wrong
+ * answers that `docs/EVALUATION.md` records. That is why the word-count and
+ * correlation rows sit in the headline: read uplift beside them, never alone.
  *
- * ---
- *
- * **This judge is not independent, and the report must say so.** Two ways:
- *
- *   1. **Shared rubric.** The coach is instructed against
- *      `ROUND_TYPE_SPECS[t].rubric` and the analyzer scores against
- *      `ROUND_RUBRIC_LABELS[t]` — literally the same string. Uplift therefore
- *      measures instruction-following against a shared rubric, not pedagogical
- *      value to a human being.
- *   2. **Shared blind spot.** `docs/EVALUATION.md` records that this analyzer
- *      is lenient toward fluent, confident, wrong answers — `tech-weak-code` at
- *      [50, 50, 55] and `design-weak` at [55, 55, 55] against a `weak` ceiling
- *      of 45. A coach that makes an answer more fluent moves exactly the
- *      dimension the analyzer over-weights.
- *
- * That is why the word-count and correlation rows sit in the headline block
- * rather than an appendix, and why `--sheet` exists. Read uplift next to them,
- * never alone.
- *
- * Hits the real OpenAI API on `--live`, so it costs money and needs
- * OPENAI_API_KEY. The `UsageCollector` is deliberately never flushed: these are
- * synthetic fixtures, and writing them to `llm_usage` would contaminate the
- * per-session figures `run-cost-report.ts` reads. Same choice `run-eval.ts`
- * makes for the same reason.
+ * `--live` costs money and needs OPENAI_API_KEY. The `UsageCollector` is
+ * deliberately never flushed — these are synthetic fixtures, and writing them
+ * to `llm_usage` would contaminate the figures `run-cost-report.ts` reads.
  */
 
 import {
@@ -262,7 +228,9 @@ function deterministicReport(json: boolean) {
   console.log(
     "\nRubric coverage — criteria from ROUND_TYPE_SPECS.rubric named in the prompt",
   );
-  console.log("  (the criteria the analyzer will actually score the answer on)");
+  console.log(
+    "  (the criteria the analyzer will actually score the answer on)",
+  );
   console.log("");
   for (let i = 0; i < coverage.length; i += 1) {
     const now = coverage[i];
@@ -414,7 +382,13 @@ async function evaluateFixture(
   const originals: Scored[] = [];
   for (let i = 0; i < runs; i += 1) {
     originals.push(
-      await score(fixture.answer, fixture.question, fixture.roundType, apiKey, usage),
+      await score(
+        fixture.answer,
+        fixture.question,
+        fixture.roundType,
+        apiKey,
+        usage,
+      ),
     );
   }
   const originalScores = originals.map((o) => o.score);
@@ -432,23 +406,32 @@ async function evaluateFixture(
   const { rewrite, modelAnswer, tips } = coached.result;
 
   const rewriteScore = rewrite
-    ? (await score(rewrite, fixture.question, fixture.roundType, apiKey, usage)).score
+    ? (await score(rewrite, fixture.question, fixture.roundType, apiKey, usage))
+        .score
     : Number.NaN;
   const modelAnswerScore = modelAnswer
-    ? (await score(modelAnswer, fixture.question, fixture.roundType, apiKey, usage))
-        .score
+    ? (
+        await score(
+          modelAnswer,
+          fixture.question,
+          fixture.roundType,
+          apiKey,
+          usage,
+        )
+      ).score
     : Number.NaN;
 
   // Fact retention. `checkableFacts` is hand-authored ground truth where it
   // exists; otherwise fall back to the extractor, and say so in the report by
   // reporting `factsExpected` alongside.
-  const expected =
-    fixture.checkableFacts ?? extractQuantities(fixture.answer);
+  const expected = fixture.checkableFacts ?? extractQuantities(fixture.answer);
   const retained = rewrite
     ? expected.filter((fact) => retainsFact(rewrite, fact))
     : [];
 
-  const originalQuantities = extractQuantities(fixture.answer).map(normaliseFact);
+  const originalQuantities = extractQuantities(fixture.answer).map(
+    normaliseFact,
+  );
   const novelQuantities = rewrite
     ? extractQuantities(rewrite).filter(
         (q) => !originalQuantities.some((o) => o.includes(normaliseFact(q))),
@@ -463,7 +446,8 @@ async function evaluateFixture(
       apiKey,
       usage,
     );
-    unsupportedClaims = typeof verdict.count === "number" ? verdict.count : Number.NaN;
+    unsupportedClaims =
+      typeof verdict.count === "number" ? verdict.count : Number.NaN;
   }
 
   // Tip-gap coverage, presented blind. Which set is the coach's is decided by
@@ -526,9 +510,8 @@ async function evaluateFixture(
  * calls is not a sample and the limitations section says so.
  */
 async function rubricRecovery(apiKey: string, usage: UsageCollector) {
-  const { HELD_CONSTANT_ANSWER, HELD_CONSTANT_QUESTION } = await import(
-    "@/eval/coach-fixtures"
-  );
+  const { HELD_CONSTANT_ANSWER, HELD_CONSTANT_QUESTION } =
+    await import("@/eval/coach-fixtures");
 
   const outcomes: { intended: string; recovered: string }[] = [];
 
@@ -603,14 +586,20 @@ async function liveReport(
   // to clear before it means anything.
   const noiseFloor = mean(usable.map((o) => stdDev(o.originalScores)));
 
-  const byBand = (["weak", "mediocre", "strong"] as QualityBand[]).map((band) => {
-    const rows = usable.filter((o) => o.band === band);
-    return { band, n: rows.length, uplift: mean(rows.map((o) => o.uplift)) };
-  });
+  const byBand = (["weak", "mediocre", "strong"] as QualityBand[]).map(
+    (band) => {
+      const rows = usable.filter((o) => o.band === band);
+      return { band, n: rows.length, uplift: mean(rows.map((o) => o.uplift)) };
+    },
+  );
 
   const byRound = ROUND_TYPES.map((roundType) => {
     const rows = usable.filter((o) => o.roundType === roundType);
-    return { roundType, n: rows.length, uplift: mean(rows.map((o) => o.uplift)) };
+    return {
+      roundType,
+      n: rows.length,
+      uplift: mean(rows.map((o) => o.uplift)),
+    };
   }).filter((r) => r.n > 0);
 
   const wordDeltas = usable.map((o) => o.rewriteWords - o.originalWords);
@@ -623,7 +612,9 @@ async function liveReport(
   ).length;
 
   const modelStrong = outcomes.filter(
-    (o) => Number.isFinite(o.modelAnswerScore) && bandForScore(o.modelAnswerScore) === "strong",
+    (o) =>
+      Number.isFinite(o.modelAnswerScore) &&
+      bandForScore(o.modelAnswerScore) === "strong",
   ).length;
 
   const factsExpected = outcomes.reduce((s, o) => s + o.factsExpected, 0);
@@ -650,7 +641,8 @@ async function liveReport(
     factRetention: factsExpected ? factsRetained / factsExpected : Number.NaN,
     novelPerRewrite: mean(outcomes.map((o) => o.novelQuantities.length)),
     unsupportedRate:
-      outcomes.filter((o) => o.unsupportedClaims > 0).length / (outcomes.length || 1),
+      outcomes.filter((o) => o.unsupportedClaims > 0).length /
+      (outcomes.length || 1),
     coachGapCoverage: mean(
       outcomes.map((o) => o.coachGapCoverage).filter(Number.isFinite),
     ),
@@ -688,7 +680,9 @@ async function liveReport(
   console.log(
     `    improved                        ${improved} of ${uplifts.length} fixtures   (exact sign test p = ${num(p, 4)})`,
   );
-  console.log(`    effect size (Cohen's d_z)       ${num(summary.cohensDz, 2)}`);
+  console.log(
+    `    effect size (Cohen's d_z)       ${num(summary.cohensDz, 2)}`,
+  );
   console.log(
     `  Analyzer noise floor              ±${num(noiseFloor, 2)} sd on identical text` +
       (noiseFloor > 0
@@ -704,7 +698,9 @@ async function liveReport(
 
   console.log("\n--- uplift by band (the ceiling check) ---");
   for (const row of byBand) {
-    const bars = Number.isFinite(row.uplift) ? Math.max(0, Math.round(row.uplift)) : 0;
+    const bars = Number.isFinite(row.uplift)
+      ? Math.max(0, Math.round(row.uplift))
+      : 0;
     console.log(
       `  ${row.band.padEnd(10)} (n=${row.n})   ${signed(row.uplift).padStart(6)}   ${"#".repeat(Math.min(bars, 40))}`,
     );
@@ -839,14 +835,18 @@ async function main() {
       console.log(
         `  rubric recovered from coaching    ${recovered.correct} of ${recovered.total}      (chance 1 of ${ROUND_TYPES.length})`,
       );
-      for (const o of recovered.outcomes.filter((o) => o.intended !== o.recovered)) {
+      for (const o of recovered.outcomes.filter(
+        (o) => o.intended !== o.recovered,
+      )) {
         console.log(`    ${o.intended} -> ${o.recovered}`);
       }
     }
   }
 
   if (json) {
-    console.log(JSON.stringify({ deterministic, ...live_, recovered }, null, 2));
+    console.log(
+      JSON.stringify({ deterministic, ...live_, recovered }, null, 2),
+    );
   }
 }
 

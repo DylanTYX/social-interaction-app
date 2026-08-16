@@ -155,7 +155,6 @@ export function OnboardingTour() {
         <div className="absolute inset-0 bg-slate-900/55" />
       )}
 
-      {/* Tooltip card */}
       <div
         className="absolute rounded-xl border border-slate-200 bg-white p-4 shadow-soft-lg"
         style={{ top: tooltipTop, left: tooltipLeft, width: tooltipWidth }}

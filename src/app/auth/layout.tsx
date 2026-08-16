@@ -25,7 +25,6 @@ export default function AuthLayout({
         </div>
 
         <div className="relative z-10 max-w-md space-y-8 text-white">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center transition-transform group-hover:scale-105">
               <MessageSquare className="h-7 w-7" strokeWidth={2.5} />
@@ -35,7 +34,6 @@ export default function AuthLayout({
             </span>
           </Link>
 
-          {/* Headline */}
           <div className="space-y-4">
             <h1 className="text-4xl font-bold leading-tight">
               Master Cross-Cultural Communication
@@ -46,7 +44,6 @@ export default function AuthLayout({
             </p>
           </div>
 
-          {/* Benefits */}
           <div className="space-y-4 pt-4">
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center flex-shrink-0">

@@ -15,9 +15,7 @@ import type { PracticeMode } from "@/lib/interview-setup";
  * listing marketing-flavoured highlights. Collapsing it to a chip row fixed
  * that, but overcorrected — each mode was left with four words on a 32px pill.
  *
- * So the shape is back and the reasons it was cut are not. No gradients: the
- * accent tiles come from `TILE_COLORS`, the same per-section system the rest of
- * the app uses, and "selected" is the blue border the persona cards already use.
+ * So the shape is back and the reasons it was cut are not.
  *
  * More to the point, the three lines under each mode are **consequences**, not
  * features, and every one of them is currently invisible in the UI:

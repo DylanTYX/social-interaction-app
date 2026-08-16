@@ -241,8 +241,6 @@ export function LoopStep({
         </div>
       )}
 
-      {/* 24px. They used to be 12px apart — closer together than the 16px
-          separating two fields inside one of them. */}
       <div className="space-y-6">
         {rounds.map((round, index) => (
           <RoundCard
@@ -360,11 +358,6 @@ function RoundCard({
           shape (length) wedged between, and because it was a single
           `sm:grid-cols-2`, Title sat beside Type on desktop but beside Length
           on mobile — the grouping was a side-effect of the column count. */}
-      {/* 32px between sections, 24px between fields, 8px inside a field. The
-          three ratios used to be 24 / 16 / 8 with the `h4` sitting in the same
-          `space-y-4` as the fields — so a heading was bound no more tightly to
-          the group it named than the fields were to each other, and the whole
-          card read as one column of evenly-spaced lines. */}
       <CardContent className="space-y-8">
         <FieldSection title="What kind of round">
           <div className="grid gap-6 sm:grid-cols-2">
@@ -375,8 +368,6 @@ function RoundCard({
                 // The rubric was one grey comma-joined sentence, which read as
                 // filler. The same words as chips are scannable, and they are
                 // the actual criteria the analyzer scores against. As the
-                // field's hint they sit 6px below the Select rather than the
-                // 8px that separates the Select from its own label.
                 <div className="flex flex-wrap gap-1.5">
                   {rubricCriteria(round.type).map((criterion) => (
                     <Badge
@@ -462,8 +453,6 @@ function RoundCard({
               </span>
             }
           >
-            {/* Boxed to 36px so the slider shares a baseline with the inputs
-                above it — a bare range is ~19px tall. */}
             <div className="flex h-9 items-center">
               <input
                 id={ids.length}

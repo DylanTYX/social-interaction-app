@@ -28,24 +28,11 @@ import type { UseResumes } from "@/hooks/use-resumes";
  * heading above the actual textarea. The first one looked broken because it
  * was labelling a box, not asking anything.
  *
- * Spacing follows the wizard's scale: 8px inside a field, 24px between fields,
- * 32px between concerns. The two document pickers used to share one "Documents"
- * card 16px apart — the same 16px that separated a textarea from a chip row one
- * card above — so two multi-field subsystems read as a single list. They are one
- * card each now, and each card's header *is* its on/off row, which removes the
- * bordered strip that made an enabled picker a box inside a box inside a card.
- *
- * The four cards are 32px apart, the scale's between-concerns value, because
- * that is what they are: how you answer, what the role is, the job description,
- * the resume. Two of them are large multi-field subsystems, and at the 24px the
- * other steps use between their cards these ran together.
- *
- * That gap lives on a root element here rather than being inherited from the
- * step container, which is how the other three steps already work. This one was
- * the exception — it returned a fragment and took whatever the parent gave it —
- * and it broke the moment anything was inserted between the two: the step
- * transition wrapper became the container's only child, and the cards collapsed
- * to no gap at all.
+ * The gap between cards lives on a root element here rather than being
+ * inherited from the step container. This step used to return a fragment and
+ * take whatever the parent gave it, which broke the moment anything was
+ * inserted between the two: the transition wrapper became the container's only
+ * child and the cards collapsed to no gap at all.
  */
 
 export function ContextStep({
@@ -94,9 +81,6 @@ export function ContextStep({
         <CardHeader>
           <CardTitle className="text-base">Describe the role</CardTitle>
         </CardHeader>
-        {/* 24px between the two, not 16. The brief and the quick-starts are
-            separate moves — write your own, or take a template — and at 16px
-            the chip row read as a continuation of the counter above it. */}
         <CardContent className="space-y-6">
           <Field
             label="What are you preparing for?"

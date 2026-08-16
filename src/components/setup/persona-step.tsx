@@ -204,12 +204,7 @@ export function PersonaStep({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {isLoading && sortedLibrary.length === 0
                 ? [0, 1, 2, 3, 4, 5].map((index) => (
-                    <Skeleton
-                      key={index}
-                      // 288px, roughly a real card. This was `h-24` (96px), so
-                      // the step jumped hard when the library resolved.
-                      className="h-72 bg-muted"
-                    />
+                    <Skeleton key={index} className="h-72 bg-muted" />
                   ))
                 : null}
               {sortedLibrary.map((entry) => {
@@ -222,26 +217,14 @@ export function PersonaStep({
                     key={entry.id}
                     className={cn(
                       "group relative flex flex-col gap-4 rounded-lg border p-4 text-left transition-all duration-200",
-                      // A ring as well as a border colour. Across two rows of
-                      // six, a 1px colour swap is easy to miss; the ring reads
-                      // from across a room, which matters when this is on a
-                      // projector.
                       isActive
                         ? "border-primary bg-primary-subtle ring-2 ring-primary/20"
                         : "border-border hover:border-primary-border hover:bg-accent",
                     )}
                   >
-                    {/* Grouped, then spaced. This was six blocks at one flat
-                      6px pitch — avatar row, badges, summary, traits, dislikes,
-                      dials — so the card ran together as a single paragraph in
-                      exactly the way the wizard's fields used to. Now three
-                      groups 12px apart, tight within each. */}
                     <button
                       type="button"
                       onClick={() => handlePickEntry(entry)}
-                      // 16px between sections against 8px inside one — the same
-                      // 2:1 the rest of the wizard uses at field scale. At 12px
-                      // the four blocks still read as one column of lines.
                       className="flex h-full flex-col gap-4 text-left"
                     >
                       {/* Identity: every fact about *who they are*, in one
@@ -483,11 +466,6 @@ export function PersonaStep({
             </div>
           </CardAction>
         </CardHeader>
-        {/* 32px between the two field groups. It used to be `mt-4` = 16px —
-            the exact same 16px as `gap-4` *inside* each group, so the boundary
-            between "who they are" and "how they interview" was numerically
-            identical to the boundary between two adjacent inputs. (The `mt-4`
-            was also a no-op: it collapsed against the parent's existing 16px.) */}
         <CardContent className="space-y-8">
           {showSaveAsNew && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted p-3">
@@ -521,8 +499,6 @@ export function PersonaStep({
           {/* These eight fields were two unlabelled grids. Every `Label` here
               was also unwired — no `htmlFor`, no `id` — so clicking a label did
               nothing and a screen reader announced eight bare inputs. */}
-          {/* Four across at `lg`. At the full 910px, `sm:grid-cols-2` would give
-              a 440px input for "Nationality". */}
           <FieldSection title="Who they are">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <Field label="Display name" htmlFor="persona-name">
@@ -569,9 +545,6 @@ export function PersonaStep({
           <FieldSection title="How they interview">
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <Field
-                // 3 of 4: it carries the style description as its hint and
-                // needs the room. Years of experience takes the last column —
-                // a number input has no business being 440px wide.
                 className="lg:col-span-3"
                 label="Communication style"
                 htmlFor="persona-style"

@@ -99,7 +99,6 @@ export function GoalsCard({
   return (
     <Card className="border border-slate-200/80 shadow-soft">
       <CardContent className="p-6">
-        {/* Header */}
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
@@ -118,7 +117,6 @@ export function GoalsCard({
         </div>
 
         <div className="grid gap-3">
-          {/* Weekly goal */}
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-5 text-center">
             <ProgressRing value={progress.thisWeek} max={effectiveGoal}>
               <span className="text-xl font-bold text-slate-900">
@@ -158,7 +156,6 @@ export function GoalsCard({
             </div>
           </div>
 
-          {/* Streak */}
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-5 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
               <Flame className="h-7 w-7" />
@@ -174,7 +171,6 @@ export function GoalsCard({
             </p>
           </div>
 
-          {/* Badges */}
           <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
             <div className="mb-3 flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
