@@ -1,13 +1,17 @@
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
-import { parseBoundedString, parseUuid } from "@/lib/api/query";
+import {
+  parseBoundedString,
+  parseUuid,
+  readOptionalString,
+} from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   deleteJobDescription,
   getJobDescription,
-  JobDescriptionInUseError,
   updateJobDescription,
 } from "@/lib/db/job-descriptions";
+import { DocumentInUseError } from "@/lib/db/document-in-use";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { readJsonBody } from "@/lib/api/read-json";
@@ -58,29 +62,6 @@ const MAX_FIELD_CHARS = {
   notes: 2000,
 };
 const MAX_URL_CHARS = 2000;
-
-function readOptionalString(
-  body: Record<string, unknown>,
-  key: string,
-  maxChars: number,
-): string | null | undefined {
-  // Absent means "leave alone"; null or "" means "clear". They have to stay
-  // distinguishable all the way down to the update payload, or a dialog that
-  // only edits the title would blank every other field.
-  if (!(key in body)) return undefined;
-  const value = body[key];
-  if (value === null || value === "") return null;
-  if (typeof value !== "string") {
-    throw new ClientVisibleError(`${key} must be a string.`, 400);
-  }
-  if (value.length > maxChars) {
-    throw new ClientVisibleError(
-      `${key} must be ${maxChars} characters or fewer.`,
-      400,
-    );
-  }
-  return value;
-}
 
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
@@ -238,7 +219,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     // 409 rather than 500: the request was well-formed and the server is fine.
     // The state of the world simply says no, and the count is the actionable
     // part of that.
-    if (error instanceof JobDescriptionInUseError) {
+    if (error instanceof DocumentInUseError) {
       return NextResponse.json(
         { error: error.message, inProgress: error.inProgress },
         { status: 409 },

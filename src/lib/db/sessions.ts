@@ -271,10 +271,40 @@ export async function countSessionsForJobDescription(
   jobDescriptionId: string,
   options: { status?: SessionStatus } = {},
 ): Promise<number> {
+  return countSessionsForDocument(
+    supabase,
+    "job_description_id",
+    jobDescriptionId,
+    options,
+  );
+}
+
+/**
+ * The same count for a CV, backed by `sessions_resume_idx` (migration 0004).
+ *
+ * The CV needs it for two things: the same delete warning, and the refusal in
+ * `updateResume` — the interviewer re-reads the stored text on every turn, so
+ * an edit mid-interview is not merely confusing, it changes the document the
+ * candidate is being questioned on while they are answering.
+ */
+export async function countSessionsForResume(
+  supabase: SupabaseClient,
+  resumeId: string,
+  options: { status?: SessionStatus } = {},
+): Promise<number> {
+  return countSessionsForDocument(supabase, "resume_id", resumeId, options);
+}
+
+async function countSessionsForDocument(
+  supabase: SupabaseClient,
+  column: "job_description_id" | "resume_id",
+  id: string,
+  options: { status?: SessionStatus },
+): Promise<number> {
   let request = supabase
     .from("interview_sessions")
     .select("id", { count: "exact", head: true })
-    .eq("job_description_id", jobDescriptionId);
+    .eq(column, id);
 
   if (options.status) request = request.eq("status", options.status);
 

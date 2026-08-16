@@ -23,7 +23,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 20, max: 50 });
 
-    const resumes = await listResumes(supabase, { limit });
+    const resumes = await listResumes(supabase, {
+      limit,
+      query: searchParams.get("query")?.slice(0, 200) ?? undefined,
+    });
     return NextResponse.json({ resumes });
   } catch (error) {
     return handleRouteError("GET /api/resumes", error);

@@ -122,3 +122,35 @@ export function parseBoundedString(
 
   return trimmed;
 }
+
+/**
+ * One field of a PATCH body, keeping "absent" and "cleared" distinct.
+ *
+ * `undefined` means the key was not sent and the column must be left alone;
+ * `null` means the user cleared it. Collapsing the two is how a dialog that
+ * edits only the title comes to blank every other field, so the distinction is
+ * carried all the way down to the update payload rather than normalised away
+ * here.
+ *
+ * Throws rather than ignoring a wrong type: a no-op that answers 200 is the
+ * worst of the available answers, because the client believes the edit landed.
+ */
+export function readOptionalString(
+  body: Record<string, unknown>,
+  key: string,
+  maxChars: number,
+): string | null | undefined {
+  if (!(key in body)) return undefined;
+  const value = body[key];
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new ClientVisibleError(`${key} must be a string.`, 400);
+  }
+  if (value.length > maxChars) {
+    throw new ClientVisibleError(
+      `${key} must be ${maxChars} characters or fewer.`,
+      400,
+    );
+  }
+  return value;
+}
