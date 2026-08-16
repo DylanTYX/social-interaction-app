@@ -99,10 +99,12 @@ const COMMANDS: Command[] = [
   },
   {
     id: "resumes",
-    label: "Resumes",
+    label: "CVs",
     icon: FileUser,
     href: "/dashboard/resumes",
-    keywords: "cv upload experience",
+    // "resume" stays in the keywords: the name changed, the word people search
+    // for did not.
+    keywords: "cv resume upload experience",
   },
   {
     id: "help",

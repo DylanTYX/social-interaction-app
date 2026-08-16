@@ -13,7 +13,7 @@
 | Item             | What to do                                                                                                             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | App URL          | Use your deployed URL **or** `http://localhost:3000` if testing locally                                                |
-| Backend          | Supabase project running; migrations applied (`0001`–`0009`, including resumes, the atomic-turn RPC and turn analyses) |
+| Backend          | Supabase project running; migrations applied (`0001`–`0015`, including resumes, the atomic-turn RPC, turn analyses and document metadata) |
 | AI               | OpenAI (or configured provider) API keys set in server env                                                             |
 | Voice (optional) | Azure Speech credentials if testing voice interviews                                                                   |
 | Test accounts    | Create **2–3 separate accounts** (e.g. `tester1@…`, `tester2@…`) so testers don’t overwrite each other’s data          |
@@ -57,7 +57,7 @@ Use the template in **Section 6** (copy into Notes, WhatsApp, or a shared doc).
 | Sessions history           | `/dashboard/sessions`                             | Yes                  |
 | Personas                   | `/dashboard/personas`                             | Yes                  |
 | Job descriptions library   | `/dashboard/job-descriptions`                     | Yes                  |
-| Resumes library            | `/dashboard/resumes`                              | Yes                  |
+| CV library                 | `/dashboard/resumes`                              | Yes                  |
 | Analytics                  | `/dashboard/analytics`                            | Yes                  |
 | Tips & guides              | `/dashboard/help`                                 | Yes                  |
 | Settings                   | `/dashboard/settings`                             | Yes                  |
@@ -118,9 +118,11 @@ _One tester, one fresh account._
 | I3  | Persona                  | Pick or customize persona         | Persona name/style affects tone (subjective) | ☐     |       |
 | I4  | Job description — paste  | Paste JD text in setup            | Questions feel role-aware (subjective)       | ☐     |       |
 | I5  | Job description — saved  | Select saved JD from library      | No duplicate upload needed                   | ☐     |       |
-| I6  | Resume — paste           | Paste resume text                 | Launch succeeds                              | ☐     |       |
-| I7  | Resume — PDF             | Upload text-based PDF resume      | Text extracted; launch succeeds              | ☐     |       |
-| I8  | Resume — bad PDF         | Scanned/image-only PDF            | Clear error; paste fallback suggested        | ☐     |       |
+| I6  | CV — add in wizard       | **Add a CV** → paste → Save and use | Saved to the library *and* selected; no duplicate row on a second launch | ☐     |       |
+| I7  | CV — PDF                 | Upload text-based PDF CV          | Text extracted; launch succeeds              | ☐     |       |
+| I8  | CV — bad PDF             | Scanned/image-only PDF            | Clear error; paste fallback suggested        | ☐     |       |
+| I8b | CV — deleted underneath  | Pick a CV, delete it in the library, return | Warning in the card and Continue blocked — never a 500 at launch | ☐     |       |
+| I8c | CV — over-length         | Paste more than 24,000 characters | Saved with a notice naming what was dropped; the library row keeps saying so | ☐     |       |
 | I9  | Interview loop           | Multi-round loop if exposed in UI | Report offers “next round” when applicable   | ☐     |       |
 | I10 | Back / refresh mid-setup | Browser back during wizard        | No corrupted state; can restart              | ☐     |       |
 
@@ -171,7 +173,9 @@ _One tester, one fresh account._
 | L1  | Personas CRUD       | Create / edit / delete custom persona | Persists after reload                                                    | ☐     |       |
 | L2  | Job descriptions    | Paste + save; list shows entry        | Usable in setup picker                                                   | ☐     |       |
 | L3  | Job description PDF | Upload valid PDF                      | Extracted; appears in list                                               | ☐     |       |
-| L4  | Resumes             | Paste + save; delete                  | Usable in setup picker                                                   | ☐     |       |
+| L4  | CVs                 | Paste + save; edit; delete            | Usable in the setup picker; edits move the row to the top                | ☐     |       |
+| L4b | CV edit refused     | Start a session with a CV, leave it mid-way, edit that CV's text | Refused, naming how many interviews are in the way; renaming it still works | ☐     |       |
+| L4c | CV delete warning   | Delete a CV used by an unfinished session | Dialog says how many in-progress interviews carry on without it          | ☐     |       |
 | L5  | Quick drills        | Open drills → complete one question   | Feedback shown; return to list                                           | ☐     |       |
 | L6  | Sessions list       | Open past session from list           | Correct report or resume path                                            | ☐     |       |
 | L7  | Analytics           | After 2+ sessions                     | Charts/stats populate                                                    | ☐     |       |

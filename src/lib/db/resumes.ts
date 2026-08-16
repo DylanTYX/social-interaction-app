@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DocumentInUseError } from "@/lib/db/document-in-use";
 import { countSessionsForResume } from "@/lib/db/sessions";
+import { MAX_RESUME_CHARS, MIN_RESUME_CHARS } from "@/lib/api/input-limits";
+
+export { MAX_RESUME_CHARS, MIN_RESUME_CHARS };
 
 export interface ResumeRecord {
   id: string;
@@ -63,24 +66,6 @@ function rowToResume(row: ResumeRow): ResumeRecord {
     updatedAt: row.updated_at,
   };
 }
-
-/** Minimum usable resume text length. */
-export const MIN_RESUME_CHARS = 80;
-/**
- * The only ceiling on a CV, and the whole document up to it reaches the
- * interviewer.
- *
- * Six pages, at the 4,000-extracted-characters-per-page end of the estimate.
- * CVs are written to whole page counts and an industry candidate submits one to
- * three, so this is roughly three times the longest real one — a backstop
- * against a paste that is not a CV at all, not a style guide.
- *
- * There used to be a second, smaller ceiling: the prompt clipped at 6,000
- * characters, which is *inside* a normal two-page CV, so ordinary documents
- * were being cut rather than runaway ones. Two limits where the smaller one
- * silently bit is how the interviewer came to know less than the database did.
- */
-export const MAX_RESUME_CHARS = 24_000;
 
 /**
  * Derive a friendly title from the resume text — typically the candidate's
