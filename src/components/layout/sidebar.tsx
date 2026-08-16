@@ -69,13 +69,8 @@ const navigation = [
     icon: FileText,
   },
   {
-    // "Resumes" everywhere — the wizard card, the delete dialog and every
-    // truncation notice — because one feature should have one name.
-    //
-    // This read "CVs" for a while, which was wrong twice over: it disagreed
-    // with the rest of the app, and a CV is not a resume. A CV is the long
-    // academic record; a resume is the short targeted one. What the
-    // interviewer is built to read is the latter.
+    // Not "CVs". A CV is the long academic record; a resume is the short
+    // targeted one, and the short one is what this app asks for.
     name: "Resumes",
     href: "/dashboard/resumes",
     icon: FileUser,
@@ -100,11 +95,7 @@ const bottomNavigation = [
   },
 ];
 
-/**
- * Sidebar collapse toggle button
- * Positioned at the vertical center of the sidebar edge for maximum discoverability
- * Uses semantic panel icons instead of chevrons for clearer intent
- */
+/** Panel icons rather than chevrons, which read as "scroll" rather than "collapse". */
 function CollapseToggle({
   isCollapsed,
   onToggle,
@@ -122,20 +113,13 @@ function CollapseToggle({
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!isCollapsed}
           className={cn(
-            // Positioning: vertically centered on sidebar edge
             "absolute -right-3 top-1/2 -translate-y-1/2 z-20",
-            // Size and shape
             "h-6 w-6 rounded-full",
-            // Visual style
             "bg-white border border-slate-200 shadow-soft",
-            // Flexbox centering
             "flex items-center justify-center",
-            // Hover and active states
             "hover:bg-slate-50 hover:border-slate-300 hover:shadow-soft-md",
             "active:scale-95 active:bg-slate-100",
-            // Focus states (accessibility)
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-            // Transitions
             "transition-all duration-200 ease-out",
           )}
         >
@@ -156,9 +140,6 @@ function CollapseToggle({
   );
 }
 
-/**
- * Navigation item component with tooltip support when collapsed
- */
 function NavItem({
   item,
   isActive,
@@ -178,27 +159,19 @@ function NavItem({
     <Link
       href={item.href}
       className={cn(
-        // Base layout. `overflow-hidden` so the label has something to be
-        // clipped by as it collapses; `gap-0` when collapsed so the label's
-        // vanished width does not leave 12px of dead space beside the icon.
         "flex items-center rounded-lg px-3 py-2.5 overflow-hidden",
         isCollapsed ? "gap-0" : "gap-3",
         "transition-[gap,padding] duration-300 ease-soft",
-        // Typography
         "text-sm font-medium",
-        // Centering when collapsed
         isCollapsed && "justify-center px-2",
-        // Active state
         isActive && [
           "bg-primary-subtle text-primary-emphasis",
           "shadow-soft border border-primary-muted",
         ],
-        // Inactive state with hover
         !isActive && [
           "text-slate-600",
           "hover:bg-slate-50 hover:text-slate-900",
         ],
-        // Transition
         "transition-all duration-150",
       )}
     >
@@ -268,21 +241,15 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          // Layout — hidden on phones; use MobileNav instead
           "relative hidden lg:flex h-full flex-col",
-          // Visual style
           "bg-white border-r border-slate-200/80 shadow-soft",
-          // Width with smooth transition
           isCollapsed ? "w-16" : "w-64",
-          // Transition (applies to width change)
           "transition-[width] duration-300 ease-out",
         )}
         aria-label="Main navigation"
       >
-        {/* Collapse Toggle - centered on sidebar edge */}
         <CollapseToggle isCollapsed={isCollapsed} onToggle={toggleSidebar} />
 
-        {/* Logo Section */}
         <div
           className={cn(
             "flex h-16 items-center overflow-hidden border-b border-slate-100",
@@ -294,9 +261,6 @@ export function Sidebar() {
             className={cn(
               "flex items-center justify-center shrink-0",
               "h-9 w-9 rounded-xl",
-              // The brand mark is the brand colour. It used to be a three-stop
-              // blue→purple→indigo gradient, which is the single most prominent
-              // thing on screen arguing that the primary colour is not blue.
               "bg-primary",
               "shadow-lg shadow-primary/25",
             )}
@@ -314,19 +278,8 @@ export function Sidebar() {
           </span>
         </div>
 
-        {/* Actions, ruled off from the destinations below.
-
-            "New interview" and the search box are things you *do*; everything
-            under the rule is somewhere you *go*. Nothing said so: all three
-            blocks sat 8px apart, so the search box read as the first item of
-            the nav list while looking nothing like one — a bordered, filled
-            control directly above six plain rows. That mismatch was the
-            grouping being wrong, not the styling.
-
-            A rule rather than restyling the search to match the nav: it is a
-            control, and the same `border-slate-100` already separates the logo
-            above, so the sidebar now reads as three groups instead of one long
-            column with an odd item in it. */}
+        {/* Things you do, separated from the places you go. Without the rule
+            the search box reads as the first item of the nav list. */}
         <div className="border-b border-slate-100 pb-3">
           {/* The one thing this app is for.
 
@@ -362,7 +315,6 @@ export function Sidebar() {
             </Button>
           </div>
 
-          {/* Command palette trigger */}
           <div className="p-2 pb-0">
             <button
               type="button"
@@ -390,10 +342,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Main Navigation */}
         <nav
-          // `pt-3` rather than `p-2`, so the rule above has room on both sides
-          // and the group reads as a group.
           className="flex-1 p-2 pt-3 space-y-1 overflow-y-auto"
           aria-label="Primary"
           data-tour="nav"
@@ -408,7 +357,6 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Bottom Navigation */}
         <div className="p-2 space-y-1" aria-label="Secondary">
           {bottomNavigation.map((item) => (
             <NavItem
@@ -420,7 +368,6 @@ export function Sidebar() {
           ))}
         </div>
 
-        {/* User Section */}
         <div className="border-t border-slate-100 p-2">
           <div
             className={cn(
@@ -434,9 +381,6 @@ export function Sidebar() {
               className={cn(
                 "flex items-center justify-center shrink-0",
                 "h-8 w-8 rounded-lg",
-                // Matches the logo mark above. These two ran the same gradient
-                // with *different* shadow colours — blue on one, indigo on the
-                // other — so the app's two most-repeated elements disagreed.
                 "bg-primary",
                 "text-white text-xs font-semibold",
                 "shadow-md shadow-primary/25",

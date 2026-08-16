@@ -146,7 +146,6 @@ export function AnimatedDemo() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft-lg">
-      {/* Header bar */}
       <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-primary-subtle to-primary-subtle/60 px-5 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
@@ -172,7 +171,6 @@ export function AnimatedDemo() {
         </div>
       </div>
 
-      {/* Conversation */}
       <div
         ref={scrollRef}
         className="flex h-96 flex-col gap-3 overflow-y-auto scroll-smooth p-5"
