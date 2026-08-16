@@ -4,7 +4,25 @@ import { useRef } from "react";
 import { Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
+
+/**
+ * The tinted panel each accent produces.
+ *
+ * A dashed border and a faint wash, keyed to the document's own accent — the
+ * treatment the CV page already used and the one worth keeping. The grey
+ * version this replaced read as disabled next to it.
+ */
+const ACCENT_PANEL: Record<TileColor, string> = {
+  blue: "border-blue-200 bg-blue-50/40",
+  purple: "border-purple-200 bg-purple-50/40",
+  indigo: "border-indigo-200 bg-indigo-50/40",
+  green: "border-green-200 bg-green-50/40",
+  orange: "border-orange-200 bg-orange-50/40",
+  pink: "border-pink-200 bg-pink-50/40",
+  teal: "border-teal-200 bg-teal-50/40",
+};
 
 /**
  * Choose a PDF to upload.
@@ -30,6 +48,7 @@ export function PdfDropZone({
   busyLabel = "Uploading...",
   label,
   hint,
+  accent,
   className,
 }: {
   onSelect: (file: File) => void;
@@ -37,6 +56,12 @@ export function PdfDropZone({
   busyLabel?: string;
   label: string;
   hint?: string;
+  /**
+   * The document's accent. Required rather than defaulted, so a new caller has
+   * to state which document it belongs to — the drift this component exists to
+   * end started with each surface quietly picking its own colour.
+   */
+  accent: TileColor;
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -44,7 +69,8 @@ export function PdfDropZone({
   return (
     <div
       className={cn(
-        "rounded-xl border border-dashed border-border bg-muted/50 p-4",
+        "rounded-xl border border-dashed p-4",
+        ACCENT_PANEL[accent],
         className,
       )}
     >
@@ -63,7 +89,12 @@ export function PdfDropZone({
         }}
       />
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full",
+            TILE_COLORS[accent],
+          )}
+        >
           <Upload className="h-5 w-5" />
         </div>
         <p className="text-sm font-medium text-gray-800">{label}</p>

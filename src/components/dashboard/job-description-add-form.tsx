@@ -11,6 +11,7 @@ import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
 import { Textarea } from "@/components/ui/textarea";
 import { TidyJobDescription } from "@/components/setup/tidy-job-description";
 import { describeTruncation } from "@/lib/document-truncation";
+import { JOB_DESCRIPTION_ACCENT } from "@/lib/document-accents";
 import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
 
 /** Enough text to be worth a confirmation before throwing it away. */
@@ -160,8 +161,9 @@ export function JobDescriptionAddForm({
         <PdfDropZone
           onSelect={onSubmitFile}
           busy={busy}
+          accent={JOB_DESCRIPTION_ACCENT}
           label="Upload a PDF job description"
-          hint="Text is extracted and embedded automatically. Image-only PDFs are not supported in this version."
+          hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
         />
       )}
 

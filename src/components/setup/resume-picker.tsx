@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CheckCircle2, FileUser, Trash2, Upload } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, FileUser, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,8 @@ import { ChoiceChip } from "@/components/ui/choice-chip";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useResumes } from "@/hooks/use-resumes";
+import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
+import { RESUME_ACCENT } from "@/lib/document-accents";
 import type { ResumeSetupConfig, ResumeSetupMode } from "@/lib/interview-setup";
 
 const TAB_OPTIONS: Array<{ id: ResumeSetupMode; label: string }> = [
@@ -34,7 +36,6 @@ interface ResumePickerProps {
 
 export function ResumePicker({ value, onChange }: ResumePickerProps) {
   const { items, status, error, uploadPdf, remove } = useResumes();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(
     value.mode === "upload" ? value.savedTitle : null,
@@ -161,70 +162,41 @@ export function ResumePicker({ value, onChange }: ResumePickerProps) {
             </Field>
           )}
 
-          {value.mode === "upload" && (
-            <div className="rounded-xl border border-dashed border-border bg-muted/50 p-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) {
-                    void handleSelectFile(file);
-                  }
-                }}
+          {value.mode === "upload" &&
+            (value.savedId ? (
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white p-3">
+                {/* The upload row replaces the drop zone the instant the parse
+                    lands, which read as a glitch; the tick now arrives on its
+                    own so the success is legible as an event. */}
+                <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in-50 duration-300 ease-soft" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {value.savedTitle ?? "Uploaded resume"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Ready to use</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUploadedFileName(null)}
+                >
+                  Replace
+                </Button>
+              </div>
+            ) : (
+              <PdfDropZone
+                onSelect={(file) => void handleSelectFile(file)}
+                busy={uploading}
+                busyLabel={
+                  uploadedFileName
+                    ? `Uploading ${uploadedFileName}...`
+                    : "Uploading..."
+                }
+                accent={RESUME_ACCENT}
+                label="Upload a PDF resume"
+                hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
               />
-
-              {value.savedId ? (
-                <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white p-3">
-                  {/* The upload row replaces the drop zone the instant the parse
-                      lands, which read as a glitch; the tick now arrives on its
-                      own so the success is legible as an event. */}
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in-50 duration-300 ease-soft" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {value.savedTitle ?? "Uploaded resume"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Ready to use
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Replace
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <Upload className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-800">
-                    Upload a PDF resume
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Text is extracted automatically. Image-only PDFs are not
-                    supported in this version.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {uploading
-                      ? `Uploading${uploadedFileName ? ` ${uploadedFileName}` : ""}...`
-                      : "Choose PDF"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+            ))}
 
           {value.mode === "saved" && (
             <div className="space-y-2">
