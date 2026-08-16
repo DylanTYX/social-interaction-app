@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { isJobDescriptionMissing } from "@/hooks/use-interview-session-bootstrap";
+import {
+  isJobDescriptionMissing,
+  isResumeMissing,
+  sessionRowToLaunch,
+} from "@/hooks/use-interview-session-bootstrap";
 import { createDefaultInterviewSetup } from "@/lib/interview-setup";
 import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
 
@@ -29,6 +33,15 @@ function launchMeta(
     interviewLoop: DEFAULT.interviewLoop,
     voiceConfig: DEFAULT.voiceConfig,
     jobDescription: { ...DEFAULT.jobDescription, ...jobDescription },
+  };
+}
+
+function withResume(
+  resume: Partial<NonNullable<SessionLaunchMeta["resume"]>>,
+): SessionLaunchMeta {
+  return {
+    ...launchMeta({}),
+    resume: { ...DEFAULT.resume, ...resume },
   };
 }
 
@@ -93,5 +106,81 @@ describe("isJobDescriptionMissing", () => {
     expect(isJobDescriptionMissing(null, { jobDescriptionId: null }, null)).toBe(
       false,
     );
+  });
+});
+
+describe("isResumeMissing", () => {
+  // Same predicate, second document. Worth its own cases because the CV
+  // reached the wizard through a different path and was the one silently
+  // dropped for longer.
+  it("is true when the snapshot names a CV and both current sources are empty", () => {
+    expect(
+      isResumeMissing(withResume({ enabled: true, savedId: "cv-1" }), {
+        resumeId: null,
+      }, null),
+    ).toBe(true);
+  });
+
+  it("is false while the CV still exists", () => {
+    expect(
+      isResumeMissing(withResume({ enabled: true, savedId: "cv-1" }), {
+        resumeId: "cv-1",
+      }, { id: "cv-1" }),
+    ).toBe(false);
+  });
+
+  it("is false for a session that never had one", () => {
+    expect(isResumeMissing(ATTACHED, { resumeId: null }, null)).toBe(false);
+  });
+});
+
+describe("sessionRowToLaunch", () => {
+  const SESSION = {
+    id: "session-1",
+    practiceMode: "text",
+    scenarioValue: "behavioral",
+    scenarioDescription: null,
+    personaConfig: DEFAULT.personaConfig,
+    jobDescriptionId: null as string | null,
+    resumeId: null as string | null,
+  };
+
+  it("keeps the CV attached when resuming a session that has one", () => {
+    // The regression this pins: `base` spread `...DEFAULT`, which carries
+    // `resume: { enabled: false }`, and nothing overwrote it — so the wizard
+    // showed the toggle off while the server kept feeding `resumeId` into
+    // every turn.
+    const { launch } = sessionRowToLaunch(
+      { ...SESSION, resumeId: "cv-1" },
+      withResume({ enabled: true, savedId: "cv-1", savedTitle: "Jane — 2026" }),
+      null,
+      { id: "cv-1", title: "Jane — 2026" },
+    );
+
+    expect(launch.resume.enabled).toBe(true);
+    expect(launch.resume.savedId).toBe("cv-1");
+  });
+
+  it("turns the CV off when it was deleted out from under the session", () => {
+    const { launch } = sessionRowToLaunch(
+      SESSION,
+      withResume({ enabled: true, savedId: "cv-1" }),
+      null,
+      null,
+    );
+
+    expect(launch.resume.enabled).toBe(false);
+  });
+
+  it("infers a CV from the session column for a legacy row with no snapshot", () => {
+    const { launch } = sessionRowToLaunch(
+      { ...SESSION, resumeId: "cv-1" },
+      null,
+      null,
+      { id: "cv-1", title: "Jane — 2026" },
+    );
+
+    expect(launch.resume.enabled).toBe(true);
+    expect(launch.resume.savedTitle).toBe("Jane — 2026");
   });
 });

@@ -9,6 +9,7 @@ import { JobDescriptionPicker } from "@/components/setup/job-description-picker"
 import { ResumePicker } from "@/components/setup/resume-picker";
 import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
 import type { UseJobDescriptions } from "@/hooks/use-job-descriptions";
+import type { UseResumes } from "@/hooks/use-resumes";
 
 /**
  * Everything the interviewer needs before it can ask anything: how you want to
@@ -50,6 +51,7 @@ import type { UseJobDescriptions } from "@/hooks/use-job-descriptions";
 export function ContextStep({
   setup,
   jobDescriptionLibrary,
+  resumeLibrary,
   quickStarts,
   onUpdate,
   onModeChange,
@@ -62,6 +64,8 @@ export function ContextStep({
    * them — which is how creating one in the wizard came to disable Continue.
    */
   jobDescriptionLibrary: UseJobDescriptions;
+  /** Same reasoning, for CVs. */
+  resumeLibrary: UseResumes;
   quickStarts: ReadonlyArray<{ id: string; label: string; template: string }>;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
   /**
@@ -151,6 +155,7 @@ export function ContextStep({
       <ResumePicker
         value={setup.resume}
         onChange={(next) => onUpdate({ resume: next })}
+        library={resumeLibrary}
       />
     </div>
   );

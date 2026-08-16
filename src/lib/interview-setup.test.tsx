@@ -5,6 +5,7 @@ import {
   saveInterviewSetup,
   updateInterviewSetup,
   createDefaultInterviewSetup,
+  resolveLaunchAttachment,
 } from "@/lib/interview-setup";
 
 /**
@@ -141,5 +142,65 @@ describe("updateInterviewSetup", () => {
     const stored = loadInterviewSetup();
     expect(stored?.practiceMode).toBe("voice");
     expect(stored?.interviewLoop).toBeDefined();
+  });
+});
+
+describe("resolveLaunchAttachment", () => {
+  /**
+   * Launch selects, never creates. This is the whole of that rule: given an
+   * enabled document it can only ever hand back an id that was already in the
+   * library, so there is no path left on which launching POSTs a new row.
+   */
+  const DEFAULT = createDefaultInterviewSetup();
+
+  it("returns the chosen id when the row is still in the library", () => {
+    const result = resolveLaunchAttachment(
+      "CV",
+      { ...DEFAULT.resume, enabled: true, savedId: "cv-1" },
+      { id: "cv-1" },
+    );
+
+    expect(result).toEqual({ id: "cv-1" });
+  });
+
+  it("returns no id at all when the document is switched off", () => {
+    // Including when a stale `savedId` is still sitting on the config, which is
+    // the normal state after toggling off — the id is kept so toggling back on
+    // restores the choice.
+    expect(
+      resolveLaunchAttachment(
+        "CV",
+        { ...DEFAULT.resume, enabled: false, savedId: "cv-1" },
+        { id: "cv-1" },
+      ),
+    ).toEqual({ id: null });
+  });
+
+  it("refuses an enabled document with nothing chosen", () => {
+    const result = resolveLaunchAttachment("job description", {
+      ...DEFAULT.jobDescription,
+      enabled: true,
+      savedId: null,
+    }, null);
+
+    expect(result).toEqual({
+      error: "Choose or add a job description before launching, or turn it off.",
+    });
+  });
+
+  it("refuses an id the library no longer has", () => {
+    // Deleted in another tab, or since the wizard loaded. This used to reach
+    // the foreign key and come back as an opaque 500 at launch, after the user
+    // had finished setting the interview up.
+    const result = resolveLaunchAttachment(
+      "CV",
+      { ...DEFAULT.resume, enabled: true, savedId: "cv-gone" },
+      null,
+    );
+
+    expect(result).toEqual({
+      error:
+        "That CV is no longer in your library. Choose another, or turn it off.",
+    });
   });
 });

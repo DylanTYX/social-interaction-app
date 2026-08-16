@@ -28,6 +28,7 @@ import {
   saveInterviewLaunch,
   loadInterviewSetup,
   getSetupHref,
+  resolveLaunchAttachment,
   saveInterviewSetup,
   type InterviewSetupState,
   type PracticeMode,
@@ -38,6 +39,7 @@ import {
 } from "@/lib/persona-library";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
+import { useResumes } from "@/hooks/use-resumes";
 import { LoopStep } from "@/components/setup/loop-step";
 import { ContextStep } from "@/components/setup/context-step";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -202,6 +204,16 @@ function SetupWizard() {
         ) ?? null)
       : null;
   const jobDescriptionText = selectedJobDescription?.rawText ?? "";
+
+  /**
+   * The wizard's one CV library, on the same terms as the job-description one
+   * above: mounted here and passed down, never a second instance in the picker.
+   */
+  const resumes = useResumes();
+  const selectedResume =
+    setup.resume.enabled && setup.resume.savedId
+      ? (resumes.items.find((item) => item.id === setup.resume.savedId) ?? null)
+      : null;
   /**
    * The setup as the Review step should describe it.
    *
@@ -210,17 +222,22 @@ function SetupWizard() {
    * `savedTitle` here meant Review asserted the old title while the session was
    * created with the new one.
    */
-  const reviewSetup: InterviewSetupState = selectedJobDescription
-    ? {
-        ...setup,
-        jobDescription: {
-          ...setup.jobDescription,
-          savedTitle: selectedJobDescription.title,
-          company: selectedJobDescription.company ?? "",
-          roleTitle: selectedJobDescription.roleTitle ?? "",
-        },
-      }
-    : setup;
+  const reviewSetup: InterviewSetupState = {
+    ...setup,
+    ...(selectedJobDescription
+      ? {
+          jobDescription: {
+            ...setup.jobDescription,
+            savedTitle: selectedJobDescription.title,
+            company: selectedJobDescription.company ?? "",
+            roleTitle: selectedJobDescription.roleTitle ?? "",
+          },
+        }
+      : {}),
+    ...(selectedResume
+      ? { resume: { ...setup.resume, savedTitle: selectedResume.title } }
+      : {}),
+  };
 
   // Persist setup as the user moves through the wizard so a refresh keeps
   // their progress. Wait until after the stored setup is hydrated so we don't
@@ -396,7 +413,6 @@ function SetupWizard() {
         scenario.description,
         setup.interviewLoop,
       );
-      let jobDescriptionId: string | null = null;
       /**
        * Read from the library row, not from the config's copy of it.
        *
@@ -410,36 +426,31 @@ function SetupWizard() {
       const jobDescriptionTitle: string | null =
         selectedJobDescription?.title ?? setup.jobDescription.savedTitle;
 
-      /**
-       * Launch selects; it never creates.
-       *
-       * It used to POST a new job description whenever the mode was "paste",
-       * and the id it got back went only into the sessionStorage launch payload
-       * — `saveInterviewSetup(setup)` above runs *before* this, so the setup the
-       * wizard rehydrates from never learned a row existed. Launching twice
-       * from the same draft therefore created two identical rows and paid for
-       * two chunk-and-embed runs, with no dedupe anywhere to catch it.
-       *
-       * The picker now saves on an explicit action, so by the time we are here
-       * a job description in play always has an id.
-       */
-      if (setup.jobDescription.enabled) {
-        if (!setup.jobDescription.savedId) {
-          throw new Error(
-            "Choose or add a job description before launching, or turn it off.",
-          );
-        }
-        if (!selectedJobDescription) {
-          throw new Error(
-            "That job description is no longer in your library. Choose another, or turn it off.",
-          );
-        }
-        jobDescriptionId = setup.jobDescription.savedId;
-      }
+      // Launch selects; it never creates. Both documents resolve through the
+      // same rule — see `resolveLaunchAttachment`.
+      const jd = resolveLaunchAttachment(
+        "job description",
+        setup.jobDescription,
+        selectedJobDescription,
+      );
+      if ("error" in jd) throw new Error(jd.error);
+      const jobDescriptionId = jd.id;
 
       /**
-       * The setup as it should be recorded, with the job-description fields
-       * re-read from the library row.
+       * Read from the library row rather than the config's copy, exactly as the
+       * job description is above — a CV renamed on the library page should
+       * reach the session under its current name.
+       */
+      const resumeTitle: string | null =
+        selectedResume?.title ?? setup.resume.savedTitle;
+
+      const cv = resolveLaunchAttachment("CV", setup.resume, selectedResume);
+      if ("error" in cv) throw new Error(cv.error);
+      const resumeId = cv.id;
+
+      /**
+       * The setup as it should be recorded, with both documents' fields re-read
+       * from their library rows.
        *
        * Every writer below takes this rather than `setup`. Refreshing only the
        * `launch_meta` call left `saveInterviewLaunch` — the sessionStorage
@@ -449,6 +460,10 @@ function SetupWizard() {
        */
       const refreshedSetup: InterviewSetupState = {
         ...setup,
+        resume: {
+          ...setup.resume,
+          savedTitle: resumeTitle,
+        },
         jobDescription: {
           ...setup.jobDescription,
           savedTitle: jobDescriptionTitle,
@@ -458,51 +473,6 @@ function SetupWizard() {
             selectedJobDescription?.roleTitle ?? setup.jobDescription.roleTitle,
         },
       };
-
-      let resumeId: string | null = null;
-      let resumeTitle: string | null = setup.resume.savedTitle;
-
-      if (setup.resume.enabled) {
-        if (setup.resume.mode === "paste") {
-          if (setup.resume.rawText.trim().length < 80) {
-            throw new Error("Paste at least 80 characters of resume text.");
-          }
-
-          const resumeResponse = await fetch("/api/resumes", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rawText: setup.resume.rawText }),
-          });
-
-          if (!resumeResponse.ok) {
-            const detail = (await resumeResponse.json().catch(() => null)) as {
-              error?: string;
-            } | null;
-            throw new Error(
-              detail?.error ??
-                `Failed to prepare resume context (HTTP ${resumeResponse.status}).`,
-            );
-          }
-
-          const { resume } = (await resumeResponse.json()) as {
-            resume: { id: string; title: string };
-          };
-          resumeId = resume.id;
-          resumeTitle = resume.title;
-        } else if (
-          setup.resume.mode === "upload" ||
-          setup.resume.mode === "saved"
-        ) {
-          if (!setup.resume.savedId) {
-            throw new Error(
-              setup.resume.mode === "upload"
-                ? "Upload a resume PDF before launching."
-                : "Pick a saved resume before launching.",
-            );
-          }
-          resumeId = setup.resume.savedId;
-        }
-      }
 
       const response = await fetch("/api/sessions", {
         method: "POST",
@@ -677,12 +647,14 @@ function SetupWizard() {
         }
       }
       if (setup.resume.enabled) {
-        if (setup.resume.mode === "paste") {
-          if (setup.resume.rawText.trim().length < 80) {
-            return "Paste at least 80 characters of your CV, or turn it off.";
-          }
-        } else if (!setup.resume.savedId) {
-          return "Choose or upload a CV, or turn it off.";
+        if (!setup.resume.savedId) {
+          return "Choose or add a CV, or turn it off.";
+        }
+        // Same reasoning as the job description above: a `savedId` from
+        // localStorage can point at a CV deleted since, and without this the
+        // gate passed and the session insert died on the foreign key.
+        if (resumes.status === "ready" && !selectedResume) {
+          return "That CV is no longer in your library. Choose another, or turn it off.";
         }
       }
       return null;
@@ -766,6 +738,7 @@ function SetupWizard() {
             <ContextStep
               setup={setup}
               jobDescriptionLibrary={jobDescriptions}
+              resumeLibrary={resumes}
               quickStarts={BRIEF_QUICK_STARTS}
               onModeChange={updateMode}
               onUpdate={(partial) =>

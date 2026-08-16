@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { sanitizeLaunchMeta } from "@/lib/session-launch-meta";
+import {
+  createDefaultJobDescriptionConfig,
+  createDefaultResumeConfig,
+} from "@/lib/interview-setup";
+
+import {
+  sanitizeLaunchMeta,
+  withoutDeletedAttachments,
+  type SessionLaunchMeta,
+} from "@/lib/session-launch-meta";
 
 /**
  * What is allowed to reach the `launch_meta` column.
@@ -106,5 +115,73 @@ describe("sanitizeLaunchMeta", () => {
 
     expect(meta.resume?.enabled).toBe(true);
     expect(meta.resume?.mode).toBe("paste");
+  });
+});
+
+describe("withoutDeletedAttachments", () => {
+  /**
+   * The one rule that keeps a deleted document from being copied into a *new*
+   * session, where it would hit the foreign key. Both callers — the next round
+   * of a loop and "Practise again" — build a fresh setup from an old snapshot,
+   * so this is the only thing standing between a delete and a 500 minutes
+   * later.
+   */
+  const meta = (over: Partial<SessionLaunchMeta> = {}): SessionLaunchMeta => ({
+    ...expectMeta(base),
+    ...over,
+  });
+
+  const attachedJd = {
+    ...createDefaultJobDescriptionConfig(),
+    enabled: true,
+    savedId: "jd-1",
+  };
+  const attachedCv = {
+    ...createDefaultResumeConfig(),
+    enabled: true,
+    mode: "saved" as const,
+    savedId: "cv-1",
+    savedTitle: "Jane — 2026",
+  };
+
+  it("switches off an attachment whose session column has been nulled", () => {
+    const result = withoutDeletedAttachments(
+      meta({ jobDescription: attachedJd, resume: attachedCv }),
+      { jobDescriptionId: null, resumeId: null },
+    );
+
+    expect(result.jobDescription.enabled).toBe(false);
+    expect(result.jobDescription.savedId).toBeNull();
+    expect(result.resume.enabled).toBe(false);
+    expect(result.resume.savedId).toBeNull();
+  });
+
+  it("leaves an attachment alone while its column still points at it", () => {
+    const result = withoutDeletedAttachments(
+      meta({ jobDescription: attachedJd, resume: attachedCv }),
+      { jobDescriptionId: "jd-1", resumeId: "cv-1" },
+    );
+
+    expect(result.jobDescription.savedId).toBe("jd-1");
+    expect(result.resume.savedId).toBe("cv-1");
+  });
+
+  it("drops only the deleted one when the session has both", () => {
+    const result = withoutDeletedAttachments(
+      meta({ jobDescription: attachedJd, resume: attachedCv }),
+      { jobDescriptionId: "jd-1", resumeId: null },
+    );
+
+    expect(result.jobDescription.enabled).toBe(true);
+    expect(result.resume.enabled).toBe(false);
+  });
+
+  it("supplies a default CV config for a snapshot taken before the CV existed", () => {
+    const result = withoutDeletedAttachments(meta({ resume: undefined }), {
+      jobDescriptionId: null,
+      resumeId: null,
+    });
+
+    expect(result.resume.enabled).toBe(false);
   });
 });

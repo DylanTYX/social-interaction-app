@@ -38,6 +38,7 @@ import {
   readCompetencyCoverage,
   readLaunchMeta,
   readLoopProgress,
+  withoutDeletedAttachments,
   type SessionLaunchMeta,
 } from "@/lib/session-launch-meta";
 import {
@@ -73,6 +74,14 @@ interface SessionRecord {
   /** Both already returned by `/report`; declared so the page can reuse them. */
   personaConfig: PersonaConfig;
   launchMeta: SessionLaunchMeta | null;
+  /**
+   * The live attachment columns. Declared so "Practise again" can tell a
+   * document that is still there from one deleted since — the snapshot in
+   * `launchMeta` cannot, and pre-filling the wizard with a dead reference
+   * blocks Continue on a document the user never chose here.
+   */
+  jobDescriptionId: string | null;
+  resumeId: string | null;
   status: "in_progress" | "completed" | "abandoned";
   summary: string | null;
   turnCount: number;
@@ -310,10 +319,7 @@ export default function SessionReportPage({
       personaLibraryId: launch?.personaLibraryId,
       ...(launch?.interviewLoop ? { interviewLoop: launch.interviewLoop } : {}),
       ...(launch?.voiceConfig ? { voiceConfig: launch.voiceConfig } : {}),
-      ...(launch?.jobDescription
-        ? { jobDescription: launch.jobDescription }
-        : {}),
-      ...(launch?.resume ? { resume: launch.resume } : {}),
+      ...(launch ? withoutDeletedAttachments(launch, previous) : {}),
     });
 
     router.push(`/simulate/setup?mode=${previous.practiceMode}`);

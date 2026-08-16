@@ -166,7 +166,6 @@ export default function ResumesPage() {
             <PdfDropZone
               onSelect={(file) => void handleUploadFile(file)}
               busy={submitting}
-              accent={RESUME_ACCENT}
               label="Upload a PDF resume"
               hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
             />

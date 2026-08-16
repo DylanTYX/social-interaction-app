@@ -18,6 +18,18 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  /* Semantic meaning, never blue. See `:root` for the reasoning. */
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-destructive-border: var(--destructive-border);
+  --color-destructive-emphasis: var(--destructive-emphasis);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
+  --color-success-emphasis: var(--success-emphasis);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+  --color-warning-emphasis: var(--warning-emphasis);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -26,6 +38,13 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  /* The blue ramp below `--primary`; see `:root` for why these exist. Exposed
+     here so `bg-primary-subtle`, `border-primary-border` and friends are real
+     utilities rather than arbitrary-value escapes. */
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-muted: var(--primary-muted);
+  --color-primary-border: var(--primary-border);
+  --color-primary-emphasis: var(--primary-emphasis);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -110,16 +129,59 @@
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  /* Brand: tailwind blue-600 (#2563eb). Hover/active darker shade in button.tsx. */
+  /* Brand: tailwind blue-600 (#2563eb). Hover is `bg-primary/90` in button.tsx. */
   --primary: oklch(0.546 0.245 262.881);
   --primary-foreground: oklch(1 0 0);
+  /*
+   * The rest of the blue ramp, so a tinted surface is a token rather than a
+   * guess.
+   *
+   * Without these there was nothing to reach for below `--primary`, so every
+   * soft blue surface in the app hardcoded `blue-50`, `blue-100` or `blue-700`
+   * — and a good number reached for `sky-50` or `indigo-50` instead, which is
+   * how three palettes ended up doing one job. Values are tailwind blue-50,
+   * blue-100, blue-200 and blue-700 so nothing shifts visually.
+   */
+  --primary-subtle: oklch(0.97 0.014 254.604);
+  --primary-muted: oklch(0.932 0.032 255.585);
+  --primary-border: oklch(0.882 0.059 254.128);
+  --primary-emphasis: oklch(0.488 0.243 264.376);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
   --muted-foreground: oklch(0.554 0.046 257.417);
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
+  /*
+   * Meaning, not decoration — and deliberately never blue.
+   *
+   * The convention was already right and already consistent in intent:
+   * emerald = good, amber = needs attention, red = error or destructive. What
+   * it was not was *centralised*. Those three meanings were spelled out as raw
+   * utilities in about 170 places, so "warning" was `amber-50/70` on one card,
+   * `amber-50/80` on another and `bg-amber-50` on a third, and error text was
+   * variously red-600, red-700, red-800 and red-900 with no rule.
+   *
+   * Naming them makes them one decision each. It also keeps them safely out of
+   * the way of the primary-blue consolidation: a red error card is not an
+   * inconsistency to be tidied into the brand colour, it is the one thing on
+   * screen that must never be mistaken for something you are invited to click.
+   *
+   * Values are tailwind emerald-600/50/200/800, amber-600/50/200/900 and
+   * red-600/50/200/900, so nothing shifts visually.
+   */
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-subtle: oklch(0.971 0.013 17.38);
+  --destructive-border: oklch(0.885 0.062 18.334);
+  --destructive-emphasis: oklch(0.396 0.141 25.723);
+  --success: oklch(0.596 0.145 163.225);
+  --success-subtle: oklch(0.979 0.021 166.113);
+  --success-border: oklch(0.905 0.093 164.15);
+  --success-emphasis: oklch(0.432 0.095 166.913);
+  --warning: oklch(0.666 0.179 58.318);
+  --warning-subtle: oklch(0.987 0.022 95.277);
+  --warning-border: oklch(0.924 0.12 95.746);
+  --warning-emphasis: oklch(0.414 0.112 45.904);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);

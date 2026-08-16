@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { getSession, listMessages, listTurnAnalyses } from "@/lib/db/sessions";
 import { readLaunchMeta } from "@/lib/session-launch-meta";
 import { getJobDescription } from "@/lib/db/job-descriptions";
+import { getResume } from "@/lib/db/resumes";
 import { notFound, unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
@@ -47,6 +48,20 @@ export async function GET(
       listTurnAnalyses(supabase, id),
     ]);
 
+    /**
+     * The live CV, alongside the live job description.
+     *
+     * Neither this lookup nor a `resume` key existed, so the client had nothing
+     * to reconcile its snapshot against — and `sessionRowToLaunch` responded by
+     * dropping the CV config entirely, showing the toggle off while the server
+     * went on feeding `session.resumeId` into every turn.
+     */
+    let resume: { id: string; title: string } | null = null;
+    if (session.resumeId) {
+      const record = await getResume(supabase, session.resumeId);
+      if (record) resume = { id: record.id, title: record.title };
+    }
+
     let jobDescription: {
       id: string;
       title: string;
@@ -70,6 +85,7 @@ export async function GET(
       turnAnalyses,
       launch: readLaunchMeta(session) ?? null,
       jobDescription,
+      resume,
     });
   } catch (error) {
     return handleRouteError("GET /api/sessions/[id]/resume", error);
