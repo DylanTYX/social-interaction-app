@@ -203,7 +203,7 @@ export function withoutDeletedAttachments(
   session: { jobDescriptionId: string | null; resumeId: string | null },
 ): Pick<InterviewSetupState, "jobDescription" | "resume"> {
   // Both defaulted, because a snapshot is whatever was stored: pre-0009 rows
-  // predate the CV entirely, and `sanitizeLaunchMeta` drops a job-description
+  // predate the resume entirely, and `sanitizeLaunchMeta` drops a job-description
   // key it does not recognise. Reading `.enabled` off either one unguarded is
   // a crash on the next-round path.
   const jobDescription =
@@ -323,7 +323,7 @@ export function sanitizeLaunchMeta(
      * and the server fetches the text from its own table. Keeping the copy had
      * two costs. It is unbounded, so it inflated `launch_meta` on every session
      * (and `/resume` and `/export`, which echo it back). And it outlived the
-     * document: deleting a resume nulls `resume_id` but left the full CV — real
+     * document: deleting a resume nulls `resume_id` but left the full resume — real
      * names, employers, dates — sitting in the launch metadata of every session
      * that had used it, and in any export taken afterwards. "Delete my resume"
      * has to mean it.

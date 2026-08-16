@@ -12,12 +12,12 @@ interface RouteParams {
 }
 
 /**
- * What a delete would cost: how many of this user's sessions use this CV.
+ * What a delete would cost: how many of this user's sessions use this resume.
  *
  * The job description's twin, and it answers the same question — but the
- * consequence for a CV is worse, not better. A deleted JD leaves the report's
+ * consequence for a resume is worse, not better. A deleted JD leaves the report's
  * own label intact because the report reads it from the `launch_meta` snapshot;
- * a deleted CV takes the interviewer's entire knowledge of the candidate's
+ * a deleted resume takes the interviewer's entire knowledge of the candidate's
  * background out of every remaining turn of an unfinished session, and the FK
  * nulls `resume_id` so nothing points back at what was lost.
  *

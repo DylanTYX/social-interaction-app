@@ -18,7 +18,7 @@ import {
  * The bug this guards: both interview screens re-save the setup after every
  * session so the wizard reflects what you ran, and neither has the document
  * config to hand — so both passed `DEFAULT_SETUP.jobDescription` and
- * `DEFAULT_SETUP.resume`, turning the user's job description and CV back *off*
+ * `DEFAULT_SETUP.resume`, turning the user's job description and resume back *off*
  * every single session.
  */
 
@@ -35,7 +35,7 @@ function storedWithDocuments() {
       enabled: true,
       savedId: "jd-1",
     },
-    resume: { ...base.resume, enabled: true, savedId: "cv-1" },
+    resume: { ...base.resume, enabled: true, savedId: "resume-1" },
   });
 }
 
@@ -51,7 +51,7 @@ describe("updateInterviewSetup", () => {
     expect(stored?.jobDescription.enabled).toBe(true);
     expect(stored?.jobDescription.savedId).toBe("jd-1");
     expect(stored?.resume.enabled).toBe(true);
-    expect(stored?.resume.savedId).toBe("cv-1");
+    expect(stored?.resume.savedId).toBe("resume-1");
   });
 
   it("applies the fields it is given", () => {
@@ -116,7 +116,7 @@ describe("updateInterviewSetup", () => {
     expect(loadInterviewSetup()?.jobDescription.rawText).toBe("");
   });
 
-  it("still restores an unsaved CV draft", () => {
+  it("still restores an unsaved resume draft", () => {
     // The resume picker does still compose in place, so its `rawText` is live
     // state rather than a leftover. The two configs share a shape but not a
     // lifecycle, and the normalizer must keep telling them apart.
@@ -127,12 +127,12 @@ describe("updateInterviewSetup", () => {
         ...base.resume,
         enabled: true,
         savedId: null,
-        rawText: "half a CV, still being pasted",
+        rawText: "half a resume, still being pasted",
       },
     });
 
     expect(loadInterviewSetup()?.resume.rawText).toBe(
-      "half a CV, still being pasted",
+      "half a resume, still being pasted",
     );
   });
 
@@ -155,12 +155,12 @@ describe("resolveLaunchAttachment", () => {
 
   it("returns the chosen id when the row is still in the library", () => {
     const result = resolveLaunchAttachment(
-      "CV",
-      { ...DEFAULT.resume, enabled: true, savedId: "cv-1" },
-      { id: "cv-1" },
+      "resume",
+      { ...DEFAULT.resume, enabled: true, savedId: "resume-1" },
+      { id: "resume-1" },
     );
 
-    expect(result).toEqual({ id: "cv-1" });
+    expect(result).toEqual({ id: "resume-1" });
   });
 
   it("returns no id at all when the document is switched off", () => {
@@ -169,22 +169,27 @@ describe("resolveLaunchAttachment", () => {
     // restores the choice.
     expect(
       resolveLaunchAttachment(
-        "CV",
-        { ...DEFAULT.resume, enabled: false, savedId: "cv-1" },
-        { id: "cv-1" },
+        "resume",
+        { ...DEFAULT.resume, enabled: false, savedId: "resume-1" },
+        { id: "resume-1" },
       ),
     ).toEqual({ id: null });
   });
 
   it("refuses an enabled document with nothing chosen", () => {
-    const result = resolveLaunchAttachment("job description", {
-      ...DEFAULT.jobDescription,
-      enabled: true,
-      savedId: null,
-    }, null);
+    const result = resolveLaunchAttachment(
+      "job description",
+      {
+        ...DEFAULT.jobDescription,
+        enabled: true,
+        savedId: null,
+      },
+      null,
+    );
 
     expect(result).toEqual({
-      error: "Choose or add a job description before launching, or turn it off.",
+      error:
+        "Choose or add a job description before launching, or turn it off.",
     });
   });
 
@@ -193,14 +198,14 @@ describe("resolveLaunchAttachment", () => {
     // the foreign key and come back as an opaque 500 at launch, after the user
     // had finished setting the interview up.
     const result = resolveLaunchAttachment(
-      "CV",
-      { ...DEFAULT.resume, enabled: true, savedId: "cv-gone" },
+      "resume",
+      { ...DEFAULT.resume, enabled: true, savedId: "resume-gone" },
       null,
     );
 
     expect(result).toEqual({
       error:
-        "That CV is no longer in your library. Choose another, or turn it off.",
+        "That resume is no longer in your library. Choose another, or turn it off.",
     });
   });
 });

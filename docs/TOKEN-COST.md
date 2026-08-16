@@ -101,7 +101,7 @@ prefix:
 - the scenario context
 - round-type guidance ("how to run this kind of round")
 - the loop handover brief, if this is round 2+
-- the candidate's CV, verbatim
+- the candidate's resume, verbatim
 - the hiring company, when the job description records one
 - the job description **only when it was inlined whole**
 
@@ -180,7 +180,7 @@ section first.
 | **`rawAnalysis` no longer stored or returned** | A verbatim duplicate of the entire analysis object was written to `interview_turn_analyses` and sent over the wire every turn, and read by nobody. It roughly doubled both the row and the response payload.                                                                                                                                                                 |
 | **Transcript read bounded**                    | The chat route loaded the _entire_ transcript, then discarded all but the last few messages — growing linearly with session length and defeating the point of the rolling summary. It now reads a fixed window sized to cover the verbatim window, the prior-question lookup, and whatever aged out since the last summary refresh.                                          |
 | **Rolling summary instead of full history**    | The last 6 messages go verbatim; everything older is folded into a compact summary regenerated every 4 messages. Cost stops growing with session length.                                                                                                                                                                                                                     |
-| **Resume distillation, reversed**              | A CV *was* summarised into a 400-token profile at upload, and that profile — not the document — went into every prompt. It saved roughly 1,200 cached tokens a turn and cost the fidelity of the whole CV: the interviewer had never read a candidate's actual words, while its prompt label claimed otherwise. Removed. See "Why the CV is sent whole" below.                |
+| **Resume distillation, reversed**              | A resume *was* summarised into a 400-token profile at upload, and that profile — not the document — went into every prompt. It saved roughly 1,200 cached tokens a turn and cost the fidelity of the whole resume: the interviewer had never read a candidate's actual words, while its prompt label claimed otherwise. Removed. See "Why the resume is sent whole" below.                |
 | **Similarity floor with a top-1 fallback**     | Chunks below 0.3 cosine similarity aren't worth the tokens, but the floor could remove _everything_, silently dropping role context from both the prompt and that turn's scoring. One weak excerpt beats no context and no signal.                                                                                                                                           |
 | **Summary capped at 400 tokens**               | This was the last uncapped call, and the worst one to leave uncapped: the summary is regenerated _from itself_ and injected into every later prompt, so a single long generation inflated the rest of the session rather than costing once.                                                                                                                                  |
 | **Counting moved out of the LLM**              | The analyzer asked the model for a word count, hesitation-marker count, qualifier count, revision count, metric count, and whether timeframes appear. Six pieces of arithmetic, billed in both the scaffold describing them and the response producing them, from a model with no reason to count accurately. Now `text-metrics.ts`; scaffold down from ~296 to ~245 tokens. |
@@ -328,15 +328,15 @@ designed compression, not truncation, and carries no such risk.
   has already rendered the page, so pasting carries the text out of any source;
   the model's job is only to drop the furniture that comes with it.
 
-### Why the CV is sent whole
+### Why the resume is sent whole
 
 The obvious optimisation here is the one that was tried and removed, so it is
 worth writing down why rather than leaving the next person to rediscover it.
 
-A CV sits in the **stable prefix**, so it is re-sent on every turn — but from
+A resume sits in the **stable prefix**, so it is re-sent on every turn — but from
 turn two onwards at the cached rate, and attaching one is a large part of what
 pushes a session's prefix past the 1,024-token floor at all. A 24,000-character
-CV works out at roughly **$0.005 for a ten-turn session**, against $0.0012 for
+Resume works out at roughly **$0.005 for a ten-turn session**, against $0.0012 for
 the 6,000-character clip it replaced. Three tenths of a cent.
 
 What that bought previously was a `gpt-4o-mini` summary written at upload, which
@@ -349,7 +349,7 @@ label told the interviewer this was the candidate's "actual background" and to
 the candidate never made, or refuse to explore real experience the summariser
 had dropped.
 
-Chunking the CV the way job descriptions are chunked was also considered and
+Chunking the resume the way job descriptions are chunked was also considered and
 rejected. Retrieval returns what is *similar* to the current conversation, not
 what has *not been asked yet*, so it narrows rather than opens; the
 "ask something new" job already belongs to `formatAskedQuestions` and the
@@ -393,7 +393,7 @@ the JD is ever used in.
 | Analyzer scaffold, cap, truncation check | `src/lib/response-analyzer.ts`               |
 | Rolling summary cadence                  | `src/lib/summary.ts`                         |
 | Similarity floor, small-JD inlining      | `src/lib/db/job-descriptions.ts`             |
-| CV sent whole, and its one cap            | `src/lib/db/resumes.ts`                      |
+| Resume sent whole, and its one cap            | `src/lib/db/resumes.ts`                      |
 | Over-length notice, shared by both docs   | `src/lib/document-truncation.ts`             |
 | Deterministic text counting              | `src/lib/text-metrics.ts`                    |
 | Input length caps                        | `src/lib/api/input-limits.ts`                |

@@ -32,9 +32,9 @@ questions are tailored to the real role. Short postings are inlined whole
 instead — at four chunks or fewer, "retrieval" is just reassembling the
 document.
 
-**CV grounding.** Attach a CV and the interviewer reads it — the document
+**Resume grounding.** Attach a resume and the interviewer reads it — the document
 itself, whole — to ask about your actual background and pressure-test the
-claims on it. It used to read a model-written summary of the CV instead, which
+claims on it. It used to read a model-written summary of the resume instead, which
 is why the prompt could confidently probe a claim the candidate never made.
 
 **Multi-round loops.** Compose a realistic loop — screening, then behavioural,
@@ -109,7 +109,7 @@ In the Supabase dashboard → **SQL Editor**, run every file in
 | `0012_server_owned_writes` | session and usage writes move behind security-definer functions |
 | `0013_job_description_metadata` | JD company, source URL, notes |
 | `0014_jd_clean_call_site` | the tidy-up call site in the usage vocabulary |
-| `0015_document_metadata` | CV label and notes, truncation records, the `resumes` `updated_at` trigger |
+| `0015_document_metadata` | resume label and notes, truncation records, the `resumes` `updated_at` trigger |
 
 > `0005` and `0006` are **not optional** — `src/lib/db/sessions.ts` calls the
 > `append_interview_turn` RPC on every interview turn. Without them the app
@@ -252,7 +252,7 @@ from llm_usage group by 1;
 Two design decisions worth knowing:
 
 - **The prompt is split into stable and volatile layers.** Instructions,
-  persona, scenario and CV are constant for a session and form a
+  persona, scenario and resume are constant for a session and form a
   long cacheable prefix; the coaching signal and rolling summary change per
   turn. This is what makes OpenAI's prompt cache actually hit.
 - **Everything stays in Postgres.** Vector search runs through pgvector inside

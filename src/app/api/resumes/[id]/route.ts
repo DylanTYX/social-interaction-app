@@ -2,11 +2,7 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseUuid, readOptionalString } from "@/lib/api/query";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
-import {
-  deleteResume,
-  getResume,
-  updateResume,
-} from "@/lib/db/resumes";
+import { deleteResume, getResume, updateResume } from "@/lib/db/resumes";
 import { DocumentInUseError } from "@/lib/db/document-in-use";
 import { readJsonBody } from "@/lib/api/read-json";
 import {
@@ -97,7 +93,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
      * The one field that changes what a *running* interview reads.
      *
      * The title, variant and notes are library-only and never reach a prompt,
-     * so editing those mid-session is harmless. The CV text is read live on
+     * so editing those mid-session is harmless. The resume text is read live on
      * every turn, so replacing it underneath an unfinished interview changes
      * what the candidate is being asked about halfway through. The db layer
      * refuses that outright; this turns the refusal into a 409 carrying the
@@ -110,7 +106,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       }
       /**
        * No upper bound here on purpose, matching the upload path: an
-       * over-length CV is shortened and the user told, not refused, and
+       * over-length resume is shortened and the user told, not refused, and
        * `updateResume` records the original length so the notice can say what
        * was dropped. `readJsonBody`'s 256 KB ceiling is the real backstop, and
        * it rejects before anything is parsed.
@@ -125,7 +121,13 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       ...(rawText !== undefined ? { rawText } : {}),
       ...(title !== undefined ? { title } : {}),
       ...(body.variant !== undefined
-        ? { variant: readOptionalString(body, "variant", MAX_FIELD_CHARS.variant) }
+        ? {
+            variant: readOptionalString(
+              body,
+              "variant",
+              MAX_FIELD_CHARS.variant,
+            ),
+          }
         : {}),
       ...(body.notes !== undefined
         ? { notes: readOptionalString(body, "notes", MAX_FIELD_CHARS.notes) }

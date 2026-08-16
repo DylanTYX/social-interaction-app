@@ -68,7 +68,7 @@ export const COACH_RUBRICS: Record<InterviewRoundType, CoachRubric> = {
     ],
     failureModes: [
       "an answer that would work word-for-word at any other employer",
-      "a chronological read-out of the CV, oldest job first",
+      "a chronological read-out of the resume, oldest job first",
       "enthusiasm standing in for a reason — 'I'm really passionate about this space'",
       "trailing off rather than landing",
     ],

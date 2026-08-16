@@ -11,10 +11,10 @@ import { describeTruncationBadge } from "@/lib/document-truncation";
 import type { ResumeSummary } from "@/hooks/use-resumes";
 
 /**
- * Read the stored CV.
+ * Read the stored resume.
  *
  * The job description's twin, and it answers a question that was unanswerable
- * for longer here: the CV text has never been visible anywhere after upload.
+ * for longer here: the resume text has never been visible anywhere after upload.
  * That matters most for a PDF, where what was stored is not what the user
  * looked at — extraction reorders columns, drops tables and merges headers, and
  * until now the only way to find out was to run an interview and notice the
@@ -31,7 +31,7 @@ export function ResumePreviewDialog({
   item,
   onOpenChange,
 }: {
-  /** The CV being previewed, or null when closed. */
+  /** The resume being previewed, or null when closed. */
   item: ResumeSummary | null;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -56,12 +56,12 @@ export function ResumePreviewDialog({
     >
       <DialogContent className="max-h-[85vh] sm:max-w-2xl">
         <DialogHeader className="text-left">
-          <DialogTitle className="pr-6">{item?.title ?? "CV"}</DialogTitle>
+          <DialogTitle className="pr-6">{item?.title ?? "Resume"}</DialogTitle>
           <DialogDescription>{subtitle}</DialogDescription>
         </DialogHeader>
 
         {/* The scroll sits on the body rather than on DialogContent so the
-            header stays put while a long CV scrolls under it. */}
+            header stays put while a long resume scrolls under it. */}
         <div className="max-h-[60vh] overflow-y-auto pr-1">
           <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
             {item?.rawText}

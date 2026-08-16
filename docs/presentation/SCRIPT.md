@@ -20,29 +20,30 @@ The same two rules from [DEMO.md](../DEMO.md) apply to this deck:
 node -v   →   v18.20.8          Next 16 requires >= 20.9
 ```
 
-**`npm run dev` will not start on this machine as it stands.** Part 3 of the
-demo — the live interview — is impossible until this is fixed:
+The shell defaults to Node 18, on which **`npm run dev` will not start** — so the
+live-interview part of the demo is impossible. Node 22 is already installed, so
+this is one command, not an install:
 
 ```bash
-nvm install 20 && nvm use 20
+nvm use 22           # or: nvm alias default 22
 npm ci
 npm run dev          # must load at localhost:3000
 ```
 
-This is pre-flight item #1 in [DEMO.md](../DEMO.md). It also means the fixes in
-commits `8d3a8e8` and `1181e6e` have never been exercised against a running app.
-If asked "did you test that?", the honest answer for those two is: typecheck,
-lint and unit tests — not a live run.
+On Node 18 the test suite also reports 3 unhandled errors (a jsdom/ESM
+incompatibility in the environment, not a test failure). On Node 22 it is
+**482 tests across 55 files, all passing, zero errors** — that is the number on
+slide 3, and the version to quote it from.
 
 ### Pre-flight, the day before — not on the day
 
 | # | Check | Command | Must see |
 |---|---|---|---|
-| 1 | **Node ≥ 20.9** | `node -v` | not 18.x |
+| 1 | **Node ≥ 20.9** | `nvm use 22 && node -v` | not 18.x |
 | 2 | Dependencies | `npm ci` | clean install |
-| 3 | Types, lint, tests | `npx tsc --noEmit && npm run lint && npm test` | 0, 0, 299 passing |
+| 3 | Types, lint, tests | `npx tsc --noEmit && npm run lint && npm test` | 0, 0, **482 passing, 0 errors** |
 | 4 | Supabase reachable | `curl -s -o /dev/null -w "%{http_code}\n" $NEXT_PUBLIC_SUPABASE_URL/rest/v1/` | `401` |
-| 5 | Migrations `0001`–`0010` applied | Supabase SQL editor | `llm_usage` exists — without `0007` there is no cost demo |
+| 5 | Migrations `0001`–`0015` applied | Supabase SQL editor | usage table exists — without `0007` there is no cost demo; `0012` moves usage writes server-side |
 | 6 | OpenAI key has credit | `npm run eval -- --runs=1 --only=<one fixture>` | completes, no 429 |
 | 7 | App starts | `npm run dev` | loads at `localhost:3000` |
 | 8 | **Full dry run** | everything in section 2 | on the machine and network you will present from |
@@ -54,8 +55,8 @@ Also fill in on slide 1: **your supervisor's name and the date**.
 
 # Section 1 — the talk
 
-**Five slides, 1025 words — about 6:50 at a rehearsed 150 wpm**
-(nearer 6:13 if you speak quickly). The demo is the main event, so the talk stays lean.
+**Five slides, 1177 words — about 7:51 at a rehearsed 150 wpm**
+(nearer 7:08 if you speak quickly). The demo is the main event, so the talk stays lean.
 
 These are the same words embedded as speaker notes in the `.pptx`. Both are
 generated from the `SLIDES` array in `build-deck.mjs`, so they cannot drift apart.
@@ -65,148 +66,166 @@ generated from the `SLIDES` array in `build-deck.mjs`, so they cannot drift apar
 
 ---
 
-### Slide 1 · What it is, and the gap — `0:00`
+### Slide 1 · What it is, and what's built — `0:00`
 
 > Good morning. My final year project is ConvoTrainer, an interview practice
 > application.
 >
 > All three ways of practising today have the same hole. A question bank asks
-> the same things in the same order; it never notices that you dodged the
-> question. A human adapts perfectly, but isn't available at eleven at night
-> and can't be repeated ten times. A general chatbot will role-play, but won't
-> grade you against a rubric or push back when you're weak. Nothing connects
-> how you answered to what you get asked next. That loop is the project.
+> the same things in the same order; it never notices you dodged the question.
+> A human adapts perfectly, but isn't available at eleven at night. A general
+> chatbot will role-play, but won't grade you against a rubric or push back
+> when you're weak. Nothing connects how you answered to what you get asked
+> next. That loop is the project.
 >
-> So: you describe the role, optionally attaching the real job description and
-> your CV, which are used to ground the questions. You pick the rounds and
-> shape the interviewer. Then you interview.
+> You describe the role, optionally attaching the real job description and
+> your resume to ground the questions. You pick the rounds, shape the interviewer,
+> and interview.
 >
-> Six round types, each with its own rubric — a system design answer isn't
-> judged the way a behavioural one is. Text or voice, with a code editor on
-> technical rounds. Afterwards, a scored report with per-answer coaching,
-> model answers and competency coverage.
+> Six round types, each judged on its own rubric — a system design answer
+> isn't assessed the way a behavioural one is. Text or voice, with a code
+> editor on technical rounds. Afterwards, a scored report with per-answer
+> coaching, model answers and competency coverage.
 >
-> The rest of the slides are how that works underneath.
+> The remaining four slides are how that works underneath.
 
-**Short: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to pick the next question."**
+**Short: "Question banks don't adapt, humans don't scale, chatbots don't score. ConvoTrainer scores every answer and uses that score to choose the next question."**
 
 ---
 
-### Slide 2 · How a turn works — `1:11`  ★
+### Slide 2 · How one turn works — `1:06`  ★
 
-> This is the centre of the project — one turn, left to right.
+> This is the shape of a single turn, left to right.
 >
-> Your answer arrives at the chat endpoint. Before anything is generated, a
-> second model call scores it against the rubric for that round type, at low
-> temperature, returning JSON.
+> Your answer arrives at the server. Before any question is generated, a
+> second model call scores that answer against the rubric for the round you're
+> in.
 >
-> That verdict goes into a decision engine — ordinary deterministic code, no
-> model involved. It picks one of seven questioning strategies: probe the
-> action, challenge ownership, drill for specificity. It also computes a
-> difficulty target. Those become a private steering block inside the
-> interviewer's prompt, which the candidate never sees. Then the next question
-> streams back.
+> The verdict goes into a decision engine — ordinary deterministic code, no
+> model involved. It chooses how to question you next and sets a difficulty
+> target. That becomes a private instruction attached to the interviewer's
+> prompt, which you never see. Then the next question streams back.
 >
 > Why that order? A verdict that only arrives at the end of the interview
 > cannot change the interview. Scoring before generating is what makes the
 > questioning adaptive rather than scripted.
 >
-> Three engineering points. Scoring is bounded at four seconds — I measured
-> the turn before changing it, rather than guessing. Past that deadline the
-> question starts unsteered, but the verdict is still collected and stored, so
-> the transcript and the report are unaffected.
+> Two engineering points. Scoring is bounded at four seconds, so a slow scorer
+> never leaves you staring at a blank screen — past the deadline the question
+> is generated unsteered, but the score is still recorded. And both messages
+> and the score are written in one database transaction, so a turn can't
+> half-exist.
 >
-> Both messages and the analysis commit in one Postgres transaction, so a turn
-> can't half-exist.
->
-> And every interviewer turn runs on the same model. The opening turn used to
-> use a stronger one — but a different model is a different prompt cache, so
-> the session paid full price twice and hit cache neither time.
+> One thing to be clear about, because the word gets used loosely: this is not
+> an agent. There are no tools for the model to call and no autonomous
+> planning. The model generates; the code decides — and that is what makes a
+> run reproducible.
 
 ---
 
-### Slide 3 · What I can prove — `2:41`  ★
+### Slide 3 · What it's built on — `2:30`
 
-> This is the claim I can prove, and the one I'd most like you to look at.
+> What it's built on, in four parts.
 >
-> The persona reaches the model down two paths. Textually, each dial becomes a
-> sentence in the system prompt — and prompt text has no effect you can
-> compute, so you have to measure what comes back.
+> Language models: one model, GPT-4o-mini, does the interviewing, the scoring,
+> the summarising and the coaching. It's called over plain HTTPS — no SDK, no
+> agent framework. Replies stream token by token; scoring runs at low
+> temperature and returns structured JSON so it's repeatable.
 >
-> The numeric path is arithmetic: strictness minus warmth, over four, plus a
-> repetition boost, clamped one to ten. That number is injected as an explicit
-> instruction — aim for difficulty seven out of ten.
+> Speech: Azure AI Speech in both directions — continuous speech-to-text while
+> you talk, neural voices for the interviewer. It speaks sentence by sentence
+> while the reply is still being written. The Azure key never reaches the
+> browser; the page asks my server for a nine-minute token instead.
 >
-> On the right is real output. Identical question, identical answer, identical
-> round type. The only variable is who's asking. Yuki, at strictness nine and
-> warmth four, targets seven. Isabella, at warmth nine and pushback four,
-> targets five.
+> Grounding: a job description is uploaded or pasted, cleaned up, split into
+> overlapping chunks, embedded, and stored as vectors in Postgres using
+> pgvector. Each turn retrieves the most relevant passages. Short documents
+> skip all that and go in whole, because retrieval would cost more than it
+> saves. The resume is read directly.
 >
-> That isn't a sample from a stochastic model, it's a computation — you can do
-> the arithmetic by hand and get the same two numbers, every run, offline. And
-> a test fails if a future edit brings those two personas' dials together, so
-> the comparison can't quietly stop demonstrating anything.
+> Data: Supabase Postgres, fifteen migrations, row-level security on all nine
+> tables.
 >
-> Two limits, before you ask. The dials are coarse: strictness one to ten
-> moves difficulty only five to seven. And scoring deliberately ignores
-> persona — grading shouldn't depend on who asked.
+> The decision worth defending is the third one. Search lives inside the
+> database, so it inherits the same per-user access rules as every other
+> table. A separate vector database would have been a second place to get
+> authorisation right.
+>
+> Continuous integration runs typecheck, lint, four hundred and eighty-two
+> tests and a production build on every push. The deployment runbook is
+> written, but I have not deployed yet.
 
 ---
 
-### Slide 4 · What it costs — `4:03`  ★
+### Slide 4 · Token usage and cost control — `4:01`  ★
 
-> Second — I don't estimate what this costs. I measure it.
+> I don't estimate what this costs. I measure it.
 >
-> Every OpenAI call records its token usage, including how much was served
-> from cache, into a Postgres table as the call happens. A command-line tool
-> reads that table and prices it, reporting tokens per call site, cache hit
-> rate, and cost per turn. So any cost figure I give you is a query you can
-> re-run.
+> Every model call records its own token usage, including how much was served
+> from cache, as it happens. A reporting tool prices that — tokens per call
+> site, cache hit rate, cost per turn. So any cost figure I give you is a
+> query you can re-run, not a number I worked out on paper.
 >
-> The most useful result was a negative one. OpenAI only caches a prompt
-> prefix once it reaches 1,024 tokens. I'd deliberately structured the prompt
-> in two layers — stable part first, volatile part last — specifically so
-> caching could engage. Then I measured it: on a bare session the stable
-> prefix is about 590 tokens. Under the floor. It never fires.
+> Several things got cut once I could see where the tokens went. Trivial
+> answers like "ok" skip scoring entirely. Anything countable — word count,
+> hedging, whether you gave a metric — is computed in plain code instead of
+> asked of the model, because counting isn't judgement and a model has no
+> reason to count accurately. Coaching answers are cached, and a rolling
+> summary replaces resending the transcript.
 >
-> I kept the structure, because it costs nothing and it's what makes caching
-> possible once a job description is attached — which is when the prompt is
-> big enough to matter. But the tool reports that it didn't fire, in words,
-> rather than printing a zero I could quietly reinterpret.
+> The most useful result was a negative one. The provider only caches a prompt
+> prefix once it reaches one thousand and twenty-four tokens. I'd deliberately
+> ordered the prompt with the unchanging part first, so caching could engage.
+> Then I measured it: on a plain session that stable part is about five
+> hundred and ninety tokens. Under the floor. It never fires.
 >
-> That's the claim I want to make. Not that this is cheap — a ten-question
-> round is roughly a cent. It's that every model call is instrumented, priced
+> I kept the ordering, because it costs nothing and it's what makes caching
+> work once a job description is attached — which is when the prompt is big
+> enough to matter. But the tool reports that it didn't fire, in words, rather
+> than printing a zero I could quietly reinterpret.
+>
+> So the claim isn't that this is cheap. It's that every call is instrumented
 > and checkable, including the optimisation that provably doesn't work.
 
 ---
 
-### Slide 5 · Status, limits, and the demo — `5:29`
+### Slide 5 · How it decides, and what you control — `5:47`  ★
 
-> Finally, where it honestly stands.
+> Last slide: what's inside the two decision boxes, and what you can change.
 >
-> Built and verified: 299 unit tests across 31 files, all passing in CI on
-> every push alongside typecheck and lint. Ten migrations with row-level
-> security on every table — and retrieval runs through pgvector inside
-> Postgres, so it inherits the same access rules as everything else.
+> Scoring first. The rubric is chosen by round type — a behavioural answer is
+> judged on situation, task, action and result; a technical one on problem
+> framing, correctness, complexity, edge cases and code quality. It runs at
+> low temperature and returns structured JSON, so the same answer doesn't
+> swing between runs. Anything countable is computed in code rather than asked
+> of the model. If the model leaves a field out, it gets a neutral default and
+> the omission is recorded — never silently zero. And scoring never sees the
+> persona, because grading shouldn't depend on who asked.
 >
-> Built but not yet measured, and I'll be direct. I wrote an evaluation
-> harness for scoring accuracy, with eighteen hand-authored fixtures and
-> defined metrics. The results aren't collected yet — not because the harness
-> doesn't work, but because every run is billed, and I wanted the metrics and
-> the fixture set settled first so the first run is the real one rather than a
-> pilot. Same for user acceptance testing: the plan, the handout and the exit
-> criteria are written; no participants have been through it.
+> Choosing the next question is a fixed ladder over those scores. Didn't set
+> the scene? It clarifies. Vague answer? It drills for specifics. Said "we"
+> instead of "I"? It challenges ownership. Seven strategies, first match wins.
+> Ask the same way twice and it escalates and raises the difficulty. It also
+> steers toward competencies you haven't covered yet, and it's given its last
+> ten questions with instructions not to repeat them.
 >
-> Some things are deliberately out of scope — submitted code is reviewed,
-> never executed, and it's English only.
+> What you control is the third column: the rounds and their length, the
+> interviewer's background and four dials, text or voice, and your real
+> documents.
 >
-> The rule I held to throughout: never claim a number I haven't run. That's
-> why the middle column is on this slide rather than left off it.
+> I want to be precise about the boundary. The surface is configurable; the
+> decision core is not. Only strictness and warmth feed those calculations —
+> every threshold is fixed. That's deliberate: it's why a run is reproducible
+> and unit-testable.
 >
-> So, three things to show you, ordered by how much can go wrong. Starting
-> with the one that can't fail.
-
-**Short: "299 tests passing in CI, RLS everywhere, voice and text working. The eval harness and the UAT plan are written but not yet run — I'm not going to show you results I don't have."**
+> And here's what that buys. Same question, same answer, only the interviewer
+> differs — the difficulty target moves from five to seven. Not a sample from
+> a stochastic model: a computation that reproduces exactly, offline, every
+> run.
+>
+> One confound I'll state before you're asked: a warmer interviewer sets
+> easier questions, so scores aren't comparable across personas. The system
+> knows that and says so in the interface.
 
 ---
 
@@ -323,7 +342,7 @@ caching has a real chance of firing.
 
 **"Why doesn't caching fire?"**
 The prefix is about 590 tokens and the floor is 1,024. It fires once a job
-description or CV is attached, which is exactly when the prompt is large enough
+description or resume is attached, which is exactly when the prompt is large enough
 for it to matter. Padding the prompt to reach the floor would cost more than the
 discount returns — the floor isn't a target to game.
 
@@ -336,7 +355,7 @@ call, and the whole 39-question bank is about 800 tokens. The corpus is smaller
 than the machinery needed to search it. There's a legitimate *quality* argument
 for a curated bank; there's no cost argument.
 
-### The ones slide 7 invites
+### The ones the status strip invites
 
 **"Why haven't you run the evaluation?"**
 It costs money per run and I wanted the methodology settled first — the metrics,
@@ -360,21 +379,46 @@ instrumentation, and the transaction guarantees are all mine — and the one cla
 I can prove exactly is the part with no model in it at all.
 
 **"Can users see the cost tooling?"**
-Almost entirely no, and the exception is worth stating. The eval harnesses, the
-cost report and the price table are excluded from the browser bundle by the
-import graph *and* by an ESLint rule, so a future mistake fails CI. The
-service-role key has no `NEXT_PUBLIC_` prefix, so it's undefined in a browser
-either way. The honest exception: a logged-in user can read their *own* usage
-rows through the API, because usage is written using their own session. They
-can't read anyone else's, can't modify any, and can't derive cost. The absence of
-a UI is not access control — the enforced boundaries are the import graph, the
-key naming and RLS.
+Almost entirely no. The eval harnesses, the cost report and the price table are
+excluded from the browser bundle by the import graph *and* by an ESLint rule, so
+a future mistake fails CI. The service-role key has no `NEXT_PUBLIC_` prefix, so
+it's undefined in a browser either way. Usage rows are now written server-side
+and attributed to the authenticated user, so they can't be forged — an earlier
+version recorded them under the user's own session, which made the numbers
+forgeable by the person they described. A user can still read their own token
+counts if they go looking; they can't read anyone else's, can't modify any, and
+can't derive cost, because the price table never reaches the browser.
 
 **"What's left to do?"**
-Run the evaluation. Run the UAT. Run the blind-judge arm of the persona eval.
-Then: move the rate limiter out of process so it's correct across serverless
-instances, add a content security policy, and give usage recording a
-service-role write path so the grant to authenticated users can be revoked.
+Run the scoring evaluation. Run the user testing. Run the blind-judge arm of the
+persona study. Deploy it. Then move the rate limiter out of process so it's
+correct across more than one instance, and add a content security policy.
+
+### The one to be ready for
+
+**"Is it agentic?"**
+No, and I'd rather say so than let the word do work it can't. There are no tool
+definitions, no function calling, and no autonomous planning — five single-shot
+model calls and a hand-written decision ladder. The model generates text and
+JSON; the code decides what happens next.
+
+That's a deliberate choice, not a missing feature. Because the control flow is
+ordinary code, a run is reproducible, every branch is unit-tested, and I can
+show you the difficulty target being computed rather than sampled. An agent
+choosing its own thresholds would give up all three. The accurate description is
+**a deterministic control loop with a language model inside it**.
+
+**"So how much is really configurable?"**
+Be precise here, because the honest answer is stronger than the flattering one.
+The *surface* is broad: six round types, length, focus, multi-round loops, the
+interviewer's background and four dials, text or voice, six voices, your own
+documents. The *decision core* is not configurable — only strictness and warmth
+feed those calculations, and every threshold is a fixed constant. That's what
+makes it reproducible.
+
+If pressed on the weakest link: the round-length slider sets a planning value,
+and the per-answer countdown is a separate fixed constant. They aren't wired
+together yet.
 
 ---
 
@@ -382,20 +426,24 @@ service-role write path so the grant to authenticated users can be revoked.
 
 | Claim | Slide | Source |
 |---|---|---|
-| Six round types and their durations | 1 | `src/lib/round-types.ts` |
-| Seven questioning strategies | 2 | `src/lib/decision-engine.ts` |
-| Four-second scoring deadline | 2 | `STEER_DEADLINE_MS`, `src/app/api/chat/route.ts` |
+| Six round types, each with its own rubric | 1 | `src/lib/round-types.ts` |
+| Seven questioning strategies, and the ladder that picks one | 5 | `src/lib/decision-engine.ts` |
+| Four-second scoring bound | 2 | `STEER_DEADLINE_MS`, `src/app/api/chat/route.ts` |
 | Single-transaction turn append | 2 | `append_interview_turn`, migration `0005` |
-| The difficulty formula | 3 | `estimateFollowupDifficulty`, `src/lib/decision-engine.ts:304` |
-| 7/10 vs 5/10, and the dials | 3 | `docs/artifacts/persona-comparison.txt` — committed output of `npm run eval:persona` |
-| Strictness 1→10 moves difficulty 5→7 | 3 | same artifact, difficulty curve |
+| The difficulty formula | 5 (appendix) | `estimateFollowupDifficulty`, `src/lib/decision-engine.ts:304` |
+| Difficulty 5 vs 7 on the same answer | 5 | `docs/artifacts/persona-comparison.txt` — committed output of `npm run eval:persona` |
+| Rubric fields per round family | 5 | `src/lib/response-analyzer.ts`, `src/lib/round-types.ts` |
 | 1,024-token cache floor, ~590-token prefix | 4 | `docs/TOKEN-COST.md`, `docs/DEMO.md` |
 | ~1 cent per ten-question round | 4 (spoken) | `docs/TOKEN-COST.md` — **estimated, not yet validated against live traffic.** Say "roughly" or run `cost-report` first |
-| 299 tests, 31 files | 5 | `npm test`, run 2026-08-10. **README.md still says 257 — it is stale** |
-| 10 migrations, RLS on every table | 5 | `supabase/migrations/` |
-| 18 eval fixtures, results pending | 5 | `src/eval/fixtures.ts`, `docs/EVALUATION.md` |
-| 12 competencies | 1 | `src/lib/competencies.ts` |
+| 482 tests, 55 files, all passing | 3 | `npm test` on Node 22. **README.md still says 257 — it is stale** |
+| 15 migrations, RLS on all 9 tables | 3 | `supabase/migrations/` |
+| Scoring study and UAT designed, not run | 3 | `src/eval/fixtures.ts`, `docs/EVALUATION.md`, `docs/UAT.md` |
+| 12 competencies, coverage steer | 1, 5 | `src/lib/competencies.ts`, `src/lib/competency-matching.ts` |
 | 39-question bank ≈ 800 tokens | Q&A | `docs/TOKEN-COST.md` |
+| Chunking: 1,200 chars / 180 overlap, 1536-d | 3 | `src/lib/jd-chunking.ts`, `src/lib/embeddings.ts` |
+| 9-minute Azure speech token | 3 | `src/app/api/speech-token/route.ts` |
+| Four dials, 1–10 | 5 | `src/lib/persona-schema.ts`, `src/components/setup/persona-step.tsx` |
+| Not deployed | 3 | no `vercel.json`, no `.vercel/`, no deploy job in `.github/workflows/ci.yml` |
 
 **One number needs care.** The ~1 cent per round figure is labelled in
 `docs/TOKEN-COST.md` as an estimate that has *not* been validated against live

@@ -43,7 +43,7 @@ import type { SpeechVoiceOption } from "@/lib/speech-voices";
  * setup object and reports patches back, so the seam is the object itself
  * rather than a long prop list.
  *
- * The job-description and CV pickers used to live here and now sit on the
+ * The job-description and resume pickers used to live here and now sit on the
  * first step, where they belong — they are context, not final tuning, and
  * collecting them last meant the round builder's "Suggest from job
  * description" button could never fire on a first pass.
@@ -128,12 +128,12 @@ export function FinalizeStep({
             }
           />
           <SummaryRow
-            label="CV"
+            label="Resume"
             // Same rule as the row above, and it had the same defect: this
             // branched on `mode` and reported "Selected" for a library tab
             // nothing had been picked from, or "Pasted text (n chars)" for a
             // paste that no longer becomes anything — the picker saves to the
-            // library now, so a CV in play always has a title.
+            // library now, so a resume in play always has a title.
             value={
               setup.resume.enabled
                 ? (setup.resume.savedTitle ?? "None chosen")

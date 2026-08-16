@@ -1,21 +1,21 @@
 /**
  * What to say when a document was too long to store whole.
  *
- * Shared by CVs and job descriptions, because the answer to "your document was
+ * Shared by resumes and job descriptions, because the answer to "your document was
  * shortened" should not depend on which document it was. Only two things vary:
  * the noun, and whether there is a cheaper fix available than editing by hand.
  *
  * Both used to *refuse* an over-length upload. Refusing capped the stored text
  * at exactly the same place truncating does, so it prevented nothing extra —
- * it only stopped the user, and on the CV side the person it stopped was the
- * one with a six-page CV who had done nothing wrong.
+ * it only stopped the user, and on the resume side the person it stopped was the
+ * one with a six-page resume who had done nothing wrong.
  *
  * The wording is built around three things a bare "too long" leaves out:
  * the real numbers, so you can judge whether you care rather than guess; a page
  * count, because characters are hard to picture; and the fact that *you* choose
  * what to cut. That last one is the point. If a document has to be shortened,
  * its author should decide what goes — the same principle that removed the
- * model-written CV summary.
+ * model-written resume summary.
  */
 
 export type TruncatedDocumentKind = "resume" | "jobDescription";
@@ -24,18 +24,18 @@ export type TruncatedDocumentKind = "resume" | "jobDescription";
 const CHARS_PER_PAGE = 4_000;
 
 const NOUN: Record<TruncatedDocumentKind, string> = {
-  resume: "CV",
+  resume: "resume",
   jobDescription: "job description",
 };
 
 /**
- * A job description has an action a CV does not: most over-length pastes are
- * mostly page furniture, and the tidy-up strips it. A CV is already all
+ * A job description has an action a resume does not: most over-length pastes are
+ * mostly page furniture, and the tidy-up strips it. A resume is already all
  * content, so the only honest advice is to trim it yourself.
  */
 const ADVICE: Record<TruncatedDocumentKind, string> = {
   resume:
-    "If the experience you most want to be asked about is further down, trim the CV yourself and upload again so those parts are the ones that survive.",
+    "If the experience you most want to be asked about is further down, trim the resume yourself and upload again so those parts are the ones that survive.",
   jobDescription:
     "Most over-length pastes are mostly page furniture — Tidy this up strips the navigation and boilerplate, which usually brings it under on its own.",
 };

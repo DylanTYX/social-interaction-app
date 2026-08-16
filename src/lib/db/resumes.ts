@@ -11,9 +11,9 @@ export interface ResumeRecord {
   sourceType: "text";
   rawText: string;
   /**
-   * Which version of the CV this is — "PM version", "IC/backend". The CV
+   * Which version of the resume this is — "PM version", "IC/backend". The resume
    * analogue of a job description's role title, and library-only: it never
-   * reaches the interviewer, it exists so two CVs are told apart in a list that
+   * reaches the interviewer, it exists so two resumes are told apart in a list that
    * otherwise shows a guessed title and a date.
    */
   variant: string | null;
@@ -167,13 +167,13 @@ export async function createResume(input: {
 }
 
 /**
- * Edit a saved CV.
+ * Edit a saved resume.
  *
  * Metadata is free to change at any time: `variant`, `notes` and the title are
  * library-only and never reach a prompt, so nothing in flight can be affected
  * by them.
  *
- * `rawText` is the opposite, and is refused while any interview using this CV
+ * `rawText` is the opposite, and is refused while any interview using this resume
  * is in progress. The interviewer reads the stored text live on every turn
  * (`formatResumeForPrompt` is called per request, not snapshotted at launch),
  * so replacing it mid-interview changes what the candidate is being asked about
@@ -181,7 +181,7 @@ export async function createResume(input: {
  * longer exists in that form.
  *
  * Unlike the job description this is a plain column write: there are no chunks
- * to re-embed, because the whole CV is inlined rather than retrieved.
+ * to re-embed, because the whole resume is inlined rather than retrieved.
  *
  * An explicitly-passed empty string clears a field; an omitted key leaves it
  * alone. That distinction is why the payload is built key by key rather than
@@ -194,7 +194,7 @@ export async function updateResume(
     title?: string;
     variant?: string | null;
     notes?: string | null;
-    /** Refused while an interview using this CV is mid-way. */
+    /** Refused while an interview using this resume is mid-way. */
     rawText?: string;
   },
 ): Promise<ResumeRecord | null> {
@@ -203,13 +203,15 @@ export async function updateResume(
   if (patch.rawText !== undefined) {
     const rawText = patch.rawText.trim();
     if (rawText.length < MIN_RESUME_CHARS) {
-      throw new Error(`Resume must be at least ${MIN_RESUME_CHARS} characters.`);
+      throw new Error(
+        `Resume must be at least ${MIN_RESUME_CHARS} characters.`,
+      );
     }
 
     const inProgress = await countSessionsForResume(supabase, id, {
       status: "in_progress",
     });
-    if (inProgress > 0) throw new DocumentInUseError(inProgress, "CV");
+    if (inProgress > 0) throw new DocumentInUseError(inProgress, "resume");
 
     // The same cap and the same record of what it cost, so an edit cannot
     // sneak past a limit the upload path enforces.
@@ -218,7 +220,8 @@ export async function updateResume(
       rawText.length > MAX_RESUME_CHARS ? rawText.length : null;
   }
 
-  if (patch.title !== undefined) payload.title = patch.title.trim().slice(0, 120);
+  if (patch.title !== undefined)
+    payload.title = patch.title.trim().slice(0, 120);
   if (patch.variant !== undefined)
     payload.variant = patch.variant?.trim() || null;
   if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
@@ -261,14 +264,14 @@ export async function deleteResume(
  *     if (profile) return profile;   // early return; raw text unreachable
  *
  * So since migration 0008 the interviewer had never read a candidate's actual
- * CV. It read a paraphrase, capped at 400 tokens with no `finish_reason` check,
+ * Resume. It read a paraphrase, capped at 400 tokens with no `finish_reason` check,
  * summarised from only the first 12,000 characters. Meanwhile the prompt label
  * told it this was "their actual background" and to "never invent experience
  * that isn't here" — so it could pressure-test a claim the candidate never
  * made, or refuse to explore real experience that fell outside that window, in
  * perfectly good faith.
  *
- * The purpose of a CV here is to ground questions in what the candidate has
+ * The purpose of a resume here is to ground questions in what the candidate has
  * actually done. A model deciding which parts of that are worth keeping defeats
  * the purpose, and it is not ours to decide: if a document must be shortened,
  * its author should choose what goes. So the whole stored document is sent, and

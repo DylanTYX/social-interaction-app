@@ -274,8 +274,8 @@ function buildPromptLayers(input: {
     // than the volatile layer. It is also what pushes a session's prefix past
     // the 1,024-token caching floor at all — see docs/TOKEN-COST.md.
     //
-    // This label used to sit above a model-written summary of the CV rather
-    // than the CV, so "their actual background" and "never invent experience
+    // This label used to sit above a model-written summary of the resume rather
+    // than the resume, so "their actual background" and "never invent experience
     // that isn't here" were both false: the interviewer could pressure-test a
     // claim the candidate never made, or refuse to explore real experience the
     // summariser had dropped. It reads the document now, so the label is true.
@@ -990,7 +990,7 @@ export async function POST(request: Request) {
       // mid-session must not leave the interviewer still claiming to work
       // somewhere. Null there means the grounding is genuinely gone.
       jobDescriptionCompany: session.jobDescriptionId
-        ? (launchMeta?.jobDescription?.company?.trim() || null)
+        ? launchMeta?.jobDescription?.company?.trim() || null
         : null,
       jobDescriptionIsStable: jobDescription.stable,
       roundGuidance: roundPlaybook?.content ?? null,

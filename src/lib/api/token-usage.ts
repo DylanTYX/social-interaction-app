@@ -22,8 +22,8 @@ export type LlmCallSite =
   | "coach"
   // Upload-time: stripping page furniture out of a pasted job posting.
   //
-  // `resume-profile` used to sit here too. It distilled a CV into a summary the
-  // interviewer read *instead of* the CV, which is why it is gone rather than
+  // `resume-profile` used to sit here too. It distilled a resume into a summary the
+  // interviewer read *instead of* the resume, which is why it is gone rather than
   // merely unused. The DB check constraint still permits the value, so historic
   // rows keep reporting correctly in the cost report.
   | "jd-clean";
@@ -73,7 +73,11 @@ export class UsageCollector {
     return this.records;
   }
 
-  totals(): { promptTokens: number; completionTokens: number; cachedTokens: number } {
+  totals(): {
+    promptTokens: number;
+    completionTokens: number;
+    cachedTokens: number;
+  } {
     return this.records.reduce(
       (acc, r) => ({
         promptTokens: acc.promptTokens + r.promptTokens,

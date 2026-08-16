@@ -203,7 +203,7 @@ export function isJobDescriptionMissing(
   );
 }
 
-/** The same question for the CV, which fails the same way for the same reason. */
+/** The same question for the resume, which fails the same way for the same reason. */
 export function isResumeMissing(
   launch: SessionLaunchMeta | null,
   session: { resumeId: string | null },
@@ -296,12 +296,12 @@ export function sessionRowToLaunch(
           roleTitle: jobDescription?.roleTitle ?? "",
         }),
     /**
-     * The CV was omitted here entirely.
+     * The resume was omitted here entirely.
      *
      * `base` spreads `...DEFAULT`, which carries `resume: { enabled: false }`,
-     * and nothing overwrote it — so resuming a session showed the CV toggle off
+     * and nothing overwrote it — so resuming a session showed the resume toggle off
      * while the server went on feeding `session.resumeId` into every turn. The
-     * screen and the interview disagreed about whether a CV was attached, and
+     * screen and the interview disagreed about whether a resume was attached, and
      * `saveInterviewLaunch` then wrote the "off" version back to localStorage.
      */
     resume: resumeMissing

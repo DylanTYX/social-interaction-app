@@ -42,7 +42,7 @@ works better.
   removed, and can be undone in one click. **Preview** shows exactly what is
   stored, so you can tell two postings for the same role apart and check what a
   tidy-up left behind.
-- **Your CV** — paste it or upload a PDF. The interviewer reads the document
+- **Your resume** — paste it or upload a PDF. The interviewer reads the document
   itself, whole, and asks about your real background and pressure-tests the
   claims on it, rather than inventing experience you don't have. **Preview**
   shows exactly what was stored, which matters most for a PDF: extraction is
@@ -189,11 +189,11 @@ next to what you wrote, and a model answer. Drills deliberately skip the
 0-100 analyzer — there is no session to score against and no interviewer to
 adapt. If you want a number, run a round.
 
-**Libraries** — saved personas, job descriptions and CVs, reusable across
+**Libraries** — saved personas, job descriptions and resumes, reusable across
 sessions. Both document libraries are searchable and editable after saving —
 including the title, which is otherwise guessed from the first line of whatever
-was pasted. Job descriptions are filterable by company; CVs carry a version
-label instead, since people keep one CV per kind of role and the list otherwise
+was pasted. Job descriptions are filterable by company; resumes carry a version
+label instead, since people keep one resume per kind of role and the list otherwise
 shows a guessed name and a date. Deleting either says first how many interviews
 still in progress are using it; those keep running without it.
 
@@ -206,12 +206,12 @@ saved and reusable, which is why the wizard says so at the point of adding.
 
 That rule decides what can be changed and when:
 
-- **Labels** — a job description's company, role and link; a CV's version and
+- **Labels** — a job description's company, role and link; a resume's version and
   notes; the title of either — are copied into the session when it launches.
   Editing them later is always allowed, and never disturbs an interview already
   under way.
 - **The text** is read fresh on every single turn: a job description through its
-  search index, a CV inlined whole. Editing it is refused while any interview
+  search index, a resume inlined whole. Editing it is refused while any interview
   using it is still in progress — otherwise the first half of that interview
   would be grounded on one version and the second half on another, with both
   scored onto the same report. Finish or abandon those interviews and the edit

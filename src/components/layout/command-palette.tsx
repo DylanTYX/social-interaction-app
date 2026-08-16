@@ -99,12 +99,14 @@ const COMMANDS: Command[] = [
   },
   {
     id: "resumes",
-    label: "CVs",
+    label: "Resumes",
     icon: FileUser,
     href: "/dashboard/resumes",
-    // "resume" stays in the keywords: the name changed, the word people search
-    // for did not.
-    keywords: "cv resume upload experience",
+    // "cv" stays in the keywords, and only there: plenty of people will type
+    // it looking for this page, and a search alias is not a claim that the two
+    // documents are the same thing. Every label the user actually reads says
+    // resume.
+    keywords: "resume cv upload experience background",
   },
   {
     id: "help",

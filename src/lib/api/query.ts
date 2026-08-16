@@ -78,7 +78,7 @@ export function parseOptionalUuid(
 /**
  * Parse a client-supplied string, rejecting anything over `max` characters.
  *
- * Document uploads were capped (30k for a JD, `MAX_RESUME_CHARS` for a CV) but
+ * Document uploads were capped (30k for a JD, `MAX_RESUME_CHARS` for a resume) but
  * the per-turn fields that reach a model were not: `userMessage` went to the
  * interviewer, the analyzer *and* an embedding call with no bound at all, and
  * the coach route interpolated an unbounded question and answer straight into

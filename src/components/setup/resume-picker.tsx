@@ -44,7 +44,7 @@ import type { ResumeSummary, UseResumes } from "@/hooks/use-resumes";
 import type { ResumeSetupConfig } from "@/lib/interview-setup";
 
 /**
- * Choose the CV this interview runs against.
+ * Choose the resume this interview runs against.
  *
  * The job description picker's twin, down to the layout — same rows, same radio
  * dot, same preview eye, same add dialog, same "Manage in library" link. Two
@@ -52,7 +52,7 @@ import type { ResumeSetupConfig } from "@/lib/interview-setup";
  * differently, and this one used to: three mode chips, a paste box, an upload
  * panel and a delete button, inside a card whose job is to answer one question.
  *
- * That difference was not only cosmetic. Pasting here created a *new* CV at
+ * That difference was not only cosmetic. Pasting here created a *new* resume at
  * every launch, so launching twice from one draft left duplicate rows; the
  * delete button removed a library document from inside the wizard with no
  * confirmation and no idea what used it; and the "From library" tab's empty
@@ -86,7 +86,7 @@ export function ResumePicker({
 
   const selected = items.find((item) => item.id === value.savedId) ?? null;
   /**
-   * The chosen CV is gone — deleted from the library page while this `savedId`
+   * The chosen resume is gone — deleted from the library page while this `savedId`
    * sat in localStorage.
    *
    * Only meaningful once the library has actually loaded. Deriving it from
@@ -141,7 +141,7 @@ export function ResumePicker({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <FileUser className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <Label htmlFor="use-resume">CV</Label>
+          <Label htmlFor="use-resume">Resume</Label>
           <Badge variant="outline" className="font-normal">
             Optional
           </Badge>
@@ -166,8 +166,8 @@ export function ResumePicker({
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle/70 p-3">
               <AlertCircle className="h-5 w-5 shrink-0 text-warning" />
               <p className="flex-1 text-xs text-warning-emphasis">
-                The CV you had chosen is no longer in your library. Pick another
-                one, or turn this off.
+                The resume you had chosen is no longer in your library. Pick
+                another one, or turn this off.
               </p>
               <Button
                 type="button"
@@ -183,10 +183,10 @@ export function ResumePicker({
 
           {status === "error" ? (
             /* Never an empty list on a failed load. Rendering "add your first
-               one" to someone with several saved CVs invites a duplicate
+               one" to someone with several saved resumes invites a duplicate
                upload, and hides a selection launch would still have used. */
             <ErrorStateCard
-              title="Couldn't load your CVs"
+              title="Couldn't load your resumes"
               description={error ?? "Something went wrong."}
               onRetry={() => void refresh()}
             />
@@ -200,7 +200,7 @@ export function ResumePicker({
             <div
               className={cn(
                 // Capped and scrolled so the height comes from the container
-                // rather than from how many CVs happen to be saved, and so
+                // rather than from how many resumes happen to be saved, and so
                 // choosing one never resizes the card.
                 "max-h-64 space-y-2 overflow-y-auto",
                 items.length > 0 && "pr-1",
@@ -274,7 +274,7 @@ export function ResumePicker({
                    a different tab to resolve it. */
                 <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">
                   <p className="text-sm text-muted-foreground">
-                    No saved CVs yet
+                    No saved resumes yet
                   </p>
                   <Button
                     type="button"
@@ -284,7 +284,7 @@ export function ResumePicker({
                     onClick={() => setAdding(true)}
                   >
                     <Plus className="h-4 w-4" />
-                    Add a CV
+                    Add a resume
                   </Button>
                 </div>
               )}
@@ -304,12 +304,12 @@ export function ResumePicker({
                     variant="outline"
                     size="icon"
                     onClick={() => setAdding(true)}
-                    aria-label="Add a CV"
+                    aria-label="Add a resume"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Add a CV</TooltipContent>
+                <TooltipContent>Add a resume</TooltipContent>
               </Tooltip>
             ) : (
               <span />
@@ -347,7 +347,7 @@ export function ResumePicker({
       >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader className="text-left">
-            <DialogTitle>Add a CV</DialogTitle>
+            <DialogTitle>Add a resume</DialogTitle>
             <DialogDescription>
               Saved to your library, so you can reuse it in later interviews.
             </DialogDescription>
@@ -377,7 +377,7 @@ export function ResumePicker({
         onOpenChange={(open) => {
           if (!open) setDiscardPrompt(false);
         }}
-        title="Discard this CV?"
+        title="Discard this resume?"
         description="You have text here that has not been saved. Closing now loses it."
         confirmLabel="Discard"
         onConfirm={() => {

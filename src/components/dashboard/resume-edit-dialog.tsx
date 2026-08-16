@@ -26,12 +26,12 @@ export interface ResumePatch {
 }
 
 /**
- * Edit a saved CV.
+ * Edit a saved resume.
  *
  * Until this existed there was no update path at all, which mattered most for
  * the title: it is derived rather than entered, from the first line of the
- * file. A CV whose first line is a phone number, or "Curriculum Vitae", was
- * labelled that in the library permanently.
+ * file. A resume whose first line is a phone number, or just the word
+ * "Resume", was labelled that in the library permanently.
  *
  * The text is editable, with one rule the server enforces and this explains:
  * not while an interview using it is still in progress. The title, variant and
@@ -45,7 +45,7 @@ export function ResumeEditDialog({
   onOpenChange,
   onSave,
 }: {
-  /** The CV being edited, or null when the dialog is closed. */
+  /** The resume being edited, or null when the dialog is closed. */
   item: ResumeSummary | null;
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, patch: ResumePatch) => Promise<boolean>;
@@ -58,10 +58,10 @@ export function ResumeEditDialog({
       }}
     >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        {/* Keyed on the id so opening a different CV remounts the form and its
+        {/* Keyed on the id so opening a different resume remounts the form and its
             fields seed from the new props. The alternative — one long-lived
             form copying props into state from an effect — runs a render with
-            the previous CV's values still in the inputs, and needs a second
+            the previous resume's values still in the inputs, and needs a second
             pass to correct itself. */}
         {item && (
           <EditForm
@@ -103,7 +103,7 @@ function EditForm({
     }
 
     if (textChanged && rawText.trim().length < MIN_RESUME_CHARS) {
-      setError(`The CV needs at least ${MIN_RESUME_CHARS} characters.`);
+      setError(`The resume needs at least ${MIN_RESUME_CHARS} characters.`);
       return;
     }
 
@@ -141,7 +141,7 @@ function EditForm({
   return (
     <>
       <DialogHeader className="text-left">
-        <DialogTitle>Edit CV</DialogTitle>
+        <DialogTitle>Edit resume</DialogTitle>
         <DialogDescription>
           Editing the text changes what the interviewer reads, which is refused
           while an interview using it is still in progress.
@@ -150,9 +150,9 @@ function EditForm({
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="edit-cv-title">Title</Label>
+          <Label htmlFor="edit-resume-title">Title</Label>
           <Input
-            id="edit-cv-title"
+            id="edit-resume-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="e.g. Jane Doe · 2026"
@@ -160,9 +160,9 @@ function EditForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-cv-variant">Version</Label>
+          <Label htmlFor="edit-resume-variant">Version</Label>
           <Input
-            id="edit-cv-variant"
+            id="edit-resume-variant"
             value={variant}
             onChange={(event) => setVariant(event.target.value)}
             placeholder="e.g. Backend version"
@@ -170,9 +170,9 @@ function EditForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-cv-notes">Notes</Label>
+          <Label htmlFor="edit-resume-notes">Notes</Label>
           <Textarea
-            id="edit-cv-notes"
+            id="edit-resume-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             placeholder="Anything worth remembering — which roles you send this one to, what to emphasise."
@@ -182,7 +182,7 @@ function EditForm({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="edit-cv-text">CV text</Label>
+            <Label htmlFor="edit-resume-text">Resume text</Label>
             <span className="text-xs tabular-nums text-muted-foreground">
               {rawText.trim().length.toLocaleString()} chars
               {/* Named as soon as it differs, because the consequence is not
@@ -191,7 +191,7 @@ function EditForm({
             </span>
           </div>
           <Textarea
-            id="edit-cv-text"
+            id="edit-resume-text"
             value={rawText}
             onChange={(event) => setRawText(event.target.value)}
             className="min-h-48 resize-y font-mono text-xs leading-relaxed"

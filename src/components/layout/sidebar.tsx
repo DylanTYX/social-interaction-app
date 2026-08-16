@@ -69,9 +69,14 @@ const navigation = [
     icon: FileText,
   },
   {
-    // "CVs", not "Resumes": the wizard card, the delete dialog and every
-    // truncation notice call it a CV, and one feature should have one name.
-    name: "CVs",
+    // "Resumes" everywhere — the wizard card, the delete dialog and every
+    // truncation notice — because one feature should have one name.
+    //
+    // This read "CVs" for a while, which was wrong twice over: it disagreed
+    // with the rest of the app, and a CV is not a resume. A CV is the long
+    // academic record; a resume is the short targeted one. What the
+    // interviewer is built to read is the latter.
+    name: "Resumes",
     href: "/dashboard/resumes",
     icon: FileUser,
   },

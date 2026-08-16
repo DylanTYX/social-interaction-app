@@ -40,7 +40,7 @@ export interface UseResumes {
   }) => Promise<ResumeSummary | null>;
   /**
    * Metadata always; the text only when no interview using it is mid-way — the
-   * CV is read live on every turn, so replacing it under a running session
+   * Resume is read live on every turn, so replacing it under a running session
    * would change what the candidate is being asked about halfway through.
    * Rejects with the server's message, which names the count.
    */
@@ -55,7 +55,7 @@ export interface UseResumes {
   ) => Promise<ResumeSummary | null>;
   remove: (id: string) => Promise<boolean>;
   /**
-   * How many sessions a delete would strip this CV from, for the confirm
+   * How many sessions a delete would strip this resume from, for the confirm
    * dialog. Returns null if the count could not be fetched, which callers
    * should treat as "say nothing" rather than "say zero".
    */
@@ -104,7 +104,7 @@ async function loadResumes(
   return payload.resumes ?? [];
 }
 
-/** Manages the user's resume/CV library. Mirrors `useJobDescriptions`. */
+/** Manages the user's resume/resume library. Mirrors `useJobDescriptions`. */
 export function useResumes(filters: ResumeFilters = {}): UseResumes {
   // Destructured into primitives so the loader identity tracks the filter
   // *values*, not the identity of an object literal a caller re-creates every
@@ -202,7 +202,9 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         // A refusal is about the dialog the user is standing in and needs to be
         // shown there, next to the field it refused — `readJson` has already
         // turned the 409 body into this message, count and all.
-        throw err instanceof Error ? err : new Error("Failed to update resume.");
+        throw err instanceof Error
+          ? err
+          : new Error("Failed to update resume.");
       }
     },
     // No `setError`: this one rethrows rather than writing the library-level

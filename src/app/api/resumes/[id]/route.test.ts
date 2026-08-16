@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * PATCH on a CV, and the job description's twin at the HTTP layer.
+ * PATCH on a resume, and the job description's twin at the HTTP layer.
  *
- * The CV route is cheaper than the job description's — there is nothing to
+ * The resume route is cheaper than the job description's — there is nothing to
  * re-embed — so the ownership check is not about billable work here. It is
  * about the two answers a route can give that are worse than an error:
  *
@@ -37,7 +37,7 @@ vi.mock("@/lib/db/resumes", async (importOriginal) => {
 const { PATCH } = await import("@/app/api/resumes/[id]/route");
 const { DocumentInUseError } = await import("@/lib/db/document-in-use");
 
-const CV_ID = "11111111-1111-4111-8111-111111111111";
+const RESUME_ID = "11111111-1111-4111-8111-111111111111";
 const SOMEONE_ELSES_ID = "22222222-2222-4222-8222-222222222222";
 const LONG_TEXT = "Senior engineer, distributed systems. ".repeat(10);
 
@@ -53,7 +53,7 @@ function patch(id: string, body: unknown) {
 }
 
 const RECORD = {
-  id: CV_ID,
+  id: RESUME_ID,
   title: "Jane Doe · Resume",
   variant: null,
   notes: null,
@@ -87,14 +87,14 @@ describe("PATCH /api/resumes/[id]", () => {
 
   it("rejects a non-string rawText rather than silently succeeding", async () => {
     for (const value of [null, 12345, { text: "hi" }]) {
-      const response = await patch(CV_ID, { rawText: value });
+      const response = await patch(RESUME_ID, { rawText: value });
       expect(response.status).toBe(400);
     }
     expect(updateResume).not.toHaveBeenCalled();
   });
 
   it("rejects an empty rawText", async () => {
-    const response = await patch(CV_ID, { rawText: "   " });
+    const response = await patch(RESUME_ID, { rawText: "   " });
 
     expect(response.status).toBe(400);
     expect(updateResume).not.toHaveBeenCalled();
@@ -102,16 +102,16 @@ describe("PATCH /api/resumes/[id]", () => {
 
   it("refuses to blank the title", async () => {
     // `title` is `not null` in the schema and every list and picker renders it.
-    const response = await patch(CV_ID, { title: "" });
+    const response = await patch(RESUME_ID, { title: "" });
 
     expect(response.status).toBe(400);
     expect(updateResume).not.toHaveBeenCalled();
   });
 
   it("answers 409 with the count when an interview is mid-way", async () => {
-    updateResume.mockRejectedValue(new DocumentInUseError(2, "CV"));
+    updateResume.mockRejectedValue(new DocumentInUseError(2, "resume"));
 
-    const response = await patch(CV_ID, { rawText: LONG_TEXT });
+    const response = await patch(RESUME_ID, { rawText: LONG_TEXT });
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ inProgress: 2 });
@@ -120,7 +120,7 @@ describe("PATCH /api/resumes/[id]", () => {
   it("leaves rawText alone when the key is absent", async () => {
     // A metadata-only edit is always allowed, which is only true if it never
     // touches the text.
-    await patch(CV_ID, { variant: "PM version" });
+    await patch(RESUME_ID, { variant: "PM version" });
 
     const [, , appliedPatch] = updateResume.mock.calls[0];
     expect(appliedPatch).not.toHaveProperty("rawText");
@@ -133,12 +133,12 @@ describe("PATCH /api/resumes/[id]", () => {
     // text at the same place and only add friction.
     const oversize = "x".repeat(60_000);
 
-    const response = await patch(CV_ID, { rawText: oversize });
+    const response = await patch(RESUME_ID, { rawText: oversize });
 
     expect(response.status).toBe(200);
     expect(updateResume).toHaveBeenCalledWith(
       expect.anything(),
-      CV_ID,
+      RESUME_ID,
       expect.objectContaining({ rawText: oversize }),
     );
   });

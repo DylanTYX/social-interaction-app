@@ -643,7 +643,7 @@ function ChatSimulateInner() {
                   setSidebarOverride(next);
                   // Only the thing the user just toggled. This used to spread
                   // `DEFAULT_SETUP` over the whole stored config, which reset
-                  // the job description and CV along with it.
+                  // the job description and resume along with it.
                   updateInterviewSetup({ liveCoachingEnabled: next });
                 }}
               >

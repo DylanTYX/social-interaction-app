@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Choose a PDF to upload.
  *
  * The hidden-input-behind-a-button dance was byte-identical in four places —
- * both job-description surfaces and both CV ones — including the same
+ * both job-description surfaces and both resume ones — including the same
  * `event.target.value = ""` reset, which is load-bearing and easy to drop when
  * copying: without it, picking the same file twice in a row fires no `change`
  * event at all, so a failed upload could not be retried with the same file.
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  *
  * It is deliberately **not** tinted by the document's accent any more. It used
  * to take an `accent` prop, so the job-description uploader rendered green and
- * the CV uploader rendered teal — two panels running the same component, doing
+ * the resume uploader rendered teal — two panels running the same component, doing
  * the same job, in the same wizard, that looked like different features. The
  * accent still identifies the document, but it does that once, in the page
  * header icon; below the header the interaction language is the primary blue
