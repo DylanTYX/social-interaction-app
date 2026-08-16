@@ -101,7 +101,7 @@ prefix:
 - the scenario context
 - round-type guidance ("how to run this kind of round")
 - the loop handover brief, if this is round 2+
-- the resume profile
+- the candidate's CV, verbatim
 - the hiring company, when the job description records one
 - the job description **only when it was inlined whole**
 
@@ -180,7 +180,7 @@ section first.
 | **`rawAnalysis` no longer stored or returned** | A verbatim duplicate of the entire analysis object was written to `interview_turn_analyses` and sent over the wire every turn, and read by nobody. It roughly doubled both the row and the response payload.                                                                                                                                                                 |
 | **Transcript read bounded**                    | The chat route loaded the _entire_ transcript, then discarded all but the last few messages — growing linearly with session length and defeating the point of the rolling summary. It now reads a fixed window sized to cover the verbatim window, the prior-question lookup, and whatever aged out since the last summary refresh.                                          |
 | **Rolling summary instead of full history**    | The last 6 messages go verbatim; everything older is folded into a compact summary regenerated every 4 messages. Cost stops growing with session length.                                                                                                                                                                                                                     |
-| **Resume distilled once**                      | A CV is summarised into a compact profile (capped at 400 tokens) at upload, and the profile — not the raw document — goes into every prompt. Paid once, not per turn.                                                                                                                                                                                                        |
+| **Resume distillation, reversed**              | A CV *was* summarised into a 400-token profile at upload, and that profile — not the document — went into every prompt. It saved roughly 1,200 cached tokens a turn and cost the fidelity of the whole CV: the interviewer had never read a candidate's actual words, while its prompt label claimed otherwise. Removed. See "Why the CV is sent whole" below.                |
 | **Similarity floor with a top-1 fallback**     | Chunks below 0.3 cosine similarity aren't worth the tokens, but the floor could remove _everything_, silently dropping role context from both the prompt and that turn's scoring. One weak excerpt beats no context and no signal.                                                                                                                                           |
 | **Summary capped at 400 tokens**               | This was the last uncapped call, and the worst one to leave uncapped: the summary is regenerated _from itself_ and injected into every later prompt, so a single long generation inflated the rest of the session rather than costing once.                                                                                                                                  |
 | **Counting moved out of the LLM**              | The analyzer asked the model for a word count, hesitation-marker count, qualifier count, revision count, metric count, and whether timeframes appear. Six pieces of arithmetic, billed in both the scaffold describing them and the response producing them, from a model with no reason to count accurately. Now `text-metrics.ts`; scaffold down from ~296 to ~245 tokens. |
@@ -293,8 +293,8 @@ designed compression, not truncation, and carries no such risk.
 
   The _principle_ underneath the suggestion — retrieve what you already
   generated instead of generating it again — is sound, and it is applied where
-  it actually pays: coach answers (migration `0010`), the resume profile
-  (distilled once at upload) and JD embeddings (computed once).
+  it actually pays: coach answers (migration `0010`) and JD embeddings
+  (computed once).
 
   There is a legitimate **quality** argument for a curated bank — consistency,
   fewer off-role questions, and a measurable retrieval metric. It is just not a
@@ -327,6 +327,38 @@ designed compression, not truncation, and carries no such risk.
   `POST /api/job-descriptions/clean` is the version that does work. The browser
   has already rendered the page, so pasting carries the text out of any source;
   the model's job is only to drop the furniture that comes with it.
+
+### Why the CV is sent whole
+
+The obvious optimisation here is the one that was tried and removed, so it is
+worth writing down why rather than leaving the next person to rediscover it.
+
+A CV sits in the **stable prefix**, so it is re-sent on every turn — but from
+turn two onwards at the cached rate, and attaching one is a large part of what
+pushes a session's prefix past the 1,024-token floor at all. A 24,000-character
+CV works out at roughly **$0.005 for a ten-turn session**, against $0.0012 for
+the 6,000-character clip it replaced. Three tenths of a cent.
+
+What that bought previously was a `gpt-4o-mini` summary written at upload, which
+the interviewer read **instead of** the document. Four losses stacked: only the
+first 12,000 characters were summarised, the prompt instructed the model to
+"drop everything else", the output was capped at 400 tokens with no
+`finish_reason` check, and what survived was a paraphrase. Meanwhile the prompt
+label told the interviewer this was the candidate's "actual background" and to
+"never invent experience that isn't here" — so it could pressure-test a claim
+the candidate never made, or refuse to explore real experience the summariser
+had dropped.
+
+Chunking the CV the way job descriptions are chunked was also considered and
+rejected. Retrieval returns what is *similar* to the current conversation, not
+what has *not been asked yet*, so it narrows rather than opens; the
+"ask something new" job already belongs to `formatAskedQuestions` and the
+competency coverage steer; and the retrieval path is `stable: false`, so it
+would leave the cacheable prefix and be billed at full rate every turn.
+
+The general lesson: a token optimisation that changes what the model *knows* is
+not a token optimisation, it is a product change, and it should be priced as
+one.
 
 ### The JD tidy-up is not a cost saving
 
@@ -361,7 +393,8 @@ the JD is ever used in.
 | Analyzer scaffold, cap, truncation check | `src/lib/response-analyzer.ts`               |
 | Rolling summary cadence                  | `src/lib/summary.ts`                         |
 | Similarity floor, small-JD inlining      | `src/lib/db/job-descriptions.ts`             |
-| Resume distillation                      | `src/lib/resume-profile.ts`                  |
+| CV sent whole, and its one cap            | `src/lib/db/resumes.ts`                      |
+| Over-length notice, shared by both docs   | `src/lib/document-truncation.ts`             |
 | Deterministic text counting              | `src/lib/text-metrics.ts`                    |
 | Input length caps                        | `src/lib/api/input-limits.ts`                |
 | Coach answer cache                       | `supabase/migrations/0010_coach_answers.sql` |

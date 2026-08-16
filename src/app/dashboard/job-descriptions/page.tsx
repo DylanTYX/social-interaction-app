@@ -50,6 +50,7 @@ import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { describeJobDescriptionDelete } from "@/lib/job-description-copy";
+import { describeTruncationBadge } from "@/lib/document-truncation";
 
 export default function JobDescriptionsPage() {
   const [query, setQuery] = useState("");
@@ -318,6 +319,7 @@ export default function JobDescriptionsPage() {
                         item.company,
                         item.roleTitle,
                         formatDateTime(item.createdAt),
+                        describeTruncationBadge(item.truncatedFrom),
                       ]
                         .filter(Boolean)
                         .join(" · ")}

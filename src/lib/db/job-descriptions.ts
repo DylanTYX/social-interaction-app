@@ -6,6 +6,7 @@ import {
   chunkJobDescription,
 } from "@/lib/jd-chunking";
 import { countSessionsForJobDescription } from "@/lib/db/sessions";
+import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 
 export interface JobDescriptionRecord {
   id: string;
@@ -16,6 +17,8 @@ export interface JobDescriptionRecord {
   /** Where the posting lives, for going back to it later. */
   sourceUrl: string | null;
   notes: string | null;
+  /** Original length when the upload exceeded the cap; null when stored whole. */
+  truncatedFrom: number | null;
   sourceType: "text";
   rawText: string;
   createdAt: string;
@@ -37,6 +40,7 @@ interface JobDescriptionRow {
   company: string | null;
   source_url: string | null;
   notes: string | null;
+  truncated_from: number | null;
   source_type: "text";
   raw_text: string;
   created_at: string;
@@ -52,7 +56,7 @@ interface MatchRow {
 }
 
 const JOB_DESCRIPTION_COLUMNS =
-  "id, title, role_title, company, source_url, notes, source_type, raw_text, created_at, updated_at";
+  "id, title, role_title, company, source_url, notes, truncated_from, source_type, raw_text, created_at, updated_at";
 
 function rowToJobDescription(row: JobDescriptionRow): JobDescriptionRecord {
   return {
@@ -62,6 +66,7 @@ function rowToJobDescription(row: JobDescriptionRow): JobDescriptionRecord {
     company: row.company,
     sourceUrl: row.source_url,
     notes: row.notes,
+    truncatedFrom: row.truncated_from ?? null,
     sourceType: row.source_type,
     rawText: row.raw_text,
     createdAt: row.created_at,
@@ -78,10 +83,16 @@ export async function createJobDescription(input: {
   sourceUrl?: string | null;
   usage?: UsageCollector;
 }): Promise<JobDescriptionRecord> {
-  const rawText = input.rawText.trim();
-  if (rawText.length < 80) {
+  const submitted = input.rawText.trim();
+  if (submitted.length < 80) {
     throw new Error("Job description must be at least 80 characters.");
   }
+
+  // Shortened rather than refused, and the original length is kept so the
+  // library can say so afterwards. See `describeTruncation`.
+  const rawText = submitted.slice(0, MAX_JOB_DESCRIPTION_CHARS);
+  const truncatedFrom =
+    submitted.length > MAX_JOB_DESCRIPTION_CHARS ? submitted.length : null;
 
   const chunks = chunkJobDescription(rawText);
   if (chunks.length === 0) {
@@ -102,6 +113,7 @@ export async function createJobDescription(input: {
       role_title: input.roleTitle?.trim() || null,
       company: input.company?.trim() || null,
       source_url: input.sourceUrl?.trim() || null,
+      truncated_from: truncatedFrom,
       raw_text: rawText,
       source_type: "text",
     })
