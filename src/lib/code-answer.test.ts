@@ -121,10 +121,36 @@ describe("resolveAnswerFormat", () => {
     ).toBe("code");
   });
 
-  it("forces prose in voice mode — there is no editor to type into", () => {
+  it("opens a voice technical round on discussion, not on the editor", () => {
+    // Voice sets the *default* only. The round opens the way its
+    // `opening` instruction does — state the problem, invite thinking out loud
+    // — so it starts in prose with the editor a tap away.
+    expect(
+      resolveAnswerFormat({ ...round, practiceMode: "voice" }),
+    ).toBe("prose");
+  });
+
+  it("honours a code override in voice mode", () => {
+    // Behaviour change. This used to return "prose" before the round type was
+    // even consulted, so a voice technical round was a spoken discussion scored
+    // on correctness, complexity and code quality — the rubric asking for
+    // something the interface could not accept.
     expect(
       resolveAnswerFormat({
         ...round,
+        practiceMode: "voice",
+        answerFormat: "code",
+      }),
+    ).toBe("code");
+  });
+
+  it("still refuses a code override in voice mode on a prose-only type", () => {
+    // The type guard runs before the mode, so lifting the voice block did not
+    // reopen the hole it used to mask.
+    expect(
+      resolveAnswerFormat({
+        ...round,
+        type: "behavioral",
         practiceMode: "voice",
         answerFormat: "code",
       }),

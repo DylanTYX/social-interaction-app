@@ -44,23 +44,32 @@ export interface InterviewRoundConfig {
 }
 
 /**
- * Voice rounds cannot use an editor, so the mode wins over the round type.
+ * The round type decides whether an editor is possible; the mode decides only
+ * what the round *opens* with.
  *
- * A stored `answerFormat: "code"` is also **ignored on a type that does not
- * support an editor**. It used to win outright, which is how a behavioural
- * round could end up with one: the wizard offered the toggle (it gated on
- * practice mode, not round type), and once written the override beat the
- * default. Saved loops and localStorage payloads still carry those values, so
- * refusing them here is what actually fixes it.
+ * A stored `answerFormat: "code"` is **ignored on a type that does not support
+ * an editor**. It used to win outright, which is how a behavioural round could
+ * end up with one: the wizard offered the toggle (it gated on practice mode,
+ * not round type), and once written the override beat the default. Saved loops
+ * and localStorage payloads still carry those values, so refusing them here is
+ * what actually fixes it — which is why that guard runs first.
+ *
+ * Voice used to return `"prose"` before either check, so a voice technical
+ * round was a spoken discussion scored on `correctness`, `complexity` and
+ * `codeQuality` — the same "the rubric asks for something the interface cannot
+ * accept" problem `AnswerFormat` was introduced to fix, surviving on the voice
+ * path. It now only sets the *default*: a voice round opens on discussion,
+ * because the interviewer states the problem and invites thinking out loud, and
+ * the editor is one tap away from there.
  */
 export function resolveAnswerFormat(
   round:
     | Pick<InterviewRoundConfig, "type" | "practiceMode" | "answerFormat">
     | undefined,
 ): AnswerFormat {
-  if (!round || round.practiceMode === "voice") return "prose";
-  if (!supportsCodeEditor(round.type)) return "prose";
+  if (!round || !supportsCodeEditor(round.type)) return "prose";
   if (round.answerFormat) return round.answerFormat;
+  if (round.practiceMode === "voice") return "prose";
   return defaultAnswerFormat(round.type);
 }
 

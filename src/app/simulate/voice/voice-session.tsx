@@ -3,7 +3,14 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Settings2, AlertCircle, Volume2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Settings2,
+  AlertCircle,
+  Code2,
+  Mic,
+  Volume2,
+} from "lucide-react";
 
 import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
@@ -58,6 +65,10 @@ import {
   type TranscriptResult,
 } from "@/lib/speech-service";
 import { decideSilence } from "@/lib/silence-detection";
+import { CodeInput } from "@/components/chat/code-input";
+import { ChoiceChip } from "@/components/ui/choice-chip";
+import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
+import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { readJson } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
@@ -139,12 +150,12 @@ function VoiceSimulateInner() {
   const setupError = bootstrap.error ?? tokenError;
 
   const resumed = useResumedSession(bootstrap);
+  const activeRound =
+    bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex];
   const turn = useInterviewTurnState({
     sessionId: bootstrap.sessionId,
     personaName: bootstrap.personaConfig.name,
-    targetTurns: targetTurnsForRound(
-      bootstrap.interviewLoop.rounds[bootstrap.interviewLoop.currentRoundIndex],
-    ),
+    targetTurns: targetTurnsForRound(activeRound),
     initialAnalyses: resumed.analyses,
     initialDecision: resumed.lastDecision,
   });
@@ -158,6 +169,24 @@ function VoiceSimulateInner() {
   const [interimTranscript, setInterimTranscript] = useState("");
   const [finalTranscript, setFinalTranscript] = useState("");
   const [recordingError, setRecordingError] = useState<string | null>(null);
+
+  /**
+   * Whether this turn is being typed as code rather than spoken.
+   *
+   * A voice technical round is still a spoken round — the interviewer states
+   * the problem and the candidate thinks out loud — but the answer to "write
+   * the function" cannot be dictated, and the rubric scores `correctness`,
+   * `complexity` and `codeQuality` regardless of which mode the round is in.
+   *
+   * Per turn, not per round, and mutually exclusive with the microphone: one
+   * answer has one format, exactly as the text screen already behaves.
+   */
+  const [isWritingCode, setIsWritingCode] = useState(false);
+  const isWritingCodeRef = useRef(false);
+  const [codeLanguage, setCodeLanguage] = useState<CodeLanguage>(
+    ROUND_TYPE_SPECS[activeRound?.type ?? "technical_swe"].defaults.language ??
+      DEFAULT_CODE_LANGUAGE,
+  );
 
   const speechServiceRef = useRef(getSpeechService());
   const recordingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -230,6 +259,10 @@ function VoiceSimulateInner() {
   useEffect(() => {
     isRecordingRef.current = isRecording;
   }, [isRecording]);
+
+  useEffect(() => {
+    isWritingCodeRef.current = isWritingCode;
+  }, [isWritingCode]);
 
   useEffect(() => {
     sessionCompleteRef.current = turn.stage === "report";
@@ -530,6 +563,10 @@ function VoiceSimulateInner() {
     if (!isMountedRef.current) return;
     if (isRecordingRef.current || isStoppingRef.current) return;
     if (sessionCompleteRef.current) return;
+    // The candidate is typing. Reopening the microphone here would record the
+    // room over an answer they are writing, and the silence watch would then
+    // auto-submit an empty transcript on their behalf.
+    if (isWritingCodeRef.current) return;
 
     const speechService = speechServiceRef.current;
     if (!speechService.isInitialized()) {
@@ -947,6 +984,57 @@ function VoiceSimulateInner() {
   useEffect(() => {
     handleStopRecordingRef.current = handleStopRecording;
   });
+
+  /**
+   * Switch this turn between speaking and typing code.
+   *
+   * Turning the editor on has to close the microphone *without* submitting —
+   * `handleStopRecording` stops and sends, which is the wrong half here — and
+   * discard whatever was captured, because the candidate has decided that
+   * partial spoken answer is not the one they are giving.
+   *
+   * Both the silence watch and the response deadline go with it: typing is
+   * silent, so leaving the watch armed would auto-submit an empty transcript
+   * partway through writing a function.
+   */
+  const setWritingCode = async (next: boolean) => {
+    if (next === isWritingCodeRef.current) return;
+
+    // Set the ref before awaiting, so `tryAutoStartRecording` — which the TTS
+    // completion handler can fire during that await — already sees it.
+    isWritingCodeRef.current = next;
+    setIsWritingCode(next);
+
+    if (!next) return;
+
+    stopSilenceWatch();
+    setAnswerDeadlineMs(null);
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+
+    if (isRecordingRef.current) {
+      await speechServiceRef.current.stopListening();
+      if (!isMountedRef.current) return;
+      setIsRecording(false);
+    }
+
+    transcriptBufferRef.current = "";
+    interimTranscriptRef.current = "";
+    phraseTimingsRef.current = [];
+    setFinalTranscript("");
+    setInterimTranscript("");
+    setRecordingError(null);
+  };
+
+  const handleSendCode = async (answer: string) => {
+    // Back to speaking for the next question, so the round does not silently
+    // become a typing round after one coding answer.
+    setIsWritingCode(false);
+    isWritingCodeRef.current = false;
+    await handleSend(answer);
+  };
 
   const handleSubmitTranscript = async (
     transcript: string,
@@ -1568,21 +1656,55 @@ function VoiceSimulateInner() {
           </div>
 
           <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
-            <VoiceInput
-              isRecording={isRecording}
-              isProcessing={isSending}
-              isSpeakingTts={isSpeakingTts}
-              interimTranscript={interimTranscript}
-              finalTranscript={finalTranscript}
-              recordingError={recordingError}
-              timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-              deadlineMs={answerDeadlineMs}
-              silenceStartedAtMs={silenceStartedAtMs}
-              autoStartRecording
-              onStart={() => void handleStartRecording()}
-              onStop={() => void handleStopRecording()}
-              onStopTts={stopTts}
-            />
+            {/* Only where the round type has an editor at all — `technical_swe`
+                today. A behavioural round in voice mode shows the microphone
+                and nothing else, exactly as before. */}
+            {supportsCodeEditor(activeRound?.type) && (
+              <div className="mb-3 flex items-center gap-2">
+                <ChoiceChip
+                  selected={!isWritingCode}
+                  onClick={() => void setWritingCode(false)}
+                  icon={<Mic className="h-3.5 w-3.5 shrink-0" />}
+                >
+                  Speak
+                </ChoiceChip>
+                <ChoiceChip
+                  selected={isWritingCode}
+                  onClick={() => void setWritingCode(true)}
+                  icon={<Code2 className="h-3.5 w-3.5 shrink-0" />}
+                >
+                  Write code
+                </ChoiceChip>
+              </div>
+            )}
+
+            {isWritingCode ? (
+              <CodeInput
+                key={`code-${messages.length}`}
+                language={codeLanguage}
+                onLanguageChange={setCodeLanguage}
+                onSend={(answer) => void handleSendCode(answer)}
+                disabled={isSending || turn.stage === "report"}
+                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+                timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
+              />
+            ) : (
+              <VoiceInput
+                isRecording={isRecording}
+                isProcessing={isSending}
+                isSpeakingTts={isSpeakingTts}
+                interimTranscript={interimTranscript}
+                finalTranscript={finalTranscript}
+                recordingError={recordingError}
+                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
+                deadlineMs={answerDeadlineMs}
+                silenceStartedAtMs={silenceStartedAtMs}
+                autoStartRecording
+                onStart={() => void handleStartRecording()}
+                onStop={() => void handleStopRecording()}
+                onStopTts={stopTts}
+              />
+            )}
           </div>
         </div>
 

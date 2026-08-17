@@ -469,9 +469,21 @@ function RoundCard({
             </div>
           </Field>
 
-          {supportsCodeEditor(round.type) && round.practiceMode === "text" && (
+          {/* Gated on the round type alone. It also required `practiceMode ===
+              "text"`, so choosing Voice at the mode step silently removed the
+              capability — you found out a step later, when a control you were
+              expecting was simply absent. A voice technical round can now take
+              typed code; it just opens on discussion. */}
+          {supportsCodeEditor(round.type) && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-              <Label htmlFor={ids.code}>Answer in a code editor</Label>
+              <div>
+                <Label htmlFor={ids.code}>Answer in a code editor</Label>
+                {round.practiceMode === "voice" && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    You still speak; the editor is there for the code.
+                  </p>
+                )}
+              </div>
               <Switch
                 id={ids.code}
                 checked={resolveAnswerFormat(round) === "code"}
