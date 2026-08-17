@@ -76,6 +76,46 @@ describe("buildCoachSystemPrompt", () => {
     expect(prompt).toBe(buildCoachSystemPrompt(COACH_FALLBACK_ROUND_TYPE));
   });
 
+  describe("answer mode", () => {
+    it("says nothing extra for a typed answer, which is the default", () => {
+      // An omitted `answerMode` has to coach exactly as it did before the
+      // field existed, or every cached row and every existing caller silently
+      // changes meaning.
+      expect(buildCoachSystemPrompt("behavioral")).toBe(
+        buildCoachSystemPrompt("behavioral", "text"),
+      );
+    });
+
+    it("tells the model a spoken answer is a transcript, not sloppy writing", () => {
+      const prompt = buildCoachSystemPrompt("behavioral", "speech");
+
+      // Without this the coach spends its four tips on artefacts of
+      // speech-to-text — absent punctuation, absent capitalisation — and never
+      // reaches the answer.
+      expect(prompt).toMatch(/transcript/i);
+      expect(prompt).toMatch(/punctuation/i);
+      expect(prompt).toMatch(/never spend a tip on them/i);
+    });
+
+    it("keeps a code rewrite as code", () => {
+      const prompt = buildCoachSystemPrompt("technical_swe", "code");
+
+      // "tighten structure, add specificity" read against a fenced function
+      // otherwise produces a paragraph *about* the function.
+      expect(prompt).toMatch(/rewrite must stay code/i);
+      expect(prompt).toMatch(/fenced/i);
+    });
+
+    it("keeps the round rubric in every mode", () => {
+      // The mode guidance is additive. It must never displace the rubric the
+      // analyzer scores the same answer against.
+      for (const mode of ["text", "speech", "code"] as const) {
+        const prompt = buildCoachSystemPrompt("system_design", mode);
+        expect(prompt).toContain(COACH_RUBRICS.system_design.shape);
+      }
+    });
+  });
+
   it("forbids inventing specifics in the rewrite in checkable terms", () => {
     // The clause this replaced was "do not fabricate major new achievements",
     // which no harness can test because "major" is undefined. The replacement
@@ -103,9 +143,7 @@ describe("COACH_RUBRICS", () => {
     // At least one signal and one failure mode per criterion being scored, so
     // guidance cannot be thinner than the rubric it is meant to cover.
     const criteria = rubricCriteria(type).length;
-    expect(rubric.signals.length).toBeGreaterThanOrEqual(
-      Math.min(criteria, 4),
-    );
+    expect(rubric.signals.length).toBeGreaterThanOrEqual(Math.min(criteria, 4));
     expect(rubric.failureModes.length).toBeGreaterThanOrEqual(
       Math.min(criteria, 4),
     );

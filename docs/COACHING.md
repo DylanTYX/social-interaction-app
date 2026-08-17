@@ -48,7 +48,7 @@ first appears.
 | Temperature | **0.5** |
 | `max_tokens` | 1000 |
 | Structured output | `response_format: { type: "json_object" }` |
-| Cache key | `prompt_cache_key: coach:${roundType}` |
+| Cache key | `prompt_cache_key: coach:${roundType}:${answerMode}` |
 | Rate limit | 20/min/user (`RATE_LIMITS.coach`) |
 | Input caps | question 4,000 chars, answer 10,000 chars |
 
@@ -63,14 +63,39 @@ measures it by score uplift instead.
 
 ### The prompt
 
-Assembled by `buildCoachSystemPrompt(roundType)`. Structure:
+Assembled by `buildCoachSystemPrompt(roundType, answerMode)`. Structure:
 
 1. The role line.
 2. **The rubric block** (below).
-3. The JSON contract: `{"suggestedAnswer": string, "rewrite": string, "tips": string[]}`.
-4. Field-by-field instructions, including the no-fabrication clause.
+3. **The answer-mode block** (below), empty for a typed answer.
+4. The JSON contract: `{"suggestedAnswer": string, "rewrite": string, "tips": string[]}`.
+5. Field-by-field instructions, including the no-fabrication clause.
 
 The user message is only `QUESTION:\n…\n\nCANDIDATE ANSWER:\n…`.
+
+### The answer mode
+
+`answerMode` is one of `text` | `speech` | `code`, validated at the route like
+`roundType` is — it adds instructions to the system prompt, so an arbitrary
+value from a client would be a prompt-injection surface. It defaults to `text`,
+which emits no extra block at all, so an omitted field coaches exactly as it
+did before the field existed.
+
+| Mode | Sent by | What it changes |
+|---|---|---|
+| `text` | typed drills; text sessions | nothing |
+| `speech` | spoken drills; voice sessions | Tells the model it is reading a live speech-to-text transcript: missing punctuation and capitalisation are artefacts of transcription, to be fixed silently in the rewrite and never spent a tip on. Caps verbal fillers at one tip, since the candidate is separately shown a count. |
+| `code` | the drills editor; any fenced answer | The rewrite must stay code, in the same language and fence — their solution improved, not a description of it. Tips are about correctness, complexity and edge cases. |
+
+Both non-default modes exist for one reason: to stop the coach spending its
+four tips on the *medium* instead of the answer. Before this, a spoken answer
+reliably produced tips about punctuation nobody had spoken, and a code answer
+produced a rewrite that was prose *about* the function rather than a better
+function.
+
+The mode is in the cache key because it is in the prompt. Without it the three
+variants would share a key and each would keep invalidating the others' cached
+prefix.
 
 ### The rubric
 

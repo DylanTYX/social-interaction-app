@@ -11,6 +11,7 @@ import {
   requestCoaching,
 } from "@/lib/coach-prompt";
 import { isRoundType } from "@/lib/interview-rounds";
+import { isAnswerMode } from "@/lib/coach-contract";
 import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString, parseOptionalUuid } from "@/lib/api/query";
@@ -51,6 +52,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     // `roundType` selects the scoring rubric, so a garbage value silently
     // changes how the answer is graded. Validate rather than cast.
     const roundType = isRoundType(body.roundType) ? body.roundType : undefined;
+    // Same reasoning: the mode adds instructions to the prompt, so an
+    // unrecognised one falls back to `text` — the historical behaviour — rather
+    // than reaching the model.
+    const answerMode = isAnswerMode(body.answerMode) ? body.answerMode : "text";
 
     // Optional: the report page sends both so the result can be cached against
     // the turn. The drills page has no session and sends neither.
@@ -111,6 +116,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         question,
         answer,
         roundType,
+        answerMode,
         apiKey,
         usage,
       });
