@@ -42,7 +42,7 @@ const FEATURES: Array<{
     color: "purple",
     title: "Feedback that's specific",
     description:
-      "Per-answer scoring on structure, specificity, and confidence — plus model answers and a tightened rewrite of your own response.",
+      "Per-answer scoring on structure, specificity, and confidence — plus suggested answers and a tightened rewrite of your own response.",
   },
   {
     icon: Mic,
@@ -88,7 +88,7 @@ const STEPS = [
   {
     title: "Review and improve",
     description:
-      "See scored feedback, model answers, and progress trends — then run it again and watch your scores climb.",
+      "See scored feedback, suggested answers, and progress trends — then run it again and watch your scores climb.",
   },
 ] as const;
 

@@ -108,12 +108,13 @@ In the Supabase dashboard → **SQL Editor**, run every file in
 | `0007_llm_usage` | token accounting |
 | `0008_resume_profile` | distilled resume profile (**no longer read or written** — see `formatResumeForPrompt`) |
 | `0009_session_columns` | server-owned session fields promoted out of JSONB |
-| `0010_coach_answers` | cache for generated model answers |
+| `0010_coach_answers` | cache for generated suggested answers |
 | `0011_integrity_constraints` | value checks moved from route handlers into the database |
 | `0012_server_owned_writes` | session and usage writes move behind security-definer functions |
 | `0013_job_description_metadata` | JD company, source URL, notes |
 | `0014_jd_clean_call_site` | the tidy-up call site in the usage vocabulary |
 | `0015_document_metadata` | resume label and notes, truncation records, the `resumes` `updated_at` trigger |
+| `0016_rename_model_answer_key` | renames `modelAnswer` to `suggestedAnswer` in cached coach payloads |
 
 > `0005` and `0006` are **not optional** — `src/lib/db/sessions.ts` calls the
 > `append_interview_turn` RPC on every interview turn. Without them the app

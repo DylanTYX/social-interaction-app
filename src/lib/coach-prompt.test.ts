@@ -136,7 +136,7 @@ describe("buildCoachUserPrompt", () => {
 
 describe("parseCoachResult", () => {
   const full = {
-    modelAnswer: "A strong answer.",
+    suggestedAnswer: "A strong answer.",
     rewrite: "Your answer, tightened.",
     tips: ["Add a number", "Name the result"],
   };
@@ -156,18 +156,18 @@ describe("parseCoachResult", () => {
     // `omittedFields`.
     const parsed = parseCoachResult(JSON.stringify({ rewrite: "Tightened." }));
 
-    expect(parsed.omittedFields).toContain("modelAnswer");
+    expect(parsed.omittedFields).toContain("suggestedAnswer");
     expect(parsed.omittedFields).toContain("tips");
     expect(parsed.omittedFields).not.toContain("rewrite");
-    expect(parsed.result.modelAnswer).toBe("");
+    expect(parsed.result.suggestedAnswer).toBe("");
   });
 
   it("treats a whitespace-only field as omitted, not as present", () => {
     const parsed = parseCoachResult(
-      JSON.stringify({ ...full, modelAnswer: "   " }),
+      JSON.stringify({ ...full, suggestedAnswer: "   " }),
     );
 
-    expect(parsed.omittedFields).toContain("modelAnswer");
+    expect(parsed.omittedFields).toContain("suggestedAnswer");
   });
 
   it("drops non-string tips and caps the rest", () => {
@@ -208,7 +208,7 @@ describe("parseCoachResult", () => {
     // `jsonrepair` is a dependency precisely because this happens; until now
     // nothing counted how often.
     const parsed = parseCoachResult(
-      '{"modelAnswer": "A.", "rewrite": "B.", "tips": ["one", "two",]}',
+      '{"suggestedAnswer": "A.", "rewrite": "B.", "tips": ["one", "two",]}',
     );
 
     expect(parsed.repaired).toBe(true);

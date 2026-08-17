@@ -85,7 +85,7 @@ a case ID in [UAT.md](UAT.md).
 | #   | Requirement                                                           | Implemented in                              | Checked by                                |
 | --- | --------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
 | F18 | A report with an overall score, per-answer scores, strengths and gaps | `simulate/report/[id]`                      | UAT R1-R5                                 |
-| F19 | On-demand coaching: a model answer, a rewrite, targeted tips          | `api/coach/model-answer`                    | `route.test.ts`, **`npm run eval:coach`** |
+| F19 | On-demand coaching: a suggested answer, a rewrite, targeted tips          | `api/coach/suggested-answer`                    | `route.test.ts`, **`npm run eval:coach`** |
 | F20 | Competency coverage — what the interview explored and what it did not | `competencies.ts`                           | `competencies.test.ts`                    |
 | F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R7                                    |
 | F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `recommendations.ts` | `session-stats.test.ts`                   |

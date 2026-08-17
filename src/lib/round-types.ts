@@ -21,7 +21,7 @@ import {
  *   - `decision-engine.ts`      a Set
  *   - `response-analyzer.ts`    an || chain
  *   - `report/[id]/page.tsx`    another || chain
- *   - `coach/model-answer`      a switch fallthrough
+ *   - `coach/suggested-answer`      a switch fallthrough
  *
  * All four happened to agree. Nothing made them agree, and a fifth site — the
  * setup wizard's code-editor toggle — did not: it gated on `practiceMode`

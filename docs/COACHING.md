@@ -1,7 +1,7 @@
 # The coach
 
 Quick drills and the report's "See a stronger answer" both call one endpoint,
-`/api/coach/model-answer`. It is the only user-facing LLM call in this project
+`/api/coach/suggested-answer`. It is the only user-facing LLM call in this project
 that produces *advice* rather than a score, and until this document existed it
 was also the only one with no rubric worth the name and no evaluation at all.
 
@@ -41,7 +41,7 @@ first appears.
 
 | | |
 |---|---|
-| Route | `src/app/api/coach/model-answer/route.ts` |
+| Route | `src/app/api/coach/suggested-answer/route.ts` |
 | Prompt | `src/lib/coach-prompt.ts` |
 | Rubric data | `src/lib/coach-rubric.ts` |
 | Model | `gpt-4o-mini`, overridable with `COACH_MODEL` |
@@ -67,7 +67,7 @@ Assembled by `buildCoachSystemPrompt(roundType)`. Structure:
 
 1. The role line.
 2. **The rubric block** (below).
-3. The JSON contract: `{"modelAnswer": string, "rewrite": string, "tips": string[]}`.
+3. The JSON contract: `{"suggestedAnswer": string, "rewrite": string, "tips": string[]}`.
 4. Field-by-field instructions, including the no-fabrication clause.
 
 The user message is only `QUESTION:\n…\n\nCANDIDATE ANSWER:\n…`.
@@ -101,7 +101,7 @@ fields per round type:
 | `shape` | The structural template a strong answer follows |
 | `signals` | What a strong answer demonstrates |
 | `failureModes` | How answers of this type characteristically fail |
-| `exemplar` | What the invented `modelAnswer` must show |
+| `exemplar` | What the invented `suggestedAnswer` must show |
 
 **The criteria themselves are never re-typed.** The prompt interpolates
 `ROUND_RUBRIC_LABELS[roundType]`, so the coach is told the exact string the
@@ -144,7 +144,7 @@ a contract so it can be checked is most of what made the contract worth having.
   *count* truncations. A truncated response is almost-valid JSON, so without
   this check it failed as a generic parse error that named the wrong cause.
   (The 700 → 1000 token sizing is in `docs/TOKEN-COST.md`.)
-- If both `modelAnswer` and `rewrite` come back empty, the route now returns
+- If both `suggestedAnswer` and `rewrite` come back empty, the route now returns
   **502** rather than 200. It used to render an empty coaching panel, which
   reads as the feature being broken with no error to report.
 
@@ -223,7 +223,7 @@ clearest statement of what this change fixed.
 ### Layer 2 — live
 
 Per fixture per run: one coach call, three analyzer calls (original / rewrite /
-model answer). Coach at the deployed temperature 0.5, following
+suggested answer). Coach at the deployed temperature 0.5, following
 `run-persona-eval.ts`'s reasoning that it should measure deployed behaviour
 rather than a quieter version of it; stability comes from `--runs`. All judges
 run at temperature 0, because they are measurement.
