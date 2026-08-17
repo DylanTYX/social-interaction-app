@@ -40,14 +40,28 @@ export function extractQuestion(message: string): string | null {
   return candidate.replace(/\s+/g, " ").slice(0, MAX_QUESTION_CHARS);
 }
 
-export function formatAskedQuestions(
+/**
+ * Every distinct question the interviewer has put, oldest first.
+ *
+ * Split out of `formatAskedQuestions` when the loop brief needed the same list
+ * for a different prompt layer. The two differ only in where they truncate, so
+ * the walk — and with it what counts as "the same question already asked" —
+ * lives here once.
+ *
+ * **Only assistant turns.** That is load-bearing rather than incidental: the
+ * result is replayed into a *later* interviewer's system prompt via the loop
+ * brief, so anything this collected from a `user` turn would be candidate-
+ * controlled text crossing into a system message.
+ */
+export function collectAskedQuestions(
   conversation: readonly { role: "user" | "assistant"; content: string }[],
-): string | null {
+): string[] {
   const seen = new Set<string>();
   const questions: string[] = [];
 
-  // Newest first while de-duplicating, so when the cap bites it drops the
-  // oldest — which the rolling summary is most likely to still cover.
+  // Walks newest-first and reverses at the end rather than walking forwards,
+  // so that when a caller truncates it drops the oldest — and so that of two
+  // identical questions it is the *later* one that survives de-duplication.
   for (let i = conversation.length - 1; i >= 0; i -= 1) {
     const entry = conversation[i];
     if (entry.role !== "assistant") continue;
@@ -59,14 +73,22 @@ export function formatAskedQuestions(
     if (seen.has(key)) continue;
     seen.add(key);
     questions.push(question);
-
-    if (questions.length >= MAX_LISTED) break;
   }
+
+  return questions.reverse();
+}
+
+export function formatAskedQuestions(
+  conversation: readonly { role: "user" | "assistant"; content: string }[],
+): string | null {
+  // Oldest dropped first — those are the ones the rolling summary is most
+  // likely to still cover.
+  const questions = collectAskedQuestions(conversation).slice(-MAX_LISTED);
 
   if (questions.length === 0) return null;
 
   return [
     "Questions you have already asked in this interview — do not ask these again, or a reworded version of them:",
-    ...questions.reverse().map((question) => `- ${question}`),
+    ...questions.map((question) => `- ${question}`),
   ].join("\n");
 }
