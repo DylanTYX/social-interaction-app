@@ -253,27 +253,23 @@ Stochastic and billed, so run it in advance and show the file.
 
 ## Part 2 — Nationality, and why culture is not in the vector DB (3 min)
 
-Expect this question. The answer is a design decision, not an omission.
+Expect this question. The answer is a design decision, not an omission, and it
+is written up in full in
+[DESIGN-DECISIONS.md §5](DESIGN-DECISIONS.md) — read that before the demo rather
+than reconstructing it here. What to say out loud, in three beats:
 
-`nationality` is biography — one adjective in one sentence, read nowhere else in
-`src/`. `NATIONALITY_IS_BACKGROUND` sits immediately after it and instructs the
-model never to infer directness, formality, deference or expectations from it.
-A test asserts two personas differing only in nationality produce prompts that
-differ by exactly the demonym.
-
-**Why not a culture corpus in pgvector:**
-
-1. **It is national-origin stereotyping with extra steps.** A retrieval store
-   keyed on nationality returning behavioural claims makes the model generate
-   behaviour _from national origin_, deterministically. That is what a
-   stereotype is.
-2. **It cannot be sourced at the granularity it needs.** Hofstede and GLOBE are
-   _national aggregate_ scores whose authors explicitly warn against applying
-   them to individuals — the ecological fallacy. Using them to drive one
-   interviewer's behaviour misapplies them exactly as cautioned.
-3. **It is not needed.** Strictness, warmth, pace, pushback and style are
-   explicit, controllable and measurable. They make the claim falsifiable.
-   Nationality would make it arguable.
+1. **`nationality` is biography.** One adjective in one sentence, read nowhere
+   else in `src/`. `NATIONALITY_IS_BACKGROUND` sits immediately after it and
+   instructs the model never to infer directness, formality, deference or
+   expectations from it. A test asserts two personas differing only in
+   nationality produce prompts differing by exactly the demonym.
+2. **A culture corpus would be stereotyping with extra steps.** A retrieval store
+   keyed on nationality that returns behavioural claims makes the model generate
+   behaviour _from national origin_, deterministically. And it cannot be sourced
+   at the granularity it needs — Hofstede and GLOBE are national aggregates whose
+   own authors warn against applying them to individuals.
+3. **It is not needed.** Four explicit dials do the work, and they make the claim
+   falsifiable — which is what `npm run eval:persona` then measures.
 
 **The honest next step, if asked what you'd do instead:** interview _conventions_
 by market — competency frameworks, self-introduction openers, case rounds —

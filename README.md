@@ -295,6 +295,15 @@ before scaling out.
 
 - `docs/DEMO.md` — **how the persona and cost mechanisms work, how to prove
   them, and where the developer/end-user boundary sits**
+- `docs/README.md` — **the index: which document answers what**
+- `docs/REQUIREMENTS.md` — **the problem, the requirements, and what satisfies
+  each one**
+- `docs/DESIGN-DECISIONS.md` — **every significant choice, the alternative
+  rejected, and what it cost**
+- `docs/DATA-MODEL.md` — **nine tables, the RLS rule, and what personal data is
+  held**
+- `docs/TESTING.md` — **the five testing layers, and what is deliberately not
+  tested**
 - `docs/FEATURES.md` — **what the app does, written for the end user**
 - `docs/INTERVIEWER.md` — **what the interviewer knows before and during a
   round, how it picks the next question, and how rounds hand over to each other**
