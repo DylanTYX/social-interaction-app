@@ -54,7 +54,7 @@ import { CalibrationCard } from "@/components/report/calibration-card";
 import { TurnScore, toTurnFeedback } from "@/components/report/turn-score";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
 import { CoachingResult } from "@/components/coach/coaching-result";
-import type { ModelAnswerResult } from "@/lib/coach-contract";
+import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 import { parseCoverage } from "@/lib/competencies";
 
 interface MessageRecord {
@@ -684,7 +684,7 @@ function TurnCoaching({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ModelAnswerResult | null>(null);
+  const [result, setResult] = useState<SuggestedAnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleToggle = async () => {
@@ -698,7 +698,7 @@ function TurnCoaching({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/coach/model-answer", {
+      const response = await fetch("/api/coach/suggested-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -709,7 +709,7 @@ function TurnCoaching({
           turnIndex,
         }),
       });
-      setResult(await readJson<ModelAnswerResult>(response));
+      setResult(await readJson<SuggestedAnswerResult>(response));
     } catch (err) {
       setError(
         err instanceof Error
@@ -734,7 +734,11 @@ function TurnCoaching({
       </Button>
 
       {open && (
-        <div className="mt-2 space-y-3 rounded-xl border border-warning-border bg-warning-subtle/60 p-4">
+        // White, not the amber wash it used to be. `CoachingResult` now colours
+        // its own panels, and an amber rewrite panel on an amber ground was the
+        // one place that stopped reading as a panel at all. The amber border
+        // keeps the coaching identity the disclosure button sets up.
+        <div className="mt-2 space-y-3 rounded-xl border border-warning-border bg-white p-4">
           {loading && (
             <p className="flex items-center gap-2 text-xs text-warning-emphasis">
               <span className="h-2 w-2 animate-breathe rounded-full bg-warning" />
@@ -743,10 +747,10 @@ function TurnCoaching({
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
           {/* No `originalAnswer`: the answer bubble is rendered a few rows above
-              this in the transcript, so the before/after pair would duplicate it
-              — and would put an amber panel on this amber background. The
-              rewrite renders alone here, exactly as it did before. */}
-          {result && <CoachingResult result={result} className="space-y-3" />}
+              this in the transcript, so the before/after pair would duplicate
+              it. Without it the tips take the full width and the rewrite and
+              the suggested answer pair off beneath them. */}
+          {result && <CoachingResult result={result} />}
         </div>
       )}
     </div>

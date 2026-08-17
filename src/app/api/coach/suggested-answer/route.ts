@@ -93,13 +93,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return handleRouteError(
-        "POST /api/coach/model-answer",
+        "POST /api/coach/suggested-answer",
         new Error("OPENAI_API_KEY is not configured."),
       );
     }
 
     // "coach" has been a declared LlmCallSite since the usage table was added,
-    // and nothing ever wrote it — so every model answer was invisible in
+    // and nothing ever wrote it — so every suggested answer was invisible in
     // `llm_usage` and the cost figures under-reported real spend. Coach calls
     // are not tied to a session (the drills page has none), so `sessionId` is
     // deliberately absent.
@@ -117,7 +117,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     } catch (error) {
       if (error instanceof CoachRequestError) {
         console.error(
-          "[POST /api/coach/model-answer] OpenAI rejected the request:",
+          "[POST /api/coach/suggested-answer] OpenAI rejected the request:",
           error.status,
           error.detail,
         );
@@ -134,7 +134,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Say what actually happened rather than letting it fail as bad JSON.
     if (coached.finishReason === "length") {
       console.error(
-        `[POST /api/coach/model-answer] truncated at ${COACH_MAX_TOKENS} tokens.`,
+        `[POST /api/coach/suggested-answer] truncated at ${COACH_MAX_TOKENS} tokens.`,
       );
       return NextResponse.json(
         { error: "That answer was too long to coach. Try a shorter one." },
@@ -147,7 +147,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // renders whatever came back; this is how a schema regression becomes
       // visible in logs instead of only in the eval harness.
       console.warn(
-        `[POST /api/coach/model-answer] ${COACH_MODEL} omitted [${coached.omittedFields.join(", ")}]` +
+        `[POST /api/coach/suggested-answer] ${COACH_MODEL} omitted [${coached.omittedFields.join(", ")}]` +
           `${coached.repaired ? " (JSON repaired)" : ""}` +
           `${coached.contractWarnings.length ? ` warnings: ${coached.contractWarnings.join("; ")}` : ""}`,
       );
@@ -158,9 +158,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Both prose fields empty means there is nothing to render. This used to
     // return 200 and paint an empty coaching panel, which reads as the feature
     // being broken with no error to report.
-    if (!result.modelAnswer && !result.rewrite) {
+    if (!result.suggestedAnswer && !result.rewrite) {
       console.error(
-        "[POST /api/coach/model-answer] model returned no usable coaching.",
+        "[POST /api/coach/suggested-answer] model returned no usable coaching.",
       );
       return NextResponse.json(
         { error: "Could not generate coaching for that answer. Try again." },
@@ -179,6 +179,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(result);
   } catch (error) {
-    return handleRouteError("POST /api/coach/model-answer", error);
+    return handleRouteError("POST /api/coach/suggested-answer", error);
   }
 }

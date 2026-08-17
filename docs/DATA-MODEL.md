@@ -28,7 +28,7 @@ auth.users
         │
         ├─< interview_messages           the transcript
         ├─< interview_turn_analyses      one score per answered turn
-        └─< coach_answers                cached model answers, per turn
+        └─< coach_answers                cached suggested answers, per turn
 ```
 
 Every table hangs off `auth.users` directly or through a session. Every foreign
@@ -108,7 +108,7 @@ and the price table is not in the browser, so cost cannot be derived from it.
 
 ### `coach_answers`
 
-Cached `{modelAnswer, rewrite, tips}` keyed by `(session_id, turn_index)`, unique.
+Cached `{suggestedAnswer, rewrite, tips}` keyed by `(session_id, turn_index)`, unique.
 Nothing about a completed turn changes, so a second look at the same report is not
 a second bill. **Quick Drills deliberately do not use it** — a drill has no session
 and no turn, so every drill submission is a full billed call.
@@ -179,12 +179,13 @@ the production-review hardening.
 | `0007_llm_usage`                          | token accounting                                                                       |
 | `0008_resume_profile`                     | distilled profile — **now unused**, see above                                          |
 | `0009_session_columns`                    | `loop_id`, `loop_progress`, `launch_meta`, `competency_coverage` promoted out of JSONB |
-| `0010_coach_answers`                      | cache for generated model answers                                                      |
+| `0010_coach_answers`                      | cache for generated suggested answers                                                      |
 | `0011_integrity_constraints`              | value checks moved from route handlers into the database                               |
 | `0012_server_owned_writes`                | session and usage writes move behind `security definer`                                |
 | `0013_job_description_metadata`           | JD company, source URL, notes                                                          |
 | `0014_jd_clean_call_site`                 | the tidy-up call site in the usage vocabulary                                          |
 | `0015_document_metadata`                  | resume label and notes, truncation records, the `resumes` `updated_at` trigger         |
+| `0016_rename_model_answer_key`            | renames `modelAnswer` to `suggestedAnswer` in cached coach payloads                    |
 
 ---
 

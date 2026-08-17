@@ -24,12 +24,12 @@ vi.mock("@/lib/db/coach-answers", () => ({
   saveCoachAnswer: (...args: unknown[]) => saveCoachAnswer(...args),
 }));
 
-const { POST } = await import("@/app/api/coach/model-answer/route");
+const { POST } = await import("@/app/api/coach/suggested-answer/route");
 
 const SUPABASE = {} as SupabaseClient;
 
 function request(body: unknown): Request {
-  return new Request("http://localhost/api/coach/model-answer", {
+  return new Request("http://localhost/api/coach/suggested-answer", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -72,7 +72,7 @@ beforeEach(() => {
  */
 const SESSION_ID = "33333333-3333-4333-8333-333333333333";
 
-describe("POST /api/coach/model-answer", () => {
+describe("POST /api/coach/suggested-answer", () => {
   it("rejects an unauthenticated caller before spending anything", async () => {
     getCurrentUser.mockResolvedValue({ supabase: SUPABASE, user: null });
     const fetchSpy = vi.spyOn(globalThis, "fetch");
@@ -103,7 +103,7 @@ describe("POST /api/coach/model-answer", () => {
   });
 
   it("returns the cached answer without calling the model", async () => {
-    const cached = { modelAnswer: "cached", rewrite: "r", tips: ["t"] };
+    const cached = { suggestedAnswer: "cached", rewrite: "r", tips: ["t"] };
     getCoachAnswer.mockResolvedValue(cached);
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
@@ -145,7 +145,7 @@ describe("POST /api/coach/model-answer", () => {
   it("does not consult the cache without a session and turn index", async () => {
     // The drills page has no session, so it must not collide with a real one.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      openAiReply({ modelAnswer: "m", rewrite: "r", tips: [] }),
+      openAiReply({ suggestedAnswer: "m", rewrite: "r", tips: [] }),
     );
 
     await POST(request({ question: "Q", answer: "A" }));
@@ -156,7 +156,7 @@ describe("POST /api/coach/model-answer", () => {
 
   it("stores a generated answer when the turn is identified", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      openAiReply({ modelAnswer: "m", rewrite: "r", tips: ["a", "b"] }),
+      openAiReply({ suggestedAnswer: "m", rewrite: "r", tips: ["a", "b"] }),
     );
 
     const response = await POST(
@@ -186,7 +186,7 @@ describe("POST /api/coach/model-answer", () => {
       json: async () => ({
         choices: [
           {
-            message: { content: '{"modelAnswer": "half a sen' },
+            message: { content: '{"suggestedAnswer": "half a sen' },
             finish_reason: "length",
           },
         ],
@@ -205,7 +205,7 @@ describe("POST /api/coach/model-answer", () => {
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(
-        openAiReply({ modelAnswer: "m", rewrite: "r", tips: [] }),
+        openAiReply({ suggestedAnswer: "m", rewrite: "r", tips: [] }),
       );
 
     await POST(

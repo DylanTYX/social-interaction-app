@@ -52,7 +52,7 @@ export interface CoachRubric {
    * into without this.
    */
   failureModes: string[];
-  /** What the invented `modelAnswer` has to demonstrate to stay on-rubric. */
+  /** What the invented `suggestedAnswer` has to demonstrate to stay on-rubric. */
   exemplar: string;
 }
 

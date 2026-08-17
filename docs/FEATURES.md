@@ -174,7 +174,7 @@ pick the interview back up where you left off.
   interviewer sat in and what that means for reading the score. Two 78s from
   different interviewers are not the same achievement.
 - Per-answer coaching on demand
-- **Model answers** — for any question, see a strong example answer, your own
+- **Suggested answers** — for any question, see a strong example answer, your own
   answer rewritten, and specific tips
 - **Competency coverage** — which of twelve competencies (conflict, failure,
   ambiguity, leadership, prioritisation, ownership, and so on) the interview
@@ -210,7 +210,7 @@ a weakness. A single session is shown as its own score rather than as an
 
 **Drills** — single questions to practise against without setting up a full
 interview. You get **coaching, not a score**: tips, your own answer rewritten
-next to what you wrote, and a model answer. Drills deliberately skip the
+next to what you wrote, and a suggested answer. Drills deliberately skip the
 0-100 analyzer — there is no session to score against and no interviewer to
 adapt. If you want a number, run a round.
 

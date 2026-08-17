@@ -306,7 +306,7 @@ before/after table built from traffic that never ran.
 | ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | **The caching floor**   | One session with no JD. Then one with a JD attached.         | `npm run cost-report -- --session=<id>` for each. `cached_tokens` is **0** on the first, non-zero on the second. |
 | **Trivial-answer skip** | Answer `ok`. Then answer properly.                           | Two `llm_usage` rows for the real answer (interviewer + analyzer); one for the trivial one.                      |
-| **Coach-answer cache**  | Generate a model answer on a report. Reload. Generate again. | A row the first time, **none** the second.                                                                       |
+| **Coach-answer cache**  | Generate a suggested answer on a report. Reload. Generate again. | A row the first time, **none** the second.                                                                       |
 
 **The caching one is the centrepiece, and it is a negative result.** The
 interviewer's stable prefix on a bare session is ~590 tokens; OpenAI only caches

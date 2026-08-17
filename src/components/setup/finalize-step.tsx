@@ -180,7 +180,7 @@ export function FinalizeStep({
           <NextStep
             icon={FileText}
             title="A full report at the end"
-            detail="Transcript, per-answer scores, strengths and gaps, and a model answer for any question you want to compare against."
+            detail="Transcript, per-answer scores, strengths and gaps, and a suggested answer for any question you want to compare against."
           />
         </CardContent>
       </Card>

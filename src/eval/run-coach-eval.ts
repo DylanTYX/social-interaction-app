@@ -105,7 +105,7 @@ function wordCount(text: string): number {
  * before/after is one command and cannot drift out of the docs.
  *
  * This is exactly `rubricGuidance` and the `systemPrompt` array as they stood
- * at `d863c5b`, in `app/api/coach/model-answer/route.ts`. Two branches for six
+ * at `d863c5b`, in `app/api/coach/suggested-answer/route.ts`. Two branches for six
  * round types.
  */
 function legacyCoachSystemPrompt(roundType: InterviewRoundType): string {
@@ -117,8 +117,8 @@ function legacyCoachSystemPrompt(roundType: InterviewRoundType): string {
     "You are an expert interview coach. Given an interview question and the candidate's actual answer, produce concrete, instructive feedback.",
     guidance,
     "Return ONLY a JSON object with this exact shape:",
-    '{"modelAnswer": string, "rewrite": string, "tips": string[]}',
-    "- modelAnswer: an exemplary answer to the question (concise, realistic, first-person, 4-8 sentences). Invent plausible specifics where needed.",
+    '{"suggestedAnswer": string, "rewrite": string, "tips": string[]}',
+    "- suggestedAnswer: an exemplary answer to the question (concise, realistic, first-person, 4-8 sentences). Invent plausible specifics where needed.",
     "- rewrite: the candidate's OWN answer improved — keep their facts and example, but tighten structure, add specificity, and fix weak spots. Do not fabricate major new achievements.",
     "- tips: 2-4 short, specific, actionable improvements (max ~12 words each).",
     "No markdown, no commentary outside the JSON.",
@@ -353,7 +353,7 @@ interface FixtureOutcome {
   band: QualityBand;
   originalScores: number[];
   rewriteScore: number;
-  modelAnswerScore: number;
+  suggestedAnswerScore: number;
   uplift: number;
   originalWords: number;
   rewriteWords: number;
@@ -403,16 +403,16 @@ async function evaluateFixture(
   });
 
   const truncated = coached.finishReason === "length";
-  const { rewrite, modelAnswer, tips } = coached.result;
+  const { rewrite, suggestedAnswer, tips } = coached.result;
 
   const rewriteScore = rewrite
     ? (await score(rewrite, fixture.question, fixture.roundType, apiKey, usage))
         .score
     : Number.NaN;
-  const modelAnswerScore = modelAnswer
+  const suggestedAnswerScore = suggestedAnswer
     ? (
         await score(
-          modelAnswer,
+          suggestedAnswer,
           fixture.question,
           fixture.roundType,
           apiKey,
@@ -484,7 +484,7 @@ async function evaluateFixture(
     band: fixture.band,
     originalScores,
     rewriteScore,
-    modelAnswerScore,
+    suggestedAnswerScore,
     uplift: rewriteScore - mean(originalScores),
     originalWords: wordCount(fixture.answer),
     rewriteWords: rewrite ? wordCount(rewrite) : 0,
@@ -613,8 +613,8 @@ async function liveReport(
 
   const modelStrong = outcomes.filter(
     (o) =>
-      Number.isFinite(o.modelAnswerScore) &&
-      bandForScore(o.modelAnswerScore) === "strong",
+      Number.isFinite(o.suggestedAnswerScore) &&
+      bandForScore(o.suggestedAnswerScore) === "strong",
   ).length;
 
   const factsExpected = outcomes.reduce((s, o) => s + o.factsExpected, 0);
@@ -633,7 +633,7 @@ async function liveReport(
     cohensDz: pairedCohensD(uplifts),
     noiseFloor,
     bandPromotions: promoted,
-    modelAnswerStrong: modelStrong,
+    suggestedAnswerStrong: modelStrong,
     byBand,
     byRound,
     meanWordDelta: mean(wordDeltas),
@@ -669,7 +669,7 @@ async function liveReport(
   for (const o of outcomes) {
     console.log(
       `  ${o.id.padEnd(22)} ${o.band.padEnd(9)} orig ${num(mean(o.originalScores)).padStart(5)}   ` +
-        `rewrite ${num(o.rewriteScore).padStart(5)} (${signed(o.uplift).padStart(6)})   model ${num(o.modelAnswerScore).padStart(5)}`,
+        `rewrite ${num(o.rewriteScore).padStart(5)} (${signed(o.uplift).padStart(6)})   suggested ${num(o.suggestedAnswerScore).padStart(5)}`,
     );
   }
 
@@ -693,7 +693,7 @@ async function liveReport(
     `  Band promotion rate               ${promoted} of ${usable.length} rewrites moved up a band`,
   );
   console.log(
-    `  Model answer reaches 'strong'     ${modelStrong} of ${outcomes.length}`,
+    `  Suggested answer reaches 'strong' ${modelStrong} of ${outcomes.length}`,
   );
 
   console.log("\n--- uplift by band (the ceiling check) ---");

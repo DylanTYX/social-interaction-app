@@ -37,7 +37,7 @@ import {
   CoachingResult,
   CoachingResultSkeleton,
 } from "@/components/coach/coaching-result";
-import type { ModelAnswerResult } from "@/lib/coach-contract";
+import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 
 function pickRandom(
   questions: DrillQuestion[],
@@ -75,7 +75,7 @@ export default function DrillsPage() {
    */
   const [submittedAnswer, setSubmittedAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ModelAnswerResult | null>(null);
+  const [result, setResult] = useState<SuggestedAnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingSwitch, setPendingSwitch] = useState<{
     category?: DrillCategory | "all";
@@ -129,7 +129,7 @@ export default function DrillsPage() {
     try {
       const roundType =
         question.category === "leadership" ? "behavioral" : question.category;
-      const response = await fetch("/api/coach/model-answer", {
+      const response = await fetch("/api/coach/suggested-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -142,7 +142,7 @@ export default function DrillsPage() {
       // directly, survives a non-JSON error body — a proxy 502 or an auth
       // redirect returns HTML, which used to throw a parse error and mask the
       // real status.
-      setResult(await readJson<ModelAnswerResult>(response));
+      setResult(await readJson<SuggestedAnswerResult>(response));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not generate feedback.",
@@ -201,7 +201,7 @@ export default function DrillsPage() {
       <PageHeader
         eyebrow="Quick drills"
         title="One question. Instant feedback."
-        description="No setup, no full session - answer a single question and get a model answer, a tightened rewrite, and targeted tips in seconds."
+        description="No setup, no full session - answer a single question and get a suggested answer, a tightened rewrite, and targeted tips in seconds."
         icon={<Dumbbell className="h-6 w-6" />}
         iconColor="pink"
       />
@@ -323,7 +323,7 @@ export default function DrillsPage() {
             <CardDescription>
               {answerEdited
                 ? "You have edited your answer since this feedback — get feedback again to refresh it."
-                : "A model answer, your answer tightened, and what to fix."}
+                : "Your answer tightened, what to fix, and a suggested answer to measure it against."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

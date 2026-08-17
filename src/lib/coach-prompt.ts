@@ -1,6 +1,6 @@
 import { jsonrepair } from "jsonrepair";
 
-import type { ModelAnswerResult } from "@/lib/coach-contract";
+import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 import { COACH_RUBRICS } from "@/lib/coach-rubric";
 import {
   ROUND_RUBRIC_LABELS,
@@ -12,7 +12,7 @@ import type { UsageCollector, OpenAIUsage } from "@/lib/api/token-usage";
 /**
  * The coach call, as a pure module.
  *
- * Extracted from `app/api/coach/model-answer/route.ts` for the reason
+ * Extracted from `app/api/coach/suggested-answer/route.ts` for the reason
  * `run-persona-eval.ts` can import `generatePersonaPrompt` and no harness could
  * ever import this: the prompt was welded into an HTTP handler that pulls in
  * `next/server` and `@/lib/supabase/server` (and through it `next/headers`), so
@@ -44,7 +44,7 @@ export const COACH_TEMPERATURE = 0.5;
  * Output cap.
  *
  * Was 700, which was too tight for what the prompt asks for: a 4-8 sentence
- * model answer, plus a full rewrite of the candidate's answer, plus four tips —
+ * suggested answer, plus a full rewrite of the candidate's answer, plus four tips —
  * roughly 550-710 tokens of JSON at the top end. Sitting on the boundary meant
  * occasional truncation, and because there was no `finish_reason` check it
  * surfaced as an unparseable-JSON error with no indication of the real cause.
@@ -88,7 +88,7 @@ function rubricGuidance(roundType: InterviewRoundType): string {
     "The characteristic failures of this round are:",
     ...rubric.failureModes.map((mode) => `- ${mode}`),
     "Your tips must name the failures actually present in this candidate's answer. Do not give advice that would apply to any answer.",
-    `The model answer must demonstrate: ${rubric.exemplar}`,
+    `The suggested answer must demonstrate: ${rubric.exemplar}`,
   ].join("\n");
 }
 
@@ -101,8 +101,8 @@ export function buildCoachSystemPrompt(
     "You are an expert interview coach. Given an interview question and the candidate's actual answer, produce concrete, instructive feedback.",
     rubricGuidance(type),
     "Return ONLY a JSON object with this exact shape:",
-    '{"modelAnswer": string, "rewrite": string, "tips": string[]}',
-    "- modelAnswer: an exemplary answer to the question (concise, realistic, first-person, 4-8 sentences). Invent plausible specifics where needed.",
+    '{"suggestedAnswer": string, "rewrite": string, "tips": string[]}',
+    "- suggestedAnswer: an exemplary answer to the question (concise, realistic, first-person, 4-8 sentences). Invent plausible specifics where needed.",
     "- rewrite: the candidate's OWN answer improved — keep their facts and example, but tighten structure, add specificity, and fix weak spots.",
     // The clause this replaces read "Do not fabricate major new achievements",
     // which cannot be tested because "major" is undefined. Stated this way it
@@ -119,7 +119,7 @@ export function buildCoachUserPrompt(question: string, answer: string): string {
 }
 
 export interface CoachParseResult {
-  result: ModelAnswerResult;
+  result: SuggestedAnswerResult;
   /**
    * Fields the model omitted, recorded *before* the `""` defaults hide them.
    *
@@ -153,7 +153,7 @@ function extractJsonPayload(raw: string): string {
 export function parseCoachResult(content: string): CoachParseResult {
   const payload = extractJsonPayload(content);
 
-  let parsed: { modelAnswer?: unknown; rewrite?: unknown; tips?: unknown };
+  let parsed: { suggestedAnswer?: unknown; rewrite?: unknown; tips?: unknown };
   let repaired = false;
   try {
     parsed = JSON.parse(payload);
@@ -165,10 +165,10 @@ export function parseCoachResult(content: string): CoachParseResult {
   const omittedFields: string[] = [];
   const contractWarnings: string[] = [];
 
-  const modelAnswer =
-    typeof parsed.modelAnswer === "string" && parsed.modelAnswer.trim()
-      ? parsed.modelAnswer
-      : (omittedFields.push("modelAnswer"), "");
+  const suggestedAnswer =
+    typeof parsed.suggestedAnswer === "string" && parsed.suggestedAnswer.trim()
+      ? parsed.suggestedAnswer
+      : (omittedFields.push("suggestedAnswer"), "");
 
   const rewrite =
     typeof parsed.rewrite === "string" && parsed.rewrite.trim()
@@ -195,7 +195,7 @@ export function parseCoachResult(content: string): CoachParseResult {
   }
 
   return {
-    result: { modelAnswer, rewrite, tips: rawTips.slice(0, MAX_TIPS) },
+    result: { suggestedAnswer, rewrite, tips: rawTips.slice(0, MAX_TIPS) },
     omittedFields,
     repaired,
     contractWarnings,
@@ -287,8 +287,8 @@ export async function requestCoaching(input: {
   // let the caller decide.
   if (finishReason === "length") {
     return {
-      result: { modelAnswer: "", rewrite: "", tips: [] },
-      omittedFields: ["modelAnswer", "rewrite", "tips"],
+      result: { suggestedAnswer: "", rewrite: "", tips: [] },
+      omittedFields: ["suggestedAnswer", "rewrite", "tips"],
       repaired: false,
       contractWarnings: ["truncated"],
       finishReason,

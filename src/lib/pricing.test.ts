@@ -129,7 +129,7 @@ describe("summariseCost", () => {
 describe("the price table", () => {
   it("prices every model the app can actually call", () => {
     // Defaults from chat/route.ts, response-analyzer.ts, summary.ts,
-    // coach/model-answer/route.ts, resume-profile.ts and embeddings.ts.
+    // coach/suggested-answer/route.ts, resume-profile.ts and embeddings.ts.
     for (const model of ["gpt-4o-mini", "text-embedding-3-small"]) {
       expect(MODEL_PRICING[model], `no price for ${model}`).toBeTruthy();
     }
