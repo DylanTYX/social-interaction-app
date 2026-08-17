@@ -210,9 +210,28 @@ a weakness. A single session is shown as its own score rather than as an
 
 **Drills** — single questions to practise against without setting up a full
 interview. You get **coaching, not a score**: tips, your own answer rewritten
-next to what you wrote, and a suggested answer. Drills deliberately skip the
-0-100 analyzer — there is no session to score against and no interviewer to
-adapt. If you want a number, run a round.
+next to what you wrote, and a suggested answer behind a disclosure. Drills
+deliberately skip the 0-100 analyzer — there is no session to score against and
+no interviewer to adapt. If you want a number, run a round.
+
+Answer them three ways, and **speaking is the default**, because an interview
+is spoken and a drill that only takes typing trains the half of the skill
+nobody is assessed on:
+
+- **Speak** — the same microphone the voice interview uses (`useSpeechAnswer`),
+  including the long-pause detection that ends the answer for you. Tap, talk,
+  pause, read the coaching. A spoken answer also gets a **delivery** line —
+  words per minute, filler count, long pauses — computed in the browser from the
+  recognizer's own phrase timings, so it costs nothing and is the one piece of
+  feedback a typed answer cannot have.
+- **Type** — the textarea, for when you want to work on the words rather than
+  the delivery, and the fallback when the microphone is unavailable.
+- **Code** — the CodeMirror editor, offered only on Technical (SWE) and System
+  design, gated by the same `supportsCodeEditor` predicate the interview uses.
+
+The coach is told which of the three it is reading. Without that it spends its
+four tips on punctuation Azure never transcribed, or rewrites a fenced function
+as a paragraph about the function.
 
 **Libraries** — saved personas, job descriptions and resumes, reusable across
 sessions. Both document libraries are searchable and editable after saving —

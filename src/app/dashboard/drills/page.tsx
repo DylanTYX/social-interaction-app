@@ -1,9 +1,13 @@
 "use client";
 
 import { readJson } from "@/lib/api/fetch-json";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Code2,
   Dumbbell,
+  Gauge,
+  Mic,
   PenLine,
   RefreshCw,
   Send,
@@ -37,7 +41,54 @@ import {
   CoachingResult,
   CoachingResultSkeleton,
 } from "@/components/coach/coaching-result";
-import type { SuggestedAnswerResult } from "@/lib/coach-contract";
+import { CodeInput } from "@/components/chat/code-input";
+import { supportsCodeEditor } from "@/lib/round-types";
+import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
+import type { SpeechAnswerCompletion } from "@/hooks/use-speech-answer";
+import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
+
+/**
+ * `ssr: false` is not a preference.
+ *
+ * `DrillSpeakInput` reaches `speech-service.ts`, which imports the Azure Speech
+ * SDK at module scope, and the SDK resolves a Node-only certificate path when
+ * it is evaluated on the server. `simulate/voice/page.tsx` loads its screen the
+ * same way for the same reason. Everything else on this page renders normally;
+ * only the microphone waits for the browser.
+ */
+const DrillSpeakInput = dynamic(
+  () =>
+    import("@/components/coach/drill-speak-input").then(
+      (module) => module.DrillSpeakInput,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
+        Getting the microphone ready…
+      </div>
+    ),
+  },
+);
+
+/** How long a spoken drill answer may run. Shorter than an interview turn's
+ *  three minutes: a drill is one question, not a conversation. */
+const SPOKEN_ANSWER_SECONDS = 120;
+
+/**
+ * The three ways to answer a drill.
+ *
+ * Distinct from `AnswerMode` on the wire, which has no notion of a UI choice:
+ * "type" and "speak" both produce prose, and the coach is told which so it does
+ * not bill a transcript for punctuation nobody spoke.
+ */
+type DrillInputMode = "type" | "speak" | "code";
+
+const WIRE_MODE: Record<DrillInputMode, AnswerMode> = {
+  type: "text",
+  speak: "speech",
+  code: "code",
+};
 
 function pickRandom(
   questions: DrillQuestion[],
@@ -77,25 +128,79 @@ export default function DrillsPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SuggestedAnswerResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Speaking is the default because an interview is spoken.
+   *
+   * A drill that only ever takes typing is the fastest loop in the product
+   * aimed at the half of the skill nobody is assessed on. The cost of the
+   * default is one speech-token request on mount; the microphone itself is not
+   * touched until the candidate presses record, so no permission prompt fires
+   * for someone who came here to type.
+   */
+  const [mode, setMode] = useState<DrillInputMode>("speak");
+  const [codeLanguage, setCodeLanguage] = useState<CodeLanguage>(
+    DEFAULT_CODE_LANGUAGE,
+  );
+  /**
+   * Pace, fillers and long pauses for the answer that produced `result`.
+   *
+   * Held beside the coaching rather than inside it because it is measured here
+   * — `analyzeDelivery` runs in the browser off the recognizer's own phrase
+   * timings — and costs no tokens. It is also the only feedback on this page
+   * that a typed answer genuinely cannot have.
+   */
+  const [deliveryNote, setDeliveryNote] = useState<string | null>(null);
+
   const [pendingSwitch, setPendingSwitch] = useState<{
     category?: DrillCategory | "all";
+    mode?: DrillInputMode;
   } | null>(null);
 
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const coachingRef = useRef<HTMLDivElement>(null);
 
-  const nextQuestion = (nextCategory?: DrillCategory | "all") => {
-    const targetPool =
-      nextCategory !== undefined ? getQuestionsForCategory(nextCategory) : pool;
-    setQuestion(pickRandom(targetPool, question.id));
+  const meta = getCategoryMeta(
+    question.category === "leadership" ? "leadership" : question.category,
+  );
+  /**
+   * The editor is offered per category, because the coach rubric is per round
+   * type — `technical_swe` scores correctness and complexity, `system_design`
+   * scores architecture — and both are reachable from `supportsCodeEditor`,
+   * the same predicate the interview uses. A behavioural question with a code
+   * editor under it is an invitation to answer the wrong way.
+   */
+  const codeAllowed = supportsCodeEditor(meta.roundType);
+
+  /**
+   * Derived, not corrected in an effect.
+   *
+   * Narrowing to Behavioural while the editor is open has to fall back to
+   * typing, and doing that by writing `mode` from an effect is a cascading
+   * render for a value that is a pure function of what is already on screen.
+   * Keeping the *preference* in `mode` also means the editor comes back by
+   * itself when a technical category does.
+   */
+  const activeMode: DrillInputMode =
+    mode === "code" && !codeAllowed ? "type" : mode;
+
+  const clearAnswer = () => {
     setAnswer("");
     setSubmittedAnswer("");
     setResult(null);
     setError(null);
+    setDeliveryNote(null);
+  };
+
+  const nextQuestion = (nextCategory?: DrillCategory | "all") => {
+    const targetPool =
+      nextCategory !== undefined ? getQuestionsForCategory(nextCategory) : pool;
+    setQuestion(pickRandom(targetPool, question.id));
+    clearAnswer();
   };
 
   /**
-   * Both paths to a new question throw away whatever is in the textarea, which
+   * Every path to a new question throws away whatever is in the textarea, which
    * is correct — an answer to a question you can no longer see is noise — but
    * it used to happen silently, and the category chips *look* like a filter.
    * Typing three paragraphs and then narrowing to "System design" destroyed
@@ -118,8 +223,28 @@ export default function DrillsPage() {
     requestNewQuestion(next);
   };
 
-  const handleSubmit = async () => {
-    const trimmed = answer.trim();
+  /**
+   * Changing how you answer clears what you have written, for the same reason
+   * changing the question does: a typed draft is not a spoken answer, and
+   * carrying it across would put text in the box that the microphone is about
+   * to overwrite. Guarded by the same threshold and the same dialog.
+   */
+  const requestMode = (next: DrillInputMode) => {
+    if (next === activeMode) return;
+    if (answer.trim().length >= 10) {
+      setPendingSwitch({ mode: next });
+      return;
+    }
+    setMode(next);
+    clearAnswer();
+  };
+
+  const handleSubmit = async (override?: string, forMode?: DrillInputMode) => {
+    // Speaking and the code editor both hand their answer straight in: their
+    // text reaches `setAnswer` in the same tick as this call, and state is not
+    // readable until the next render.
+    const trimmed = (override ?? answer).trim();
+    const submitMode = forMode ?? activeMode;
     if (trimmed.length < 10 || loading) return;
 
     setLoading(true);
@@ -136,6 +261,7 @@ export default function DrillsPage() {
           question: question.prompt,
           answer: trimmed,
           roundType,
+          answerMode: WIRE_MODE[submitMode],
         }),
       });
       // `readJson` surfaces the server's own message and, unlike parsing
@@ -161,8 +287,48 @@ export default function DrillsPage() {
    * the smooth scroll then has to fight.
    */
   const handleRevise = () => {
+    // Revising means editing words, which only the textarea can do — so this
+    // also drops out of speak or code mode, carrying the transcript or the
+    // fenced source into the box rather than discarding it the way an ordinary
+    // mode switch does.
+    setMode("type");
     answerRef.current?.focus({ preventScroll: true });
     answerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  /**
+   * A spoken answer, finished.
+   *
+   * Submitted straight away rather than dropped into the textarea for review:
+   * the whole loop is tap, talk, pause, read — and `useSpeechAnswer` ends the
+   * answer on a long pause, so there is no button between speaking and getting
+   * the coaching. The transcript still lands in `answer`, which is what makes
+   * "Revise this answer" able to hand it to the textarea.
+   */
+  const handleSpoken = ({
+    transcript,
+    deliveryNote,
+  }: SpeechAnswerCompletion) => {
+    setDeliveryNote(deliveryNote);
+    setAnswer(transcript);
+
+    if (transcript.trim().length < 10) {
+      setError(
+        transcript.trim()
+          ? "That was too short to coach. Try answering in a few sentences."
+          : "Nothing was picked up. Check your microphone and try again.",
+      );
+      setResult(null);
+      return;
+    }
+
+    void handleSubmit(transcript, "speak");
+  };
+
+  const handleCodeSubmit = (formatted: string) => {
+    setDeliveryNote(null);
+    setAnswer(formatted);
+    void handleSubmit(formatted, "code");
   };
 
   /**
@@ -182,10 +348,6 @@ export default function DrillsPage() {
       });
     }
   }, [loading]);
-
-  const meta = getCategoryMeta(
-    question.category === "leadership" ? "leadership" : question.category,
-  );
 
   // Nothing to show before the first submission — see the card below.
   const hasCoaching = loading || error !== null || result !== null;
@@ -265,41 +427,105 @@ export default function DrillsPage() {
           <CardDescription>{meta.blurb}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Six rows rather than eight: the textarea spans the whole card
-              now, and `field-sizing-content` grows it from there as you type. */}
-          <Textarea
-            ref={answerRef}
-            aria-label="Your answer"
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder="Type your answer out loud, as if you were in the room…"
-            rows={6}
-            className="resize-none"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {answer.trim().length < 10
-                ? "Write a bit more to get feedback"
-                : `${answer.trim().split(/\s+/).length} words`}
-            </span>
-            <Button
-              onClick={() => void handleSubmit()}
-              disabled={answer.trim().length < 10 || loading}
-              className="gap-2"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Reviewing…
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Get feedback
-                </>
-              )}
-            </Button>
+          {/* Speaking first, and the default, because that is what the product
+              is for — an interview is spoken, and a drill that only ever takes
+              typing trains the half of the skill nobody is assessed on. Typing
+              stays because a transcript is not always what you want to work on,
+              and because the microphone can fail. */}
+          <div
+            role="group"
+            aria-label="How to answer"
+            className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+          >
+            {(
+              [
+                { id: "speak", label: "Speak", icon: Mic },
+                { id: "type", label: "Type", icon: PenLine },
+                ...(codeAllowed
+                  ? [{ id: "code" as const, label: "Code", icon: Code2 }]
+                  : []),
+              ] as { id: DrillInputMode; label: string; icon: typeof Mic }[]
+            ).map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={activeMode === id}
+                onClick={() => requestMode(id)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  activeMode === id
+                    ? "bg-white text-slate-900 shadow-soft"
+                    : "text-slate-500 hover:text-slate-800",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
           </div>
+
+          {activeMode === "speak" ? (
+            <DrillSpeakInput
+              timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
+              // The question itself, so the recognizer is biased toward the
+              // nouns it is about to hear.
+              phraseList={[question.prompt]}
+              disabled={loading}
+              onComplete={handleSpoken}
+            />
+          ) : activeMode === "code" ? (
+            /* Remounted per question so the editor does not carry the last
+               answer into the next one. The language is owned here for the
+               opposite reason — it is a preference, not a per-answer choice. */
+            <CodeInput
+              key={question.id}
+              language={codeLanguage}
+              onLanguageChange={setCodeLanguage}
+              onSend={handleCodeSubmit}
+              disabled={loading}
+              timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
+            />
+          ) : (
+            <>
+              {/* Six rows rather than eight: the textarea spans the whole card
+                  now, and `field-sizing-content` grows it from there as you
+                  type. */}
+              <Textarea
+                ref={answerRef}
+                aria-label="Your answer"
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                placeholder="Type your answer out loud, as if you were in the room…"
+                rows={6}
+                className="resize-none"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {answer.trim().length < 10
+                    ? "Write a bit more to get feedback"
+                    : `${answer.trim().split(/\s+/).length} words`}
+                </span>
+                <Button
+                  onClick={() => void handleSubmit()}
+                  disabled={answer.trim().length < 10 || loading}
+                  className="gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Reviewing…
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Get feedback
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -327,6 +553,20 @@ export default function DrillsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Above the coaching, not inside it: this is measured in the
+                browser from the recognizer's own phrase timings, costs no
+                tokens, and is the one thing on this page a typed answer cannot
+                have. `CoachingResult` is shared with the report, which shows
+                delivery on the message bubble instead. */}
+            {deliveryNote && (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <Gauge className="h-3.5 w-3.5 text-slate-400" />
+                <span className="font-semibold uppercase tracking-wide text-slate-400">
+                  Delivery
+                </span>
+                {deliveryNote}
+              </p>
+            )}
             {loading && <CoachingResultSkeleton />}
             {error && <p className="text-sm text-destructive">{error}</p>}
             {result && (
@@ -365,9 +605,21 @@ export default function DrillsPage() {
           if (!open) setPendingSwitch(null);
         }}
         title="Discard your answer?"
-        description="Moving to a new question clears what you have written. Get feedback first if you want to keep it."
+        description={
+          pendingSwitch?.mode
+            ? "Changing how you answer clears what you have written. Get feedback first if you want to keep it."
+            : "Moving to a new question clears what you have written. Get feedback first if you want to keep it."
+        }
         confirmLabel="Discard and continue"
         onConfirm={() => {
+          // A mode switch keeps the question — you are answering the same thing
+          // a different way — so it clears the answer without drawing a new one.
+          if (pendingSwitch?.mode) {
+            setMode(pendingSwitch.mode);
+            clearAnswer();
+            setPendingSwitch(null);
+            return;
+          }
           if (pendingSwitch?.category !== undefined) {
             setCategory(pendingSwitch.category);
           }

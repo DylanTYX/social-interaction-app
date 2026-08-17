@@ -1,6 +1,6 @@
 import { jsonrepair } from "jsonrepair";
 
-import type { SuggestedAnswerResult } from "@/lib/coach-contract";
+import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
 import { COACH_RUBRICS } from "@/lib/coach-rubric";
 import {
   ROUND_RUBRIC_LABELS,
@@ -92,14 +92,45 @@ function rubricGuidance(roundType: InterviewRoundType): string {
   ].join("\n");
 }
 
+/**
+ * What the coach needs to know about the *form* of the answer.
+ *
+ * Both non-default modes exist to stop the coach spending its four tips on the
+ * medium instead of the answer. Against a transcript that means not billing the
+ * candidate for punctuation Azure never inserted; against code it means the
+ * rewrite has to stay code, because "tighten structure, add specificity" read
+ * against a fenced function otherwise produces a paragraph *about* the
+ * function.
+ */
+function modeGuidance(mode: AnswerMode): string[] {
+  switch (mode) {
+    case "speech":
+      return [
+        "The candidate's answer is a live speech-to-text transcript of them speaking. Missing punctuation, missing capitalisation, run-on sentences and the occasional misrecognised word are artefacts of transcription, not of their thinking.",
+        "Fix those silently in the rewrite and never spend a tip on them. Judge the answer on its content and structure, exactly as you would a written one.",
+        "Verbal fillers — 'um', 'you know', 'sort of' — are worth at most one tip, and only when they are frequent enough to be the dominant problem. The candidate is separately shown a count.",
+      ];
+    case "code":
+      return [
+        "The candidate's answer is code, in a fenced block, optionally preceded by a short note.",
+        "The rewrite must stay code in the same language and the same fenced form — it is their solution improved, not a description of it. Keep their approach and their identifiers; fix correctness, edge cases, naming and complexity.",
+        "Tips are about the solution: correctness, complexity, edge cases, readability. Say the complexity out loud when it is the thing that is wrong.",
+      ];
+    case "text":
+      return [];
+  }
+}
+
 export function buildCoachSystemPrompt(
   roundType: InterviewRoundType | undefined,
+  answerMode: AnswerMode = "text",
 ): string {
   const type = roundType ?? COACH_FALLBACK_ROUND_TYPE;
 
   return [
     "You are an expert interview coach. Given an interview question and the candidate's actual answer, produce concrete, instructive feedback.",
     rubricGuidance(type),
+    ...modeGuidance(answerMode),
     "Return ONLY a JSON object with this exact shape:",
     '{"suggestedAnswer": string, "rewrite": string, "tips": string[]}',
     "- suggestedAnswer: an exemplary answer to the question (concise, realistic, first-person, 4-8 sentences). Invent plausible specifics where needed.",
@@ -231,10 +262,12 @@ export async function requestCoaching(input: {
   question: string;
   answer: string;
   roundType?: InterviewRoundType;
+  answerMode?: AnswerMode;
   apiKey: string;
   usage?: UsageCollector;
 }): Promise<CoachCallResult> {
-  const systemPrompt = buildCoachSystemPrompt(input.roundType);
+  const answerMode = input.answerMode ?? "text";
+  const systemPrompt = buildCoachSystemPrompt(input.roundType, answerMode);
 
   const response = await fetch(OPENAI_API_URL, {
     method: "POST",
@@ -248,11 +281,13 @@ export async function requestCoaching(input: {
       max_tokens: COACH_MAX_TOKENS,
       response_format: { type: "json_object" },
       // The system prompt grew from ~150 to ~300 tokens with the real rubric,
-      // and is now byte-identical for every call of a given round type — which
-      // is precisely the cached-prefix case. `run-cost-report.ts` already reads
-      // `cachedTokens`, so whether this pays for itself is measurable rather
-      // than argued.
-      prompt_cache_key: `coach:${input.roundType ?? COACH_FALLBACK_ROUND_TYPE}`,
+      // and is byte-identical for every call of a given round type *and* answer
+      // mode — which is precisely the cached-prefix case. The mode is in the
+      // key because it is in the prompt: without it the three variants would
+      // share a key and each would keep invalidating the others' cached prefix.
+      // `run-cost-report.ts` already reads `cachedTokens`, so whether this pays
+      // for itself is measurable rather than argued.
+      prompt_cache_key: `coach:${input.roundType ?? COACH_FALLBACK_ROUND_TYPE}:${answerMode}`,
       messages: [
         { role: "system", content: systemPrompt },
         {

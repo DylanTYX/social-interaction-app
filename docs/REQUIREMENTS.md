@@ -90,6 +90,7 @@ a case ID in [UAT.md](UAT.md).
 | F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R7                                    |
 | F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `recommendations.ts` | `session-stats.test.ts`                   |
 | F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank.ts`, UAT D1-D3             |
+| F24 | Drills answered by speaking, typing or code, coached as what they are | `dashboard/drills`, `use-speech-answer.ts`  | `coach-prompt.test.ts`, `route.test.ts`   |
 
 ### Account and data
 

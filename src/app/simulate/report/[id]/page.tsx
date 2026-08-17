@@ -48,6 +48,7 @@ import {
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
 import { isTechnicalRound } from "@/lib/round-types";
+import { parseCodeAnswer } from "@/lib/code-answer";
 import { suggestedBreakMinutes } from "@/lib/interview-progress";
 import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
@@ -644,6 +645,7 @@ export default function SessionReportPage({
                         question={questionForTurn}
                         answer={message.content}
                         roundType={currentRound?.type}
+                        practiceMode={session.practiceMode}
                         sessionId={id}
                         turnIndex={message.turnIndex}
                       />
@@ -668,12 +670,20 @@ function TurnCoaching({
   question,
   answer,
   roundType,
+  practiceMode,
   sessionId,
   turnIndex,
 }: {
   question: string;
   answer: string;
   roundType: InterviewRoundType | undefined;
+  /**
+   * Decides how this answer gets read. A voice turn is a speech-to-text
+   * transcript, so without this the coach spends tips on absent punctuation;
+   * a fenced answer is code whichever mode produced it, and the editor is
+   * reachable from a voice round too, so the fence is checked first.
+   */
+  practiceMode: "text" | "voice";
   /**
    * Both identify the turn so the server can cache the result. Without them
    * the answer was regenerated at full price on every reload — the state below
@@ -705,6 +715,11 @@ function TurnCoaching({
           question,
           answer,
           roundType,
+          answerMode: parseCodeAnswer(answer)
+            ? "code"
+            : practiceMode === "voice"
+              ? "speech"
+              : "text",
           sessionId,
           turnIndex,
         }),
