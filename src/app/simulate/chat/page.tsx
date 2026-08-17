@@ -219,9 +219,7 @@ function ChatSimulateInner() {
    * makes it changeable mid-round.
    */
   const roundDefaultFormat = resolveAnswerFormat(activeRound);
-  const canSwitchFormat =
-    activeRound?.practiceMode !== "voice" &&
-    supportsCodeEditor(activeRound?.type);
+  const canSwitchFormat = supportsCodeEditor(activeRound?.type);
   const [formatOverride, setFormatOverride] = useState<AnswerFormat | null>(
     null,
   );

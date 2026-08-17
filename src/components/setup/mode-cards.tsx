@@ -20,11 +20,11 @@ import type { PracticeMode } from "@/lib/interview-setup";
  * More to the point, the three lines under each mode are **consequences**, not
  * features, and every one of them is currently invisible in the UI:
  *
- *   - Voice returns `"prose"` unconditionally from `resolveAnswerFormat`
- *     (`interview-rounds.ts`), and `loop-step` hides the code-editor switch
- *     entirely when the round is not text. So picking Voice silently removes a
- *     capability, and today you find out one step later when a control you were
- *     expecting is simply absent.
+ *   - Voice opens a technical round on discussion rather than in the editor.
+ *     It no longer *removes* the editor — that was the old behaviour, where
+ *     `resolveAnswerFormat` returned `"prose"` before the round type was even
+ *     consulted and `loop-step` hid the switch, so picking Voice silently cost
+ *     you a capability you only noticed a step later.
  *   - Voice needs a microphone, and the mic check does not appear until the
  *     final step.
  *   - Voice rewrites `practiceMode` on every round in the loop.
@@ -50,7 +50,7 @@ const MODES: ModeSpec[] = [
       "Type your answers and read the interviewer's replies. Easier to think before you commit.",
     points: [
       "Replies render as markdown, and you can re-read them",
-      "Technical rounds can use a code editor",
+      "Technical rounds open straight into a code editor",
       "Optional live streaming as the interviewer types",
     ],
     icon: MessageSquare,
@@ -64,7 +64,7 @@ const MODES: ModeSpec[] = [
     points: [
       "Needs a microphone — you check it on the last step",
       "You pick the interviewer's voice before starting",
-      "No code editor: technical rounds are spoken instead",
+      "Technical rounds still get a code editor — speak, then type the code",
     ],
     icon: Mic,
     accent: "purple",
