@@ -58,9 +58,50 @@ describe("buildOpeningInstruction", () => {
 
     expect(continued).toMatch(/not the first interviewer/i);
     expect(continued).toMatch(/handoff notes/i);
-    // Still asks its own question — the callback replaces the framing sentence,
-    // not the round's opening.
-    expect(continued).toContain(ROUND_TYPE_SPECS.system_design.opening);
+    // Still asks its own kind of question, but the *continuation* wording of it.
+    // Asserted explicitly: `system_design.continuationOpening` begins with the
+    // cold string verbatim, so a `toContain(…​.opening)` here would keep passing
+    // while testing nothing.
+    expect(continued).toContain(
+      ROUND_TYPE_SPECS.system_design.continuationOpening,
+    );
+  });
+
+  it("uses the continuation opening for every round type", () => {
+    for (const roundType of ROUND_TYPES) {
+      expect(
+        buildOpeningInstruction({ roundType, loopBrief: "Round 1 went well." }),
+      ).toContain(ROUND_TYPE_SPECS[roundType].continuationOpening);
+    }
+  });
+
+  it("does not ask a later round to re-run the background walkthrough", () => {
+    // The regression this exists for. The shipped default loop is
+    // screening → behavioral, whose cold openings are "introduce themselves"
+    // and "tell you about themselves" — the same question twice, forty minutes
+    // apart, from two people who are meant to be colleagues.
+    const screening = buildOpeningInstruction({ roundType: "screening" });
+    const behavioral = buildOpeningInstruction({
+      roundType: "behavioral",
+      loopBrief: "Screening / intro — scored 70/100",
+    });
+    const hr = buildOpeningInstruction({
+      roundType: "hr",
+      loopBrief: "Technical 1 — scored 68/100",
+    });
+
+    expect(screening).toMatch(/introduce themselves/i);
+    expect(behavioral).not.toMatch(/tell you about themselves/i);
+    expect(hr).not.toMatch(/walk you through their background/i);
+  });
+
+  it("keeps the cold opening on the behavioural types when there is no brief", () => {
+    // The negative twin: `continuationOpening` must not leak into round one.
+    for (const roundType of ["screening", "behavioral", "hr"] as const) {
+      expect(buildOpeningInstruction({ roundType })).not.toContain(
+        ROUND_TYPE_SPECS[roundType].continuationOpening,
+      );
+    }
   });
 
   it("treats a cold open as a cold open even inside a loop", () => {

@@ -38,6 +38,16 @@ import {
  * Adding a round type is one object literal in this file.
  */
 
+/**
+ * Which scoring and questioning model a round type belongs to.
+ *
+ * Named because it is now load-bearing outside this file: the loop brief uses
+ * it to decide whether one round's questions are worth carrying into the next.
+ * Two technical rounds can land on the same problem; a technical round and an
+ * HR round cannot.
+ */
+export type RoundFamily = "behavioural" | "technical";
+
 export interface RoundTypeSpec {
   label: string;
   /**
@@ -68,10 +78,26 @@ export interface RoundTypeSpec {
    */
   opening: string;
   /**
+   * The same round's first question when it is *not* the first round of the day.
+   *
+   * The shipped default loop is screening → behavioral, whose cold openings are
+   * "introduce themselves" and "tell you about themselves" — the same question
+   * twice, by two people who are meant to be colleagues. The loop brief could
+   * not fix that on its own: it tells the interviewer what happened earlier,
+   * but `buildOpeningInstruction` emitted `opening` unconditionally, so the
+   * model was told to ask for a background it had just been briefed on.
+   *
+   * The three behavioural types get a genuinely different question. The three
+   * technical types keep their cold-open instruction and gain only a bridging
+   * clause — a system design round has to state the system whether it is round
+   * one or round four.
+   */
+  continuationOpening: string;
+  /**
    * Which scoring and questioning model applies. Drives the analyzer's schema
    * branch and which decision-engine strategy ladder runs.
    */
-  family: "behavioural" | "technical";
+  family: RoundFamily;
   /** Interviewer playbook id, pinned rather than tag-matched. */
   playbookId: string;
   /** Tags used to select the per-turn playbook layer. */
@@ -105,6 +131,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "behavioural",
     opening:
       "Ask them to introduce themselves and what drew them to this role.",
+    continuationOpening:
+      "Skip the background tour — a colleague already took it. Ask what specifically drew them to this role, and why now.",
     playbookId: "screening-fit",
     tags: ["screening", "motivation"],
     supports: { codeEditor: false },
@@ -121,6 +149,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "behavioural",
     opening:
       "Ask them to tell you about themselves and how they got to where they are now.",
+    continuationOpening:
+      "Skip the career walkthrough — a colleague already has it. Pick one thing the earlier rounds left unproven and ask for a specific story about a time they faced it.",
     playbookId: "behavioral-star",
     tags: ["behavioral", "star"],
     supports: { codeEditor: false },
@@ -137,6 +167,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "behavioural",
     opening:
       "Ask them to walk you through their background and what they are looking for in their next role.",
+    continuationOpening:
+      "Skip the background walkthrough — a colleague already covered it. Ask what they are looking for in their next role and what would make them say yes to this one.",
     playbookId: "hr-people",
     tags: ["hr", "motivation"],
     supports: { codeEditor: false },
@@ -156,6 +188,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "technical",
     opening:
       "State the coding problem you want them to solve, concretely and in full, then invite them to think out loud before writing any code.",
+    continuationOpening:
+      "State the coding problem you want them to solve, concretely and in full, then invite them to think out loud before writing any code. Say plainly that this round is hands-on, since the earlier ones were conversation.",
     playbookId: "technical-framing",
     tags: ["technical", "framing", "vague"],
     // The only type that gets an editor. Its rubric asks for correctness,
@@ -176,6 +210,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "technical",
     opening:
       "State the system you want them to design and the scale it has to handle, then ask how they would approach it.",
+    continuationOpening:
+      "State the system you want them to design and the scale it has to handle, then ask how they would approach it. Pick one adjacent to work the earlier rounds surfaced, so the round tests design and not domain luck.",
     playbookId: "system-design",
     tags: ["system_design", "architecture", "technical"],
     // Deliberately prose. Without execution or a diagram surface, an editor
@@ -194,6 +230,8 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     family: "technical",
     opening:
       "Set out the business situation concretely — the company, the market, and the decision on the table — then ask how they would structure their thinking.",
+    continuationOpening:
+      "Set out the business situation concretely — the company, the market, and the decision on the table — then ask how they would structure their thinking. Anchor it to a domain the earlier rounds show they know.",
     playbookId: "technical-framing",
     tags: ["case", "framing", "vague"],
     supports: { codeEditor: false },
