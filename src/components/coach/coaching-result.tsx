@@ -118,9 +118,13 @@ function Exemplar({ text }: { text: string }) {
         <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open/exemplar:rotate-90 motion-reduce:transition-none" />
       </summary>
       <div className="border-t border-success-border/60 px-4 pb-4 pt-3">
+        {/* Says the one thing a candidate has to know before reading it: the
+            details are made up, so repeating them in an interview would be
+            lying. Every attempt to say that in fewer words ("a yardstick, not
+            a script") said it to someone who already knew it. */}
         <p className="text-xs text-slate-500">
-          Written from scratch, with invented specifics. A yardstick, not a
-          script — the shape to copy, never the facts.
+          An invented example, so the details are not yours to use. Copy how it
+          is built, not what it says.
         </p>
         <p className={cn(BODY, "mt-2 text-slate-700")}>{text}</p>
       </div>
