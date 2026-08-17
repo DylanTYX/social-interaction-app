@@ -100,7 +100,7 @@ prefix:
 - the persona description
 - the scenario context
 - round-type guidance ("how to run this kind of round")
-- the loop handover brief, if this is round 2+
+- the loop handover brief, if this is round 2+ (see below)
 - the candidate's resume, verbatim
 - the hiring company, when the job description records one
 - the job description **only when it was inlined whole**
@@ -115,6 +115,29 @@ The JD appears in _both_ lists deliberately. A whole inlined document is
 identical on every turn and belongs in the prefix; retrieved excerpts are chosen
 per question and would poison the prefix if placed there. Which list it lands in
 is decided by `jobDescriptionIsStable`.
+
+### What the loop brief costs
+
+The brief carries, per completed round, up to four of the questions that round
+actually asked — and only from rounds of the same family, since a technical
+round's problems tell an HR interviewer nothing it can act on.
+
+Estimated, not measured: four questions run 60-90 characters each in practice
+against a 160-character ceiling, so about **120 tokens per completed round
+carried**. Round 4 of a four-round loop therefore adds roughly 360 input tokens
+per turn — about **$0.0014 uncached, $0.0007 cached** over a 25-turn round. The
+ceiling case, ten rounds all at the character cap, is ~1,600 tokens a turn.
+
+Two things keep that cheap. The brief is written **once at handoff** into
+`launch_meta` and read back verbatim, so it is byte-identical for the whole
+round and never invalidates the cached prefix mid-round — a future refactor that
+recomputed it per turn would cost far more than it looks. And it is bounded at
+both ends: `MAX_CARRIED_QUESTIONS` caps the count, `MAX_QUESTION_CHARS` the
+length.
+
+What this does **not** do is push the prefix past the 1,024-token cache floor. A
+bare session's stable prefix measures ~590 tokens; +360 reaches ~950 and still
+misses. It moves in the right direction, and that is the whole claim.
 
 ### One model for every interviewer turn
 
