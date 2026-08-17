@@ -63,26 +63,38 @@ Start from a preset, or build it yourself:
 
 Every round is editable. For each one you choose:
 
-**Type** — six kinds, each scored on its own criteria:
+**Type** — six kinds. The type decides three things at once: what the round is
+**scored on**, the **question it opens with**, and whether you get a **code
+editor**.
 
-| Round                  | Judged on                                                          |
-| ---------------------- | ------------------------------------------------------------------ |
-| Intro / screening      | Clarity, motivation, fit, concision                                |
-| Behavioural            | STAR structure, clarity, specificity                               |
-| Technical SWE          | Problem framing, correctness, complexity, edge cases, code quality |
-| System design          | Requirements, architecture, depth, tradeoffs, scalability          |
-| Case / problem solving | Problem framing, structure, tradeoffs, depth                       |
-| HR / People            | Motivation, values fit, logistics, your questions for them         |
+| Round                  | Judged on                                                          | Opens by                         | Editor |
+| ---------------------- | ------------------------------------------------------------------ | -------------------------------- | ------ |
+| Intro / screening      | Clarity, motivation, fit, concision                                | Asking what drew you to the role | —      |
+| Behavioural            | STAR structure, clarity, specificity                               | Asking how you got where you are | —      |
+| HR / People            | Motivation, values fit, logistics, your questions for them         | Asking what you want next        | —      |
+| Technical SWE          | Problem framing, correctness, complexity, edge cases, code quality | Stating a coding problem in full | ✅     |
+| System design          | Requirements, architecture, depth, tradeoffs, scalability          | Stating a system and the scale   | —      |
+| Case / problem solving | Problem framing, structure, tradeoffs, depth                       | Setting out a business situation | —      |
+
+Only Technical SWE gets an editor, in either mode. System design and Case are
+deliberately prose — without running code or a diagram surface, an editor there
+invites pseudocode into a round graded on requirements and tradeoffs.
+
+In a later round the opening changes: an HR round in position three does not ask
+for a background walkthrough, because a colleague already took it. The full
+mechanism is in [INTERVIEWER.md](INTERVIEWER.md).
 
 **Length** — 5 to 90 minutes. This genuinely controls how long the interview
 runs; the slider tells you roughly how many questions to expect.
 
 **Focus** — a free-text note on what this round should dig into.
 
-**Code editor** — the Technical SWE round swaps the chat box for a real editor
-with syntax highlighting for Python, JavaScript, TypeScript, Java and SQL. It is
-the only round type that offers one: the others are scored on things you write
-in prose, so an editor there would be graded against a rubric it cannot satisfy.
+**Code editor** — the Technical SWE round opens straight into a real editor with
+syntax highlighting for Python, JavaScript, TypeScript, Java and SQL, and you
+can switch between talking it through and writing code at any point in the
+round. It is the only round type that offers one: the others are scored on
+things you write in prose, so an editor there would be graded against a rubric
+it cannot satisfy. Voice rounds get it too — they just open on discussion.
 Your language choice sticks for the whole round. Code is reviewed by the
 interviewer, **not executed** — nothing runs it or tests it.
 
@@ -92,6 +104,14 @@ loop feels like a real panel rather than the same person four times.
 Add a round to make it a loop. Changing a round's type re-applies that type's
 sensible length and focus — switch to System design and it becomes 30 minutes —
 but anything you have typed yourself is left alone.
+
+**What later rounds know.** Each interviewer is handed a note from the rounds
+already run: how you scored, what came across well, and what is still unproven.
+Between two rounds of the same kind — two technical rounds, say — the note also
+lists the questions already put to you, so the second interviewer picks a
+different problem instead of repeating the first. Across different kinds it does
+not, because a coding problem tells an HR interviewer nothing useful. Later
+rounds also skip the background walkthrough: a colleague has already taken it.
 
 Between rounds the report suggests a breather scaled to the round you just
 finished, so there is nothing to configure.
@@ -128,6 +148,11 @@ starts it.
   starts speaking before the sentence is finished, which cuts the pause.
 - **Voice mode** transcribes as you speak and reports your delivery under each
   answer: speaking pace, filler words, and long pauses.
+- **Speak, then type the code.** A technical round in voice mode gives you both:
+  talk through your approach, then switch to **Write code** for the part you
+  cannot dictate. The microphone stops while the editor is open, so nothing is
+  recorded over what you are writing, and the round goes back to speaking for
+  the next question.
 - **You can stop early** at any point and still get a report.
 
 Sessions are saved as you go. Close the tab and the link still works — you can
@@ -236,8 +261,6 @@ Worth knowing up front:
 - **Code is reviewed, not run.** Technical rounds give you a real editor and the
   interviewer critiques your solution, but nothing executes it or runs tests
   against it.
-- **Voice rounds are always prose.** You can't type into an editor by voice, so
-  a technical round in voice mode is a spoken discussion.
 - **Delivery metrics aren't saved.** Pace, fillers and pauses appear under your
   answer during a voice session but don't reach the report.
 - **No hire/no-hire verdict.** You get scores and feedback, not a decision.

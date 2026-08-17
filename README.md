@@ -39,8 +39,12 @@ is why the prompt could confidently probe a claim the candidate never made.
 
 **Multi-round loops.** Compose a realistic loop — screening, then behavioural,
 then system design — with a *different interviewer per round*, and a handover
-brief so each interviewer knows what the previous one found. A combined report
-shows how you tracked across the day.
+brief so each interviewer knows what the previous one found: how the candidate
+scored, what came across well, what is still unproven, and — between rounds of
+the same kind — which questions have already been put to them, so two technical
+interviewers do not spend the day on the same problem. Later rounds also stop
+asking for a background an earlier interviewer already took. See
+`docs/INTERVIEWER.md`.
 
 **Competency coverage.** Questions are model-generated, so nothing guarantees a
 session explores a spread of topics. A 12-competency taxonomy is embedded and
@@ -292,6 +296,8 @@ before scaling out.
 - `docs/DEMO.md` — **how the persona and cost mechanisms work, how to prove
   them, and where the developer/end-user boundary sits**
 - `docs/FEATURES.md` — **what the app does, written for the end user**
+- `docs/INTERVIEWER.md` — **what the interviewer knows before and during a
+  round, how it picks the next question, and how rounds hand over to each other**
 - `docs/TOKEN-COST.md` — **token cost and prompt-caching design, and how to
   verify it**
 - `docs/EVALUATION.md` — **how the analyzer's scoring is validated, and the
