@@ -201,7 +201,7 @@ export default function DrillsPage() {
       <PageHeader
         eyebrow="Quick drills"
         title="One question. Instant feedback."
-        description="No setup, no full session - answer a single question and get a suggested answer, a tightened rewrite, and targeted tips in seconds."
+        description="No setup, no full session - answer a single question and get it rewritten in your own words, with targeted tips and a full example answer, in seconds."
         icon={<Dumbbell className="h-6 w-6" />}
         iconColor="pink"
       />
@@ -323,7 +323,7 @@ export default function DrillsPage() {
             <CardDescription>
               {answerEdited
                 ? "You have edited your answer since this feedback — get feedback again to refresh it."
-                : "Your answer tightened, what to fix, and a suggested answer to measure it against."}
+                : "Your answer tightened, what to fix, and a full example answer if you want the ceiling."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
