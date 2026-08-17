@@ -56,13 +56,19 @@ export function buildOpeningInstruction({
     ? "You are not the first interviewer this candidate has met today. Refer briefly to what the earlier round covered, using the handoff notes you were given, and say how your round differs from it."
     : "Say in one sentence why this conversation is happening and what you want to cover.";
 
+  // The round still asks its own kind of question; what changes is whether it
+  // assumes the candidate has already been introduced. Swapping the framing
+  // alone left an HR round in position three still asking for a background
+  // walkthrough two sentences after being told what the earlier rounds found.
+  const opening = isContinuation ? spec.continuationOpening : spec.opening;
+
   return [
     "You are about to start the interview. This is your first turn and the candidate has not spoken yet.",
     "",
     "Open the way a real interviewer does:",
     "1. Introduce yourself by name and say what you actually do — your role, and one concrete detail about your team or your work. Use the identity you were given; do not invent a different one.",
     `2. ${framing}`,
-    `3. ${spec.opening}`,
+    `3. ${opening}`,
     "",
     NO_READINESS_CHECK,
     "End your turn on the question itself, so the candidate knows exactly what to answer.",
