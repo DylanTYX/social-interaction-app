@@ -1,4 +1,4 @@
-import { BadgeCheck, ListChecks, MessageSquare, Wand2 } from "lucide-react";
+import { ChevronRight, ListChecks, Sparkles, Wand2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { CONTENT_ENTER } from "@/lib/motion";
@@ -6,51 +6,28 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 
 /**
- * The rendered output of `/api/coach/suggested-answer`, shared by the drills page
- * and the report transcript's `TurnCoaching` disclosure.
+ * The rendered output of `/api/coach/suggested-answer`, shared by the drills
+ * page and the report transcript's `TurnCoaching` disclosure.
  *
- * Four things come back and they are not four of the same thing, so each one
- * is a panel with its own tone rather than a run of labelled paragraphs:
+ * Three results, three different weights — not a grid of equal boxes, which is
+ * what this was and which gave the eye nowhere to land:
  *
- *   your answer  →  slate, subordinate: reference material for the panel beside it
- *   tightened    →  amber, the coaching accent: your words, fixed
- *   to improve   →  slate ground, amber label: the critique of the left column
- *   suggested    →  emerald: the bar to clear, written from scratch
+ *   1. The diff. One card, split down the middle: what you wrote on the left in
+ *      grey, the same answer tightened on the right in amber. A single bordered
+ *      object rather than two, because before/after is one idea.
+ *   2. The critique. No border at all — a numbered list under a quiet heading.
+ *      It is short, and boxing four one-line tips made them look like four
+ *      separate documents.
+ *   3. The exemplar, collapsed behind a disclosure. See `Exemplar`.
  *
- * Laid out as a 2x2 the columns mean something — left is yours, right is the
- * coach's — and, more prosaically, nothing is left as a half-width paragraph
- * with dead space beside it, which is what a stack of `max-w-prose` blocks in
- * a full-width dashboard card looked like.
- *
- * One palette rather than a `tone` prop for the whole block: both call sites
- * now render this on white, so the darker label rungs clear AA everywhere.
+ * A native `<details>` for (3) rather than `useState`: no client boundary, no
+ * state to reset when the next question loads, and the keyboard and
+ * screen-reader behaviour is the platform's rather than ours to re-implement.
  */
 
-const PANEL = "rounded-xl border p-4";
-const BODY = "mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700";
+const BODY = "whitespace-pre-line text-sm leading-relaxed";
 const LABEL =
   "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide";
-
-const TONES = {
-  /** What you wrote. Deliberately the quietest panel on screen. */
-  original: {
-    panel: "border-slate-200 bg-slate-50/70",
-    label: "text-slate-500",
-  },
-  /** The critique. Neutral ground so it does not compete with the rewrite. */
-  tips: {
-    panel: "border-slate-200 bg-slate-50/70",
-    label: "text-warning-emphasis",
-  },
-  rewrite: {
-    panel: "border-warning-border bg-warning-subtle",
-    label: "text-warning-emphasis",
-  },
-  suggested: {
-    panel: "border-success-border bg-success-subtle",
-    label: "text-success-emphasis",
-  },
-} as const;
 
 /**
  * Two columns once the *container* is wide, not the viewport.
@@ -61,54 +38,93 @@ const TONES = {
  * instance at ≥376px, since ~350px is too narrow to read two passages side by
  * side.
  *
- * Lives on a child of the container, never on the container element itself: an
+ * Always on a child of the container, never on the container element itself: an
  * element is not its own container query context, so `@3xl/coaching:` on the
  * `@container/coaching` div would silently never match.
  */
-const GRID = "grid gap-4 @3xl/coaching:grid-cols-2";
+const SPLIT = "grid @3xl/coaching:grid-cols-2";
 
 /**
- * `h3` for the reason `CardTitle` already argues: these pages had almost no
- * headings, so a screen-reader user jumping by heading got the page title and
- * nothing else. Both call sites render this under an `h2`, so the level skips
- * none.
+ * The before/after card.
+ *
+ * The two halves share one border and differ by fill, so they read as one
+ * object with a seam rather than as two cards that happen to be adjacent. The
+ * seam flips from a top border to a left border at `@3xl`, which is the whole
+ * reason the halves are not `PANEL`s: two rounded boxes cannot show a seam.
  */
-function Panel({
-  tone,
-  icon,
-  title,
-  hint,
-  className,
-  children,
+function Diff({
+  originalAnswer,
+  rewrite,
 }: {
-  tone: keyof typeof TONES;
-  icon: React.ReactNode;
-  title: string;
-  /**
-   * What this panel is *for*, in one line.
-   *
-   * The rewrite and the suggested answer are two passages of similar-looking
-   * prose answering the same question, and without this they read as the same
-   * thing printed twice. They are not: the prompt binds every specific in the
-   * rewrite to a fact the candidate actually gave, and explicitly licenses the
-   * suggested answer to invent them. One is something you could say tomorrow;
-   * the other is a yardstick you would be lying to repeat. That distinction is
-   * the whole reason both are generated, so it belongs on screen rather than
-   * in the prompt file.
-   */
-  hint?: string;
-  className?: string;
-  children: React.ReactNode;
+  originalAnswer?: string;
+  rewrite: string;
 }) {
   return (
-    <section className={cn(PANEL, TONES[tone].panel, className)}>
-      <h3 className={cn(LABEL, TONES[tone].label)}>
-        {icon}
-        {title}
-      </h3>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
-      {children}
-    </section>
+    <div className="overflow-hidden rounded-xl border border-slate-200">
+      <div className={SPLIT}>
+        {originalAnswer && (
+          <div className="p-4">
+            <h3 className={cn(LABEL, "text-slate-400")}>Your answer</h3>
+            {/* Lighter than the rewrite beside it on purpose. You wrote this
+                and you are not here to re-read it — it is the reference the
+                other half is measured against. */}
+            <p className={cn(BODY, "mt-2 text-slate-500")}>{originalAnswer}</p>
+          </div>
+        )}
+        <div
+          className={cn(
+            "bg-warning-subtle p-4",
+            originalAnswer &&
+              "border-t border-warning-border/60 @3xl/coaching:border-l @3xl/coaching:border-t-0",
+          )}
+        >
+          <h3 className={cn(LABEL, "text-warning-emphasis")}>
+            <Wand2 className="h-3.5 w-3.5" />
+            Your answer, tightened
+          </h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Your own facts, restructured. You could say this tomorrow.
+          </p>
+          <p className={cn(BODY, "mt-2 text-slate-700")}>{rewrite}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The suggested answer, collapsed.
+ *
+ * Open by default it was the third long passage in a row and read as more of
+ * the same. It is also the one output you cannot use: the prompt binds every
+ * specific in the rewrite to a fact the candidate gave, and explicitly licenses
+ * this one to invent them. So it is not the answer — it is the ceiling, and it
+ * earns its place only when the rewrite has clearly hit one, which is exactly
+ * the moment a candidate goes looking for it.
+ */
+function Exemplar({ text }: { text: string }) {
+  return (
+    <details className="group/exemplar rounded-xl border border-success-border bg-success-subtle/60">
+      <summary
+        className={cn(
+          LABEL,
+          "cursor-pointer list-none rounded-xl px-4 py-3 text-success-emphasis",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "[&::-webkit-details-marker]:hidden",
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        See a full example answer
+        <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open/exemplar:rotate-90 motion-reduce:transition-none" />
+      </summary>
+      <div className="border-t border-success-border/60 px-4 pb-4 pt-3">
+        <p className="text-xs text-slate-500">
+          Written from scratch, with invented specifics. A yardstick, not a
+          script — the shape to copy, never the facts.
+        </p>
+        <p className={cn(BODY, "mt-2 text-slate-700")}>{text}</p>
+      </div>
+    </details>
   );
 }
 
@@ -124,7 +140,7 @@ export function CoachingResult({
    *
    * Pass it only where the original is not already on screen. The report
    * transcript shows the answer in a bubble directly above this, so it omits it
-   * and the rewrite renders alone — a pair there would duplicate the bubble.
+   * and the rewrite fills the card alone.
    *
    * Optional rather than paired with a `compare` boolean so that "compare on,
    * nothing to compare" cannot be expressed.
@@ -132,70 +148,43 @@ export function CoachingResult({
   originalAnswer?: string;
   className?: string;
 }) {
-  const compare = Boolean(originalAnswer?.trim());
-
-  /**
-   * Placed after the before/after pair when there is one, so the two halves of
-   * the diff stay adjacent and the critique reads as commentary on them; first
-   * and full-width when there is not, because then it is the only thing that
-   * would otherwise share a row with a passage of prose.
-   */
-  const tips = result.tips.length > 0 && (
-    <Panel
-      tone="tips"
-      icon={<ListChecks className="h-3.5 w-3.5" />}
-      title="What to improve"
-      className={compare ? undefined : "@3xl/coaching:col-span-2"}
-    >
-      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-sm leading-relaxed text-slate-700">
-        {result.tips.map((tip, index) => (
-          <li key={index}>{tip}</li>
-        ))}
-      </ul>
-    </Panel>
-  );
+  const original = originalAnswer?.trim() ? originalAnswer : undefined;
 
   return (
     <div className="@container/coaching">
-      <div className={cn(GRID, CONTENT_ENTER, className)}>
-        {!compare && tips}
-
-        {/* Original first, so before → after reads correctly across at `@3xl`
-            and down below it. Grid stretch is wanted: both panels hold the same
-            text, so their heights track. */}
-        {compare && (
-          <Panel
-            tone="original"
-            icon={<MessageSquare className="h-3.5 w-3.5" />}
-            title="Your answer"
-          >
-            <p className={BODY}>{originalAnswer}</p>
-          </Panel>
-        )}
-
+      <div className={cn("space-y-5", CONTENT_ENTER, className)}>
         {result.rewrite && (
-          <Panel
-            tone="rewrite"
-            icon={<Wand2 className="h-3.5 w-3.5" />}
-            title="Your answer, tightened"
-            hint="Your own facts, restructured. You could say this tomorrow."
-          >
-            <p className={BODY}>{result.rewrite}</p>
-          </Panel>
+          <Diff originalAnswer={original} rewrite={result.rewrite} />
         )}
 
-        {compare && tips}
-
-        {result.suggestedAnswer && (
-          <Panel
-            tone="suggested"
-            icon={<BadgeCheck className="h-3.5 w-3.5" />}
-            title="Suggested answer"
-            hint="Written from scratch, with invented specifics. A yardstick, not a script."
-          >
-            <p className={BODY}>{result.suggestedAnswer}</p>
-          </Panel>
+        {result.tips.length > 0 && (
+          <section>
+            <h3 className={cn(LABEL, "text-slate-500")}>
+              <ListChecks className="h-3.5 w-3.5" />
+              What to improve
+            </h3>
+            {/* Unboxed, and two columns where there is room. Four short tips in
+                one narrow stack looked like an error log. */}
+            <ol className={cn(SPLIT, "mt-3 gap-x-8 gap-y-2.5")}>
+              {result.tips.map((tip, index) => (
+                <li
+                  key={index}
+                  className="flex gap-2.5 text-sm leading-relaxed text-slate-700"
+                >
+                  <span
+                    aria-hidden
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-muted text-[11px] font-semibold text-warning-emphasis"
+                  >
+                    {index + 1}
+                  </span>
+                  {tip}
+                </li>
+              ))}
+            </ol>
+          </section>
         )}
+
+        {result.suggestedAnswer && <Exemplar text={result.suggestedAnswer} />}
       </div>
     </div>
   );
@@ -213,50 +202,47 @@ export function CoachingResultSkeleton({
   compare?: boolean;
   className?: string;
 }) {
-  const tips = (
-    <div
-      className={cn(
-        PANEL,
-        TONES.tips.panel,
-        compare ? undefined : "@3xl/coaching:col-span-2",
-      )}
-    >
-      <Skeleton className="h-3.5 w-32" />
-      <div className="mt-3 space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-4 w-11/12" />
-      </div>
-    </div>
-  );
-
   return (
     <div className="@container/coaching">
-      <div className={cn(GRID, className)}>
-        {!compare && tips}
-
-        {compare && (
-          <div className={cn(PANEL, TONES.original.panel)}>
-            <Skeleton className="h-3.5 w-28" />
-            <Skeleton className="mt-3 h-28" />
+      <div className={cn("space-y-5", className)}>
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className={SPLIT}>
+            {compare && (
+              <div className="p-4">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="mt-3 h-28" />
+              </div>
+            )}
+            <div
+              className={cn(
+                "bg-warning-subtle p-4",
+                compare &&
+                  "border-t border-warning-border/60 @3xl/coaching:border-l @3xl/coaching:border-t-0",
+              )}
+            >
+              <Skeleton className="h-3.5 w-36" />
+              {/* The hint line under the label. A skeleton a row shorter than
+                  what replaces it reflows the page at the moment the user
+                  starts reading. */}
+              <Skeleton className="mt-1.5 h-3 w-52" />
+              <Skeleton className="mt-3 h-28" />
+            </div>
           </div>
-        )}
-
-        {/* Two bars in the head, not one: these are the panels that carry a
-            `hint` line, and a skeleton a row shorter than what replaces it
-            reflows the page at the exact moment the user starts reading. */}
-        <div className={cn(PANEL, TONES.rewrite.panel)}>
-          <Skeleton className="h-3.5 w-36" />
-          <Skeleton className="mt-1.5 h-3 w-52" />
-          <Skeleton className="mt-3 h-28" />
         </div>
 
-        {compare && tips}
-
-        <div className={cn(PANEL, TONES.suggested.panel)}>
+        <section>
           <Skeleton className="h-3.5 w-32" />
-          <Skeleton className="mt-1.5 h-3 w-56" />
-          <Skeleton className="mt-3 h-28" />
+          <div className={cn(SPLIT, "mt-3 gap-x-8 gap-y-2.5")}>
+            <Skeleton className="h-5" />
+            <Skeleton className="h-5" />
+            <Skeleton className="h-5" />
+            <Skeleton className="h-5" />
+          </div>
+        </section>
+
+        {/* The collapsed disclosure, at its collapsed height. */}
+        <div className="rounded-xl border border-success-border bg-success-subtle/60 px-4 py-3">
+          <Skeleton className="h-3.5 w-44" />
         </div>
       </div>
     </div>
