@@ -214,7 +214,7 @@ next to what you wrote, and a suggested answer behind a disclosure. Drills
 deliberately skip the 0-100 analyzer — there is no session to score against and
 no interviewer to adapt. If you want a number, run a round.
 
-Answer them three ways, and **speaking is the default**, because an interview
+Answer them two ways, and **speaking is the default**, because an interview
 is spoken and a drill that only takes typing trains the half of the skill
 nobody is assessed on:
 
@@ -226,12 +226,18 @@ nobody is assessed on:
   feedback a typed answer cannot have.
 - **Type** — the textarea, for when you want to work on the words rather than
   the delivery, and the fallback when the microphone is unavailable.
-- **Code** — the CodeMirror editor, offered only on Technical (SWE) and System
-  design, gated by the same `supportsCodeEditor` predicate the interview uses.
+The coach is told which of the two it is reading. Without that it spends its
+four tips on punctuation Azure never transcribed instead of on the answer.
 
-The coach is told which of the three it is reading. Without that it spends its
-four tips on punctuation Azure never transcribed, or rewrites a fenced function
-as a paragraph about the function.
+**There is deliberately no code editor in drills.** The technical questions
+stay, because they were never coding questions — every one in the bank asks you
+to talk ("walk me through it", "talk through your approach and complexity"), and
+`COACH_RUBRICS.technical_swe` lists *"code delivered with no narration"* as a
+failure mode, so an editor here would invite the exact answer the rubric marks
+down. Writing and debugging a function is also not quick, and it is the answer
+that most needs the follow-up — "what's the complexity?", "what about empty
+input?" — that only a real round can give. The editor lives in the interview,
+where there is a turn structure and an interviewer to ask.
 
 **Libraries** — saved personas, job descriptions and resumes, reusable across
 sessions. Both document libraries are searchable and editable after saving —
