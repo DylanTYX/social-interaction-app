@@ -4,7 +4,6 @@ import { readJson } from "@/lib/api/fetch-json";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Code2,
   Dumbbell,
   Gauge,
   Mic,
@@ -41,9 +40,6 @@ import {
   CoachingResult,
   CoachingResultSkeleton,
 } from "@/components/coach/coaching-result";
-import { CodeInput } from "@/components/chat/code-input";
-import { supportsCodeEditor } from "@/lib/round-types";
-import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
 import type { SpeechAnswerCompletion } from "@/hooks/use-speech-answer";
 import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
 
@@ -76,18 +72,30 @@ const DrillSpeakInput = dynamic(
 const SPOKEN_ANSWER_SECONDS = 120;
 
 /**
- * The three ways to answer a drill.
+ * The two ways to answer a drill.
  *
- * Distinct from `AnswerMode` on the wire, which has no notion of a UI choice:
- * "type" and "speak" both produce prose, and the coach is told which so it does
- * not bill a transcript for punctuation nobody spoke.
+ * There is deliberately no code editor here, though `AnswerMode` on the wire
+ * still has a `code` member — the report sends it for fenced answers written
+ * during a session. A drill is defined by being quick: no setup, one question,
+ * seconds to feedback. Writing and debugging a function is none of those, and
+ * it is the one kind of answer that most needs the follow-up ("what is the
+ * complexity?", "what about empty input?") that only a real round can give.
+ *
+ * The technical questions stay, because they were never coding questions. Every
+ * one in the bank asks you to *talk*: "walk me through it", "talk through your
+ * approach and complexity". `COACH_RUBRICS.technical_swe` even lists "code
+ * delivered with no narration" as a failure mode — so an editor here would
+ * invite the exact answer the rubric marks down.
+ *
+ * Distinct from `AnswerMode` for one more reason: "type" and "speak" both
+ * produce prose, and the coach is told which so it does not bill a transcript
+ * for punctuation nobody spoke.
  */
-type DrillInputMode = "type" | "speak" | "code";
+type DrillInputMode = "type" | "speak";
 
 const WIRE_MODE: Record<DrillInputMode, AnswerMode> = {
   type: "text",
   speak: "speech",
-  code: "code",
 };
 
 function pickRandom(
@@ -139,9 +147,6 @@ export default function DrillsPage() {
    * for someone who came here to type.
    */
   const [mode, setMode] = useState<DrillInputMode>("speak");
-  const [codeLanguage, setCodeLanguage] = useState<CodeLanguage>(
-    DEFAULT_CODE_LANGUAGE,
-  );
   /**
    * Pace, fillers and long pauses for the answer that produced `result`.
    *
@@ -163,27 +168,6 @@ export default function DrillsPage() {
   const meta = getCategoryMeta(
     question.category === "leadership" ? "leadership" : question.category,
   );
-  /**
-   * The editor is offered per category, because the coach rubric is per round
-   * type — `technical_swe` scores correctness and complexity, `system_design`
-   * scores architecture — and both are reachable from `supportsCodeEditor`,
-   * the same predicate the interview uses. A behavioural question with a code
-   * editor under it is an invitation to answer the wrong way.
-   */
-  const codeAllowed = supportsCodeEditor(meta.roundType);
-
-  /**
-   * Derived, not corrected in an effect.
-   *
-   * Narrowing to Behavioural while the editor is open has to fall back to
-   * typing, and doing that by writing `mode` from an effect is a cascading
-   * render for a value that is a pure function of what is already on screen.
-   * Keeping the *preference* in `mode` also means the editor comes back by
-   * itself when a technical category does.
-   */
-  const activeMode: DrillInputMode =
-    mode === "code" && !codeAllowed ? "type" : mode;
-
   const clearAnswer = () => {
     setAnswer("");
     setSubmittedAnswer("");
@@ -230,7 +214,7 @@ export default function DrillsPage() {
    * to overwrite. Guarded by the same threshold and the same dialog.
    */
   const requestMode = (next: DrillInputMode) => {
-    if (next === activeMode) return;
+    if (next === mode) return;
     if (answer.trim().length >= 10) {
       setPendingSwitch({ mode: next });
       return;
@@ -240,17 +224,27 @@ export default function DrillsPage() {
   };
 
   const handleSubmit = async (override?: string, forMode?: DrillInputMode) => {
-    // Speaking and the code editor both hand their answer straight in: their
-    // text reaches `setAnswer` in the same tick as this call, and state is not
-    // readable until the next render.
+    // Speaking hands its answer straight in: the transcript reaches
+    // `setAnswer` in the same tick as this call, and state is not readable
+    // until the next render.
     const trimmed = (override ?? answer).trim();
-    const submitMode = forMode ?? activeMode;
+    const submitMode = forMode ?? mode;
     if (trimmed.length < 10 || loading) return;
 
     setLoading(true);
     setSubmittedAnswer(trimmed);
     setError(null);
     setResult(null);
+    /**
+     * Dropped for anything that was not spoken.
+     *
+     * "Revise this answer" hands a transcript to the textarea, so the very next
+     * submission is typed — and without this the pace and filler counts from
+     * the spoken attempt stayed on screen beside coaching for the edited one,
+     * claiming three fillers about text that contains none. The same class of
+     * lie `submittedAnswer` exists to prevent.
+     */
+    if (submitMode !== "speak") setDeliveryNote(null);
     try {
       const roundType =
         question.category === "leadership" ? "behavioral" : question.category;
@@ -288,9 +282,8 @@ export default function DrillsPage() {
    */
   const handleRevise = () => {
     // Revising means editing words, which only the textarea can do — so this
-    // also drops out of speak or code mode, carrying the transcript or the
-    // fenced source into the box rather than discarding it the way an ordinary
-    // mode switch does.
+    // also drops out of speak mode, carrying the transcript into the box
+    // rather than discarding it the way an ordinary mode switch does.
     setMode("type");
     answerRef.current?.focus({ preventScroll: true });
     answerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -323,12 +316,6 @@ export default function DrillsPage() {
     }
 
     void handleSubmit(transcript, "speak");
-  };
-
-  const handleCodeSubmit = (formatted: string) => {
-    setDeliveryNote(null);
-    setAnswer(formatted);
-    void handleSubmit(formatted, "code");
   };
 
   /**
@@ -431,7 +418,8 @@ export default function DrillsPage() {
               is for — an interview is spoken, and a drill that only ever takes
               typing trains the half of the skill nobody is assessed on. Typing
               stays because a transcript is not always what you want to work on,
-              and because the microphone can fail. */}
+              because the microphone can fail, and because "Revise this answer"
+              lands here with the transcript already in the box. */}
           <div
             role="group"
             aria-label="How to answer"
@@ -441,20 +429,17 @@ export default function DrillsPage() {
               [
                 { id: "speak", label: "Speak", icon: Mic },
                 { id: "type", label: "Type", icon: PenLine },
-                ...(codeAllowed
-                  ? [{ id: "code" as const, label: "Code", icon: Code2 }]
-                  : []),
               ] as { id: DrillInputMode; label: string; icon: typeof Mic }[]
             ).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
-                aria-pressed={activeMode === id}
+                aria-pressed={mode === id}
                 onClick={() => requestMode(id)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  activeMode === id
+                  mode === id
                     ? "bg-white text-slate-900 shadow-soft"
                     : "text-slate-500 hover:text-slate-800",
                 )}
@@ -465,7 +450,7 @@ export default function DrillsPage() {
             ))}
           </div>
 
-          {activeMode === "speak" ? (
+          {mode === "speak" ? (
             <DrillSpeakInput
               timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
               // The question itself, so the recognizer is biased toward the
@@ -473,18 +458,6 @@ export default function DrillsPage() {
               phraseList={[question.prompt]}
               disabled={loading}
               onComplete={handleSpoken}
-            />
-          ) : activeMode === "code" ? (
-            /* Remounted per question so the editor does not carry the last
-               answer into the next one. The language is owned here for the
-               opposite reason — it is a preference, not a per-answer choice. */
-            <CodeInput
-              key={question.id}
-              language={codeLanguage}
-              onLanguageChange={setCodeLanguage}
-              onSend={handleCodeSubmit}
-              disabled={loading}
-              timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
             />
           ) : (
             <>
