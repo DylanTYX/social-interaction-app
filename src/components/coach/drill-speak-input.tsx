@@ -67,6 +67,11 @@ export function DrillSpeakInput({
       timeLimitSeconds={timeLimitSeconds}
       deadlineMs={speech.answerDeadlineMs}
       silenceStartedAtMs={speech.silenceStartedAtMs}
+      // Reserved up front and sized to be read, not glanced at. In the
+      // interview the transcript is a confirmation under a conversation; here
+      // it is the answer taking shape, and it is the only thing on the card.
+      keepTranscriptMounted
+      transcriptClassName="min-h-32 max-h-48 text-sm"
       onStart={() => void speech.start()}
       onStop={() => void speech.stop()}
     />
