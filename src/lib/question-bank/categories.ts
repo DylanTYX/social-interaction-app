@@ -46,12 +46,13 @@ export type DrillGroup = "behavioural" | "core" | "specialisation";
 
 export const DRILL_GROUPS: { id: DrillGroup; label: string }[] = [
   { id: "behavioural", label: "Behavioural" },
-  { id: "core", label: "Core technical" },
+  { id: "core", label: "Core Technical" },
   { id: "specialisation", label: "Specialisations" },
 ];
 
 export interface DrillCategoryMeta {
   id: DrillCategory;
+  /** Title Case: these are proper names of subjects, and they sit in a menu. */
   label: string;
   group: DrillGroup;
   /** Selects the coach rubric. Never assume it equals `id`. */
@@ -69,14 +70,14 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
   },
   {
     id: "recruiter_screen",
-    label: "Recruiter screen",
+    label: "Recruiter Screen",
     group: "behavioural",
     roundType: "screening",
     blurb: "Motivation, fit, and a crisp walk through your background.",
   },
   {
     id: "hr",
-    label: "HR & people",
+    label: "HR & People",
     group: "behavioural",
     roundType: "hr",
     blurb: "Values, working style, logistics, and questions for them.",
@@ -84,28 +85,28 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
 
   {
     id: "dsa",
-    label: "Data structures & algorithms",
+    label: "Data Structures & Algorithms",
     group: "core",
     roundType: "technical_swe",
     blurb: "Approach, correctness, complexity, and thinking out loud.",
   },
   {
     id: "programming",
-    label: "Programming & languages",
+    label: "Programming & Languages",
     group: "core",
     roundType: "technical_swe",
     blurb: "Language fundamentals, memory, and how your tools behave.",
   },
   {
     id: "testing",
-    label: "Testing & debugging",
+    label: "Testing & Debugging",
     group: "core",
     roundType: "technical_swe",
     blurb: "Finding the cause, proving the fix, stopping the repeat.",
   },
   {
     id: "oop",
-    label: "OOP & software design",
+    label: "OOP & Software Design",
     group: "core",
     roundType: "cs_fundamentals",
     blurb: "Pillars, SOLID, patterns, and designing a class properly.",
@@ -119,14 +120,14 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
   },
   {
     id: "operating_systems",
-    label: "Operating systems",
+    label: "Operating Systems",
     group: "core",
     roundType: "cs_fundamentals",
     blurb: "Processes, memory, scheduling, concurrency, deadlock.",
   },
   {
     id: "networks",
-    label: "Computer networks",
+    label: "Computer Networks",
     group: "core",
     roundType: "cs_fundamentals",
     blurb: "TCP/IP, HTTP, DNS, and what happens between machines.",
@@ -140,7 +141,7 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
   },
   {
     id: "system_design",
-    label: "System design",
+    label: "System Design",
     group: "core",
     roundType: "system_design",
     blurb: "Requirements, architecture, tradeoffs, and scale.",
@@ -148,7 +149,7 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
 
   {
     id: "ai_ml",
-    label: "AI & machine learning",
+    label: "AI & Machine Learning",
     group: "specialisation",
     roundType: "cs_fundamentals",
     blurb: "Models, evaluation, overfitting, and how LLMs fit in.",
@@ -162,7 +163,7 @@ export const DRILL_CATEGORIES: DrillCategoryMeta[] = [
   },
   {
     id: "web_frontend",
-    label: "Web & frontend",
+    label: "Web & Frontend",
     group: "specialisation",
     roundType: "cs_fundamentals",
     blurb: "The browser, JavaScript semantics, rendering, and CORS.",
