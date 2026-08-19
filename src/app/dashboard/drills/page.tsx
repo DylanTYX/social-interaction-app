@@ -4,7 +4,6 @@ import { readJson } from "@/lib/api/fetch-json";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Binary,
   Dumbbell,
   Gauge,
   Mic,
@@ -13,8 +12,6 @@ import {
   Send,
   Shuffle,
   Sparkles,
-  Users,
-  type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,7 +41,6 @@ import {
   getCategoryMeta,
   getQuestionsForCategory,
   type DrillCategory,
-  type DrillGroup,
   type DrillQuestion,
 } from "@/lib/question-bank";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -54,7 +50,6 @@ import {
 } from "@/components/coach/coaching-result";
 import type { SpeechAnswerCompletion } from "@/hooks/use-speech-answer";
 import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
-import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 
 /**
  * `ssr: false` is not a preference.
@@ -79,21 +74,6 @@ const DrillSpeakInput = dynamic(
     ),
   },
 );
-
-/**
- * The accent a topic's group carries in the picker.
- *
- * `TILE_COLORS` is the same lookup the dashboard's stat and feature tiles use,
- * so this is the app's existing accent system rather than a new one. Colouring
- * by *group* rather than by topic keeps it to three meanings — yours, core CS,
- * specialisation — instead of fifteen decorations.
- */
-const GROUP_ACCENT: Record<DrillGroup, { icon: LucideIcon; color: TileColor }> =
-  {
-    behavioural: { icon: Users, color: "purple" },
-    core: { icon: Binary, color: "blue" },
-    specialisation: { icon: Sparkles, color: "green" },
-  };
 
 /** How long a spoken drill answer may run. Shorter than an interview turn's
  *  three minutes: a drill is one question, not a conversation. */
@@ -409,80 +389,58 @@ export default function DrillsPage() {
           `persona-step.tsx` made the same call for the same reason. */}
       <Card className="shadow-soft">
         <CardHeader>
-          {/* A toolbar band, not a row of controls floating above the text.
-              The picker used to sit inline with the question and the blurb,
-              three quiet things in a column — so the control you actually
-              operate read as the least important of them. Given its own
-              surface, ruled off from the body, the card now says plainly which
-              part is chrome and which part is the question.
+          {/* The topic picker lives here, where the topic is displayed.
+              It used to be sixteen chips in three labelled rows above the card
+              — the first thing on the page, and a wall of chrome in front of
+              the one thing you came to read. Choosing a topic is occasional:
+              you pick once and then drill several questions against it. So it
+              collapses into the control that was already showing which topic
+              you were on, and the question becomes the first thing you see.
 
-              Full-bleed via negative margins: `Card` supplies `py-6` and
-              `CardHeader` supplies `px-6`, so the band has to reach back
-              through both to touch the card's edges. `border-b` on the header
-              is a supported case — the card's own styles carry a
-              `[.border-b]:pb-6` rule for it.
-
-              The accent tile is `TILE_COLORS`, the same lookup the dashboard
-              tiles use, keyed by group so there are three meanings rather than
-              fifteen decorations. It follows the *question's* group, not the
-              filter's, so on "All Topics" it still tells you something true. */}
-          <div className="-mx-6 -mt-6 mb-1 flex items-center justify-between gap-3 rounded-t-xl border-b border-slate-200 bg-slate-50/70 px-6 py-3">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span
-                aria-hidden
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                  TILE_COLORS[GROUP_ACCENT[meta.group].color],
-                )}
+              A grouped `Select` rather than a flat one: the three groups are
+              the CS Core / specialisation line, and a fifteen-item list with no
+              structure is the same wall in a smaller box. */}
+          <div className="flex items-center justify-between gap-2">
+            <Select
+              value={category}
+              onValueChange={(next) =>
+                handleCategory(next as DrillCategory | "all")
+              }
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Drill topic"
+                className="w-auto min-w-56 gap-2 font-medium"
               >
-                {(() => {
-                  const Icon = GROUP_ACCENT[meta.group].icon;
-                  return <Icon className="h-4 w-4" />;
-                })()}
-              </span>
-              <Select
-                value={category}
-                onValueChange={(next) =>
-                  handleCategory(next as DrillCategory | "all")
-                }
-              >
-                <SelectTrigger
-                  aria-label="Drill topic"
-                  className="w-auto min-w-56 border-transparent bg-transparent font-semibold text-slate-900 shadow-none hover:bg-white/70 focus-visible:bg-white"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Topics</SelectItem>
-                  {DRILL_GROUPS.map((group) => (
-                    <SelectGroup key={group.id}>
-                      <SelectLabel>{group.label}</SelectLabel>
-                      {DRILL_CATEGORIES.filter(
-                        (cat) => cat.group === group.id,
-                      ).map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Topics</SelectItem>
+                {DRILL_GROUPS.map((group) => (
+                  <SelectGroup key={group.id}>
+                    <SelectLabel>{group.label}</SelectLabel>
+                    {DRILL_CATEGORIES.filter(
+                      (cat) => cat.group === group.id,
+                    ).map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => requestNewQuestion()}
-              className="shrink-0 gap-1.5 text-slate-500 hover:bg-white/70"
+              className="gap-1.5 text-slate-500"
             >
               <Shuffle className="h-3.5 w-3.5" />
               New Question
             </Button>
           </div>
-          {/* Bigger now that the toolbar above it has weight of its own.
-              At `text-xl` against a tinted band the two competed; the question
-              is the thing on this page, so it should win outright. */}
-          <CardTitle className="pt-1 text-2xl leading-snug tracking-tight">
+          <CardTitle className="pt-2 text-xl leading-snug">
             {question.prompt}
           </CardTitle>
           {/* Names the topic while browsing everything.
