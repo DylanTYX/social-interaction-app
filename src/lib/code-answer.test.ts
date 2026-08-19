@@ -104,7 +104,7 @@ describe("resolveAnswerFormat", () => {
     // Saved loops and localStorage payloads still carry those values, so
     // refusing them here is what actually fixes it rather than just hiding
     // the control.
-    for (const type of ["behavioral", "screening", "hr", "case", "system_design"] as const) {
+    for (const type of ["behavioral", "screening", "hr", "cs_fundamentals", "system_design"] as const) {
       expect(
         resolveAnswerFormat({ ...round, type, answerFormat: "code" }),
         type,

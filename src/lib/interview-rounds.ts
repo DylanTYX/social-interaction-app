@@ -9,7 +9,7 @@ export const ROUND_TYPES = [
   "behavioral",
   "technical_swe",
   "system_design",
-  "case",
+  "cs_fundamentals",
   "screening",
   "hr",
 ] as const;
@@ -257,18 +257,17 @@ export function suggestLoopFromJobDescription(
     lower.includes("frontend") ||
     lower.includes("full stack") ||
     lower.includes("developer");
-  const isPm =
-    lower.includes("product manager") || lower.includes("product management");
-  const isDesign =
-    lower.includes("designer") || lower.includes("design system");
-  const isData =
-    lower.includes("data scientist") ||
-    lower.includes("data analyst") ||
-    lower.includes("machine learning");
-  const isMarketing = lower.includes("marketing");
-  const isSales =
-    lower.includes("sales") || lower.includes("account executive");
-
+  /**
+   * Only software roles get a suggested technical round.
+   *
+   * There used to be two more branches here: a "Product case" for product
+   * managers and a "Role-specific case" for design, data, marketing and sales.
+   * Both pushed a `case` round, which no longer exists — the app is scoped to
+   * Computer Science roles, and auto-building a product-management interview
+   * was the clearest place that scoping was not true of the product. A
+   * non-software title now gets the screening and behavioural rounds every
+   * loop gets, and the candidate adds what else they want.
+   */
   if (isSwe) {
     push({
       title: "Technical 1",
@@ -281,20 +280,6 @@ export function suggestLoopFromJobDescription(
       type: "system_design",
       durationMinutes: 30,
       focus: "Requirements, architecture, and tradeoffs.",
-    });
-  } else if (isPm) {
-    push({
-      title: "Product case",
-      type: "case",
-      durationMinutes: 25,
-      focus: "Problem framing, prioritization, metrics, and tradeoffs.",
-    });
-  } else if (isDesign || isData || isMarketing || isSales) {
-    push({
-      title: "Role-specific case",
-      type: "case",
-      durationMinutes: 25,
-      focus: "Walk through a role-relevant problem out loud.",
     });
   }
 

@@ -30,6 +30,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   DRILL_CATEGORIES,
+  DRILL_GROUPS,
   getCategoryMeta,
   getQuestionsForCategory,
   type DrillCategory,
@@ -103,7 +104,7 @@ function pickRandom(
   excludeId?: string,
 ): DrillQuestion {
   if (questions.length === 0) {
-    return { id: "empty", category: "behavioral", prompt: "" };
+    return { id: "empty", category: "behavioural", prompt: "" };
   }
   if (questions.length === 1) return questions[0];
   let next = questions[Math.floor(Math.random() * questions.length)];
@@ -165,9 +166,7 @@ export default function DrillsPage() {
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const coachingRef = useRef<HTMLDivElement>(null);
 
-  const meta = getCategoryMeta(
-    question.category === "leadership" ? "leadership" : question.category,
-  );
+  const meta = getCategoryMeta(question.category);
   const clearAnswer = () => {
     setAnswer("");
     setSubmittedAnswer("");
@@ -246,15 +245,26 @@ export default function DrillsPage() {
      */
     if (submitMode !== "speak") setDeliveryNote(null);
     try {
-      const roundType =
-        question.category === "leadership" ? "behavioral" : question.category;
+      /**
+       * The topic's rubric, read from the topic itself.
+       *
+       * This used to be `question.category` with one hardcoded exception for
+       * `leadership`, which worked only because six of the seven category ids
+       * happened to be spelled the same as round type ids. They are not the
+       * same thing and were never guaranteed to agree: `isRoundType` rejects
+       * anything it does not recognise, `roundType` then arrives undefined, and
+       * the route falls back to the behavioural STAR rubric — so an operating
+       * systems answer would have been marked for storytelling, with nothing on
+       * screen to show it had happened. `DrillCategoryMeta.roundType` is the
+       * mapping, and eight topics now share one round type through it.
+       */
       const response = await fetch("/api/coach/suggested-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question: question.prompt,
           answer: trimmed,
-          roundType,
+          roundType: meta.roundType,
           answerMode: WIRE_MODE[submitMode],
         }),
       });
@@ -355,25 +365,41 @@ export default function DrillsPage() {
         iconColor="pink"
       />
 
-      {/* `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
+      {/* Grouped, not one wrapping row.
+          Fifteen topics in a single row is a wall of chips with no shape. The
+          headings also say something true: `core` is what every CS interview
+          draws on, `specialisation` is what only some roles ask — which is the
+          same line CS2023 draws between its CS Core and its KA Core.
+
+          `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
           `aria-pressed` and no focus-visible ring, so selection was conveyed by
-          colour alone and a keyboard user got nothing. The shared component has
-          existed for exactly this and was only used in the setup wizard. */}
-      <div className="flex flex-wrap gap-2">
+          colour alone and a keyboard user got nothing. */}
+      <div className="space-y-3">
         <ChoiceChip
           selected={category === "all"}
           onClick={() => handleCategory("all")}
         >
-          All
+          All topics
         </ChoiceChip>
-        {DRILL_CATEGORIES.map((cat) => (
-          <ChoiceChip
-            key={cat.id}
-            selected={category === cat.id}
-            onClick={() => handleCategory(cat.id)}
-          >
-            {cat.label}
-          </ChoiceChip>
+        {DRILL_GROUPS.map((group) => (
+          <div key={group.id}>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {group.label}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {DRILL_CATEGORIES.filter((cat) => cat.group === group.id).map(
+                (cat) => (
+                  <ChoiceChip
+                    key={cat.id}
+                    selected={category === cat.id}
+                    onClick={() => handleCategory(cat.id)}
+                  >
+                    {cat.label}
+                  </ChoiceChip>
+                ),
+              )}
+            </div>
+          </div>
         ))}
       </div>
 

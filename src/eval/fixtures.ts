@@ -209,28 +209,31 @@ export const FIXTURES: EvalFixture[] = [
     rationale: "Interchangeable with any other company. No specifics at all.",
   },
 
-  // ----------------------------------------------------------------------- case
+  // ------------------------------------------------------- cs_fundamentals
+  // Replaces the `case` pair, which went when the app was scoped to Computer
+  // Science roles. Same job: a strong and a weak answer far enough apart that
+  // an analyzer which cannot separate them is not working.
   {
-    id: "case-strong",
-    roundType: "case",
+    id: "cs-fundamentals-strong",
+    roundType: "cs_fundamentals",
     band: "strong",
     question:
-      "Our checkout conversion dropped 8% last week. How would you investigate?",
+      "What is the difference between a process and a thread, and when does it matter?",
     answer:
-      "First I'd confirm it's real and not instrumentation — check whether sessions and orders both moved, or only the ratio. If only the ratio moved I'd suspect tracking.\n\nAssuming it's real, I'd segment before theorising: by platform, browser, geography, new versus returning, and payment method. An 8% aggregate drop is usually a large drop in a narrow segment rather than a small drop everywhere, and the segment usually names the cause.\n\nIn parallel I'd pull the deploy and config log for the window. Most sudden step-changes are something we did.\n\nIf it's a gradual slope rather than a step, that points at something external — a competitor promotion, seasonality, or a traffic-mix shift from a marketing change. I'd check whether paid traffic share moved, since that changes intent mix and can drop conversion without anything breaking.",
+      "A process owns its own virtual address space; threads live inside one process and share that address space. So the real difference is what is isolated. Two processes cannot corrupt each other's memory by accident, and two threads absolutely can.\n\nThat drives the cost. Creating a process means a new page table and a new address space, so it is heavy; a thread reuses the parent's, so it is cheap. A context switch between processes flushes address-space state including the TLB, which a switch between threads of one process largely avoids.\n\nWhere it bit me: I had a scraper doing mostly network waiting, and I used processes because I had read they were safer. Memory went up roughly with the worker count for no benefit, because the work was I/O bound and nothing was CPU-contended — threads were the right call.\n\nThe reverse case is CPU-bound work in a runtime with a global interpreter lock, where threads buy you nothing and processes are the only way to use more than one core. So the question is really: do I need isolation, or do I need shared state cheaply?",
     rationale:
-      "Validates the data first, structured segmentation, distinguishes step-change from slope, and reasons about causes rather than listing checks.",
+      "States the mechanism rather than the label, contrasts the two on cost and isolation, grounds it in a real decision, and names when the alternative wins.",
   },
   {
-    id: "case-weak",
-    roundType: "case",
+    id: "cs-fundamentals-weak",
+    roundType: "cs_fundamentals",
     band: "weak",
     question:
-      "Our checkout conversion dropped 8% last week. How would you investigate?",
+      "What is the difference between a process and a thread, and when does it matter?",
     answer:
-      "I'd look at the analytics to see what happened and talk to the team to understand the context. Then I'd figure out the root cause and come up with a plan to fix it. Data-driven decision making is really important here.",
+      "A process is a program that is running, and a thread is a lightweight process. Threads are faster and use less memory, so you generally want to use threads. Processes are heavier. Multithreading makes your program more efficient and is used a lot in modern applications.",
     rationale:
-      "Restates the task as a plan. No structure, no hypotheses, no segmentation.",
+      "Textbook definitions with no mechanism, 'faster' asserted with no reason, no example, and no case where a process is the right choice.",
   },
 
   // ------------------------------------------------------------------------ hr

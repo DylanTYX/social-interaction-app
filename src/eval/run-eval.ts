@@ -59,7 +59,7 @@ function missingFrom(analysis: AnalysisResult): string[] {
   missing.push(...(analysis.omittedFields ?? []));
   // Technical rounds must carry the technical block; without it the decision
   // engine falls back on overall score alone.
-  const technical = ["technical_swe", "system_design", "case"];
+  const technical = ["technical_swe", "system_design", "cs_fundamentals"];
   if (
     technical.includes(analysis.roundType ?? "") &&
     !analysis.technicalScores

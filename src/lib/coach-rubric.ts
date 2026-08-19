@@ -152,22 +152,34 @@ export const COACH_RUBRICS: Record<InterviewRoundType, CoachRubric> = {
       "A design whose numbers come first and whose weakest point the candidate names before the interviewer does.",
   },
 
-  case: {
+  /**
+   * The rubric that exists because nothing else described a *definition*.
+   *
+   * `technical_swe` asks for approach, then code, then complexity, then edge
+   * cases. Applied to "what are the four conditions for deadlock?" it marks an
+   * answer for complexity analysis it cannot have, and the tips come back
+   * generic. This is the shape a concept answer actually has.
+   *
+   * Carries eight drill topics — OOP, databases, operating systems, networks,
+   * security, AI/ML, cloud and web. Different subject matter, one marking
+   * standard, which is the correct relationship between a topic and a rubric.
+   */
+  cs_fundamentals: {
     shape:
-      "Frame the problem, structure the space, form a hypothesis, name the data that would confirm it, then decide.",
+      "Define the concept precisely, contrast it with the one it is most often confused with, then give a concrete case where the difference changed a decision.",
     signals: [
-      "validates the data before theorising about what it means",
-      "segments the problem before hypothesising, so the hypothesis has somewhere to land",
-      "distinguishes a step change from a gradual slope, and reasons differently about each",
-      "states what evidence would change their mind",
+      "a definition that states the mechanism rather than restating the name",
+      "names the alternative it is being contrasted with, and when that one wins instead",
+      "grounds it in something they actually built, debugged or measured",
+      "states the cost of the choice, not only its benefit",
     ],
     failureModes: [
-      "restating the task as a plan — 'first I'd look at the data' — which defers rather than structures",
-      "'data-driven' without naming a single specific metric",
-      "a list of checks instead of a hypothesis with a shape",
-      "arriving at a recommendation with no stated confidence and no stated risk",
+      "a memorised textbook definition with no example attached to it",
+      "stated confidently and wrongly, which is worse here than hedging",
+      "'faster' or 'more scalable' asserted with no mechanism behind it",
+      "cannot say when the alternative would be the better choice",
     ],
     exemplar:
-      "An answer where the structure comes first and the recommendation is falsifiable.",
+      "An answer where the definition is precise, the contrast is explicit, and the example proves they have met the concept outside a textbook.",
   },
 };

@@ -214,6 +214,21 @@ next to what you wrote, and a suggested answer behind a disclosure. Drills
 deliberately skip the 0-100 analyzer — there is no session to score against and
 no interviewer to adapt. If you want a number, run a round.
 
+Fifteen topics, in three groups, scoped to Computer Science roles:
+
+- **Behavioural** — Behavioural · Recruiter screen · HR & people
+- **Core technical** — Data structures & algorithms · Programming & languages ·
+  Testing & debugging · OOP & software design · Databases & SQL · Operating
+  systems · Computer networks · Security · System design
+- **Specialisations** — AI & machine learning · Cloud & DevOps · Web & frontend
+
+Twenty questions each, around 300 in total. The list was derived by surveying
+CS2023's seventeen knowledge areas, the interview topics Amazon and Microsoft
+publish, and role-specific prep sources — roughly sixty candidate domains — then
+keeping one only where a coach rubric describes a good answer to it *and* a CS
+student plausibly interviews for it. **`docs/DRILLS.md` carries the full audit**,
+including the twenty-two domains that were excluded and why.
+
 Answer them two ways, and **speaking is the default**, because an interview
 is spoken and a drill that only takes typing trains the half of the skill
 nobody is assessed on:
