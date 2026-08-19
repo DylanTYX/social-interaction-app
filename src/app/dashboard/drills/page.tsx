@@ -506,16 +506,21 @@ export default function DrillsPage() {
             />
           ) : (
             <>
-              {/* Six rows rather than eight: the textarea spans the whole card
-                  now, and `field-sizing-content` grows it from there as you
-                  type. */}
+              {/* Eight rows, to land near the height of the speaking surface.
+                  This was cut to six when the textarea gained the full width of
+                  the card, and that reasoning still holds on its own — but it
+                  predates there being a second answer mode. Switching between
+                  Speak and Type now resizes the card, and a control that moves
+                  when you change your mind about how to answer is worse than a
+                  slightly tall empty box. `field-sizing-content` still grows it
+                  from there as you type. */}
               <Textarea
                 ref={answerRef}
                 aria-label="Your answer"
                 value={answer}
                 onChange={(event) => setAnswer(event.target.value)}
                 placeholder="Type your answer out loud, as if you were in the room…"
-                rows={6}
+                rows={8}
                 className="resize-none"
               />
               <div className="flex items-center justify-between">
