@@ -51,7 +51,7 @@ describe("the round-type registry", () => {
     // them agree. This pins the answer they all gave.
     expect(isTechnicalRound("technical_swe")).toBe(true);
     expect(isTechnicalRound("system_design")).toBe(true);
-    expect(isTechnicalRound("case")).toBe(true);
+    expect(isTechnicalRound("cs_fundamentals")).toBe(true);
     expect(isTechnicalRound("behavioral")).toBe(false);
     expect(isTechnicalRound("screening")).toBe(false);
     expect(isTechnicalRound("hr")).toBe(false);
@@ -97,8 +97,8 @@ describe("applyRoundType", () => {
 
   it("replaces the generic placeholder focus a blank round starts with", () => {
     const blank = { ...base, focus: "What you want this round to focus on." };
-    expect(applyRoundType(blank, "case").focus).toBe(
-      ROUND_TYPE_SPECS.case.defaults.focus,
+    expect(applyRoundType(blank, "cs_fundamentals").focus).toBe(
+      ROUND_TYPE_SPECS.cs_fundamentals.defaults.focus,
     );
   });
 

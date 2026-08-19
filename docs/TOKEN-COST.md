@@ -308,11 +308,14 @@ designed compression, not truncation, and carries no such risk.
   about **$0.000048 a turn, or $0.0005 for a ten-question session** — and would
   cost the adaptive questioning that is the whole contribution of the project.
 
-  Scale makes the same point: the existing 39-question bank in
-  `src/lib/question-bank.ts` is ~800 tokens in total. Retrieval earns its
-  complexity when the corpus vastly exceeds the context budget; here you could
-  inline the entire bank for less than one embedding call, and the drills page
-  already selects from it with a plain array filter at zero cost.
+  Scale makes the same point. The bank is now ~300 questions across 15 topics
+  in `src/lib/question-bank/` — roughly **6,000 tokens in total**, up from ~800
+  when it held 39. That is larger than it was, and still nowhere near the point
+  where retrieval pays: a single round type's slice is a few hundred tokens, the
+  drills page selects from it with a plain array filter at zero cost, and the
+  whole corpus fits inside a context window many times over. Retrieval earns its
+  complexity when the corpus vastly exceeds the budget, which a job description
+  can and a question bank cannot.
 
   The _principle_ underneath the suggestion — retrieve what you already
   generated instead of generating it again — is sound, and it is applied where

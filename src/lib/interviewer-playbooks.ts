@@ -1,7 +1,4 @@
-import {
-  ROUND_TYPES,
-  type InterviewRoundType,
-} from "@/lib/interview-rounds";
+import { ROUND_TYPES, type InterviewRoundType } from "@/lib/interview-rounds";
 import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 
 export interface InterviewerPlaybook {
@@ -46,6 +43,12 @@ const PLAYBOOKS: InterviewerPlaybook[] = [
     tags: ["screening", "motivation"],
     content:
       "For screening rounds, keep it concise. Test motivation, role fit, and communication clarity.",
+  },
+  {
+    id: "cs-fundamentals",
+    tags: ["cs_fundamentals", "definitions"],
+    content:
+      "For CS fundamentals rounds, never accept the definition alone. Once they have defined it, ask for a concrete case where it mattered, and then ask when the alternative would be the better choice. A candidate who can only recite has not shown they understand it.",
   },
   {
     id: "hr-people",

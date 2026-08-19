@@ -222,22 +222,36 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
       focus: "Requirements, architecture, and tradeoffs.",
     },
   },
-  case: {
+  /**
+   * Concept questions: the ones that ask you to *explain* rather than to solve.
+   *
+   * Replaces the `case` round, which was a consulting format and left when the
+   * app was scoped to Computer Science roles. This carries eight drill topics —
+   * OOP, databases, operating systems, networks, security, AI/ML, cloud and web
+   * — because they all get marked the same way even though the subject matter
+   * differs: define it, contrast it with what it is confused with, show where
+   * the difference mattered.
+   *
+   * No code editor. "Explain the difference between a process and a thread" has
+   * no source to write, and the rubric asks for none.
+   */
+  cs_fundamentals: {
     icon: Lightbulb,
-    accent: "orange",
-    label: "Case / problem solving",
-    rubric: "Problem framing, structure, tradeoffs, depth, communication",
+    accent: "green",
+    label: "CS fundamentals",
+    rubric: "Precision, contrast, concrete grounding, stated tradeoffs",
     family: "technical",
     opening:
-      "Set out the business situation concretely — the company, the market, and the decision on the table — then ask how they would structure their thinking.",
+      "Ask them to explain one core concept from the area this round covers — and say up front that you will be asking why it matters, not just what it is.",
     continuationOpening:
-      "Set out the business situation concretely — the company, the market, and the decision on the table — then ask how they would structure their thinking. Anchor it to a domain the earlier rounds show they know.",
-    playbookId: "technical-framing",
-    tags: ["case", "framing", "vague"],
+      "Ask them to explain one core concept from the area this round covers, picking one the earlier rounds touched but never tested. Say up front that you will be asking why it matters, not just what it is.",
+    playbookId: "cs-fundamentals",
+    tags: ["cs_fundamentals", "definitions"],
     supports: { codeEditor: false },
     defaults: {
-      durationMinutes: 25,
-      focus: "Problem framing, prioritisation, metrics, and tradeoffs.",
+      durationMinutes: 20,
+      focus:
+        "Core concepts, the contrasts between them, and when each applies.",
     },
   },
 };
