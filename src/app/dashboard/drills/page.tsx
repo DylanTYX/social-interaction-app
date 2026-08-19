@@ -14,11 +14,18 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CONTENT_ENTER } from "@/lib/motion";
-import { ChoiceChip } from "@/components/ui/choice-chip";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
   Card,
@@ -358,50 +365,12 @@ export default function DrillsPage() {
           blocks inside `CoachingResult` carry `max-w-prose`. Capping the page as
           well only made drills the one dashboard route with its own width rule. */}
       <PageHeader
-        eyebrow="Quick drills"
+        eyebrow="Quick Drills"
         title="One question. Instant feedback."
         description="No setup, no full session - answer a single question and get it rewritten in your own words, with targeted tips and a full example answer, in seconds."
         icon={<Dumbbell className="h-6 w-6" />}
         iconColor="pink"
       />
-
-      {/* Grouped, not one wrapping row.
-          Fifteen topics in a single row is a wall of chips with no shape. The
-          headings also say something true: `core` is what every CS interview
-          draws on, `specialisation` is what only some roles ask — which is the
-          same line CS2023 draws between its CS Core and its KA Core.
-
-          `ChoiceChip` rather than hand-rolled buttons. These were ~34px with no
-          `aria-pressed` and no focus-visible ring, so selection was conveyed by
-          colour alone and a keyboard user got nothing. */}
-      <div className="space-y-3">
-        <ChoiceChip
-          selected={category === "all"}
-          onClick={() => handleCategory("all")}
-        >
-          All topics
-        </ChoiceChip>
-        {DRILL_GROUPS.map((group) => (
-          <div key={group.id}>
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              {group.label}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {DRILL_CATEGORIES.filter((cat) => cat.group === group.id).map(
-                (cat) => (
-                  <ChoiceChip
-                    key={cat.id}
-                    selected={category === cat.id}
-                    onClick={() => handleCategory(cat.id)}
-                  >
-                    {cat.label}
-                  </ChoiceChip>
-                ),
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Answer above, coaching below, both full width.
 
@@ -420,10 +389,47 @@ export default function DrillsPage() {
           `persona-step.tsx` made the same call for the same reason. */}
       <Card className="shadow-soft">
         <CardHeader>
+          {/* The topic picker lives here, where the topic is displayed.
+              It used to be sixteen chips in three labelled rows above the card
+              — the first thing on the page, and a wall of chrome in front of
+              the one thing you came to read. Choosing a topic is occasional:
+              you pick once and then drill several questions against it. So it
+              collapses into the control that was already showing which topic
+              you were on, and the question becomes the first thing you see.
+
+              A grouped `Select` rather than a flat one: the three groups are
+              the CS Core / specialisation line, and a fifteen-item list with no
+              structure is the same wall in a smaller box. */}
           <div className="flex items-center justify-between gap-2">
-            <Badge variant="outline" className="capitalize">
-              {meta.label}
-            </Badge>
+            <Select
+              value={category}
+              onValueChange={(next) =>
+                handleCategory(next as DrillCategory | "all")
+              }
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Drill topic"
+                className="w-auto min-w-56 gap-2 font-medium"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Topics</SelectItem>
+                {DRILL_GROUPS.map((group) => (
+                  <SelectGroup key={group.id}>
+                    <SelectLabel>{group.label}</SelectLabel>
+                    {DRILL_CATEGORIES.filter(
+                      (cat) => cat.group === group.id,
+                    ).map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="ghost"
               size="sm"
@@ -431,13 +437,20 @@ export default function DrillsPage() {
               className="gap-1.5 text-slate-500"
             >
               <Shuffle className="h-3.5 w-3.5" />
-              New question
+              New Question
             </Button>
           </div>
           <CardTitle className="pt-2 text-xl leading-snug">
             {question.prompt}
           </CardTitle>
-          <CardDescription>{meta.blurb}</CardDescription>
+          {/* Names the topic while browsing everything.
+              The badge this replaced was the only thing saying which topic a
+              question came from, and on "All Topics" that is exactly when you
+              cannot infer it from the picker. Redundant once a single topic is
+              selected, so it is only shown when it is not. */}
+          <CardDescription>
+            {category === "all" ? `${meta.label} — ${meta.blurb}` : meta.blurb}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Speaking first, and the default, because that is what the product
@@ -518,7 +531,7 @@ export default function DrillsPage() {
                   ) : (
                     <>
                       <Send className="h-4 w-4" />
-                      Get feedback
+                      Get Feedback
                     </>
                   )}
                 </Button>
@@ -581,7 +594,7 @@ export default function DrillsPage() {
                     className="gap-2 text-slate-500"
                   >
                     <PenLine className="h-4 w-4" />
-                    Revise this answer
+                    Revise This Answer
                   </Button>
                   <Button
                     variant="outline"
@@ -589,7 +602,7 @@ export default function DrillsPage() {
                     className="gap-2"
                   >
                     <Shuffle className="h-4 w-4" />
-                    Next question
+                    Next Question
                   </Button>
                 </div>
               </>
@@ -603,13 +616,13 @@ export default function DrillsPage() {
         onOpenChange={(open) => {
           if (!open) setPendingSwitch(null);
         }}
-        title="Discard your answer?"
+        title="Discard Your Answer?"
         description={
           pendingSwitch?.mode
             ? "Changing how you answer clears what you have written. Get feedback first if you want to keep it."
             : "Moving to a new question clears what you have written. Get feedback first if you want to keep it."
         }
-        confirmLabel="Discard and continue"
+        confirmLabel="Discard and Continue"
         onConfirm={() => {
           // A mode switch keeps the question — you are answering the same thing
           // a different way — so it clears the answer without drawing a new one.
