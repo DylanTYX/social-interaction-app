@@ -23,6 +23,7 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -416,8 +417,13 @@ export default function DrillsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Topics</SelectItem>
+                {/* A rule before each group, so the headings sit between
+                    blocks rather than inside one long list. With type
+                    treatment alone the labels still read as list items —
+                    the separator is what makes the grouping structural. */}
                 {DRILL_GROUPS.map((group) => (
                   <SelectGroup key={group.id}>
+                    <SelectSeparator />
                     <SelectLabel>{group.label}</SelectLabel>
                     {DRILL_CATEGORIES.filter(
                       (cat) => cat.group === group.id,
