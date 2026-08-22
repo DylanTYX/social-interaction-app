@@ -212,6 +212,13 @@ pushback 9) against **Isabella Rodriguez** (diplomatic, 6 / 9 / 6 / 4):
 - the follow-up difficulty each produces **on the same candidate answer** — 7/10
   vs 5/10
 - the difficulty curve as strictness sweeps 1→10
+- the **move distribution by questioning style** — 40 seeded turns of a
+  merely-fine answer: supportive mostly acknowledges, stress twists the
+  scenario on 28 of 40, conversational pivots to uncovered competencies
+- the **probe rate** on seven hedged answers ("I was involved in…", "we
+  decided…"): 29% probed at probingDepth 2, 57% at 5, 100% at 9 — against the
+  published 4.9% deepening-probe baseline for default LLM interviewers
+  (arXiv 2608.10412)
 
 **Why this pair.** Chosen by inspection, not at random. Sarah Chen and Lars
 Petersen would prove nothing — both `direct` at strictness 8, they differ in a
@@ -231,9 +238,12 @@ npm run eval:persona -- --live --runs=5
 ```
 
 Generates five real follow-ups per persona on an identical input, then has a
-**blind judge** — never told which persona produced the text — rate each for how
-demanding it is. Reports mean, standard deviation and **separation**, the same
-statistic `run-eval.ts` uses for strong-versus-weak answers.
+**blind judge** — never told which persona produced the text — rate each on two
+dimensions: how **demanding** it is, and how **adaptive** — whether it engages
+the candidate's actual words or could have been asked of any answer, which is
+the failure mode the arXiv study documents. Reports mean, standard deviation
+and **separation**, the same statistic `run-eval.ts` uses for strong-versus-weak
+answers.
 
 Stochastic and billed, so run it in advance and show the file.
 

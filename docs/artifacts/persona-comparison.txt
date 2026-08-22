@@ -10,6 +10,7 @@ Held constant across both arms:
   strictness 9 · warmth 4 · pace 4 · pushback 9
   + You are Yuki Tanaka, a Japanese Plant Director working in Manufacturing. You have 20 years of experience in this field.
   + You are analytical and data-driven, you have high expectations and won't tolerate mediocrity, and reserved and formal.
+  + Questioning style: bar raiser. Require concrete evidence for every claim before accepting it. Challenge assumptions, ask for the data behind assertions, and do not move on while an answer is still hand-waving.
   + Pace: balanced. You ask one question at a time and let the candidate finish their thought before moving on.
   + Pushback: high. You frequently challenge claims, ask 'how do you know that?' or 'what's the evidence?', and probe for the weakest point in any answer. Stay respectful but persistent.
   + Personality traits: perfectionistic, detail-oriented, methodical.
@@ -20,6 +21,7 @@ Held constant across both arms:
   strictness 6 · warmth 9 · pace 6 · pushback 4
   + You are Isabella Rodriguez, a Spanish Chief Marketing Officer working in Marketing. You have 13 years of experience in this field.
   + You are diplomatic and tactful, you have moderate standards, and warm and encouraging.
+  + Questioning style: supportive. Give the candidate room to think, clarify the question if they misread it, and let them finish. Never hand over answers — you still probe, just without pressure.
   + Pace: brisk. You move through topics efficiently and rarely dwell, but you still ask one question at a time.
   + Pushback: light. You generally take answers at face value but will gently probe if something sounds inconsistent.
   + Personality traits: creative, persuasive, people-focused.
@@ -42,5 +44,17 @@ Held constant across both arms:
   strictness  8  ███████ 7
   strictness  9  ███████ 7
   strictness 10  ███████ 7
+
+--- move distribution by questioning style (40 seeded fine-answer turns) ---
+  supportive      ACKNOWLEDGE_STRENGTH 29  PIVOT_TOPIC 11
+  conversational  PIVOT_TOPIC 20  ACKNOWLEDGE_STRENGTH 20
+  bar_raiser      HYPOTHETICAL_TWIST 20  ACKNOWLEDGE_STRENGTH 20
+  stress          HYPOTHETICAL_TWIST 28  ACKNOWLEDGE_STRENGTH 12
+
+--- probe rate over 7 hedged answers, one per signal type ---
+  probingDepth 2   29% of answers probed
+  probingDepth 5   57% of answers probed
+  probingDepth 9   100% of answers probed
+  baseline: default LLM interviewers deepen on 4.9% of turns (arXiv 2608.10412)
 
 Run with --live to generate and judge real follow-ups (costs money).

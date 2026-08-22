@@ -32,11 +32,15 @@ import {
   PRESET_PERSONAS,
   type PersonaConfig,
 } from "@/lib/persona-engine";
-import { estimateFollowupDifficulty } from "@/lib/decision-engine";
+import {
+  decideInterviewAction,
+  estimateFollowupDifficulty,
+} from "@/lib/decision-engine";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 import { makeAnalysis } from "@/lib/test-support/analysis";
+import { detectBehavioralSignals } from "@/lib/text-metrics";
 
 const MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
 const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "gpt-4o-mini";
@@ -71,6 +75,14 @@ interface JudgedTurn {
   persona: string;
   followup: string;
   demandingness: number;
+  /**
+   * Does the follow-up engage with what the candidate actually said — pick up
+   * their words, probe their specific gaps — or could it have been asked of
+   * any answer? The dimension the arXiv 2608.10412 study found default LLM
+   * interviewers fail: acknowledgment-heavy, probe-light. Judging it needs
+   * the prior Q&A as context, which HELD_CONSTANT carries.
+   */
+  adaptivity: number;
   reasoning: string;
 }
 
@@ -163,7 +175,100 @@ function deterministicReport(json: boolean) {
     }),
   }));
 
-  if (json) return { diff, difficulty, curve };
+  /**
+   * Move-distribution sweep — does the questioning style actually change what
+   * the interviewer *does*, not just how it sounds?
+   *
+   * Forty seeded turns of a merely-fine answer per style. Pure and offline:
+   * `decideInterviewAction` is deterministic given the seed, so this table is
+   * byte-identical on every run and safe to show live. ACKNOWLEDGE/PROBE are
+   * the ladder's "answer is fine" outcomes; pivots and twists are curveballs.
+   */
+  const SWEEP_TURNS = 40;
+  const fineAnswer = makeAnalysis();
+  const styles = [
+    "supportive",
+    "conversational",
+    "bar_raiser",
+    "stress",
+  ] as const;
+  const moveMix = styles.map((style) => {
+    const counts: Record<string, number> = {};
+    for (let turn = 0; turn < SWEEP_TURNS; turn++) {
+      const outcome = decideInterviewAction(fineAnswer, {
+        personaName: "sweep",
+        questioningStyle: style,
+        unpredictability: 7,
+        pushback: style === "bar_raiser" || style === "stress" ? 8 : 4,
+        seed: { sessionId: "persona-eval-sweep", turnIndex: turn },
+        uncoveredCompetency: "how they handle production incidents",
+      });
+      counts[outcome.strategy] = (counts[outcome.strategy] ?? 0) + 1;
+    }
+    return { style, counts };
+  });
+
+  /**
+   * Probe rate — of seven answers whose wording earns a probe, how many get
+   * one at a given probingDepth? Reported against the arXiv 2608.10412
+   * finding that default LLM interviewers issue deepening probes on only 4.9%
+   * of turns.
+   *
+   * End-to-end on purpose: each answer runs through the real lexicon
+   * (`detectBehavioralSignals`) and the real policy, so this sweep breaks if
+   * either half stops hearing the wording. One answer per signal type, in
+   * taxonomy priority order — the gradient below IS the priority order made
+   * visible. The gate is deterministic, so the sweep runs over answers, not
+   * turns: for a fixed answer the verdict never varies.
+   */
+  const PROBE_FIXTURES = [
+    {
+      signal: "ownership",
+      text: "I was involved in the migration effort for our main service.",
+    },
+    {
+      signal: "decision",
+      text: "We decided to move to Kafka for the event pipeline.",
+    },
+    {
+      signal: "leadership",
+      text: "I led the replatforming of our checkout system.",
+    },
+    {
+      signal: "attribution",
+      text: "It wasn't my fault — they didn't deliver the API on time.",
+    },
+    {
+      signal: "impact",
+      text: "My caching change made the whole app significantly faster.",
+    },
+    {
+      signal: "technical",
+      text: "I optimized the database when the reports got slow.",
+    },
+    {
+      signal: "learning",
+      text: "I learned to communicate earlier with stakeholders.",
+    },
+  ];
+  const probeRate = (probingDepth: number) =>
+    PROBE_FIXTURES.filter((fixture) => {
+      const outcome = decideInterviewAction(
+        makeAnalysis({
+          languageSignals: detectBehavioralSignals(fixture.text),
+        }),
+        { personaName: "probe-sweep", probingDepth },
+      );
+      // Probe reasons are the only ones that quote the candidate.
+      return outcome.reason.includes('"');
+    }).length / PROBE_FIXTURES.length;
+  const probeRates = {
+    low: probeRate(2),
+    mid: probeRate(5),
+    high: probeRate(9),
+  };
+
+  if (json) return { diff, difficulty, curve, moveMix, probeRates };
 
   console.log("=".repeat(72));
   console.log("DETERMINISTIC — no API calls, identical on every run");
@@ -199,7 +304,34 @@ function deterministicReport(json: boolean) {
     );
   }
 
-  return { diff, difficulty, curve };
+  console.log(
+    `\n--- move distribution by questioning style (${SWEEP_TURNS} seeded fine-answer turns) ---`,
+  );
+  for (const row of moveMix) {
+    const parts = Object.entries(row.counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([move, count]) => `${move} ${count}`)
+      .join("  ");
+    console.log(`  ${row.style.padEnd(15)} ${parts}`);
+  }
+
+  console.log(
+    "\n--- probe rate over 7 hedged answers, one per signal type ---",
+  );
+  console.log(
+    `  probingDepth 2   ${(probeRates.low * 100).toFixed(0)}% of answers probed`,
+  );
+  console.log(
+    `  probingDepth 5   ${(probeRates.mid * 100).toFixed(0)}% of answers probed`,
+  );
+  console.log(
+    `  probingDepth 9   ${(probeRates.high * 100).toFixed(0)}% of answers probed`,
+  );
+  console.log(
+    "  baseline: default LLM interviewers deepen on 4.9% of turns (arXiv 2608.10412)",
+  );
+
+  return { diff, difficulty, curve, moveMix, probeRates };
 }
 
 async function generateFollowup(
@@ -256,7 +388,7 @@ async function judge(
   followup: string,
   apiKey: string,
   usage: UsageCollector,
-): Promise<{ demandingness: number; reasoning: string }> {
+): Promise<{ demandingness: number; adaptivity: number; reasoning: string }> {
   const response = await fetch(OPENAI_API_URL, {
     method: "POST",
     headers: {
@@ -272,13 +404,22 @@ async function judge(
         {
           role: "system",
           content: [
-            "You rate interviewer follow-up questions for how DEMANDING they are.",
-            "1 = accepts the answer, encouraging, moves on.",
-            "10 = challenges the claim directly, asks for evidence or numbers, probes the weakest point.",
-            'Return ONLY {"demandingness": number, "reasoning": string}. Reasoning max 15 words.',
+            "You rate an interviewer's follow-up question on two independent dimensions.",
+            "DEMANDING (1-10): 1 = accepts the answer, encouraging, moves on. 10 = challenges the claim directly, asks for evidence or numbers, probes the weakest point.",
+            "ADAPTIVE (1-10): 1 = generic — could have been asked after any answer. 10 = engages the candidate's actual words: quotes or paraphrases their claim, probes the specific gap their answer left open.",
+            'Return ONLY {"demandingness": number, "adaptivity": number, "reasoning": string}. Reasoning max 15 words.',
           ].join("\n"),
         },
-        { role: "user", content: followup },
+        {
+          role: "user",
+          // The judge stays blind to which persona wrote the follow-up, but
+          // adaptivity is meaningless without the exchange it responds to.
+          content: [
+            `QUESTION ASKED:\n${HELD_CONSTANT.question}`,
+            `CANDIDATE ANSWER:\n${HELD_CONSTANT.answer}`,
+            `INTERVIEWER FOLLOW-UP TO RATE:\n${followup}`,
+          ].join("\n\n"),
+        },
       ],
     }),
   });
@@ -294,6 +435,7 @@ async function judge(
 
   const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}") as {
     demandingness?: number;
+    adaptivity?: number;
     reasoning?: string;
   };
   return {
@@ -301,6 +443,8 @@ async function judge(
       typeof parsed.demandingness === "number"
         ? parsed.demandingness
         : Number.NaN,
+    adaptivity:
+      typeof parsed.adaptivity === "number" ? parsed.adaptivity : Number.NaN,
     reasoning: parsed.reasoning ?? "",
   };
 }
@@ -322,14 +466,20 @@ async function empiricalReport(runs: number, apiKey: string, json: boolean) {
     }
   }
 
-  const scoresFor = (name: string) =>
+  const scoresFor = (name: string, field: "demandingness" | "adaptivity") =>
     turns
       .filter((t) => t.persona === name)
-      .map((t) => t.demandingness)
+      .map((t) => t[field])
       .filter(Number.isFinite);
 
-  const strictScores = scoresFor(STRICT.name);
-  const warmScores = scoresFor(WARM.name);
+  const strictScores = scoresFor(STRICT.name, "demandingness");
+  const warmScores = scoresFor(WARM.name, "demandingness");
+  // Adaptivity pools both arms: the claim it measures — the interviewer
+  // engages with what was actually said — is about the system, not a persona.
+  const adaptivityScores = [
+    ...scoresFor(STRICT.name, "adaptivity"),
+    ...scoresFor(WARM.name, "adaptivity"),
+  ];
   const cost = summariseCost(usage.all());
 
   const summary = {
@@ -339,6 +489,8 @@ async function empiricalReport(runs: number, apiKey: string, json: boolean) {
     separation: mean(strictScores) - mean(warmScores),
     strictStdDev: stdDev(strictScores),
     warmStdDev: stdDev(warmScores),
+    adaptivityMean: mean(adaptivityScores),
+    adaptivityStdDev: stdDev(adaptivityScores),
     costUsd: cost.totalUsd,
     promptTokens: cost.promptTokens,
     completionTokens: cost.completionTokens,
@@ -369,6 +521,10 @@ async function empiricalReport(runs: number, apiKey: string, json: boolean) {
     `  ${WARM.name.padEnd(22)} mean ${num(summary.warmMean)}  sd ${num(summary.warmStdDev)}`,
   );
   console.log(`  separation             ${num(summary.separation)} points`);
+  console.log(`\n--- adaptivity (pooled, both personas) ---`);
+  console.log(
+    `  mean ${num(summary.adaptivityMean)}  sd ${num(summary.adaptivityStdDev)}   (1 = generic question, 10 = engages the candidate's actual words)`,
+  );
   console.log(
     `\n  cost of this run       ${formatUsd(summary.costUsd)} (${summary.promptTokens} in / ${summary.completionTokens} out)`,
   );

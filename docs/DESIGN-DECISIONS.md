@@ -304,6 +304,11 @@ answers genuinely score higher. Two 78s from different interviewers are not the
 same achievement. The report names the difficulty band; the analytics trend does
 not yet separate by persona, and `FEATURES.md` lists that as a limitation.
 
+The full interviewer architecture built inside this invariant — the behavioral
+signal taxonomy, the evidence probes, the curveball policy, the questioning
+styles, and the derivation of the six persona dials — is documented in
+`docs/INTERVIEWER.md`.
+
 ---
 
 ## Decisions still open
