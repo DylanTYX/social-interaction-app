@@ -134,7 +134,7 @@ const GUIDES: Guide[] = [
 
 export default function HelpPage() {
   return (
-    <div className="space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50 p-8">
+    <div className="space-y-8 p-8">
       {/* Was a hand-rolled copy of PageHeader's exact eyebrow and h1 classes,
           minus `leading-relaxed` on the description and with the icon crammed
           into the eyebrow instead of its own tile. The only dashboard page not
