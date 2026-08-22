@@ -11,7 +11,11 @@ import {
 } from "@/lib/interview-rounds";
 import type { UsageCollector } from "@/lib/api/token-usage";
 import { parseCodeAnswer } from "@/lib/code-answer";
-import { analyzeText } from "@/lib/text-metrics";
+import {
+  analyzeText,
+  detectBehavioralSignals,
+  type LanguageSignals,
+} from "@/lib/text-metrics";
 import { isTechnicalRound } from "@/lib/round-types";
 
 /**
@@ -126,6 +130,15 @@ export interface AnalysisResult {
   specificityMetrics: SpecificityMetrics;
   confidenceIndicators: ConfidenceIndicators;
   responseQuality: ResponseQuality;
+  /**
+   * Deterministic evidence-gap detection — see `detectBehavioralSignals`.
+   *
+   * Code-owned like the counted fields, never asked of the model: the markers
+   * are quoted back to the candidate verbatim, and an LLM cannot be trusted to
+   * quote words it merely paraphrased. Optional because rows persisted before
+   * this field existed do not carry it; readers use `?? []` / `??`.
+   */
+  languageSignals?: LanguageSignals;
   strengths: string[];
   gaps: string[];
   followupTopics: string[];
@@ -287,7 +300,27 @@ Return ONLY valid JSON with this structure:
 
 Include at least one genuine strength when present. Keep strengths and gaps balanced.`;
 
-  const variable = `${jobContextBlock}${codeBlock}
+  /**
+   * Deterministic evidence-gap signals, shown to the judge.
+   *
+   * In the *variable* part, never the scaffold: they change per answer, and the
+   * scaffold is the cached prefix keyed by round type. Uniform for every
+   * persona — this is marking, and marking is persona-blind.
+   *
+   * The instruction encodes the evidence-not-claims rule from
+   * docs/INTERVIEWER.md: diffuse wording is a cap only while unevidenced, and
+   * ownership verbs alone are claims, not evidence.
+   */
+  const signalBlock = (() => {
+    const detected = detectBehavioralSignals(candidateResponse).signals;
+    if (detected.length === 0) return "";
+    const lines = detected
+      .map((signal) => `- ${signal.type}: ${signal.markers.map((m) => `"${m}"`).join(", ")}`)
+      .join("\n");
+    return `\nDETECTED LANGUAGE SIGNALS (deterministic, from the response text):\n${lines}\nScore evidence, not claims: wording like "involved in" or "we decided" with no personal decision or action in evidence should cap the ownership score, and leadership verbs alone are claims rather than evidence. Do not penalise the words themselves — penalise the missing evidence.\n`;
+  })();
+
+  const variable = `${jobContextBlock}${codeBlock}${signalBlock}
 
 QUESTION ASKED:
 ${question}
@@ -572,6 +605,10 @@ export async function analyzeResponse(
       strengths: sanitizeNotes(analysisData.strengths),
       gaps: sanitizeNotes(analysisData.gaps),
       followupTopics: sanitizeNotes(analysisData.followupTopics),
+      // Code-owned, like `counted` above — recomputed here rather than
+      // threaded from the prompt builder so the persisted row and the prompt
+      // can never drift.
+      languageSignals: detectBehavioralSignals(candidateResponse),
       omittedFields,
     };
   } catch (error) {
