@@ -139,7 +139,7 @@ export default function SessionsLibraryPage() {
   const isLoading = status === "loading" && sessions.length === 0;
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
+    <div className="p-8 space-y-8">
       <PageHeader
         eyebrow="History"
         title="Your interview sessions"

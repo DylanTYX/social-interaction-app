@@ -359,7 +359,7 @@ export default function DrillsPage() {
   const answerEdited = result !== null && answer.trim() !== submittedAnswer;
 
   return (
-    <div className="space-y-6 bg-linear-to-br from-slate-50 via-white to-slate-50/50 p-8">
+    <div className="space-y-6 p-8">
       {/* Full width, like every other dashboard page.
           A `max-w-5xl` reading column was tried here and removed: the readability
           problem it solved is already solved one level down, where the prose

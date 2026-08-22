@@ -365,7 +365,7 @@ export default function AnalyticsPage() {
   // progress" rather than "we could not fetch it" — so bail out entirely.
   if (status === "error") {
     return (
-      <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
+      <div className="p-8 space-y-8">
         {header}
         <ErrorStateCard
           title="Couldn't load your analytics"
@@ -377,7 +377,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
+    <div className="p-8 space-y-8">
       {header}
 
       {isLoading ? (
