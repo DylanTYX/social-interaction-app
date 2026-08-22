@@ -122,10 +122,22 @@ Pick one from the library — six presets ship with the app, and anything you sa
 joins them. Each can be duplicated or deleted from the menu on its card.
 
 On the right you set nationality, industry, seniority, communication style and
-years of experience. Four dials sit behind **Fine-tune interviewer style**:
-**strictness**, **warmth**, **pace** and **pushback**. A high-pushback
-interviewer challenges your claims; a warm one gives you room. Each dial has a
-tooltip explaining which direction does what.
+years of experience. Behind **Fine-tune interviewer style** sit a **questioning
+style** — six archetypes from Supportive to Bar Raiser to Stress, each changing
+both how the interviewer sounds and which follow-up moves it favours — and six
+dials: **strictness**, **warmth**, **pace**, **pushback**, **probing depth**
+and **unpredictability**. Probing depth decides how readily vague wording
+("helped with", "we decided") earns a follow-up that quotes your exact word
+back at you; unpredictability decides how often a merely-fine answer gets a
+curveball — a pivot to something the round hasn't covered, or a what-if twist
+on your own scenario. Every dial is consumed by the decision policy, not just
+prompt decoration, and every one is backed by a named source — the derivation
+is in `docs/INTERVIEWER.md`.
+
+One thing no dial can do: change your score. The analyzer never sees the
+persona — a strict interviewer and a warm one mark the same answer
+identically. Personality changes what gets asked next, never what your answer
+was worth.
 
 Save your edits as a new persona, or update the one you started from.
 
