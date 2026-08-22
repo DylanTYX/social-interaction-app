@@ -65,8 +65,10 @@ import {
   type MicroFeedbackResult,
 } from "@/lib/micro-feedback";
 import {
+  COMPETENCIES,
   formatCoverageSteer,
   parseCoverage,
+  uncoveredCompetencies,
   type CompetencyCoverage,
 } from "@/lib/competencies";
 import { updateCoverageForQuestion } from "@/lib/competency-matching";
@@ -861,10 +863,38 @@ export async function POST(request: Request) {
     let microFeedback: MicroFeedbackResult | null = null;
     let steeringContext: string | null = null;
 
+    /**
+     * The curveball pivot's destination: one competency the round has not
+     * covered, rotated by covered-count exactly as `formatCoverageSteer`
+     * rotates its picks — same variety mechanism, same precedent. Null when
+     * everything is covered or nothing has been asked yet, and the selector
+     * treats null as "twist, don't pivot": a pivot needs somewhere to land.
+     * Coverage is best-effort by design, so this must never throw.
+     */
+    const uncoveredCompetencyProbe = (() => {
+      const remaining = uncoveredCompetencies(coverage);
+      if (remaining.length === 0 || remaining.length === COMPETENCIES.length) {
+        return null;
+      }
+      const offset = Object.keys(coverage.covered).length % remaining.length;
+      return remaining[offset]?.probe ?? null;
+    })();
+
     const decisionContextFor = () => ({
       personaName: session.personaName,
       strictness: session.personaConfig.strictness,
       warmth: session.personaConfig.warmth,
+      probingDepth: session.personaConfig.probingDepth,
+      pushback: session.personaConfig.pushback,
+      unpredictability: session.personaConfig.unpredictability,
+      questioningStyle: session.personaConfig.questioningStyle,
+      /**
+       * turnCount is read once at request start, so the late-analysis recovery
+       * path re-derives the same decision this turn already made — the
+       * determinism the curveball's seeding exists to preserve.
+       */
+      seed: { sessionId, turnIndex: session.turnCount },
+      uncoveredCompetency: uncoveredCompetencyProbe,
       previousStrategy: isInterviewStrategy(previousSignal?.strategy)
         ? previousSignal.strategy
         : undefined,

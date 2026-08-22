@@ -291,3 +291,238 @@ describe("estimateFollowupDifficulty", () => {
     expect(easiest).toBeGreaterThanOrEqual(1);
   });
 });
+
+/**
+ * Evidence probes — the policy half of the behavioral signal taxonomy.
+ * The strong `makeAnalysis()` baseline picks ACKNOWLEDGE_STRENGTH, which is
+ * probe-replaceable, so each test adds exactly the signal under test.
+ */
+describe("evidence probes", () => {
+  const withSignals = (
+    signals: { type: string; markers: string[] }[],
+    overrides: Partial<AnalysisResult> = {},
+  ): AnalysisResult =>
+    makeAnalysis({
+      ...overrides,
+      languageSignals: {
+        signals: signals as AnalysisResult["languageSignals"] extends
+          { signals: infer S } | undefined
+          ? S
+          : never,
+        firstPersonSingular: 1,
+        firstPersonPlural: 0,
+      },
+    });
+
+  const context = { personaName: "Test" };
+
+  it("quotes the candidate's exact word in the decision reason", () => {
+    const outcome = decideInterviewAction(
+      withSignals([{ type: "OWNERSHIP_AMBIGUOUS", markers: ["helped with"] }]),
+      context,
+    );
+    expect(outcome.strategy).toBe("CHALLENGE_OWNERSHIP");
+    expect(outcome.reason).toContain('"helped with"');
+  });
+
+  it("treats a leadership claim as a verification probe, not praise", () => {
+    const outcome = decideInterviewAction(
+      withSignals([
+        { type: "LEADERSHIP_CLAIM_UNVERIFIED", markers: ["i led"] },
+      ]),
+      context,
+    );
+    expect(outcome.strategy).toBe("PROBE_ACTION");
+    expect(outcome.reason).toContain('"i led"');
+    expect(outcome.reason).toContain("verify");
+  });
+
+  it("keeps fundamentals ahead of probes", () => {
+    // A misread question gets clarified, not cross-examined about a hedge
+    // word inside its misunderstanding.
+    const analysis = withSignals(
+      [{ type: "OWNERSHIP_AMBIGUOUS", markers: ["helped with"] }],
+      {
+        starAnalysis: {
+          ...makeAnalysis().starAnalysis,
+          situation: { present: false, quality: 0, context: "" },
+        },
+      },
+    );
+    expect(decideInterviewAction(analysis, context).strategy).toBe(
+      "CLARIFY_SITUATION",
+    );
+  });
+
+  it("gates lower-priority signals behind probingDepth", () => {
+    const learning = withSignals([
+      { type: "LEARNING_UNVERIFIED", markers: ["i learned"] },
+    ]);
+    // Last-priority signal: silent at depth 1, probed at depth 10.
+    expect(
+      decideInterviewAction(learning, { ...context, probingDepth: 1 }).reason,
+    ).not.toContain('"i learned"');
+    expect(
+      decideInterviewAction(learning, { ...context, probingDepth: 10 }).reason,
+    ).toContain('"i learned"');
+  });
+
+  it("fires the hard trigger at any depth", () => {
+    // Two diffuse phrases, no leadership claim: the professor's headline case
+    // bypasses the gate — even the gentlest interviewer asks whose work it was.
+    const diffuse = withSignals([
+      {
+        type: "OWNERSHIP_AMBIGUOUS",
+        markers: ["was involved in", "helped with"],
+      },
+    ]);
+    const outcome = decideInterviewAction(diffuse, {
+      ...context,
+      probingDepth: 1,
+    });
+    expect(outcome.strategy).toBe("CHALLENGE_OWNERSHIP");
+    expect(outcome.reason).toContain('"was involved in"');
+  });
+
+  it("changes nothing for analyses without signals", () => {
+    // Rows persisted before the taxonomy existed take the classic ladder.
+    const outcome = decideInterviewAction(makeAnalysis(), context);
+    expect(outcome.strategy).toBe("ACKNOWLEDGE_STRENGTH");
+  });
+});
+
+/**
+ * Curveballs — seeded, biased, and bounded by the precedence rule.
+ */
+describe("maybeCurveball", () => {
+  const seededContext = (
+    overrides: Partial<Parameters<typeof decideInterviewAction>[1]> = {},
+  ) => ({
+    personaName: "Test",
+    seed: { sessionId: "session-a", turnIndex: 3 },
+    ...overrides,
+  });
+
+  it("is deterministic for a given seed", () => {
+    const context = seededContext({ unpredictability: 10 });
+    const first = decideInterviewAction(makeAnalysis(), context);
+    const second = decideInterviewAction(makeAnalysis(), context);
+    expect(first.strategy).toBe(second.strategy);
+    expect(first.reason).toBe(second.reason);
+  });
+
+  it("never replaces a weakness-driven strategy", () => {
+    // Vague answer -> DRILL_SPECIFICITY, at any unpredictability, any seed.
+    const vague = makeAnalysis({
+      starAnalysis: {
+        ...makeAnalysis().starAnalysis,
+        action: {
+          present: true,
+          quality: 5,
+          specificity: 2,
+          ownership: 8,
+          summary: "",
+        },
+      },
+    });
+    for (let turn = 0; turn < 20; turn++) {
+      const outcome = decideInterviewAction(vague, {
+        ...seededContext({ unpredictability: 10 }),
+        seed: { sessionId: "session-a", turnIndex: turn },
+      });
+      expect(outcome.strategy).toBe("DRILL_SPECIFICITY");
+    }
+  });
+
+  it("never fires at unpredictability 1 or without a seed", () => {
+    for (let turn = 0; turn < 20; turn++) {
+      expect(
+        decideInterviewAction(makeAnalysis(), {
+          ...seededContext({ unpredictability: 1 }),
+          seed: { sessionId: "session-a", turnIndex: turn },
+        }).strategy,
+      ).toBe("ACKNOWLEDGE_STRENGTH");
+    }
+    expect(
+      decideInterviewAction(makeAnalysis(), {
+        personaName: "Test",
+        unpredictability: 10,
+      }).strategy,
+    ).toBe("ACKNOWLEDGE_STRENGTH");
+  });
+
+  it("fires more with the dial higher", () => {
+    const count = (unpredictability: number) => {
+      let curveballs = 0;
+      for (let turn = 0; turn < 50; turn++) {
+        const outcome = decideInterviewAction(makeAnalysis(), {
+          ...seededContext({ unpredictability }),
+          seed: { sessionId: "sweep", turnIndex: turn },
+        });
+        if (
+          outcome.strategy === "PIVOT_TOPIC" ||
+          outcome.strategy === "HYPOTHETICAL_TWIST"
+        ) {
+          curveballs += 1;
+        }
+      }
+      return curveballs;
+    };
+    expect(count(9)).toBeGreaterThan(count(3));
+    expect(count(3)).toBeGreaterThan(0);
+  });
+
+  it("pivots toward an uncovered competency, twists without one", () => {
+    // Without a destination the pivot is the weaker move, so the twist wins.
+    let sawPivot = false;
+    for (let turn = 0; turn < 50; turn++) {
+      const bare = decideInterviewAction(makeAnalysis(), {
+        ...seededContext({ unpredictability: 10 }),
+        seed: { sessionId: "no-coverage", turnIndex: turn },
+      });
+      expect(bare.strategy).not.toBe("PIVOT_TOPIC");
+
+      const covered = decideInterviewAction(makeAnalysis(), {
+        ...seededContext({
+          unpredictability: 10,
+          pushback: 2,
+          questioningStyle: "conversational",
+          uncoveredCompetency: "how they handle production incidents",
+        }),
+        seed: { sessionId: "no-coverage", turnIndex: turn },
+      });
+      if (covered.strategy === "PIVOT_TOPIC") {
+        sawPivot = true;
+        expect(covered.reason).toContain(
+          "how they handle production incidents",
+        );
+      }
+    }
+    expect(sawPivot).toBe(true);
+  });
+
+  it("tilts toward the twist as pushback rises", () => {
+    const twistShare = (pushback: number) => {
+      let twists = 0;
+      let curveballs = 0;
+      for (let turn = 0; turn < 80; turn++) {
+        const outcome = decideInterviewAction(makeAnalysis(), {
+          ...seededContext({
+            unpredictability: 10,
+            pushback,
+            uncoveredCompetency: "a probe",
+          }),
+          seed: { sessionId: "bias", turnIndex: turn },
+        });
+        if (outcome.strategy === "HYPOTHETICAL_TWIST") {
+          twists += 1;
+          curveballs += 1;
+        } else if (outcome.strategy === "PIVOT_TOPIC") {
+          curveballs += 1;
+        }
+      }
+      return curveballs === 0 ? 0 : twists / curveballs;
+    };
+    expect(twistShare(9)).toBeGreaterThan(twistShare(1));
+  });
+});

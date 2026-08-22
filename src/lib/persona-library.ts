@@ -1,4 +1,5 @@
 import {
+  QUESTIONING_STYLES,
   type CommunicationStyle,
   type PersonaConfig,
 } from "./persona-engine";
@@ -319,11 +320,16 @@ export function generateRandomPersonaConfig(): PersonaConfig {
     industry: pickOne(INDUSTRY_POOL),
     seniority: pickOne(SENIORITY_POOL),
     communicationStyle: pickOne(COMMUNICATION_STYLE_POOL),
-    strictness: ((Math.floor(Math.random() * 9) +
-      2) as PersonaConfig["strictness"]),
-    warmth: ((Math.floor(Math.random() * 9) + 2) as PersonaConfig["warmth"]),
-    pace: ((Math.floor(Math.random() * 9) + 2) as PersonaConfig["pace"]),
-    pushback: ((Math.floor(Math.random() * 9) + 2) as PersonaConfig["pushback"]),
+    strictness: (Math.floor(Math.random() * 9) +
+      2) as PersonaConfig["strictness"],
+    warmth: (Math.floor(Math.random() * 9) + 2) as PersonaConfig["warmth"],
+    pace: (Math.floor(Math.random() * 9) + 2) as PersonaConfig["pace"],
+    pushback: (Math.floor(Math.random() * 9) + 2) as PersonaConfig["pushback"],
+    probingDepth: (Math.floor(Math.random() * 9) +
+      2) as PersonaConfig["probingDepth"],
+    unpredictability: (Math.floor(Math.random() * 9) +
+      2) as PersonaConfig["unpredictability"],
+    questioningStyle: pickOne(QUESTIONING_STYLES),
     yearsExperience: 4 + Math.floor(Math.random() * 22),
     personalityTraits: pickMany(TRAITS_POOL, 3),
     boundaries: pickMany(BOUNDARIES_POOL, 3),
@@ -346,7 +352,14 @@ export function findEntryMatchingConfig(
         entry.config.strictness === config.strictness &&
         entry.config.warmth === config.warmth &&
         (entry.config.pace ?? 5) === (config.pace ?? 5) &&
-        (entry.config.pushback ?? 5) === (config.pushback ?? 5),
+        (entry.config.pushback ?? 5) === (config.pushback ?? 5) &&
+        (entry.config.probingDepth ?? 5) === (config.probingDepth ?? 5) &&
+        (entry.config.unpredictability ?? 5) ===
+          (config.unpredictability ?? 5) &&
+        // Both default to the realism fallback, so a pre-Layer-3 saved entry
+        // still matches the same persona freshly parsed.
+        (entry.config.questioningStyle ?? "conversational") ===
+          (config.questioningStyle ?? "conversational"),
     ) ?? null
   );
 }

@@ -25,6 +25,8 @@ const STRATEGY_LABELS: Record<InterviewStrategy, string> = {
   ACKNOWLEDGE_STRENGTH: "Escalating difficulty",
   DRILL_SPECIFICITY: "STAR-format evaluation",
   ASSESS_THINKING: "Communication analysis",
+  PIVOT_TOPIC: "Topic pivot",
+  HYPOTHETICAL_TWIST: "Scenario twist",
 };
 
 function normalizeConfidence(score: number | null): number {
