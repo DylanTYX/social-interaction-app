@@ -1,5 +1,7 @@
 import { jsonrepair } from "jsonrepair";
 
+import { detectBehavioralSignals } from "@/lib/text-metrics";
+
 import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
 import { COACH_RUBRICS } from "@/lib/coach-rubric";
 import {
@@ -146,7 +148,27 @@ export function buildCoachSystemPrompt(
 }
 
 export function buildCoachUserPrompt(question: string, answer: string): string {
-  return `QUESTION:\n${question}\n\nCANDIDATE ANSWER:\n${answer}`;
+  /**
+   * Evidence-gap signals, so a tip can cite the candidate's exact word —
+   * "you said 'helped with': name what you owned" — rather than paraphrasing
+   * words they never used. Deterministic detection, same lexicon the
+   * interviewer's probes and the analyzer's marking read, so all three
+   * surfaces agree on what was flagged. Silent when nothing fires.
+   */
+  const detected = detectBehavioralSignals(answer).signals;
+  const signalBlock =
+    detected.length === 0
+      ? ""
+      : `\n\nLANGUAGE SIGNALS (deterministic, from the answer text):\n${detected
+          .map(
+            (signal) =>
+              `- ${signal.type}: ${signal.markers.map((m) => `"${m}"`).join(", ")}`,
+          )
+          .join(
+            "\n",
+          )}\nWhere relevant, make one tip quote the exact word and ask for the evidence it hides — do not penalise the word itself.`;
+
+  return `QUESTION:\n${question}\n\nCANDIDATE ANSWER:\n${answer}${signalBlock}`;
 }
 
 export interface CoachParseResult {

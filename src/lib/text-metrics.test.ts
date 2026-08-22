@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeText } from "@/lib/text-metrics";
+import { analyzeText, detectBehavioralSignals } from "@/lib/text-metrics";
 
 describe("analyzeText", () => {
   it("counts words", () => {
@@ -87,5 +87,110 @@ describe("analyzer merge defaults (documented contract)", () => {
     expect(m.hasMetrics).toBe(true);
     expect(m.hasTimeframes).toBe(true);
     expect(m.wordCount).toBe(8);
+  });
+});
+
+/**
+ * The signal taxonomy. Two properties matter more than coverage: every marker
+ * is a real substring of the answer (the interviewer quotes it back), and the
+ * non-firing cases hold — a false signal makes the interviewer accuse a
+ * candidate of hedging words they chose deliberately.
+ */
+describe("detectBehavioralSignals", () => {
+  const types = (text: string) =>
+    detectBehavioralSignals(text).signals.map((s) => s.type);
+  const signal = (text: string, type: string) =>
+    detectBehavioralSignals(text).signals.find((s) => s.type === type);
+
+  it("flags diffuse ownership and quotes the exact phrases", () => {
+    const found = signal(
+      "I was involved in the migration and helped with the backend.",
+      "OWNERSHIP_AMBIGUOUS",
+    );
+    expect(found?.markers).toEqual(["was involved in", "helped with"]);
+  });
+
+  it("flags a collective decision only when no singular decision appears", () => {
+    expect(types("We decided to move to Kafka.")).toContain(
+      "DECISION_OWNER_UNCLEAR",
+    );
+    // "I proposed" names the decider; the team ratifying it is not a gap.
+    expect(
+      types("I proposed Kafka and we decided to adopt it."),
+    ).not.toContain("DECISION_OWNER_UNCLEAR");
+  });
+
+  it("treats a leadership claim as a claim to verify, not a reward", () => {
+    // The probe asks what leading involved. It must fire on the strong word,
+    // not only on the weak ones — the research's inflated-claim case.
+    expect(types("I led the migration.")).toContain(
+      "LEADERSHIP_CLAIM_UNVERIFIED",
+    );
+  });
+
+  it("flags outright blame but not a described constraint", () => {
+    expect(types("The delay wasn't my fault, they didn't deliver.")).toContain(
+      "EXTERNAL_ATTRIBUTION",
+    );
+    // A real external dependency, described without disclaiming agency.
+    expect(
+      types("The vendor API had a two-week lead time, so I built a stub."),
+    ).not.toContain("EXTERNAL_ATTRIBUTION");
+  });
+
+  it("flags unquantified impact only when the answer holds no number", () => {
+    expect(types("It made the API significantly faster.")).toContain(
+      "IMPACT_UNQUANTIFIED",
+    );
+    // The magnitude word is fine when a metric backs it anywhere in the answer.
+    expect(
+      types("It was significantly faster — p95 went from 800ms to 250ms."),
+    ).not.toContain("IMPACT_UNQUANTIFIED");
+  });
+
+  it("flags a technical claim without mechanism or measurement", () => {
+    expect(types("I optimized the database.")).toContain(
+      "TECHNICAL_CLAIM_UNVERIFIED",
+    );
+    expect(
+      types("I optimized the database by adding an index."),
+    ).not.toContain("TECHNICAL_CLAIM_UNVERIFIED");
+    expect(types("I optimized the database, cutting p95 by 40%.")).not.toContain(
+      "TECHNICAL_CLAIM_UNVERIFIED",
+    );
+  });
+
+  it("flags a stated lesson as a probe trigger", () => {
+    expect(types("I learned to communicate earlier.")).toContain(
+      "LEARNING_UNVERIFIED",
+    );
+  });
+
+  it("counts the we-problem context without scoring it", () => {
+    const result = detectBehavioralSignals(
+      "We built the service. We shipped it. I wrote the tests.",
+    );
+    expect(result.firstPersonPlural).toBe(2);
+    expect(result.firstPersonSingular).toBe(1);
+  });
+
+  it("stays silent on a strong evidence-bearing answer", () => {
+    // The research's exemplar answer. Precision over recall: nothing here is
+    // a gap, so nothing may fire except the verification-by-nature claims.
+    const strong =
+      "I noticed our API latency had increased by roughly 40%. I profiled the endpoint, identified an unindexed query, and reduced p95 latency from 800ms to 250ms.";
+    expect(types(strong)).toEqual([]);
+  });
+
+  it("ignores code blocks", () => {
+    expect(
+      types("```js\n// we decided to helped with\nfoo();\n```"),
+    ).toEqual([]);
+  });
+
+  it("handles empty input", () => {
+    const result = detectBehavioralSignals("");
+    expect(result.signals).toEqual([]);
+    expect(result.firstPersonSingular).toBe(0);
   });
 });

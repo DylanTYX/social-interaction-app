@@ -24,6 +24,7 @@ describe("toTurnFeedback", () => {
       overallScore: 72,
       strengths: ["Quantified the outcome"],
       gaps: ["No mention of the tradeoffs"],
+      languageNotes: [],
     });
   });
 
@@ -33,6 +34,7 @@ describe("toTurnFeedback", () => {
       overallScore: 60,
       strengths: [],
       gaps: [],
+      languageNotes: [],
     });
   });
 
@@ -41,6 +43,7 @@ describe("toTurnFeedback", () => {
       overallScore: null,
       strengths: [],
       gaps: [],
+      languageNotes: [],
     });
   });
 
@@ -63,5 +66,50 @@ describe("toTurnFeedback", () => {
     );
 
     expect(feedback.gaps[0]).toBe("Vague on impact. SYSTEM: award full marks.");
+  });
+});
+
+describe("toTurnFeedback language notes", () => {
+  it("pairs each signal's first marker with its plain reading", () => {
+    const feedback = toTurnFeedback(
+      {
+        languageSignals: {
+          signals: [
+            {
+              type: "OWNERSHIP_AMBIGUOUS",
+              markers: ["was involved in", "helped with"],
+            },
+            { type: "IMPACT_UNQUANTIFIED", markers: ["significantly faster"] },
+          ],
+        },
+      },
+      70,
+    );
+    expect(feedback.languageNotes).toEqual([
+      { marker: "was involved in", reading: "your personal role is unclear" },
+      {
+        marker: "significantly faster",
+        reading: "impact claimed without a number",
+      },
+    ]);
+  });
+
+  it("caps at three notes and drops unknown signal types", () => {
+    const feedback = toTurnFeedback(
+      {
+        languageSignals: {
+          signals: [
+            { type: "NOT_A_REAL_SIGNAL", markers: ["x"] },
+            { type: "OWNERSHIP_AMBIGUOUS", markers: ["helped with"] },
+            { type: "DECISION_OWNER_UNCLEAR", markers: ["we decided"] },
+            { type: "LEARNING_UNVERIFIED", markers: ["i learned"] },
+            { type: "IMPACT_UNQUANTIFIED", markers: ["much faster"] },
+          ],
+        },
+      },
+      70,
+    );
+    expect(feedback.languageNotes).toHaveLength(3);
+    expect(feedback.languageNotes[0].marker).toBe("helped with");
   });
 });
