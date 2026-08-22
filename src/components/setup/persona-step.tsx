@@ -46,7 +46,11 @@ import {
 } from "@/components/ui/select";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { cn } from "@/lib/utils";
-import type { CommunicationStyle, PersonaConfig } from "@/lib/persona-engine";
+import {
+  isQuestioningStyle,
+  type CommunicationStyle,
+  type PersonaConfig,
+} from "@/lib/persona-engine";
 import {
   findEntryMatchingConfig,
   type PersonaLibraryEntry,
@@ -605,11 +609,53 @@ export function PersonaStep({
                 Fine-tune interviewer style
                 <span className="ml-2 font-normal text-xs text-muted-foreground">
                   Strict {value.strictness} · Warm {value.warmth} · Pace{" "}
-                  {value.pace ?? 5} · Pushback {value.pushback ?? 5}
+                  {value.pace ?? 5} · Pushback {value.pushback ?? 5} · Probing{" "}
+                  {value.probingDepth ?? 5} · Curveballs{" "}
+                  {value.unpredictability ?? 5}
                 </span>
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
             </summary>
+            {/* Layer 3 before Layer 4: choose how the interview is conducted,
+                then fine-tune the dials inside that choice. `communicationStyle`
+                lives on the card above because it is voice; this is conduct. */}
+            <div className="mt-6 space-y-2">
+              <Label className="text-sm">Questioning style</Label>
+              <Select
+                value={value.questioningStyle ?? "conversational"}
+                onValueChange={(next) =>
+                  onPatch({
+                    questioningStyle: isQuestioningStyle(next)
+                      ? next
+                      : "conversational",
+                  })
+                }
+              >
+                <SelectTrigger className="w-full sm:w-96">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="conversational">
+                    Conversational — natural discussion, picks up your threads
+                  </SelectItem>
+                  <SelectItem value="supportive">
+                    Supportive — room to think, clarifies, never pressures
+                  </SelectItem>
+                  <SelectItem value="socratic">
+                    Socratic — answers with the next question
+                  </SelectItem>
+                  <SelectItem value="deep_dive">
+                    Deep Dive — one thread, drilled to the bottom
+                  </SelectItem>
+                  <SelectItem value="bar_raiser">
+                    Bar Raiser — evidence required for every claim
+                  </SelectItem>
+                  <SelectItem value="stress">
+                    Stress — pressure on, reassurance off
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <SliderField
                 label="Strictness"
@@ -641,6 +687,26 @@ export function PersonaStep({
                 helper="Higher means more skepticism — challenges claims and probes for evidence."
                 onChange={(next) =>
                   onPatch({ pushback: next as PersonaConfig["pushback"] })
+                }
+              />
+              <SliderField
+                label="Probing depth"
+                value={value.probingDepth ?? 5}
+                helper="Higher means every vague claim — 'helped with', 'we decided' — gets a follow-up."
+                onChange={(next) =>
+                  onPatch({
+                    probingDepth: next as PersonaConfig["probingDepth"],
+                  })
+                }
+              />
+              <SliderField
+                label="Unpredictability"
+                value={value.unpredictability ?? 5}
+                helper="Higher means more curveballs — topic pivots and what-if twists on your own scenario."
+                onChange={(next) =>
+                  onPatch({
+                    unpredictability: next as PersonaConfig["unpredictability"],
+                  })
                 }
               />
             </div>

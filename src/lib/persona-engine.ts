@@ -10,6 +10,34 @@ export type Strictness = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Warmth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Pace = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type Pushback = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type ProbingDepth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type Unpredictability = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+/**
+ * Session-level questioning archetype — Layer 3 of the four-layer interviewer
+ * (docs/INTERVIEWER.md). Each style is one prompt paragraph (how the
+ * interviewer sounds) plus a move-weight profile in the decision engine (which
+ * follow-up moves it favours). Six ship; the other research archetypes map
+ * elsewhere — systematic is the engine itself, coaching is the drills coach,
+ * executive is the HR round, expert/generalist is round type + JD.
+ */
+export const QUESTIONING_STYLES = [
+  "supportive",
+  "socratic",
+  "deep_dive",
+  "bar_raiser",
+  "conversational",
+  "stress",
+] as const;
+
+export type QuestioningStyle = (typeof QUESTIONING_STYLES)[number];
+
+export function isQuestioningStyle(value: unknown): value is QuestioningStyle {
+  return (
+    typeof value === "string" &&
+    (QUESTIONING_STYLES as readonly string[]).includes(value)
+  );
+}
 
 export interface PersonaConfig {
   name: string;
@@ -32,6 +60,27 @@ export interface PersonaConfig {
    * Optional for backwards compatibility; treated as 5 when missing.
    */
   pushback?: Pushback;
+  /**
+   * How aggressively evidence-gap signals become probes: 1 = only the most
+   * glaring gaps ("we did it" with no I anywhere), 10 = every unevidenced
+   * claim gets its follow-up. Consumed by `chooseEvidenceProbe` in the
+   * decision engine. Optional; treated as 5 when missing.
+   */
+  probingDepth?: ProbingDepth;
+  /**
+   * Curveball frequency: 1 = classic ladder interviewing, fully predictable;
+   * 10 = pivots and hypothetical twists arrive whenever an answer is merely
+   * fine. Consumed by `maybeCurveball` in the decision engine, which is
+   * seeded — same session, same turn, same curveball — so unpredictability
+   * to the candidate never means nondeterminism to the eval harness.
+   * Optional; treated as 5 when missing.
+   */
+  unpredictability?: Unpredictability;
+  /**
+   * Layer 3: the questioning archetype. Optional; treated as
+   * "conversational" (the realism default) when missing.
+   */
+  questioningStyle?: QuestioningStyle;
   yearsExperience: number;
   personalityTraits: string[]; // e.g., ["analytical", "impatient", "collaborative"]
   boundaries: string[]; // Topics/approaches they won't tolerate
@@ -131,6 +180,30 @@ function buildPushbackProfile(pushback: Pushback): string {
 }
 
 /**
+ * The questioning-style paragraph — how the archetype sounds.
+ *
+ * Voice only: the style's effect on which follow-up move gets chosen lives in
+ * the decision engine's weights, so the same style changes both how the
+ * interviewer speaks and what it does next, from one field.
+ */
+function buildQuestioningStyleProfile(style: QuestioningStyle): string {
+  switch (style) {
+    case "supportive":
+      return "Questioning style: supportive. Give the candidate room to think, clarify the question if they misread it, and let them finish. Never hand over answers — you still probe, just without pressure.";
+    case "socratic":
+      return "Questioning style: Socratic. Rarely confirm whether an answer is right or wrong; respond with the next question — why, what assumption, what happens in the edge case — so the candidate's reasoning does the work.";
+    case "deep_dive":
+      return "Questioning style: deep dive. Pick one thread and drill it to the bottom — how, how it was measured, what the baseline was, what alternatives were considered, what they would do differently — before ever changing topic.";
+    case "bar_raiser":
+      return "Questioning style: bar raiser. Require concrete evidence for every claim before accepting it. Challenge assumptions, ask for the data behind assertions, and do not move on while an answer is still hand-waving.";
+    case "conversational":
+      return "Questioning style: conversational. Make it feel like a real discussion — pick up threads the candidate opens, transition naturally between topics, and keep the structure invisible.";
+    case "stress":
+      return "Questioning style: stress. Push back often, interrupt politely when an answer rambles, give little reassurance, and add pressure — but never become hostile or personal; the pressure is on the answers, not the person.";
+  }
+}
+
+/**
  * Coerce a 1-10 persona dial, defaulting when absent.
  *
  * This used to be called `clampDial` while doing no clamping — it defaulted,
@@ -171,6 +244,11 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
   const pushbackExpression = buildPushbackProfile(
     clampDial<Pushback>(config.pushback),
   );
+  const styleExpression = buildQuestioningStyleProfile(
+    isQuestioningStyle(config.questioningStyle)
+      ? config.questioningStyle
+      : "conversational",
+  );
 
   const parts = [
     // "a Plant Director from Japanese" — `nationality` holds a demonym
@@ -191,6 +269,7 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
     // controllable and testable. See docs/DEMO.md.
     NATIONALITY_IS_BACKGROUND,
     communicationProfile,
+    styleExpression,
     paceExpression,
     pushbackExpression,
     personalityExpression,
@@ -218,6 +297,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 6,
     pace: 8,
     pushback: 8,
+    probingDepth: 8,
+    unpredictability: 6,
+    questioningStyle: "deep_dive",
     yearsExperience: 12,
     personalityTraits: ["analytical", "ambitious", "impatient with vagueness"],
     boundaries: [
@@ -242,6 +324,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 7,
     pace: 5,
     pushback: 6,
+    probingDepth: 6,
+    unpredictability: 5,
+    questioningStyle: "conversational",
     yearsExperience: 18,
     personalityTraits: [
       "strategic thinker",
@@ -270,6 +355,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 4,
     pace: 4,
     pushback: 9,
+    probingDepth: 9,
+    unpredictability: 6,
+    questioningStyle: "bar_raiser",
     yearsExperience: 20,
     personalityTraits: ["perfectionistic", "detail-oriented", "methodical"],
     boundaries: [
@@ -290,6 +378,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 8,
     pace: 4,
     pushback: 5,
+    probingDepth: 7,
+    unpredictability: 4,
+    questioningStyle: "socratic",
     yearsExperience: 16,
     personalityTraits: ["mentor-oriented", "empathetic", "growth-focused"],
     boundaries: [
@@ -314,6 +405,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 5,
     pace: 7,
     pushback: 8,
+    probingDepth: 7,
+    unpredictability: 8,
+    questioningStyle: "stress",
     yearsExperience: 14,
     personalityTraits: ["systems-thinking", "candid", "no-nonsense"],
     boundaries: [
@@ -338,6 +432,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     warmth: 9,
     pace: 6,
     pushback: 4,
+    probingDepth: 4,
+    unpredictability: 3,
+    questioningStyle: "supportive",
     yearsExperience: 13,
     personalityTraits: ["creative", "persuasive", "people-focused"],
     boundaries: [

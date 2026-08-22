@@ -315,7 +315,10 @@ Include at least one genuine strength when present. Keep strengths and gaps bala
     const detected = detectBehavioralSignals(candidateResponse).signals;
     if (detected.length === 0) return "";
     const lines = detected
-      .map((signal) => `- ${signal.type}: ${signal.markers.map((m) => `"${m}"`).join(", ")}`)
+      .map(
+        (signal) =>
+          `- ${signal.type}: ${signal.markers.map((m) => `"${m}"`).join(", ")}`,
+      )
       .join("\n");
     return `\nDETECTED LANGUAGE SIGNALS (deterministic, from the response text):\n${lines}\nScore evidence, not claims: wording like "involved in" or "we decided" with no personal decision or action in evidence should cap the ownership score, and leadership verbs alone are claims rather than evidence. Do not penalise the words themselves — penalise the missing evidence.\n`;
   })();
@@ -630,6 +633,12 @@ export const INTERVIEW_STRATEGIES = [
   "ACKNOWLEDGE_STRENGTH",
   "DRILL_SPECIFICITY",
   "ASSESS_THINKING",
+  // The curveball moves. Chosen only by `maybeCurveball`, and only as
+  // replacements for the two "answer is fine" outcomes — a weakness-driven
+  // strategy is never displaced by a surprise. Old analysis rows predate
+  // these strings, which is why every read goes through `isInterviewStrategy`.
+  "PIVOT_TOPIC",
+  "HYPOTHETICAL_TWIST",
 ] as const;
 
 export type InterviewStrategy = (typeof INTERVIEW_STRATEGIES)[number];

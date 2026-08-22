@@ -6,6 +6,7 @@ import {
   PERSONA_DIAL_DEFAULT,
   type CommunicationStyle,
   type PersonaConfig,
+  isQuestioningStyle,
 } from "@/lib/persona-engine";
 
 /**
@@ -102,6 +103,13 @@ export function parsePersonaConfig(value: unknown): PersonaConfig | null {
     warmth: dial(input.warmth),
     pace: dial(input.pace),
     pushback: dial(input.pushback),
+    probingDepth: dial(input.probingDepth),
+    unpredictability: dial(input.unpredictability),
+    // Falls back to the realism default rather than null, so a persona saved
+    // before Layer 3 existed picks up a style instead of a hole.
+    questioningStyle: isQuestioningStyle(input.questioningStyle)
+      ? input.questioningStyle
+      : "conversational",
     yearsExperience,
     personalityTraits: stringList(input.personalityTraits),
     boundaries: stringList(input.boundaries),
