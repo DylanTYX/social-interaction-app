@@ -13,8 +13,19 @@ import {
   isQuestioningStyle,
   type CommunicationStyle,
   type PersonaConfig,
+  type PersonaVoiceGender,
   type QuestioningStyle,
 } from "@/lib/persona-engine";
+import {
+  describeResolvedVoice,
+  resolveVoiceForPersona,
+} from "@/lib/persona-voice";
+
+const VOICE_GENDERS: Array<{ value: PersonaVoiceGender; label: string }> = [
+  { value: "unspecified", label: "No preference" },
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+];
 
 const STYLES: Array<{ value: CommunicationStyle; label: string }> = [
   { value: "direct", label: "Direct" },
@@ -89,6 +100,42 @@ export function PersonaConfigEditor({
           value={value.nationality}
           onChange={(event) => onChange({ nationality: event.target.value })}
         />
+      </div>
+      <div className="space-y-2">
+        <Label>Voice</Label>
+        <Select
+          value={value.voiceGender ?? "unspecified"}
+          onValueChange={(next) =>
+            onChange({ voiceGender: next as PersonaVoiceGender })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VOICE_GENDERS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/*
+          The accent follows the nationality above, so say which voice that
+          actually produces. Without this the two fields look unrelated and a
+          nationality with no accent voice looks like a bug rather than a
+          stated limitation.
+        */}
+        <p className="text-muted-foreground text-xs">
+          {describeResolvedVoice(
+            resolveVoiceForPersona({
+              nationality: value.nationality,
+              voiceGender: value.voiceGender,
+            }),
+            value.name,
+            value.nationality,
+          )}
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Industry</Label>

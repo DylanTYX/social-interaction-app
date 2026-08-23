@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -61,6 +61,7 @@ import {
   getSpeechService,
   paceToRatePercent,
 } from "@/lib/speech-service";
+import { resolveVoiceForPersona } from "@/lib/persona-voice";
 import { useSpeechAnswer } from "@/hooks/use-speech-answer";
 import { CodeInput } from "@/components/chat/code-input";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -128,6 +129,30 @@ function VoiceSimulateInner() {
     bootstrap.status === "ready"
       ? bootstrap.voiceConfig
       : DEFAULT_SETUP.voiceConfig;
+  /**
+   * The accent this round's interviewer speaks with.
+   *
+   * Derived from the persona rather than the session, which is what fixes
+   * multi-round loops: each round is its own session row carrying its own
+   * `persona_config`, so a loop that puts a recruiter, an engineer and a hiring
+   * manager in front of you now sounds like three people. It previously sounded
+   * like one, because `next-round` copies `voiceConfig` forward verbatim and
+   * the voice was read from there.
+   */
+  const resolvedVoice = useMemo(
+    () =>
+      resolveVoiceForPersona({
+        nationality: activePersonaConfig.nationality,
+        voiceGender: activePersonaConfig.voiceGender,
+        accentsEnabled: voiceConfig.accentsEnabled,
+      }),
+    [
+      activePersonaConfig.nationality,
+      activePersonaConfig.voiceGender,
+      voiceConfig.accentsEnabled,
+    ],
+  );
+  const resolvedVoiceUri = resolvedVoice.uri;
   const [messagesHydrated, setMessagesHydrated] = useState(false);
 
   // Declared up here, not beside `stageLabel` below, because the recognition
@@ -424,11 +449,9 @@ function VoiceSimulateInner() {
       // N is audible is what keeps the gaps out.
       const settled = await Promise.allSettled(
         utterances.map((sentence) =>
-          speechService.speakQueued(
-            sentence,
-            voiceConfigRef.current.selectedVoiceUri,
-            { ratePercent: paceToRatePercent(activePersonaConfig.pace) },
-          ),
+          speechService.speakQueued(sentence, resolvedVoiceUri, {
+            ratePercent: paceToRatePercent(activePersonaConfig.pace),
+          }),
         ),
       );
 
@@ -759,11 +782,7 @@ function VoiceSimulateInner() {
            * with silence and no explanation.
            */
           speechService
-            .speakQueued(
-              sentence,
-              voiceConfigRef.current?.selectedVoiceUri,
-              prosody,
-            )
+            .speakQueued(sentence, resolvedVoiceUri, prosody)
             .catch((speakError: unknown) => {
               console.warn("TTS synthesis failed:", speakError);
               if (isMountedRef.current) {

@@ -11,6 +11,24 @@ export interface VoiceSetupConfig {
   microphoneChecked: boolean;
   sttEnabled: boolean;
   ttsEnabled: boolean;
+  /**
+   * Whether interviewers speak with the accent their nationality selects.
+   *
+   * The only voice control left at session level, and it is all-or-nothing on
+   * purpose. It exists as an accessibility escape hatch — a strong accent is
+   * harder to follow, and a candidate who needs neutral English should not have
+   * to edit every persona in their library to get it.
+   */
+  accentsEnabled: boolean;
+  /**
+   * Legacy. The setup wizard used to offer a six-voice dropdown, and these hold
+   * what it chose. Nothing reads them for playback any more: the voice comes
+   * from the persona, because a session-level choice silently flattened every
+   * interviewer in a multi-round loop to one voice.
+   *
+   * Retained, not deleted, so `launch_meta` written before accents shipped
+   * still parses. Do not reintroduce a read path.
+   */
   selectedVoiceName: string;
   selectedVoiceUri: string;
 }
@@ -126,6 +144,7 @@ function createDefaultVoiceConfig(): VoiceSetupConfig {
     microphoneChecked: false,
     sttEnabled: true,
     ttsEnabled: true,
+    accentsEnabled: true,
     selectedVoiceName: "",
     selectedVoiceUri: "",
   };
@@ -190,6 +209,10 @@ export function normalizeVoiceConfig(
       voiceConfig?.ttsEnabled === undefined
         ? defaults.ttsEnabled
         : Boolean(voiceConfig.ttsEnabled),
+    accentsEnabled:
+      voiceConfig?.accentsEnabled === undefined
+        ? defaults.accentsEnabled
+        : Boolean(voiceConfig.accentsEnabled),
     // Bounded and type-checked: these two reach the server via `launch_meta`
     // and are handed to the Azure SDK as a voice name. `sanitizeLaunchMeta`
     // used to cast the whole object through with `as`, so neither the types

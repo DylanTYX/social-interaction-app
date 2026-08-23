@@ -44,7 +44,10 @@ against a round-appropriate rubric, with a report and a coaching path.
 - **A hire / no-hire verdict.** Scores and feedback, not a decision.
 - **Languages other than English**, despite personas having a nationality.
 - **Modelling culture or nationality as behaviour.** This is a hard exclusion on
-  ethical grounds, not a backlog item — see §5.
+  ethical grounds, not a backlog item — see §5. Nationality does select the
+  interviewer's spoken **accent**, which is an acoustic property and not
+  behaviour; the boundary is drawn in
+  [DESIGN-DECISIONS.md §5a](DESIGN-DECISIONS.md).
 
 ---
 
@@ -77,6 +80,7 @@ a case ID in [UAT.md](UAT.md).
 | F13 | Each round opens on a question belonging to its type             | `round-types.ts` `opening`                                 | `opening-brief.test.ts`                                            |
 | F14 | Technical rounds accept typed code, in text **and** voice        | `code-answer.ts`, `code-input.tsx`, both interview screens | `code-answer.test.ts`                                              |
 | F15 | Voice mode transcribes speech and speaks replies                 | `speech-service.ts`, Azure Speech                          | `speech-service.test.ts`, UAT V1-V5                                |
+| F15a | An interviewer speaks English with the accent their nationality suggests | `persona-voice.ts`, `speech-voices.ts` | `persona-voice.test.ts`, `speech-queue.test.ts`, UAT V7-V9 |
 | F16 | A session survives a closed tab and can be resumed               | `sessions/[id]/resume`, `chat-recovery.ts`                 | UAT T8 only — **`chat-recovery.ts` has no unit test**              |
 | F17 | The candidate can stop early and still get a report              | `interview-session-state.ts`                               | UAT T9                                                             |
 
@@ -132,6 +136,8 @@ These are requirements, not aspirations, and two are enforced by tests.
 | #   | Requirement                                                         | How                                                                                                                                                                            |
 | --- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | E1  | **Nationality must never drive interviewer behaviour**              | `NATIONALITY_IS_BACKGROUND` instructs the model explicitly; a test asserts two personas differing only in nationality produce prompts differing by exactly the demonym         |
+| E1a | **Nationality may select an accent, and nothing else**              | The voice is chosen on the TTS path only. `persona-engine.ts` does not import `persona-voice.ts`; tests assert no accent, voice or pronunciation wording enters the prompt, and that voice gender does not change it. No written dialect. See [DESIGN-DECISIONS.md §5a](DESIGN-DECISIONS.md) |
+| E1b | **An unverified accent must never reach a user**                    | Azure has no `en-CN`-style voice for 13 of the 20 nationalities, so those need a native-locale voice reading English. Every one was auditioned by ear; three (Japanese, Vietnamese, Brazilian) were rejected and stay in the table as `verified: false` with the reason recorded, which resolves to neutral English. Tests enforce both the fallback and that a rejection carries its provenance. Evidence: [artifacts/voice-audition.md](artifacts/voice-audition.md) |
 | E2  | **No culture corpus, no national aggregate scores**                 | Rejected on the record — Hofstede and GLOBE are national aggregates whose authors warn against applying them to individuals. See [DESIGN-DECISIONS.md §5](DESIGN-DECISIONS.md) |
 | E3  | **No hire / no-hire verdict**                                       | The product returns scores and feedback. A tool that told a candidate it would not hire them, on a model's judgement, would be making a claim it cannot support                |
 | E4  | **A low score must be a judgement, not a hedge**                    | The 0-100 scale is anchored with five explicit bands including "a confident, well-presented answer that is wrong belongs in the lower bands"                                   |

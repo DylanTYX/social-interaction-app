@@ -6,6 +6,7 @@ import {
   PERSONA_DIAL_DEFAULT,
   type CommunicationStyle,
   type PersonaConfig,
+  type PersonaVoiceGender,
   isQuestioningStyle,
 } from "@/lib/persona-engine";
 
@@ -30,6 +31,10 @@ const COMMUNICATION_STYLES: readonly CommunicationStyle[] = [
   "collaborative",
   "analytical",
 ];
+
+function isVoiceGender(value: unknown): value is PersonaVoiceGender {
+  return value === "female" || value === "male" || value === "unspecified";
+}
 
 function isCommunicationStyle(value: unknown): value is CommunicationStyle {
   return (
@@ -110,6 +115,12 @@ export function parsePersonaConfig(value: unknown): PersonaConfig | null {
     questioningStyle: isQuestioningStyle(input.questioningStyle)
       ? input.questioningStyle
       : "conversational",
+    // TTS only. Without this line the field would be silently dropped on every
+    // round trip, because this function rebuilds a fresh literal rather than
+    // spreading its input.
+    voiceGender: isVoiceGender(input.voiceGender)
+      ? input.voiceGender
+      : "unspecified",
     yearsExperience,
     personalityTraits: stringList(input.personalityTraits),
     boundaries: stringList(input.boundaries),

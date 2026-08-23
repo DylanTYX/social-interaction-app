@@ -18,14 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  describeResolvedVoice,
+  resolveVoiceForPersona,
+} from "@/lib/persona-voice";
 import { getCurrentRound, ROUND_TYPE_LABELS } from "@/lib/interview-rounds";
 import { getScenarioByValue } from "@/lib/scenarios";
 import {
@@ -33,7 +30,6 @@ import {
   targetTurnsForRound,
 } from "@/lib/interview-progress";
 import type { InterviewSetupState } from "@/lib/interview-setup";
-import type { SpeechVoiceOption } from "@/lib/speech-voices";
 
 /**
  * Final step of the setup wizard: review the session, check the microphone if
@@ -55,15 +51,12 @@ export function FinalizeStep({
   onMicCheck,
   microphoneStatus,
   microphoneMessage,
-  voiceOptions,
 }: {
   setup: InterviewSetupState;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
   onMicCheck: () => void;
   microphoneStatus: "idle" | "checking" | "ready" | "failed";
   microphoneMessage: string | null;
-  // Read-only: the step only iterates and searches this catalogue.
-  voiceOptions: readonly SpeechVoiceOption[];
 }) {
   const activeScenario = getScenarioByValue(
     setup.scenarioValue,
@@ -297,44 +290,51 @@ export function FinalizeStep({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="voice-choice">Voice choice</Label>
-              <Select
-                value={setup.voiceConfig.selectedVoiceUri || "default"}
-                onValueChange={(selectedValue) => {
-                  const selectedVoice = voiceOptions.find(
-                    (voice) => voice.uri === selectedValue,
-                  );
-
-                  onUpdate({
-                    voiceConfig: {
-                      ...setup.voiceConfig,
-                      selectedVoiceName:
-                        selectedVoice?.name ?? "Aria — US Female (warm)",
-                      selectedVoiceUri:
-                        selectedValue === "default" ? "" : selectedValue,
-                    },
-                  });
-                }}
-              >
-                <SelectTrigger id="voice-choice" className="w-full">
-                  <SelectValue placeholder="Choose a voice" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">
-                    Default (Aria — US Female)
-                  </SelectItem>
-                  {voiceOptions.map((voice) => (
-                    <SelectItem key={voice.uri} value={voice.uri}>
-                      {voice.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Selected:{" "}
-                {setup.voiceConfig.selectedVoiceName ||
-                  "Default (Aria — US Female)"}
+            {/*
+              This was a six-voice dropdown. It is gone because a session-level
+              voice silently flattened every interviewer in a multi-round loop
+              to the same one — you could line up a recruiter, an engineer and a
+              hiring manager and hear a single voice read all three. The accent
+              now comes from each interviewer's own nationality, so the only
+              session-level control left is whether accents apply at all.
+            */}
+            <div className="rounded-xl border border-border bg-white p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                <Volume2 className="h-4 w-4 text-primary" />
+                Interviewer accents
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Each interviewer speaks English with the accent their
+                  nationality suggests. Turn off for neutral English throughout.
+                </p>
+                <Switch
+                  checked={setup.voiceConfig.accentsEnabled}
+                  onCheckedChange={(checked) =>
+                    onUpdate({
+                      voiceConfig: {
+                        ...setup.voiceConfig,
+                        accentsEnabled: checked,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {describeResolvedVoice(
+                  resolveVoiceForPersona({
+                    nationality: setup.personaConfig.nationality,
+                    voiceGender: setup.personaConfig.voiceGender,
+                    accentsEnabled: setup.voiceConfig.accentsEnabled,
+                  }),
+                  setup.personaConfig.name,
+                  setup.personaConfig.nationality,
+                )}
+                {setup.interviewLoop.enabled &&
+                  setup.interviewLoop.rounds.some(
+                    (round) => round.personaLibraryId,
+                  ) &&
+                  " Rounds with their own interviewer use that interviewer's accent."}
               </p>
             </div>
 

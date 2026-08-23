@@ -39,6 +39,21 @@ export function isQuestioningStyle(value: unknown): value is QuestioningStyle {
   );
 }
 
+/**
+ * Which voice this interviewer speaks with, within the accent their
+ * nationality selects.
+ *
+ * Explicit rather than inferred. Guessing gender from the persona's first name
+ * would be unreliable across exactly the international name set the randomiser
+ * produces, and it would add a second inference-from-biography seam beside the
+ * one `NATIONALITY_IS_BACKGROUND` exists to close. "unspecified" takes the
+ * locale's first listed voice.
+ *
+ * Read only by `persona-voice.ts`, on the TTS path. It never reaches the
+ * prompt — see the note on `nationality` below.
+ */
+export type PersonaVoiceGender = "female" | "male" | "unspecified";
+
 export interface PersonaConfig {
   name: string;
   nationality: string;
@@ -81,6 +96,11 @@ export interface PersonaConfig {
    * "conversational" (the realism default) when missing.
    */
   questioningStyle?: QuestioningStyle;
+  /**
+   * Optional for backwards compatibility with personas saved before accents
+   * existed; treated as "unspecified" when missing.
+   */
+  voiceGender?: PersonaVoiceGender;
   yearsExperience: number;
   personalityTraits: string[]; // e.g., ["analytical", "impatient", "collaborative"]
   boundaries: string[]; // Topics/approaches they won't tolerate

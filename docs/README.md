@@ -46,6 +46,8 @@ without re-running it:
 | ------------------------------ | -------------------------------- |
 | `persona-comparison.txt`       | `npm run eval:persona -- --live` |
 | `coach-eval-deterministic.txt` | `npm run eval:coach`             |
+| `voice-audition.md`            | `npm run eval:voices -- --live --stt` (listen: `-- --page` or `-- --play`) |
+| `azure-voices-southeastasia.json` | `npm run eval:voices -- --list` |
 
 ---
 

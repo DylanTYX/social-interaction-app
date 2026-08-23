@@ -110,7 +110,14 @@ export async function resetPersonaLibrary(): Promise<PersonaLibraryEntry[]> {
 // Pure helpers (no I/O)
 // ---------------------------------------------------------------------------
 
-const NATIONALITY_POOL = [
+/**
+ * Nationalities the persona randomiser can produce.
+ *
+ * Exported so `persona-voice.test.ts` can assert every one of them resolves to
+ * a voice rather than duplicating the list and drifting from it: adding a 21st
+ * nationality here should fail that test, not silently fall back.
+ */
+export const NATIONALITY_POOL = [
   "American",
   "British",
   "Brazilian",
@@ -310,6 +317,13 @@ function pickMany<T>(pool: readonly T[], count: number): T[] {
   return result;
 }
 
+/**
+ * Only the two that map to a voice. "unspecified" is a real setting a user can
+ * choose, but rolling it at random would just mean "female" by list order —
+ * the randomiser should produce a decided persona, not an undecided one.
+ */
+const VOICE_GENDER_POOL: PersonaConfig["voiceGender"][] = ["female", "male"];
+
 export function generateRandomPersonaConfig(): PersonaConfig {
   const firstName = pickOne(FIRST_NAME_POOL);
   const lastName = pickOne(LAST_NAME_POOL);
@@ -330,6 +344,7 @@ export function generateRandomPersonaConfig(): PersonaConfig {
     unpredictability: (Math.floor(Math.random() * 9) +
       2) as PersonaConfig["unpredictability"],
     questioningStyle: pickOne(QUESTIONING_STYLES),
+    voiceGender: pickOne(VOICE_GENDER_POOL),
     yearsExperience: 4 + Math.floor(Math.random() * 22),
     personalityTraits: pickMany(TRAITS_POOL, 3),
     boundaries: pickMany(BOUNDARIES_POOL, 3),
@@ -359,7 +374,11 @@ export function findEntryMatchingConfig(
         // Both default to the realism fallback, so a pre-Layer-3 saved entry
         // still matches the same persona freshly parsed.
         (entry.config.questioningStyle ?? "conversational") ===
-          (config.questioningStyle ?? "conversational"),
+          (config.questioningStyle ?? "conversational") &&
+        // Same defaulting reason: a persona saved before accents existed has no
+        // voiceGender, and must still match itself once parsed.
+        (entry.config.voiceGender ?? "unspecified") ===
+          (config.voiceGender ?? "unspecified"),
     ) ?? null
   );
 }

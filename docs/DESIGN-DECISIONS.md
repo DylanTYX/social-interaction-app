@@ -109,7 +109,7 @@ themselves, but it is a cost of this shape, not an accident. See
 ## 5. Nationality is biography, never behaviour
 
 **Decision.** A persona's `nationality` is one adjective in one sentence, read
-nowhere else. `NATIONALITY_IS_BACKGROUND` sits immediately after it and instructs
+nowhere else in the prompt path. `NATIONALITY_IS_BACKGROUND` sits immediately after it and instructs
 the model never to infer directness, formality, deference or expectations from
 it. Interviewer behaviour comes from four explicit dials — strictness, warmth,
 pace, pushback — and from communication style.
@@ -133,6 +133,64 @@ pgvector, retrieved by nationality, shaping how the interviewer behaves.
 
 **Enforced, not just intended.** A test asserts that two personas differing only
 in nationality produce prompts differing by exactly the demonym.
+
+### 5a. Accent is the one exception, and it is acoustic
+
+**Decision.** Nationality selects the interviewer's TTS voice, so an Indian
+persona speaks English with an Indian accent. Nothing else changes.
+
+This is a real amendment to the sentence above — nationality is no longer read
+*nowhere* else — so the boundary has to be stated precisely rather than waved
+at. What the accent may touch is the audio. What it may not touch is anything
+the model writes or the analyzer sees:
+
+| Varies with nationality  | Does not                                              |
+| ------------------------ | ----------------------------------------------------- |
+| The Azure voice selected | The prompt — `persona-engine.ts` never sees the voice |
+| Pronunciation            | Word choice, grammar, register, idiom                 |
+| —                        | The transcript, the rubric, the score                 |
+
+**No written dialect.** The interviewer never types "lah", never drops an
+article, never has its English degraded to signal origin. That would be
+caricature, and it would also corrupt the transcript the analyzer grades. The
+sentences are identical; only the audio differs.
+
+**Why this is not the culture corpus in disguise.** The rejected proposal made
+*behaviour* — how demanding, how deferential — a function of national origin.
+This makes an *acoustic property* one, which is the same relationship a person's
+accent has to where they grew up. E1 is about behaviour and is untouched: the
+dials still do all the work, and the demonym test still passes unchanged.
+
+Two design choices follow from taking that line seriously:
+
+1. **Voice gender is an explicit field, not an inference.** Guessing it from the
+   persona's first name would be unreliable across exactly the international
+   name set the randomiser produces, and would reintroduce inference-from-
+   biography one field over.
+2. **Nationality matching is exact, never fuzzy.** No substring or edit-distance
+   matching. "Niger" is inside "Nigerian"; "Irish" is three edits from "Indian".
+   An unmatched nationality gets neutral English and says so. Giving someone a
+   neighbouring country's accent on a string coincidence would be the system
+   asserting an inference it has no basis for.
+
+**Nothing ships unheard.** Azure has real `en-XX` voices for fourteen locales;
+those need no checking, because the accent is what the voice is. It has no
+`en-CN`, `en-JP`, `en-SE` or `en-ES`, so those accents require a native-locale
+voice reading English, which may come out accented, may come out near-native
+(defeating the point), or may come out mangled. Every such mapping ships
+`verified: false` and resolves to neutral English until a human has listened;
+`persona-voice.test.ts` makes that a test rather than a promise. Method and
+results: [`artifacts/voice-audition.md`](artifacts/voice-audition.md).
+
+The audition reports a word error rate from feeding each clip back through
+Azure's `en-US` recogniser. **That number ranks the listening order and decides
+nothing**, and the reasoning is worth recording because the temptation to treat
+it as a verdict is strong: a recogniser has no context and no top-down repair,
+so it fails on speech a person follows without effort; it is Azure scoring
+Azure; and at the low end it cannot tell a clear accent from no accent at all.
+Nothing in the product ever runs a recogniser over the interviewer's voice — the
+synthesised audio goes straight to the speaker — so a clip with a poor WER that
+a listener can follow is perfectly shippable.
 
 ---
 

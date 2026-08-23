@@ -2,6 +2,8 @@ import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
 import {
   AZURE_VOICE_OPTIONS,
+  resolveKnownVoice,
+  ssmlLangForVoice,
   type SpeechVoiceOption,
 } from "@/lib/speech-voices";
 
@@ -62,15 +64,28 @@ function signedPercent(value: number): string {
 /**
  * Wrap text in SSML so the interviewer's voice can match the persona: a
  * fast-paced persona speaks a little quicker, a patient one a little slower.
+ *
+ * Takes the whole voice rather than its name because `xml:lang` has to follow
+ * the voice's locale. It was hardcoded to `en-US`, which was wrong for the
+ * `en-GB` voices and would be actively harmful once accents ship — see
+ * `ssmlLangForVoice`, which is where that decision lives.
+ *
+ * The voice name is escaped even though `ensureQueuePlayback` has already
+ * resolved it against the catalogue. Belt and braces: the validation is the
+ * real defence, but this keeps a future caller that bypasses that resolution
+ * from reopening an attribute-injection hole.
  */
 function buildProsodySsml(
   text: string,
-  voiceName: string,
+  voice: SpeechVoiceOption,
   prosody: ProsodyOptions,
 ): string {
   const rate = signedPercent(prosody.ratePercent ?? 0);
   const pitch = signedPercent(prosody.pitchPercent ?? 0);
-  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><voice name="${voiceName}"><prosody rate="${rate}" pitch="${pitch}">${escapeXml(
+  const lang = escapeXml(ssmlLangForVoice(voice.locale));
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}"><voice name="${escapeXml(
+    voice.uri,
+  )}"><prosody rate="${rate}" pitch="${pitch}">${escapeXml(
     text,
   )}</prosody></voice></speak>`;
 }
@@ -237,7 +252,8 @@ export class SpeechService {
     synthesizer: SpeechSDK.SpeechSynthesizer;
     speakerDestination: SpeechSDK.SpeakerAudioDestination;
     audioConfig: SpeechSDK.AudioConfig;
-    voiceName: string;
+    /** The resolved catalogue voice, kept whole so SSML can read its locale. */
+    voice: SpeechVoiceOption;
     /** Characters handed to Azure, used to size the playback-wait ceiling. */
     queuedChars: number;
   } | null = null;
@@ -627,9 +643,18 @@ export class SpeechService {
   private ensureQueuePlayback(
     voiceUri: string | undefined,
   ): NonNullable<typeof this.queuePlayback> {
-    const voiceName = voiceUri || "en-US-AriaNeural";
+    // Was `voiceUri || "en-US-AriaNeural"`. `voiceUri` originates in
+    // `launch_meta.voiceConfig.selectedVoiceUri`, which `normalizeVoiceConfig`
+    // only type-checks and truncates to 120 characters — it was never compared
+    // against the voice list on either side. That string reached
+    // `speechSynthesisVoiceName` and, unescaped, the SSML `<voice name="…">`
+    // attribute, so a crafted value could close the attribute and inject
+    // elements. Resolving through the catalogue means an unrecognised URI now
+    // degrades to the default voice instead of reaching Azure verbatim.
+    const voice = resolveKnownVoice(voiceUri);
+    const voiceName = voice.uri;
 
-    if (this.queuePlayback && this.queuePlayback.voiceName === voiceName) {
+    if (this.queuePlayback && this.queuePlayback.voice.uri === voiceName) {
       return this.queuePlayback;
     }
 
@@ -649,7 +674,7 @@ export class SpeechService {
       synthesizer,
       speakerDestination,
       audioConfig,
-      voiceName,
+      voice,
       queuedChars: 0,
     };
 
@@ -672,14 +697,13 @@ export class SpeechService {
   }): Promise<void> {
     const playback = this.ensureQueuePlayback(item.voiceUri);
     const trimmed = item.text.trim();
-    const voiceName = playback.voiceName;
 
     const useSsml =
       Boolean(item.prosody) &&
       ((item.prosody?.ratePercent ?? 0) !== 0 ||
         (item.prosody?.pitchPercent ?? 0) !== 0);
     const ssml = useSsml
-      ? buildProsodySsml(trimmed, voiceName, item.prosody as ProsodyOptions)
+      ? buildProsodySsml(trimmed, playback.voice, item.prosody as ProsodyOptions)
       : null;
 
     playback.queuedChars += trimmed.length;

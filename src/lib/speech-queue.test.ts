@@ -209,3 +209,101 @@ describe("streaming TTS queue", () => {
     speech.onPlaybackError(null);
   });
 });
+
+describe("SSML: accent, content language, and the voice-name attribute", () => {
+  /**
+   * These cover the accent feature's audio contract. SSML is only emitted when
+   * a prosody delta exists (pace !== 5), which is why every case sets a rate.
+   */
+
+  it("declares the voice's own locale for an English voice", async () => {
+    const speech = service();
+    void speech.speakQueued("Tell me about the project.", "en-GB-SoniaNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+
+    // Was hardcoded xml:lang="en-US" for every voice, so a UK voice was
+    // wrapped in a US-English document.
+    expect(pendingSynthesis[0].text).toContain('xml:lang="en-GB"');
+    expect(pendingSynthesis[0].text).toContain('<voice name="en-GB-SoniaNeural">');
+  });
+
+  it("keeps the content language English when the accent comes from a native-locale voice", async () => {
+    const speech = service();
+    void speech.speakQueued("Tell me about the project.", "zh-CN-XiaoxiaoNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+
+    // The point of the whole feature: the accent is acoustic, the language is
+    // not. xml:lang="zh-CN" here would ask Azure to read Latin script with
+    // Chinese pronunciation rules, which is mangling rather than an accent.
+    expect(pendingSynthesis[0].text).toContain('xml:lang="en-US"');
+    expect(pendingSynthesis[0].text).toContain(
+      '<voice name="zh-CN-XiaoxiaoNeural">',
+    );
+  });
+
+  it("refuses a voice name that is not in the catalogue", async () => {
+    // `normalizeVoiceConfig` only type-checked and truncated `selectedVoiceUri`
+    // to 120 chars, and the value was interpolated unescaped into the SSML
+    // `<voice name="…">` attribute. A crafted launch_meta could therefore close
+    // the attribute and inject elements. Unknown URIs now resolve to the
+    // default voice before they reach either the SDK or the SSML.
+    const speech = service();
+    void speech.speakQueued(
+      "Tell me about the project.",
+      '"><voice name="pwn"><prosody rate="+900%">x',
+      { ratePercent: 10 },
+    );
+    await flush();
+
+    const ssml = pendingSynthesis[0].text;
+    expect(ssml).toContain('<voice name="en-US-AriaNeural">');
+    expect(ssml).not.toContain("pwn");
+    expect(ssml.match(/<voice /g)).toHaveLength(1);
+  });
+
+  it("rebuilds the synthesizer when the round changes the voice", async () => {
+    // The multi-round loop path. Each round is its own session with its own
+    // persona, so the voice changes mid-page; the playback session is cached on
+    // voice identity and has to be torn down and rebuilt when it differs.
+    const speech = service();
+
+    void speech.speakQueued("Round one.", "en-GB-SoniaNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+    pendingSynthesis[0].complete();
+    await flush();
+    const first = FakeSpeakerAudioDestination.last;
+
+    void speech.speakQueued("Round two.", "en-IN-PrabhatNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+
+    expect(FakeSpeakerAudioDestination.last).not.toBe(first);
+    expect(pendingSynthesis[1].text).toContain(
+      '<voice name="en-IN-PrabhatNeural">',
+    );
+  });
+
+  it("reuses the synthesizer when the voice is unchanged", async () => {
+    const speech = service();
+
+    void speech.speakQueued("First.", "en-IN-NeerjaNeural", { ratePercent: 10 });
+    await flush();
+    pendingSynthesis[0].complete();
+    await flush();
+    const first = FakeSpeakerAudioDestination.last;
+
+    void speech.speakQueued("Second.", "en-IN-NeerjaNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+
+    expect(FakeSpeakerAudioDestination.last).toBe(first);
+  });
+});
