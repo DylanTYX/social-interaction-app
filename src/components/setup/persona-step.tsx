@@ -50,7 +50,12 @@ import {
   isQuestioningStyle,
   type CommunicationStyle,
   type PersonaConfig,
+  type PersonaVoiceGender,
 } from "@/lib/persona-engine";
+import {
+  describeResolvedVoice,
+  resolveVoiceForPersona,
+} from "@/lib/persona-voice";
 import {
   findEntryMatchingConfig,
   type PersonaLibraryEntry,
@@ -522,6 +527,38 @@ export function PersonaStep({
                   }
                   placeholder="e.g. Japanese"
                 />
+              </Field>
+              <Field label="Voice" htmlFor="persona-voice-gender">
+                <Select
+                  value={value.voiceGender ?? "unspecified"}
+                  onValueChange={(next) =>
+                    onPatch({ voiceGender: next as PersonaVoiceGender })
+                  }
+                >
+                  <SelectTrigger id="persona-voice-gender">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unspecified">No preference</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/*
+                  The accent comes from the nationality field above, so name the
+                  voice it actually resolves to. A nationality with no accent
+                  voice otherwise looks like a bug rather than a stated limit.
+                */}
+                <p className="text-muted-foreground text-xs">
+                  {describeResolvedVoice(
+                    resolveVoiceForPersona({
+                      nationality: value.nationality,
+                      voiceGender: value.voiceGender,
+                    }),
+                    value.name,
+                    value.nationality,
+                  )}
+                </p>
               </Field>
               <Field label="Industry" htmlFor="persona-industry">
                 <Input

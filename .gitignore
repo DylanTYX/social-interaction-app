@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Accent audition clips — regenerate with `npm run eval:voices -- --live`
+docs/artifacts/voice-audition/

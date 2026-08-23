@@ -6,10 +6,11 @@ untested area that nobody has named is an accident, and an untested area with a
 reason is a decision.
 
 ```
-npm test          481 tests, no network         ← layers 1-3
+npm test          619 tests, no network         ← layers 1-3
 npm run eval      the analyzer, against a golden set    ← layer 4
 npm run eval:coach    the coach, against the analyzer   ← layer 4
 npm run eval:persona  do personas actually differ?      ← layer 4
+npm run eval:voices   which accents are real?            ← layer 4 (decided by ear)
 docs/UAT.md       do people understand it?              ← layer 5
 ```
 
@@ -32,6 +33,7 @@ This is why several things were extracted rather than left inline:
 | `chat-recovery.ts`      | the chat route             | "Did this turn land before the stream failed?" is testable without a stream — **and yet has no test**, which is what makes this table worth keeping |
 | `interview-progress.ts` | the turn loop              | "How long does a round run?" is derivable and checkable                                                                                             |
 | `coach-prompt.ts`       | the coach route            | The prompt is a pure function of the round type — which is also what let the eval harness call it                                                   |
+| `persona-voice.ts`      | the voice screen           | "Which accent does this nationality get?" is decidable without Azure — and the unverified-never-ships rule becomes a test rather than a promise     |
 
 **What these tests assert is usually a past bug, not a happy path.** The
 `decision-engine` tests pin the strategy ladder's thresholds; `nav.test.ts` pins
@@ -67,7 +69,7 @@ logic that _could_ be component state has been pulled into layer 1 instead.
 
 **These three currently fail to run**, and that is an upstream packaging bug, not
 a project one: `jsdom` 30 pulls `html-encoding-sniffer` 6, which `require()`s the
-ESM-only `@exodus/bytes`. Recorded rather than hidden. The 481 passing tests are
+ESM-only `@exodus/bytes`. Recorded rather than hidden. The 619 passing tests are
 layers 1 and 2.
 
 ## Layer 4 — Evaluation harnesses
@@ -150,7 +152,7 @@ accuracy figure means "agreement with one person". See
 
 ## What a test being present actually proves here
 
-Worth stating for a reader who counts tests: 481 is not a quality claim. Two
+Worth stating for a reader who counts tests: 619 is not a quality claim. Two
 examples of the difference.
 
 **A test that proves something.** `asked-questions.test.ts` asserts the collector

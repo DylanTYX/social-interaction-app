@@ -319,7 +319,20 @@ Worth knowing up front:
 - **Drill coaching has not been validated end to end.** The rubric behind it is
   measured (`npm run eval:coach`), but whether the coaching actually makes you
   better is not — see `docs/COACHING.md`, "What has not been measured".
-- **English only**, despite personas having a nationality.
+- **English only.** Interviewers speak English whatever their nationality. The
+  *accent* varies — an Indian persona speaks with an Indian accent — but the
+  language never does.
+- **Three of the twenty nationalities have no accent: Japanese, Vietnamese and
+  Brazilian.** Azure has real English voices for fourteen locales, and those
+  work. The rest need a native-locale voice reading English, which was
+  auditioned clip by clip; most were accepted, and these three were not. The
+  failure is not "too strong an accent" — a monolingual voice pronounces English
+  through its own sound system, so the words come out rebuilt rather than
+  accented. No better voice exists in those locales: every alternative either
+  advertises no English at all or is one of Azure's multilingual voices, which
+  are built to sound native and would remove the accent entirely. Those personas
+  use neutral English and the setup screen says so. Method, clips and per-voice
+  verdicts: `docs/artifacts/voice-audition.md`.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
   network. The setup wizard now requires the microphone check to pass before a

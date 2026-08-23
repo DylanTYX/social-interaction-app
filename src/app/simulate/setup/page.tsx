@@ -45,7 +45,6 @@ import { ContextStep } from "@/components/setup/context-step";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
-import { AZURE_VOICE_OPTIONS } from "@/lib/speech-voices";
 import { cn } from "@/lib/utils";
 import {
   buildRoundScenarioDescription,
@@ -251,7 +250,6 @@ function SetupWizard() {
   // deliberately imported from `speech-voices` rather than `speechService`:
   // the latter pulls in the Azure SDK (and its Node-only cert-checking
   // dependencies) which this page never uses.
-  const azureVoiceOptions = AZURE_VOICE_OPTIONS;
 
   const stepIndex = STEPS.findIndex((step) => step.id === currentStep);
   const totalSteps = STEPS.length;
@@ -789,7 +787,6 @@ function SetupWizard() {
               onMicCheck={checkMicrophone}
               microphoneStatus={microphoneStatus}
               microphoneMessage={microphoneMessage}
-              voiceOptions={azureVoiceOptions}
             />
           )}
         </div>

@@ -268,11 +268,18 @@ is written up in full in
 [DESIGN-DECISIONS.md §5](DESIGN-DECISIONS.md) — read that before the demo rather
 than reconstructing it here. What to say out loud, in three beats:
 
-1. **`nationality` is biography.** One adjective in one sentence, read nowhere
-   else in `src/`. `NATIONALITY_IS_BACKGROUND` sits immediately after it and
-   instructs the model never to infer directness, formality, deference or
-   expectations from it. A test asserts two personas differing only in
-   nationality produce prompts differing by exactly the demonym.
+1. **`nationality` is biography, and — since accents shipped — a voice.** In the
+   prompt it is one adjective in one sentence and nothing more:
+   `NATIONALITY_IS_BACKGROUND` sits immediately after it and instructs the model
+   never to infer directness, formality, deference or expectations from it, and
+   a test asserts two personas differing only in nationality produce prompts
+   differing by exactly the demonym. Outside the prompt it selects the TTS
+   voice, so an Indian interviewer sounds Indian. **Be ready for the follow-up**,
+   because it is the obvious one: the accent is acoustic. It changes
+   pronunciation, not word choice, grammar or register — there is no written
+   dialect — and `persona-engine.ts` does not import the module that picks the
+   voice. Behaviour still comes from the dials. DESIGN-DECISIONS §5a draws the
+   line; §5 explains why the line is where it is.
 2. **A culture corpus would be stereotyping with extra steps.** A retrieval store
    keyed on nationality that returns behavioural claims makes the model generate
    behaviour _from national origin_, deterministically. And it cannot be sourced

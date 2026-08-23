@@ -56,10 +56,6 @@ import {
   type PracticeMode,
   type VoiceSetupConfig,
 } from "@/lib/interview-setup";
-import {
-  AZURE_VOICE_OPTIONS,
-  type SpeechVoiceOption,
-} from "@/lib/speech-voices";
 import { toast } from "sonner";
 
 type SaveState =
@@ -132,9 +128,6 @@ function SettingsPageInner() {
   const [voiceConfig, setVoiceConfig] = useState<VoiceSetupConfig>(
     defaultSetup.voiceConfig,
   );
-  // A static catalogue — no state, no effect, and no need to construct a
-  // SpeechService (which would drag the Azure SDK into this page's bundle).
-  const voiceOptions: readonly SpeechVoiceOption[] = AZURE_VOICE_OPTIONS;
   const [voiceState, setVoiceState] = useState<SaveState>({ kind: "idle" });
 
   const [resetState, setResetState] = useState<SaveState>({ kind: "idle" });
@@ -639,51 +632,30 @@ function SettingsPageInner() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="settings-default-voice">Default voice</Label>
-                {voiceOptions.length === 0 ? (
+              {/*
+                Was a "Default voice" dropdown. Removed with the wizard's copy
+                of it: a single stored voice made every interviewer in a loop
+                sound identical. Accent now follows each persona's nationality,
+                and this switch is the only global override left.
+              */}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="settings-accents">Interviewer accents</Label>
                   <p className="text-xs text-slate-500">
-                    No voices available in this browser. The wizard will fall
-                    back to the system default.
+                    Interviewers speak English with the accent their nationality
+                    suggests. Turn off for neutral English throughout.
                   </p>
-                ) : (
-                  <Select
-                    value={voiceConfig.selectedVoiceUri || "__default__"}
-                    onValueChange={(value) =>
-                      setVoiceConfig((current) => {
-                        if (value === "__default__") {
-                          return {
-                            ...current,
-                            selectedVoiceUri: "",
-                            selectedVoiceName: "",
-                          };
-                        }
-                        const match = voiceOptions.find(
-                          (option) => option.uri === value,
-                        );
-                        return {
-                          ...current,
-                          selectedVoiceUri: value,
-                          selectedVoiceName: match?.name ?? "",
-                        };
-                      })
-                    }
-                  >
-                    <SelectTrigger id="settings-default-voice">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__default__">
-                        System default
-                      </SelectItem>
-                      {voiceOptions.map((option) => (
-                        <SelectItem key={option.uri} value={option.uri}>
-                          {option.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                </div>
+                <Switch
+                  id="settings-accents"
+                  checked={voiceConfig.accentsEnabled}
+                  onCheckedChange={(checked) =>
+                    setVoiceConfig((current) => ({
+                      ...current,
+                      accentsEnabled: checked,
+                    }))
+                  }
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-3">

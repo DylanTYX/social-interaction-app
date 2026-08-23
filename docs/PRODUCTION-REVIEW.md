@@ -204,7 +204,14 @@ Checked and found sound, recorded so the next review does not re-litigate them:
   array, no NaN reaching the DOM across the dashboard.
 - **`append_interview_turn`** is genuinely atomic and correctly used.
 - **Persona nationality** is explicitly biographical-only in the prompt
-  (`persona-engine.ts:156`), never a behavioural driver.
+  (`NATIONALITY_IS_BACKGROUND` in `persona-engine.ts`), never a behavioural
+  driver. It does select the TTS accent, on the audio path only —
+  `persona-engine.ts` does not import `persona-voice.ts`, and tests assert the
+  prompt is byte-identical across voice settings. See DESIGN-DECISIONS §5a.
+- **Voice names are resolved against a catalogue** before reaching Azure
+  (`resolveKnownVoiceUri`). Previously `launch_meta.voiceConfig.selectedVoiceUri`
+  was only length-capped and was interpolated unescaped into the SSML
+  `<voice name="…">` attribute, so a crafted value could inject elements.
 
 ---
 

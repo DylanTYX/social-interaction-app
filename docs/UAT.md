@@ -150,6 +150,15 @@ _One tester, one fresh account._
 | V4  | End voice session   | Complete session                                                        | Report loads with voice-appropriate metrics if shown                                 | ☐     |       |
 | V5  | Silence submits     | Answer, then stay quiet                                                 | Countdown appears ~1.5s in; submits at 3s                                            | ☐     |       |
 | V6  | Thinking pause      | Pause mid-answer for ~2s, then continue                                 | Not cut off; countdown resets                                                        | ☐     |       |
+| V7  | Accent matches      | Use a persona with nationality **Indian** (or Singaporean, Nigerian, British); start a voice interview | The voice is the accent named on the Review screen, not the default US voice | ☐     |       |
+| V8  | No accent is stated | Use a persona with nationality **Chinese** (or Swedish, Japanese)       | Review says neutral English will be used and why; the interview runs normally        | ☐     |       |
+| V9  | Accents off         | Turn "Interviewer accents" off on Review, start with an Indian persona  | Neutral English is used instead                                                      | ☐     |       |
+| V10 | Loop voices differ  | Build a 2-round loop with interviewers of different nationalities       | The voice changes at the round boundary — the two rounds sound like two people       | ☐     |       |
+
+V7 asks only whether the voice *matches the nationality named on screen*, not
+whether it sounds authentic. Testers cannot arbitrate accent quality and their
+answers would not be evidence of anything; that judgement is recorded once, by
+one listener, in `docs/artifacts/voice-audition.md`.
 
 ### 4.6 Session report
 

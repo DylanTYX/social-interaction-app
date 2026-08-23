@@ -16,7 +16,8 @@
     "eval:persona": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-persona-eval.ts",
     "eval:coach": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-coach-eval.ts",
     "eval:raters": "tsx src/eval/run-rater-sheet.ts",
-    "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts"
+    "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts",
+    "eval:voices": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-voice-audition.ts"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",
