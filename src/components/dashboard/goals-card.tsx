@@ -97,7 +97,7 @@ export function GoalsCard({
   const earnedCount = badges.filter((badge) => badge.earned).length;
 
   return (
-    <Card className="border border-slate-200/80 shadow-soft">
+    <Card data-tour="goals" className="border border-slate-200/80 shadow-soft">
       <CardContent className="p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
