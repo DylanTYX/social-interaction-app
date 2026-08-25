@@ -5,7 +5,6 @@ import {
   Check,
   ChevronDown,
   Dice5,
-  HelpCircle,
   MoreHorizontal,
   RefreshCw,
   RotateCcw,
@@ -13,11 +12,6 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Card,
   CardAction,
@@ -37,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Field, FieldSection } from "@/components/ui/field";
+import { DialField, PERSONA_DIALS } from "@/components/persona/dial-field";
 import {
   Select,
   SelectContent,
@@ -694,127 +689,21 @@ export function PersonaStep({
               </Select>
             </div>
             <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <SliderField
-                label="Strictness"
-                value={value.strictness}
-                helper="Higher means more demanding and less forgiving."
-                onChange={(next) =>
-                  onPatch({ strictness: next as PersonaConfig["strictness"] })
-                }
-              />
-              <SliderField
-                label="Warmth"
-                value={value.warmth}
-                helper="Higher means more encouraging and supportive."
-                onChange={(next) =>
-                  onPatch({ warmth: next as PersonaConfig["warmth"] })
-                }
-              />
-              <SliderField
-                label="Pace"
-                value={value.pace ?? 5}
-                helper="Higher means faster, less breathing room between questions."
-                onChange={(next) =>
-                  onPatch({ pace: next as PersonaConfig["pace"] })
-                }
-              />
-              <SliderField
-                label="Pushback"
-                value={value.pushback ?? 5}
-                helper="Higher means more skepticism — challenges claims and probes for evidence."
-                onChange={(next) =>
-                  onPatch({ pushback: next as PersonaConfig["pushback"] })
-                }
-              />
-              <SliderField
-                label="Probing depth"
-                value={value.probingDepth ?? 5}
-                helper="Higher means every vague claim — 'helped with', 'we decided' — gets a follow-up."
-                onChange={(next) =>
-                  onPatch({
-                    probingDepth: next as PersonaConfig["probingDepth"],
-                  })
-                }
-              />
-              <SliderField
-                label="Unpredictability"
-                value={value.unpredictability ?? 5}
-                helper="Higher means more curveballs — topic pivots and what-if twists on your own scenario."
-                onChange={(next) =>
-                  onPatch({
-                    unpredictability: next as PersonaConfig["unpredictability"],
-                  })
-                }
-              />
+              {PERSONA_DIALS.map((dial) => (
+                <DialField
+                  key={dial.key}
+                  label={dial.label}
+                  value={value[dial.key] ?? 5}
+                  helper={dial.helper}
+                  onChange={(next) =>
+                    onPatch({ [dial.key]: next } as Partial<PersonaConfig>)
+                  }
+                />
+              ))}
             </div>
           </details>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function SliderField({
-  label,
-  value,
-  helper,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  helper: string;
-  onChange: (next: number) => void;
-}) {
-  // A <Label> with no `htmlFor` next to an <input> with no `id` is decoration:
-  // it looks associated and is not. Wiring them means the four persona dials
-  // are actually reachable and announced.
-  const id = `dial-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <Label htmlFor={id}>{label}</Label>
-          {/* The one place a tooltip earns its keep in this flow: "higher means
-              more skepticism" is real explanation, not a restated label. It is
-              also the kind of detail you want once and never again, which is
-              exactly what hover-to-reveal is for.
-
-              `aria-describedby` carries the same text to screen readers and to
-              anyone who reaches the slider by keyboard, so the explanation is
-              never hover-only. */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label={`What does ${label.toLowerCase()} do?`}
-                className="text-muted-foreground hover:text-muted-foreground"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-56">{helper}</TooltipContent>
-          </Tooltip>
-        </div>
-        <Badge variant="secondary" className="text-xs px-2 py-0.5">
-          {value}/10
-        </Badge>
-      </div>
-      <input
-        id={id}
-        type="range"
-        min={1}
-        max={10}
-        step={1}
-        value={value}
-        aria-valuetext={`${value} out of 10`}
-        aria-describedby={`${id}-help`}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="w-full accent-primary"
-      />
-      <span id={`${id}-help`} className="sr-only">
-        {helper}
-      </span>
     </div>
   );
 }

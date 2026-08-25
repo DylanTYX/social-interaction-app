@@ -32,6 +32,42 @@ export const QUESTIONING_STYLES = [
 
 export type QuestioningStyle = (typeof QUESTIONING_STYLES)[number];
 
+/**
+ * Display copy for the styles, declared beside the enum so the library card,
+ * the library editor and the setup wizard cannot label one style three ways.
+ * The blurbs are the honest one-line versions of the prompt paragraphs in
+ * `buildQuestioningStyleProfile` below.
+ */
+export const QUESTIONING_STYLE_META: Record<
+  QuestioningStyle,
+  { label: string; blurb: string }
+> = {
+  conversational: {
+    label: "Conversational",
+    blurb: "Natural discussion; picks up your threads.",
+  },
+  supportive: {
+    label: "Supportive",
+    blurb: "Room to think; clarifies, never pressures.",
+  },
+  socratic: {
+    label: "Socratic",
+    blurb: "Answers with the next question — why, what if.",
+  },
+  deep_dive: {
+    label: "Deep Dive",
+    blurb: "One thread, drilled to the bottom.",
+  },
+  bar_raiser: {
+    label: "Bar Raiser",
+    blurb: "Evidence required for every claim.",
+  },
+  stress: {
+    label: "Stress",
+    blurb: "Pressure on, reassurance off. Opt-in.",
+  },
+};
+
 export function isQuestioningStyle(value: unknown): value is QuestioningStyle {
   return (
     typeof value === "string" &&

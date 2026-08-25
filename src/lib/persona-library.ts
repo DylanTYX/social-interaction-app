@@ -324,6 +324,48 @@ function pickMany<T>(pool: readonly T[], count: number): T[] {
  */
 const VOICE_GENDER_POOL: PersonaConfig["voiceGender"][] = ["female", "male"];
 
+/**
+ * The starting point for "New persona".
+ *
+ * Empty identity, every dial at the neutral 5, the realism-default style, no
+ * voice preference, no lists. Deliberately not a preset clone: the wizard's
+ * default persona is Sarah Chen, and "New" that opens on someone else's name
+ * is a duplicate with extra steps. `parsePersonaConfig` refuses this until the
+ * four identity fields are filled, which is exactly what the dialog's Save
+ * gate mirrors.
+ */
+export function createBlankPersonaConfig(): PersonaConfig {
+  return {
+    name: "",
+    nationality: "",
+    industry: "",
+    seniority: "",
+    communicationStyle: "direct",
+    strictness: 5,
+    warmth: 5,
+    pace: 5,
+    pushback: 5,
+    probingDepth: 5,
+    unpredictability: 5,
+    questioningStyle: "conversational",
+    voiceGender: "unspecified",
+    yearsExperience: 5,
+    personalityTraits: [],
+    boundaries: [],
+    interestAreas: [],
+  };
+}
+
+/** The identity fields without which the server rejects a persona. */
+export function personaIdentityComplete(config: PersonaConfig): boolean {
+  return [
+    config.name,
+    config.nationality,
+    config.industry,
+    config.seniority,
+  ].every((field) => field.trim().length > 0);
+}
+
 export function generateRandomPersonaConfig(): PersonaConfig {
   const firstName = pickOne(FIRST_NAME_POOL);
   const lastName = pickOne(LAST_NAME_POOL);

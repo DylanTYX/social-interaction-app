@@ -274,6 +274,15 @@ label instead, since people keep one resume per kind of role and the list otherw
 shows a guessed name and a date. Deleting either says first how many interviews
 still in progress are using it; those keep running without it.
 
+**Personas** is a full library: **New persona** builds an interviewer from a
+blank slate (Save stays off until name, nationality, industry and seniority
+are filled — the same rule the server enforces), **Random persona** rolls one
+to edit from, and each card's menu offers **Edit**, **Duplicate** and
+**Delete**. The editor is sectioned — Identity, How they interview, Dials,
+Character — and its six dials are the same sliders the setup wizard uses. Each
+card shows the questioning style, the voice the accent resolves to, and all
+six dials, so a card says what an interviewer *is* rather than half of it.
+
 ### One library, two ways in
 
 There is one library per document, and the same rule governs both. The setup
