@@ -119,11 +119,21 @@ finished, so there is nothing to configure.
 ### 3. Interviewer
 
 Pick one from the library — six presets ship with the app, and anything you save
-joins them. Each can be duplicated or deleted from the menu on its card.
+joins them. The cards here are the same cards as the personas page, in the same
+order, showing the same things: questioning style, voice, all six dials. Each
+can be duplicated from its menu; deleting and restoring presets live in the
+library, one click away via **Manage in library** — the same link the job
+description and resume pickers carry. The wizard chooses and, if you want,
+tweaks for this session; the library manages.
 
-On the right you set nationality, industry, seniority, communication style and
-years of experience. Behind **Fine-tune interviewer style** sit a **questioning
-style** — six archetypes from Supportive to Bar Raiser to Stress, each changing
+Below the picker, **Customise this interviewer** is collapsed by default —
+picking a preset needs no editing — and opens into the library's own editor,
+section for section. Change anything and **Unsaved changes** appears with
+**Update saved** (write it back to that persona) and **Save as new** (keep the
+original). Both refuse until name, nationality, industry and seniority are
+filled, the same rule the server enforces. The editor sets nationality,
+industry, seniority, voice, communication style and years of experience, then
+a **questioning style** — six archetypes from Supportive to Bar Raiser to Stress, each changing
 both how the interviewer sounds and which follow-up moves it favours — and six
 dials: **strictness**, **warmth**, **pace**, **pushback**, **probing depth**
 and **unpredictability**. Probing depth decides how readily vague wording
@@ -273,6 +283,14 @@ was pasted. Job descriptions are filterable by company; resumes carry a version
 label instead, since people keep one resume per kind of role and the list otherwise
 shows a guessed name and a date. Deleting either says first how many interviews
 still in progress are using it; those keep running without it.
+
+**Every library page is laid out the same way**, so learning one is learning
+all three: the page header carries the one workflow button, *Start an
+interview*; the row above the list finds and adds — search on the left,
+actions on the right; and each card's menu edits, duplicates or deletes.
+Documents add through a card because pasting or uploading needs room; personas
+add through a button because it is a form in a dialog. That is the one
+difference, and it is the only one.
 
 **Personas** is a full library: **New persona** builds an interviewer from a
 blank slate (Save stays off until name, nationality, industry and seniority

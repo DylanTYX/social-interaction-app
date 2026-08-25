@@ -33,6 +33,8 @@ import {
   normalizeNationality,
   pickVoiceFrom,
   resolveVoiceForPersona,
+  describeVoiceBriefly,
+  type ResolvedVoice,
 } from "@/lib/persona-voice";
 import { NATIONALITY_POOL } from "@/lib/persona-library";
 import { generatePersonaPrompt, PRESET_PERSONAS } from "@/lib/persona-engine";
@@ -123,8 +125,18 @@ describe("an unverified accent never reaches a user", () => {
 });
 
 describe("a stated voice gender that cannot be honoured", () => {
-  const female = { name: "F", uri: "xx-XX-FNeural", locale: "xx-XX", gender: "female" as const };
-  const male = { name: "M", uri: "xx-XX-MNeural", locale: "xx-XX", gender: "male" as const };
+  const female = {
+    name: "F",
+    uri: "xx-XX-FNeural",
+    locale: "xx-XX",
+    gender: "female" as const,
+  };
+  const male = {
+    name: "M",
+    uri: "xx-XX-MNeural",
+    locale: "xx-XX",
+    gender: "male" as const,
+  };
 
   it("falls back to neutral English rather than the other gender", () => {
     // Hearing a woman's voice for a persona explicitly set to male is a worse
@@ -197,9 +209,10 @@ describe("the accent table is internally consistent", () => {
     ) as { voices: Array<{ ShortName: string; Status: string }> };
     const known = new Map(catalogue.voices.map((v) => [v.ShortName, v]));
     for (const voice of ACCENT_VOICES) {
-      expect(known.get(voice.uri)?.Status, `${voice.uri} not in catalogue`).toBe(
-        "GA",
-      );
+      expect(
+        known.get(voice.uri)?.Status,
+        `${voice.uri} not in catalogue`,
+      ).toBe("GA");
     }
   });
 
@@ -250,7 +263,8 @@ describe("resolution", () => {
 
   it("honours the stated voice gender, and is stable without one", () => {
     expect(
-      resolveVoiceForPersona({ nationality: "Indian", voiceGender: "male" }).uri,
+      resolveVoiceForPersona({ nationality: "Indian", voiceGender: "male" })
+        .uri,
     ).toBe("en-IN-PrabhatNeural");
     expect(
       resolveVoiceForPersona({ nationality: "Indian", voiceGender: "female" })
@@ -338,5 +352,46 @@ describe("describeResolvedVoice", () => {
     );
     expect(text).toContain("Martian");
     expect(text).toContain("neutral English");
+  });
+});
+
+describe("describeVoiceBriefly", () => {
+  const accented: ResolvedVoice = {
+    uri: "en-SG-LunaNeural",
+    locale: "en-SG",
+    label: "Luna — en-SG",
+    source: "nationality",
+    reason: null,
+  };
+  const neutral: ResolvedVoice = {
+    uri: "en-US-AriaNeural",
+    locale: "en-US",
+    label: "Aria — en-US",
+    source: "default",
+    reason: "no-accent-for-nationality",
+  };
+
+  it("names the accent and the voice when both resolved", () => {
+    expect(describeVoiceBriefly(accented, "Singaporean", "female")).toBe(
+      "Singaporean accent · Female",
+    );
+    expect(describeVoiceBriefly(accented, "Singaporean", "unspecified")).toBe(
+      "Singaporean accent",
+    );
+  });
+
+  it("claims only neutral English on any fallback", () => {
+    // Whether the default voice honours the gender preference is the
+    // catalogue's business; the card says only what it knows.
+    expect(describeVoiceBriefly(neutral, "Swedish", "female")).toBe(
+      "Neutral English",
+    );
+    expect(
+      describeVoiceBriefly(
+        { ...neutral, reason: "accents-off" },
+        "Swedish",
+        undefined,
+      ),
+    ).toBe("Neutral English");
   });
 });

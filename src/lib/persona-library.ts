@@ -394,33 +394,68 @@ export function generateRandomPersonaConfig(): PersonaConfig {
   };
 }
 
+function sameList(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+/**
+ * Field-complete equality, with the same defaults `parsePersonaConfig` applies.
+ *
+ * The matcher this replaces compared identity, style and the dials — and not
+ * `yearsExperience`, traits, boundaries or interests, all of which are
+ * editable. A years-only change therefore still "matched" its saved entry:
+ * the wizard kept the card highlighted, "Unsaved changes" never appeared,
+ * and the session launched attributed to a persona it no longer was.
+ * Optional fields compare through their defaults so an entry saved before a
+ * field existed still equals the same persona freshly parsed.
+ */
+export function personaConfigEquals(
+  a: PersonaConfig,
+  b: PersonaConfig,
+): boolean {
+  return (
+    a.name === b.name &&
+    a.nationality === b.nationality &&
+    a.industry === b.industry &&
+    a.seniority === b.seniority &&
+    a.communicationStyle === b.communicationStyle &&
+    a.strictness === b.strictness &&
+    a.warmth === b.warmth &&
+    (a.pace ?? 5) === (b.pace ?? 5) &&
+    (a.pushback ?? 5) === (b.pushback ?? 5) &&
+    (a.probingDepth ?? 5) === (b.probingDepth ?? 5) &&
+    (a.unpredictability ?? 5) === (b.unpredictability ?? 5) &&
+    (a.questioningStyle ?? "conversational") ===
+      (b.questioningStyle ?? "conversational") &&
+    (a.voiceGender ?? "unspecified") === (b.voiceGender ?? "unspecified") &&
+    a.yearsExperience === b.yearsExperience &&
+    sameList(a.personalityTraits, b.personalityTraits) &&
+    sameList(a.boundaries, b.boundaries) &&
+    sameList(a.interestAreas, b.interestAreas)
+  );
+}
+
 export function findEntryMatchingConfig(
   config: PersonaConfig,
   library: PersonaLibraryEntry[],
 ): PersonaLibraryEntry | null {
   return (
-    library.find(
-      (entry) =>
-        entry.config.name === config.name &&
-        entry.config.nationality === config.nationality &&
-        entry.config.industry === config.industry &&
-        entry.config.seniority === config.seniority &&
-        entry.config.communicationStyle === config.communicationStyle &&
-        entry.config.strictness === config.strictness &&
-        entry.config.warmth === config.warmth &&
-        (entry.config.pace ?? 5) === (config.pace ?? 5) &&
-        (entry.config.pushback ?? 5) === (config.pushback ?? 5) &&
-        (entry.config.probingDepth ?? 5) === (config.probingDepth ?? 5) &&
-        (entry.config.unpredictability ?? 5) ===
-          (config.unpredictability ?? 5) &&
-        // Both default to the realism fallback, so a pre-Layer-3 saved entry
-        // still matches the same persona freshly parsed.
-        (entry.config.questioningStyle ?? "conversational") ===
-          (config.questioningStyle ?? "conversational") &&
-        // Same defaulting reason: a persona saved before accents existed has no
-        // voiceGender, and must still match itself once parsed.
-        (entry.config.voiceGender ?? "unspecified") ===
-          (config.voiceGender ?? "unspecified"),
-    ) ?? null
+    library.find((entry) => personaConfigEquals(entry.config, config)) ?? null
   );
+}
+
+/**
+ * One order for both surfaces: your personas first, most recent first, then
+ * the presets in their seeded order. The library page sorted by recency
+ * alone and the wizard by kind, so the same six cards appeared in two orders
+ * — "your stuff on top, presets stable" is right on both screens.
+ */
+export function sortPersonaLibrary(
+  library: PersonaLibraryEntry[],
+): PersonaLibraryEntry[] {
+  return [...library].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "user" ? -1 : 1;
+    if (a.kind === "user") return b.updatedAt - a.updatedAt;
+    return a.updatedAt - b.updatedAt;
+  });
 }

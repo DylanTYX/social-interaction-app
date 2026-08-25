@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { DialField, PERSONA_DIALS } from "@/components/persona/dial-field";
 import {
+  COMMUNICATION_STYLE_META,
+  COMMUNICATION_STYLES,
   isQuestioningStyle,
   QUESTIONING_STYLE_META,
   QUESTIONING_STYLES,
@@ -45,13 +47,6 @@ const VOICE_GENDERS: Array<{ value: PersonaVoiceGender; label: string }> = [
   { value: "unspecified", label: "No preference" },
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
-];
-
-const STYLES: Array<{ value: CommunicationStyle; label: string }> = [
-  { value: "direct", label: "Direct" },
-  { value: "diplomatic", label: "Diplomatic" },
-  { value: "collaborative", label: "Collaborative" },
-  { value: "analytical", label: "Analytical" },
 ];
 
 interface PersonaConfigEditorProps {
@@ -170,7 +165,9 @@ export function PersonaConfigEditor({
           <Field
             label="Communication style"
             htmlFor="persona-communication"
-            hint="How they speak — separate from how they conduct the interview, below."
+            hint={
+              COMMUNICATION_STYLE_META[value.communicationStyle].description
+            }
           >
             <Select
               value={value.communicationStyle}
@@ -182,9 +179,9 @@ export function PersonaConfigEditor({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STYLES.map((style) => (
-                  <SelectItem key={style.value} value={style.value}>
-                    {style.label}
+                {COMMUNICATION_STYLES.map((style) => (
+                  <SelectItem key={style} value={style}>
+                    {COMMUNICATION_STYLE_META[style].label}
                   </SelectItem>
                 ))}
               </SelectContent>

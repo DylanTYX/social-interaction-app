@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Eye, FileUser, Pencil, Search, Sparkles, Trash2 } from "lucide-react";
+import { Eye, FileUser, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { LibraryToolbar } from "@/components/dashboard/library-toolbar";
 import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -179,16 +179,14 @@ export default function ResumesPage() {
           {/* Hidden until there is enough to search. A filter bar above three
               rows is furniture. */}
           {(items.length > 0 || hasFilters) && (
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search title or version..."
-                aria-label="Search resumes"
-                className="pl-9"
-              />
-            </div>
+            <LibraryToolbar
+              search={{
+                value: query,
+                onChange: setQuery,
+                placeholder: "Search title or version...",
+                ariaLabel: "Search resumes",
+              }}
+            />
           )}
 
           {status === "loading" && sortedItems.length === 0 ? (

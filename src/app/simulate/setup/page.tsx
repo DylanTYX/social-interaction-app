@@ -23,6 +23,7 @@ import {
 } from "@/lib/scenarios";
 import { buildLaunchMetaFromSetup } from "@/lib/session-launch-meta";
 import { type PersonaConfig } from "@/lib/persona-engine";
+import { toast } from "sonner";
 import {
   createDefaultInterviewSetup,
   saveInterviewLaunch,
@@ -36,6 +37,8 @@ import {
 import {
   generateRandomPersonaConfig,
   type PersonaLibraryEntry,
+  personaConfigEquals,
+  personaIdentityComplete,
 } from "@/lib/persona-library";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import { useJobDescriptions } from "@/hooks/use-job-descriptions";
@@ -170,11 +173,8 @@ function SetupWizard() {
     createEntry: createPersonaEntryAsync,
     updateEntry: updatePersonaEntryAsync,
     duplicateEntry: duplicatePersonaEntryAsync,
-    deleteEntry: deletePersonaEntryAsync,
-    resetLibrary: resetPersonaLibraryAsync,
+    refresh: refreshPersonaLibrary,
   } = usePersonaLibrary();
-
-  const personaLibraryLoading = personaLibraryStatus === "loading";
 
   /**
    * The wizard's one job-description library, passed down to the picker.
@@ -264,9 +264,12 @@ function SetupWizard() {
     setSetup((current) => ({
       ...current,
       personaConfig: { ...current.personaConfig, ...partial },
-      // Editing the active persona detaches it from any library entry until
-      // the user explicitly saves the changes back to the library.
-      personaLibraryId: undefined,
+      // The id stays. It used to be cleared here on every keystroke, which
+      // meant "Update saved" — rendered only while an id is set *and* the
+      // config is modified — could never appear: the first edit removed the
+      // id that the button needed. Modified-ness is now a field comparison in
+      // the step, and launch only attributes the session to this entry while
+      // the config still equals it.
     }));
   };
 
@@ -301,58 +304,59 @@ function SetupWizard() {
   };
 
   const handleSavePersona = async (name?: string) => {
-    const trimmedName = (name ?? setup.personaConfig.name).trim();
-    if (!trimmedName) return;
-    const created = await createPersonaEntryAsync({
+    const candidate = {
       ...setup.personaConfig,
-      name: trimmedName,
-    });
-    if (!created) return;
+      name: (name ?? setup.personaConfig.name).trim(),
+    };
+    // The server refuses a persona without its four identity fields. The step
+    // disables the button on the same rule; this is the belt to that brace.
+    if (!personaIdentityComplete(candidate)) return;
+    const created = await createPersonaEntryAsync(candidate);
+    if (!created) {
+      toast.error("Could not save persona.");
+      return;
+    }
     setSetup((current) => ({
       ...current,
       personaConfig: created.config,
       personaLibraryId: created.id,
     }));
+    toast.success(`Saved "${created.config.name}" to your library.`);
   };
 
   const handleUpdatePersonaInLibrary = async (entryId: string) => {
-    const trimmedName = setup.personaConfig.name.trim();
-    if (!trimmedName) return;
-    const updated = await updatePersonaEntryAsync(entryId, {
+    const candidate = {
       ...setup.personaConfig,
-      name: trimmedName,
-    });
-    if (!updated) return;
+      name: setup.personaConfig.name.trim(),
+    };
+    if (!personaIdentityComplete(candidate)) return;
+    const updated = await updatePersonaEntryAsync(entryId, candidate);
+    if (!updated) {
+      toast.error("Could not update persona.");
+      return;
+    }
     setSetup((current) => ({
       ...current,
       personaConfig: updated.config,
       personaLibraryId: updated.id,
     }));
+    toast.success("Persona updated.");
   };
 
   const handleDuplicatePersona = async (entryId: string) => {
     const original = personaLibrary.find((entry) => entry.id === entryId);
     if (!original) return;
     const copy = await duplicatePersonaEntryAsync(original);
-    if (!copy) return;
+    if (!copy) {
+      toast.error("Could not duplicate persona.");
+      return;
+    }
     setSetup((current) => ({
       ...current,
       personaConfig: { ...copy.config },
       personaLibraryId: copy.id,
     }));
-  };
-
-  const handleDeletePersona = async (entryId: string) => {
-    const ok = await deletePersonaEntryAsync(entryId);
-    if (!ok) return;
-    if (setup.personaLibraryId === entryId) {
-      setSetup((current) => ({ ...current, personaLibraryId: undefined }));
-    }
-  };
-
-  const handleResetLibrary = async () => {
-    await resetPersonaLibraryAsync();
-    setSetup((current) => ({ ...current, personaLibraryId: undefined }));
+    toast.success(`Duplicated as "${copy.config.name}".`);
   };
 
   const [isLaunching, setIsLaunching] = useState(false);
@@ -484,7 +488,18 @@ function SetupWizard() {
           scenarioValue: setup.scenarioValue,
           scenarioTitle,
           scenarioDescription,
-          personaId: setup.personaLibraryId ?? null,
+          // Attributed to the library entry only while it still *is* that
+          // entry. A tweaked-but-unsaved interviewer is its own persona; the
+          // config below carries what actually ran.
+          personaId: (() => {
+            const active = personaLibrary.find(
+              (entry) => entry.id === setup.personaLibraryId,
+            );
+            return active &&
+              personaConfigEquals(setup.personaConfig, active.config)
+              ? active.id
+              : null;
+          })(),
           jobDescriptionId,
           resumeId,
           personaConfig: setup.personaConfig,
@@ -768,15 +783,15 @@ function SetupWizard() {
               value={setup.personaConfig}
               activeLibraryId={setup.personaLibraryId}
               library={personaLibrary}
-              isLoading={personaLibraryLoading}
+              status={personaLibraryStatus}
+              error={personaLibraryError}
+              onRetry={() => void refreshPersonaLibrary()}
               onPatch={updatePersona}
               onPick={handlePickPersona}
               onRandomize={handleRandomizePersona}
               onSaveAsNew={handleSavePersona}
               onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
               onDuplicate={handleDuplicatePersona}
-              onDelete={handleDeletePersona}
-              onResetLibrary={handleResetLibrary}
             />
           )}
 
