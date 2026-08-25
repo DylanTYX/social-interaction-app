@@ -5,6 +5,8 @@ import {
   Briefcase,
   Dice5,
   Globe,
+  Mic,
+  Plus,
   RotateCcw,
   MoreHorizontal,
   Users,
@@ -39,11 +41,21 @@ import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { PersonaGridSkeleton } from "@/components/dashboard/page-skeletons";
 import { usePersonaLibrary } from "@/hooks/use-persona-library";
 import {
+  createBlankPersonaConfig,
   generateRandomPersonaConfig,
+  personaIdentityComplete,
   type PersonaLibraryEntry,
 } from "@/lib/persona-library";
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
-import type { PersonaConfig } from "@/lib/persona-engine";
+import { PERSONA_DIALS } from "@/components/persona/dial-field";
+import {
+  QUESTIONING_STYLE_META,
+  type PersonaConfig,
+} from "@/lib/persona-engine";
+import {
+  describeResolvedVoice,
+  resolveVoiceForPersona,
+} from "@/lib/persona-voice";
 import { cn } from "@/lib/utils";
 import { CONTENT_ENTER, ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { toast } from "sonner";
@@ -62,6 +74,7 @@ export default function PersonasPage() {
     refresh,
     createEntry,
     deleteEntry,
+    duplicateEntry,
     resetLibrary,
     updateEntry,
   } = usePersonaLibrary();
@@ -71,11 +84,18 @@ export default function PersonasPage() {
   /** The card being animated out of the grid. */
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"random" | "reset" | null>(null);
-  const [editingEntry, setEditingEntry] = useState<PersonaLibraryEntry | null>(
-    null,
-  );
+  /**
+   * One dialog, two modes. "New" opens it on a blank config and saves through
+   * `createEntry`; "Edit" opens it on a card's config and saves through
+   * `updateEntry`. Modelled as a single state so the dialog cannot be open in
+   * both modes at once, and closed is simply `null`.
+   */
+  const [editor, setEditor] = useState<
+    { mode: "create" } | { mode: "edit"; entry: PersonaLibraryEntry } | null
+  >(null);
   const [editDraft, setEditDraft] = useState<PersonaConfig | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const sortedLibrary = useMemo(
     () => [...library].sort((a, b) => b.updatedAt - a.updatedAt),
@@ -122,21 +142,56 @@ export default function PersonasPage() {
   };
 
   const openEdit = (entry: PersonaLibraryEntry) => {
-    setEditingEntry(entry);
+    setEditor({ mode: "edit", entry });
     setEditDraft({ ...entry.config });
   };
 
+  const openCreate = () => {
+    setEditor({ mode: "create" });
+    setEditDraft(createBlankPersonaConfig());
+  };
+
+  const closeEditor = () => {
+    setEditor(null);
+    setEditDraft(null);
+  };
+
+  /**
+   * Mirrors the server's own rule: `parsePersonaConfig` returns null without
+   * the four identity fields and the API rejects the request. Refusing here
+   * is what turns a 400 into a disabled button.
+   */
+  const canSave = editDraft !== null && personaIdentityComplete(editDraft);
+
   const handleSaveEdit = async () => {
-    if (!editingEntry || !editDraft) return;
+    if (!editor || !editDraft || !canSave) return;
     setSavingEdit(true);
-    const updated = await updateEntry(editingEntry.id, editDraft);
+    const saved =
+      editor.mode === "create"
+        ? await createEntry(editDraft)
+        : await updateEntry(editor.entry.id, editDraft);
     setSavingEdit(false);
-    if (updated) {
-      toast.success("Persona updated.");
-      setEditingEntry(null);
-      setEditDraft(null);
+    if (saved) {
+      toast.success(
+        editor.mode === "create" ? "Persona created." : "Persona updated.",
+      );
+      closeEditor();
     } else {
-      toast.error("Could not save persona.");
+      toast.error(error ?? "Could not save persona.");
+    }
+  };
+
+  const handleDuplicate = async (entry: PersonaLibraryEntry) => {
+    setDuplicatingId(entry.id);
+    try {
+      const copy = await duplicateEntry(entry);
+      if (copy) {
+        toast.success(`Duplicated as "${copy.config.name}".`);
+      } else {
+        toast.error(error ?? "Could not duplicate persona.");
+      }
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -152,6 +207,12 @@ export default function PersonasPage() {
         iconColor="purple"
         actions={
           <>
+            {/* Create is the primary action of a library page. Random and
+                Restore are the shortcuts, so they step back to outline. */}
+            <Button onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              New persona
+            </Button>
             <Button
               variant="outline"
               onClick={() => void handleRandom()}
@@ -189,14 +250,14 @@ export default function PersonasPage() {
         <EmptyStateCard
           icon={<Users className="h-6 w-6" />}
           title="Build your interviewer roster"
-          description="Spin up a random persona in one click, or jump into setup to craft someone who matches your target role."
+          description="Create an interviewer from scratch, or spin up a random one in a click and edit from there."
           primaryAction={{
-            label: "Generate random persona",
-            onClick: () => void handleRandom(),
+            label: "Create a persona",
+            onClick: openCreate,
           }}
           secondaryAction={{
-            label: "Open interview setup",
-            href: "/simulate/setup",
+            label: "Generate random persona",
+            onClick: () => void handleRandom(),
           }}
         />
       ) : (
@@ -270,6 +331,14 @@ export default function PersonasPage() {
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      disabled={duplicatingId === entry.id}
+                      onSelect={() => void handleDuplicate(entry)}
+                    >
+                      {duplicatingId === entry.id
+                        ? "Duplicating..."
+                        : "Duplicate"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       variant="destructive"
                       onSelect={() => setPendingDelete(entry.id)}
                     >
@@ -298,6 +367,16 @@ export default function PersonasPage() {
                         {KIND_BADGE[entry.kind]}
                       </Badge>
                     </div>
+                    {/* The headline of how this interviewer conducts a round
+                        — the thing you would pick one *for* — so it sits by
+                        the name, not in the dial grid. */}
+                    <Badge variant="outline" className="mt-1 bg-slate-50/80">
+                      {
+                        QUESTIONING_STYLE_META[
+                          entry.config.questioningStyle ?? "conversational"
+                        ].label
+                      }
+                    </Badge>
                     <CardDescription className="mt-1 truncate">
                       {entry.config.seniority}
                     </CardDescription>
@@ -317,6 +396,21 @@ export default function PersonasPage() {
                     <span className="capitalize truncate">
                       {entry.config.communicationStyle} ·{" "}
                       {entry.config.yearsExperience} yrs
+                    </span>
+                  </div>
+                  {/* Same helper the editor's hint uses, so the card and the
+                      dialog never disagree about which voice will speak. */}
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <Mic className="h-4 w-4 text-slate-400" />
+                    <span className="truncate">
+                      {describeResolvedVoice(
+                        resolveVoiceForPersona({
+                          nationality: entry.config.nationality,
+                          voiceGender: entry.config.voiceGender,
+                        }),
+                        entry.config.name,
+                        entry.config.nationality,
+                      )}
                     </span>
                   </div>
                 </div>
@@ -342,11 +436,21 @@ export default function PersonasPage() {
                   </p>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 pt-1">
-                  <span>Strict {entry.config.strictness}/10</span>
-                  <span>Warm {entry.config.warmth}/10</span>
-                  <span>Pace {entry.config.pace ?? 5}/10</span>
-                  <span>Pushback {entry.config.pushback ?? 5}/10</span>
+                {/* All six, from the same list the editors render — a dial
+                    that exists cannot be missing from the card again. */}
+                <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs text-slate-500 pt-1">
+                  {PERSONA_DIALS.map((dial) => (
+                    <span key={dial.key} className="truncate">
+                      <span className="text-slate-400">
+                        {dial.key === "probingDepth"
+                          ? "Probing"
+                          : dial.key === "unpredictability"
+                            ? "Curveballs"
+                            : dial.label}
+                      </span>{" "}
+                      {entry.config[dial.key] ?? 5}
+                    </span>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -355,19 +459,22 @@ export default function PersonasPage() {
       )}
 
       <Dialog
-        open={Boolean(editingEntry)}
+        open={editor !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setEditingEntry(null);
-            setEditDraft(null);
-          }
+          if (!open) closeEditor();
         }}
       >
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        {/* 768px, not 512. Sixteen fields in four sections with a three-column
+            dial grid need the room; the body scrolls, the footer stays. */}
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit persona</DialogTitle>
+            <DialogTitle>
+              {editor?.mode === "create" ? "New persona" : "Edit persona"}
+            </DialogTitle>
             <DialogDescription>
-              Changes are saved to your library and used in future interviews.
+              {editor?.mode === "create"
+                ? "Saved to your library and available in every interview setup."
+                : "Changes are saved to your library and used in future interviews."}
             </DialogDescription>
           </DialogHeader>
           {editDraft && (
@@ -381,17 +488,18 @@ export default function PersonasPage() {
             />
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditingEntry(null);
-                setEditDraft(null);
-              }}
-            >
+            <Button variant="outline" onClick={closeEditor}>
               Cancel
             </Button>
-            <Button onClick={() => void handleSaveEdit()} disabled={savingEdit}>
-              {savingEdit ? "Saving..." : "Save changes"}
+            <Button
+              onClick={() => void handleSaveEdit()}
+              disabled={savingEdit || !canSave}
+            >
+              {savingEdit
+                ? "Saving..."
+                : editor?.mode === "create"
+                  ? "Create persona"
+                  : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

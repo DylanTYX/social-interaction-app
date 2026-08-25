@@ -86,3 +86,30 @@ describe("parsePersonaConfig", () => {
     expect(config!.name).toBe("Alex Chen");
   });
 });
+
+describe("blank persona round trip", () => {
+  it("survives parsePersonaConfig with every field intact once identity is filled", async () => {
+    // Guards the class of bug this file already documents: parsePersonaConfig
+    // rebuilds a fresh literal rather than spreading its input, so a field
+    // that is not named there is silently dropped on every save.
+    const { createBlankPersonaConfig, personaIdentityComplete } =
+      await import("@/lib/persona-library");
+    const blank = createBlankPersonaConfig();
+    expect(personaIdentityComplete(blank)).toBe(false);
+    expect(parsePersonaConfig(blank)).toBeNull();
+
+    const filled = {
+      ...blank,
+      name: "Ada Lovelace",
+      nationality: "British",
+      industry: "Computing",
+      seniority: "Principal Engineer",
+      questioningStyle: "bar_raiser" as const,
+      voiceGender: "female" as const,
+      probingDepth: 9 as const,
+      unpredictability: 2 as const,
+    };
+    expect(personaIdentityComplete(filled)).toBe(true);
+    expect(parsePersonaConfig(filled)).toEqual(filled);
+  });
+});
