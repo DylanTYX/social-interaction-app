@@ -33,6 +33,39 @@ export const QUESTIONING_STYLES = [
 export type QuestioningStyle = (typeof QUESTIONING_STYLES)[number];
 
 /**
+ * Display copy for communication styles, beside the enum for the same reason
+ * `QUESTIONING_STYLE_META` sits beside its own: the wizard had descriptions
+ * ("Fast, candid, and to the point"), the library editor had bare labels, and
+ * the two surfaces described one field two ways. The wizard's copy was the
+ * better copy, so it is the copy.
+ */
+export const COMMUNICATION_STYLE_META: Record<
+  CommunicationStyle,
+  { label: string; description: string }
+> = {
+  direct: { label: "Direct", description: "Fast, candid, and to the point" },
+  diplomatic: {
+    label: "Diplomatic",
+    description: "Tactful with measured pushback",
+  },
+  collaborative: {
+    label: "Collaborative",
+    description: "Warm, supportive, and exploratory",
+  },
+  analytical: {
+    label: "Analytical",
+    description: "Structured, evidence-driven, and precise",
+  },
+};
+
+export const COMMUNICATION_STYLES = [
+  "direct",
+  "diplomatic",
+  "collaborative",
+  "analytical",
+] as const satisfies readonly CommunicationStyle[];
+
+/**
  * Display copy for the styles, declared beside the enum so the library card,
  * the library editor and the setup wizard cannot label one style three ways.
  * The blurbs are the honest one-line versions of the prompt paragraphs in

@@ -89,42 +89,88 @@ export function normalizeNationality(raw: string | null | undefined): string {
  * A nationality that is not a key falls back to neutral English, visibly.
  */
 const NATIONALITY_LOCALES: Readonly<Record<string, string>> = {
-  american: "en-US", america: "en-US", usa: "en-US", us: "en-US",
-  "united states": "en-US", "united states of america": "en-US",
+  american: "en-US",
+  america: "en-US",
+  usa: "en-US",
+  us: "en-US",
+  "united states": "en-US",
+  "united states of america": "en-US",
 
-  british: "en-GB", britain: "en-GB", "great britain": "en-GB", uk: "en-GB",
-  "united kingdom": "en-GB", english: "en-GB", england: "en-GB",
-  scottish: "en-GB", scotland: "en-GB", welsh: "en-GB", wales: "en-GB",
+  british: "en-GB",
+  britain: "en-GB",
+  "great britain": "en-GB",
+  uk: "en-GB",
+  "united kingdom": "en-GB",
+  english: "en-GB",
+  england: "en-GB",
+  scottish: "en-GB",
+  scotland: "en-GB",
+  welsh: "en-GB",
+  wales: "en-GB",
 
-  irish: "en-IE", ireland: "en-IE",
-  indian: "en-IN", india: "en-IN",
-  singaporean: "en-SG", singapore: "en-SG",
-  australian: "en-AU", australia: "en-AU", aussie: "en-AU",
-  canadian: "en-CA", canada: "en-CA",
-  "new zealander": "en-NZ", "new zealand": "en-NZ", kiwi: "en-NZ",
-  "south african": "en-ZA", "south africa": "en-ZA",
-  nigerian: "en-NG", nigeria: "en-NG",
-  kenyan: "en-KE", kenya: "en-KE",
-  tanzanian: "en-TZ", tanzania: "en-TZ",
-  filipino: "en-PH", filipina: "en-PH", philippine: "en-PH",
-  philippines: "en-PH", "the philippines": "en-PH",
-  "hong konger": "en-HK", "hong kong": "en-HK", hongkonger: "en-HK",
+  irish: "en-IE",
+  ireland: "en-IE",
+  indian: "en-IN",
+  india: "en-IN",
+  singaporean: "en-SG",
+  singapore: "en-SG",
+  australian: "en-AU",
+  australia: "en-AU",
+  aussie: "en-AU",
+  canadian: "en-CA",
+  canada: "en-CA",
+  "new zealander": "en-NZ",
+  "new zealand": "en-NZ",
+  kiwi: "en-NZ",
+  "south african": "en-ZA",
+  "south africa": "en-ZA",
+  nigerian: "en-NG",
+  nigeria: "en-NG",
+  kenyan: "en-KE",
+  kenya: "en-KE",
+  tanzanian: "en-TZ",
+  tanzania: "en-TZ",
+  filipino: "en-PH",
+  filipina: "en-PH",
+  philippine: "en-PH",
+  philippines: "en-PH",
+  "the philippines": "en-PH",
+  "hong konger": "en-HK",
+  "hong kong": "en-HK",
+  hongkonger: "en-HK",
 
-  chinese: "zh-CN", china: "zh-CN", prc: "zh-CN",
+  chinese: "zh-CN",
+  china: "zh-CN",
+  prc: "zh-CN",
   "peoples republic of china": "zh-CN",
-  japanese: "ja-JP", japan: "ja-JP",
-  korean: "ko-KR", korea: "ko-KR",
-  "south korean": "ko-KR", "south korea": "ko-KR",
-  swedish: "sv-SE", sweden: "sv-SE",
-  spanish: "es-ES", spain: "es-ES",
-  mexican: "es-MX", mexico: "es-MX",
-  french: "fr-FR", france: "fr-FR",
-  german: "de-DE", germany: "de-DE",
-  italian: "it-IT", italy: "it-IT",
-  brazilian: "pt-BR", brazil: "pt-BR", brasil: "pt-BR",
-  vietnamese: "vi-VN", vietnam: "vi-VN", "viet nam": "vi-VN",
-  danish: "da-DK", denmark: "da-DK",
-  indonesian: "id-ID", indonesia: "id-ID",
+  japanese: "ja-JP",
+  japan: "ja-JP",
+  korean: "ko-KR",
+  korea: "ko-KR",
+  "south korean": "ko-KR",
+  "south korea": "ko-KR",
+  swedish: "sv-SE",
+  sweden: "sv-SE",
+  spanish: "es-ES",
+  spain: "es-ES",
+  mexican: "es-MX",
+  mexico: "es-MX",
+  french: "fr-FR",
+  france: "fr-FR",
+  german: "de-DE",
+  germany: "de-DE",
+  italian: "it-IT",
+  italy: "it-IT",
+  brazilian: "pt-BR",
+  brazil: "pt-BR",
+  brasil: "pt-BR",
+  vietnamese: "vi-VN",
+  vietnam: "vi-VN",
+  "viet nam": "vi-VN",
+  danish: "da-DK",
+  denmark: "da-DK",
+  indonesian: "id-ID",
+  indonesia: "id-ID",
 };
 
 /** The locale an accent would use, whether or not a usable voice exists for it. */
@@ -262,4 +308,39 @@ export function describeResolvedVoice(
     case "no-voice-for-gender":
       return `No ${demonym} accent voice matches the chosen voice — ${who} uses neutral English (${shortLabel}).`;
   }
+}
+
+/**
+ * The card-sized version of `describeResolvedVoice`.
+ *
+ * The full sentence — "Isabella Rodriguez will speak English with a Spanish
+ * accent (Elvira — es-ES)" — belongs in the editor, where the reason for a
+ * fallback is something you can act on. At 293px it was the longest line on
+ * the card and said the name of a person whose name is two lines above it.
+ * This is the same resolution reduced to what a card needs: which accent, and
+ * which voice, or neither.
+ */
+export function describeVoiceBriefly(
+  resolved: ResolvedVoice,
+  nationality: string | null | undefined,
+  voiceGender: PersonaVoiceGender | undefined,
+): string {
+  const genderLabel =
+    voiceGender === "female"
+      ? "Female"
+      : voiceGender === "male"
+        ? "Male"
+        : null;
+
+  if (resolved.reason === null) {
+    const demonym = nationality?.trim() || "Accented";
+    return genderLabel
+      ? `${demonym} accent · ${genderLabel}`
+      : `${demonym} accent`;
+  }
+
+  // Every fallback lands on the neutral default voice. Whether that default
+  // honours the gender preference is the catalogue's business, not the
+  // card's, so the card claims only what it knows.
+  return "Neutral English";
 }

@@ -7,7 +7,6 @@ import {
   Eye,
   FileText,
   Pencil,
-  Search,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -20,8 +19,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { LibraryToolbar } from "@/components/dashboard/library-toolbar";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { DocumentListSkeleton } from "@/components/dashboard/page-skeletons";
@@ -216,36 +215,37 @@ export default function JobDescriptionsPage() {
           {/* Hidden until there is enough to search. A filter bar above three
               rows is furniture. */}
           {(items.length > 0 || hasFilters) && (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-50 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search title, role, or company..."
-                  aria-label="Search job descriptions"
-                  className="pl-9"
-                />
-              </div>
-              {companyOptions.length > 0 && (
-                <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                  <SelectTrigger
-                    className="w-50"
-                    aria-label="Filter by company"
+            <LibraryToolbar
+              search={{
+                value: query,
+                onChange: setQuery,
+                placeholder: "Search title, role, or company...",
+                ariaLabel: "Search job descriptions",
+              }}
+              filters={
+                companyOptions.length > 0 && (
+                  <Select
+                    value={companyFilter}
+                    onValueChange={setCompanyFilter}
                   >
-                    <SelectValue placeholder="Company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All companies</SelectItem>
-                    {companyOptions.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+                    <SelectTrigger
+                      className="w-50"
+                      aria-label="Filter by company"
+                    >
+                      <SelectValue placeholder="Company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All companies</SelectItem>
+                      {companyOptions.map((name) => (
+                        <SelectItem key={name} value={name}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              }
+            />
           )}
 
           {status === "loading" && sortedItems.length === 0 ? (
