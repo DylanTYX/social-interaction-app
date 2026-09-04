@@ -44,6 +44,16 @@ export function TidyJobDescription({
   const [error, setError] = useState<string | null>(null);
   /** The text as it was before tidying, kept so this is reversible. */
   const [previous, setPrevious] = useState<string | null>(null);
+  /**
+   * The text tidying produced, kept so the panel knows when it stops being
+   * true. The success panel used to render whenever `previous` was set —
+   * computing "removed N characters" against whatever `rawText` is *now*. On
+   * the library page the form survives a save (only the draft resets), so the
+   * panel recomputed against an emptied textarea, announced "about 100%", and
+   * Undo pasted the already-saved posting into a fresh draft. The wizard only
+   * escaped because its dialog unmounts.
+   */
+  const [applied, setApplied] = useState<string | null>(null);
 
   const trimmedLength = rawText.trim().length;
   const canTidy = trimmedLength >= 400 && status !== "working";
@@ -59,6 +69,7 @@ export function TidyJobDescription({
       });
       const result = await readJson<TidyResult>(response);
       setPrevious(rawText);
+      setApplied(result.cleanedText);
       onApply(result);
       setStatus("idle");
     } catch (err) {
@@ -75,9 +86,16 @@ export function TidyJobDescription({
     if (previous === null) return;
     onApply({ cleanedText: previous, roleTitle: null, company: null });
     setPrevious(null);
+    setApplied(null);
   };
 
-  if (previous !== null) {
+  /**
+   * The panel is only honest while the text is still the text it describes.
+   * The draft clearing after a save, or the user editing, both fail this
+   * check and drop back to the idle button — which also retires Undo exactly
+   * when it would clobber something (edits, or an empty new draft).
+   */
+  if (previous !== null && applied !== null && rawText === applied) {
     const removed = previous.trim().length - trimmedLength;
     const percent = Math.round((removed / previous.trim().length) * 100);
 
