@@ -8,6 +8,7 @@ import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
 import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
+import { completionParams } from "@/lib/model-params";
 
 export const runtime = "nodejs";
 
@@ -116,8 +117,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         model: MODEL,
         // Extraction, not composition: the task is to copy the right lines
         // through, and any creativity here shows up as invented requirements.
-        temperature: 0,
-        max_tokens: CLEAN_MAX_TOKENS,
+        ...completionParams(MODEL, {
+          temperature: 0,
+          maxTokens: CLEAN_MAX_TOKENS,
+        }),
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },

@@ -37,6 +37,7 @@ import {
   estimateFollowupDifficulty,
 } from "@/lib/decision-engine";
 import { UsageCollector } from "@/lib/api/token-usage";
+import { completionParams } from "@/lib/model-params";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 import { makeAnalysis } from "@/lib/test-support/analysis";
@@ -347,10 +348,14 @@ async function generateFollowup(
     },
     body: JSON.stringify({
       model: MODEL,
-      // The app's own interviewer temperature, so this measures the deployed
-      // behaviour rather than a quieter version of it.
-      temperature: 0.7,
-      max_tokens: 320,
+      // The app's own interviewer settings, so this measures the deployed
+      // behaviour rather than a quieter version of it (chat/route.ts sends
+      // the same temperature / effort / cap).
+      ...completionParams(MODEL, {
+        temperature: 0.7,
+        maxTokens: 320,
+        reasoningEffort: "minimal",
+      }),
       messages: [
         {
           role: "system",
@@ -397,8 +402,7 @@ async function judge(
     },
     body: JSON.stringify({
       model: JUDGE_MODEL,
-      temperature: 0,
-      max_tokens: 200,
+      ...completionParams(JUDGE_MODEL, { temperature: 0, maxTokens: 200 }),
       response_format: { type: "json_object" },
       messages: [
         {

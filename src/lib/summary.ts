@@ -17,6 +17,7 @@
  */
 
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
+import { completionParams } from "@/lib/model-params";
 
 const SUMMARY_MODEL = process.env.SUMMARY_MODEL ?? "gpt-4o-mini";
 
@@ -164,8 +165,10 @@ export async function updateRollingSummary(
         },
         { role: "user", content: prompt },
       ],
-      temperature: 0.2,
-      max_tokens: SUMMARY_MAX_TOKENS,
+      ...completionParams(SUMMARY_MODEL, {
+        temperature: 0.2,
+        maxTokens: SUMMARY_MAX_TOKENS,
+      }),
       // Only the trailing transcript changes between refreshes; the system
       // message and instructions are constant.
       prompt_cache_key: "summary",

@@ -10,6 +10,7 @@ import {
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
 import type { UsageCollector } from "@/lib/api/token-usage";
+import { completionParams } from "@/lib/model-params";
 import { parseCodeAnswer } from "@/lib/code-answer";
 import {
   analyzeText,
@@ -454,10 +455,16 @@ export async function analyzeResponse(
           },
           { role: "user", content: variable },
         ],
-        temperature: ANALYZER_TEMPERATURE,
-        // The full rubric fits comfortably; without a cap this ran unbounded
-        // on every scored turn.
-        max_tokens: maxTokens,
+        // Family-dependent (the model is env-overridable): temperature 0.1
+        // on GPT-4-family for near-deterministic scoring; on GPT-5-family —
+        // which rejects temperature — minimal effort is the closest
+        // behavioural match. The cap exists because without one this ran
+        // unbounded on every scored turn.
+        ...completionParams(ANALYZER_MODEL, {
+          temperature: ANALYZER_TEMPERATURE,
+          maxTokens,
+          reasoningEffort: "minimal",
+        }),
         response_format: { type: "json_object" },
       }),
     });
