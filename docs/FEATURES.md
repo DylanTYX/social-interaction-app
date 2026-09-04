@@ -74,11 +74,12 @@ editor**.
 | HR / People            | Motivation, values fit, logistics, your questions for them         | Asking what you want next        | —      |
 | Technical SWE          | Problem framing, correctness, complexity, edge cases, code quality | Stating a coding problem in full | ✅     |
 | System design          | Requirements, architecture, depth, tradeoffs, scalability          | Stating a system and the scale   | —      |
-| Case / problem solving | Problem framing, structure, tradeoffs, depth                       | Setting out a business situation | —      |
+| CS fundamentals        | Precision, contrast, concrete grounding, stated tradeoffs          | Asking you to explain a concept  | —      |
 
-Only Technical SWE gets an editor, in either mode. System design and Case are
-deliberately prose — without running code or a diagram surface, an editor there
-invites pseudocode into a round graded on requirements and tradeoffs.
+Only Technical SWE gets an editor, in either mode. System design and CS
+fundamentals are deliberately prose — without running code or a diagram
+surface, an editor there invites pseudocode into a round graded on
+requirements, tradeoffs and explanations.
 
 In a later round the opening changes: an HR round in position three does not ask
 for a background walkthrough, because a colleague already took it. The full
