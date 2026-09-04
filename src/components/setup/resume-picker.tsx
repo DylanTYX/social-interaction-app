@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowUpRight, Eye, FileUser, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowUpRight,
+  Eye,
+  FileUser,
+  Plus,
+  Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { describeTruncationBadge } from "@/lib/document-truncation";
 import {
   Tooltip,
   TooltipContent,
@@ -81,6 +90,25 @@ export function ResumePicker({
   const [draft, setDraft] = useState<ResumeDraft>(emptyResumeDraft);
   const [discardPrompt, setDiscardPrompt] = useState(false);
   const [previewing, setPreviewing] = useState<ResumeSummary | null>(null);
+
+  /**
+   * Local filter, deliberately not the hook's server-side `query`: the hook
+   * instance is shared with the wizard's launch gate, and a server query that
+   * filtered the selected item out of `items` would trip the
+   * "no longer in your library" warning on a document that is still there.
+   * The list is capped at 50, so client-side is exact anyway.
+   */
+  const [listQuery, setListQuery] = useState("");
+
+  const visibleItems = listQuery.trim()
+    ? items.filter((item) =>
+        [item.title, item.variant]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(listQuery.trim().toLowerCase()),
+      )
+    : items;
 
   const creator = useResumeCreator(library);
 
@@ -197,98 +225,125 @@ export function ResumePicker({
               ))}
             </div>
           ) : (
-            <div
-              className={cn(
-                // Capped and scrolled so the height comes from the container
-                // rather than from how many resumes happen to be saved, and so
-                // choosing one never resizes the card.
-                "max-h-64 space-y-2 overflow-y-auto",
-                items.length > 0 && "pr-1",
-              )}
-            >
-              {items.map((item) => {
-                const isActive = item.id === value.savedId;
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-lg border p-3 transition-colors duration-150",
-                      isActive
-                        ? "border-primary bg-primary-subtle"
-                        : "border-border bg-white hover:bg-accent",
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => select(item)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                      aria-pressed={isActive}
-                    >
-                      {/* A radio, not a tick: these are alternatives, and only
-                          one of them can be in play. */}
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
-                          isActive
-                            ? "border-primary bg-primary"
-                            : "border-slate-300 bg-white",
-                        )}
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className={cn(
-                            "block truncate text-sm",
-                            isActive
-                              ? "font-medium text-primary-emphasis"
-                              : "text-foreground",
-                          )}
-                        >
-                          {item.title}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {item.variant ||
-                            new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                      </span>
-                    </button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                      onClick={() => setPreviewing(item)}
-                      aria-label={`Preview ${item.title}`}
-                    >
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {items.length === 0 && (
-                /* The message and the way out of it, together and centred. The
-                   old empty state described the emptiness and then sent you to
-                   a different tab to resolve it. */
-                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No saved resumes yet
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => setAdding(true)}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add a resume
-                  </Button>
+            <>
+              {/* Hidden until there is enough to search — the same rule the
+                library pages apply to their own toolbars. */}
+              {items.length > 5 && (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={listQuery}
+                    onChange={(event) => setListQuery(event.target.value)}
+                    placeholder="Search title or version..."
+                    aria-label="Search saved resumes"
+                    className="pl-9"
+                  />
                 </div>
               )}
-            </div>
+              <div
+                className={cn(
+                  // Capped and scrolled so the height comes from the container
+                  // rather than from how many resumes happen to be saved, and so
+                  // choosing one never resizes the card.
+                  "max-h-64 space-y-2 overflow-y-auto",
+                  items.length > 0 && "pr-1",
+                )}
+              >
+                {visibleItems.map((item) => {
+                  const isActive = item.id === value.savedId;
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg border p-3 transition-colors duration-150",
+                        isActive
+                          ? "border-primary bg-primary-subtle"
+                          : "border-border bg-white hover:bg-accent",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => select(item)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                        aria-pressed={isActive}
+                      >
+                        {/* A radio, not a tick: these are alternatives, and only
+                          one of them can be in play. */}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
+                            isActive
+                              ? "border-primary bg-primary"
+                              : "border-slate-300 bg-white",
+                          )}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block truncate text-sm",
+                              isActive
+                                ? "font-medium text-primary-emphasis"
+                                : "text-foreground",
+                            )}
+                          >
+                            {item.title}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {[
+                              item.variant ||
+                                new Date(item.createdAt).toLocaleDateString(),
+                              describeTruncationBadge(item.truncatedFrom),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </span>
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        onClick={() => setPreviewing(item)}
+                        aria-label={`Preview ${item.title}`}
+                      >
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                {items.length > 0 && visibleItems.length === 0 && (
+                  <p className="px-1 py-3 text-center text-xs text-muted-foreground">
+                    Nothing matches that search.
+                  </p>
+                )}
+
+                {items.length === 0 && (
+                  /* The message and the way out of it, together and centred. The
+                   old empty state described the emptiness and then sent you to
+                   a different tab to resolve it. */
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No saved resumes yet
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setAdding(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add a resume
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-between gap-3">
@@ -350,6 +405,8 @@ export function ResumePicker({
             <DialogTitle>Add a resume</DialogTitle>
             <DialogDescription>
               Saved to your library, so you can reuse it in later interviews.
+              The text is sent to OpenAI to generate questions, so don&apos;t
+              include anything you wouldn&apos;t want sent to a third party.
             </DialogDescription>
           </DialogHeader>
 
