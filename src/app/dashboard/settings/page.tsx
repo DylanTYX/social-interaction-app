@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -10,20 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   Settings as SettingsIcon,
-  SlidersHorizontal,
   ShieldCheck,
   Database,
   Download,
@@ -48,13 +38,6 @@ import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import {
-  createDefaultInterviewSetup,
-  loadInterviewSetup,
-  saveInterviewSetup,
-  type PracticeMode,
-  type VoiceSetupConfig,
-} from "@/lib/interview-setup";
 import { toast } from "sonner";
 
 type SaveState =
@@ -64,52 +47,27 @@ type SaveState =
   | { kind: "error"; message: string };
 
 /**
- * Three tabs, down from five.
+ * Two tabs.
  *
- * Profile and Account were separate tabs holding one card each — and the
- * Account tab was two buttons, one of which (Sign out) the sidebar already
- * carries. Defaults and Voice were both "what the setup wizard starts with",
- * split across two tabs for no reason a user could reconstruct. Data stays.
+ * There used to be five, then three — and the Interview tab died on a
+ * double-check: `loadInterviewSetup` has exactly two consumers, the wizard and
+ * this page, so nothing ever read those values independently. Every control it
+ * offered also exists on wizard steps you cannot skip (mode on Context,
+ * the four toggles on Review), and the wizard persists them on every run,
+ * overwriting whatever was set here. A second, weaker copy of five wizard
+ * controls is not a preference system; the wizard is the one home for
+ * interview configuration, and Settings holds the account and the data.
  */
-const SETTINGS_TABS = ["account", "interview", "data"] as const;
+const SETTINGS_TABS = ["account", "data"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-/** Old deep links keep working: five tab names map onto the three that exist. */
+/** Old deep links keep working: retired tab names land on Account. */
 const LEGACY_TAB_ALIASES: Record<string, SettingsTab> = {
   profile: "account",
-  defaults: "interview",
-  voice: "interview",
+  defaults: "account",
+  voice: "account",
+  interview: "account",
 };
-
-/**
- * A labelled switch on its own bordered row — the shape this page used to
- * copy-paste five times with five chances to drift.
- */
-function ToggleRow({
-  id,
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (next: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
-      <div>
-        <Label htmlFor={id} className="text-sm font-medium">
-          {label}
-        </Label>
-        <p className="text-xs text-slate-500">{description}</p>
-      </div>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
-}
 
 function SettingsPageInner() {
   const router = useRouter();
@@ -146,18 +104,6 @@ function SettingsPageInner() {
   const [lastName, setLastName] = useState("");
   const [profileState, setProfileState] = useState<SaveState>({ kind: "idle" });
 
-  const defaultSetup = useMemo(() => createDefaultInterviewSetup(), []);
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>(
-    defaultSetup.practiceMode,
-  );
-  const [streaming, setStreaming] = useState(defaultSetup.streamResponses);
-  const [liveCoaching, setLiveCoaching] = useState(
-    defaultSetup.liveCoachingEnabled,
-  );
-  const [voiceConfig, setVoiceConfig] = useState<VoiceSetupConfig>(
-    defaultSetup.voiceConfig,
-  );
-
   const [resetState, setResetState] = useState<SaveState>({ kind: "idle" });
   const [exportState, setExportState] = useState<SaveState>({ kind: "idle" });
   const [confirmWipeOpen, setConfirmWipeOpen] = useState(false);
@@ -177,24 +123,6 @@ function SettingsPageInner() {
       cancelled = true;
     };
   }, [user]);
-
-  // Hydrate interview preferences from localStorage on first mount.
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      const saved = loadInterviewSetup();
-      if (saved) {
-        setPracticeMode(saved.practiceMode);
-        setStreaming(saved.streamResponses);
-        setLiveCoaching(saved.liveCoachingEnabled);
-        setVoiceConfig(saved.voiceConfig);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleSaveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -224,55 +152,6 @@ function SettingsPageInner() {
           error instanceof Error ? error.message : "Failed to save profile.",
       });
     }
-  };
-
-  /**
-   * Interview preferences persist on change — no Save button.
-   *
-   * The old tabs had explicit "Save defaults" / "Save voice preferences"
-   * buttons in front of a localStorage write, which is ceremony: nothing can
-   * meaningfully fail except storage itself (a private window, cleared site
-   * data), so a flipped switch just saves, and only a failure says anything.
-   */
-  const persistSetup = (updates: {
-    practiceMode?: PracticeMode;
-    streamResponses?: boolean;
-    liveCoachingEnabled?: boolean;
-    voiceConfig?: VoiceSetupConfig;
-  }) => {
-    try {
-      const current = loadInterviewSetup() ?? createDefaultInterviewSetup();
-      saveInterviewSetup({
-        ...current,
-        practiceMode: updates.practiceMode ?? current.practiceMode,
-        streamResponses: updates.streamResponses ?? current.streamResponses,
-        liveCoachingEnabled:
-          updates.liveCoachingEnabled ?? current.liveCoachingEnabled,
-        voiceConfig: updates.voiceConfig ?? current.voiceConfig,
-      });
-    } catch {
-      toast.error("Could not save — your browser is blocking site storage.");
-    }
-  };
-
-  const changePracticeMode = (next: PracticeMode) => {
-    setPracticeMode(next);
-    persistSetup({ practiceMode: next });
-  };
-  const changeStreaming = (next: boolean) => {
-    setStreaming(next);
-    persistSetup({ streamResponses: next });
-  };
-  const changeLiveCoaching = (next: boolean) => {
-    setLiveCoaching(next);
-    persistSetup({ liveCoachingEnabled: next });
-  };
-  const changeVoiceConfig = (patch: Partial<VoiceSetupConfig>) => {
-    setVoiceConfig((current) => {
-      const next = { ...current, ...patch };
-      persistSetup({ voiceConfig: next });
-      return next;
-    });
   };
 
   const handlePasswordReset = async () => {
@@ -406,24 +285,16 @@ function SettingsPageInner() {
       <PageHeader
         eyebrow="Account"
         title="Settings"
-        description="Manage your account, interview preferences, and data."
+        description="Manage your account and your data. Interview preferences live in the setup wizard."
         icon={<SettingsIcon className="h-6 w-6" />}
         iconColor="blue"
       />
 
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-xs grid-cols-2">
           <TabsTrigger value="account" className="gap-2" aria-label="Account">
             <ShieldCheck className="h-4 w-4" />
             <span className="hidden sm:inline">Account</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="interview"
-            className="gap-2"
-            aria-label="Interview"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            <span className="hidden sm:inline">Interview</span>
           </TabsTrigger>
           <TabsTrigger value="data" className="gap-2" aria-label="Data">
             <Database className="h-4 w-4" />
@@ -556,83 +427,6 @@ function SettingsPageInner() {
                   account.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="interview" className="space-y-6">
-          <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Interview preferences</CardTitle>
-              {/* Honest about what this record is. These keys are the same
-                  ones the wizard persists on every run, so a value set here
-                  lasts until the next session changes it — this page edits
-                  the starting point, it does not pin a permanent default. */}
-              <CardDescription>
-                What the setup wizard starts with. Running an interview updates
-                these to match, so they always reflect your most recent setup —
-                change them here to change the next starting point. Saved as you
-                change them.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Field label="Practice mode" htmlFor="settings-default-mode">
-                <Select value={practiceMode} onValueChange={changePracticeMode}>
-                  <SelectTrigger
-                    id="settings-default-mode"
-                    className="w-full sm:w-64"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text interview</SelectItem>
-                    <SelectItem value="voice">Voice interview</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <ToggleRow
-                id="settings-stream-responses"
-                label="Stream responses"
-                description="Replies appear token-by-token as they're generated."
-                checked={streaming}
-                onCheckedChange={changeStreaming}
-              />
-              <ToggleRow
-                id="settings-live-coaching"
-                label="Live coaching"
-                description="Shows strengths and improvement tips after each reply."
-                checked={liveCoaching}
-                onCheckedChange={changeLiveCoaching}
-              />
-
-              <Separator />
-
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-slate-900">Voice</h3>
-                <p className="text-xs text-slate-500">
-                  Applies when the interview runs in voice mode.
-                </p>
-              </div>
-
-              <ToggleRow
-                id="settings-text-to-speech"
-                label="Interviewer speaks"
-                description="Plays the interviewer's replies as audio."
-                checked={voiceConfig.ttsEnabled}
-                onCheckedChange={(checked) =>
-                  changeVoiceConfig({ ttsEnabled: checked })
-                }
-              />
-              <ToggleRow
-                id="settings-accents"
-                label="Interviewer accents"
-                description="Interviewers speak English with the accent their nationality suggests. Turn off for neutral English throughout."
-                checked={voiceConfig.accentsEnabled}
-                onCheckedChange={(checked) =>
-                  changeVoiceConfig({ accentsEnabled: checked })
-                }
-              />
             </CardContent>
           </Card>
         </TabsContent>
