@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -34,13 +34,19 @@ export default function AuthLayout({
             </span>
           </Link>
 
+          {/* The landing page's own pitch, not a second one. This panel used
+              to sell "cross-cultural communication" and "50+ scenarios" — the
+              product this app grew out of, not the product the page behind
+              the Sign in button describes. First screen a new user sees; it
+              should describe the app they are signing into. */}
           <div className="space-y-4">
             <h1 className="text-4xl font-bold leading-tight">
-              Master Cross-Cultural Communication
+              Practice interviews. Get hired.
             </h1>
             <p className="text-lg text-blue-100 leading-relaxed">
-              Practice realistic conversations with AI personas and receive
-              instant feedback to excel in global business settings.
+              Rehearse real interview questions with an AI that adapts to your
+              answers, scores every response, and tells you exactly how to
+              improve — by voice or text, on your own schedule.
             </p>
           </div>
 
@@ -62,9 +68,9 @@ export default function AuthLayout({
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-lg">50+ Realistic Scenarios</p>
+                <p className="font-semibold text-lg">Adaptive questioning</p>
                 <p className="text-sm text-blue-100 mt-1">
-                  From negotiations to feedback conversations
+                  Every answer changes what gets asked next
                 </p>
               </div>
             </div>
@@ -86,9 +92,11 @@ export default function AuthLayout({
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-lg">8 Cultural Contexts</p>
+                <p className="font-semibold text-lg">
+                  Scored, specific feedback
+                </p>
                 <p className="text-sm text-blue-100 mt-1">
-                  Practice diverse communication styles
+                  Per-answer scores, targeted tips, and a suggested answer
                 </p>
               </div>
             </div>
@@ -110,9 +118,9 @@ export default function AuthLayout({
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-lg">Real-time Feedback</p>
+                <p className="font-semibold text-lg">Voice or text</p>
                 <p className="text-sm text-blue-100 mt-1">
-                  Instant insights to improve every conversation
+                  Speak your answers and get delivery feedback too
                 </p>
               </div>
             </div>
@@ -120,8 +128,22 @@ export default function AuthLayout({
         </div>
       </div>
 
-      {/* Right Pane - Form Area */}
-      <div className="flex items-center justify-center p-8 lg:p-12 bg-slate-50">
+      {/* Right Pane - Form Area.
+
+          Carries its own way back to the landing page. The brand panel's logo
+          links home, but that whole panel is `hidden lg:flex` — below a laptop
+          screen it disappears and took the only exit with it, leaving the auth
+          pages a dead end. The form side owns the link now, so it exists at
+          every breakpoint and does not depend on knowing that logos are
+          clickable. */}
+      <div className="relative flex items-center justify-center bg-slate-50 p-8 lg:p-12">
+        <Link
+          href="/"
+          className="absolute left-6 top-6 inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors duration-150 hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
         {children}
       </div>
     </div>
