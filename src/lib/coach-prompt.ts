@@ -10,6 +10,7 @@ import {
   type InterviewRoundType,
 } from "@/lib/interview-rounds";
 import type { UsageCollector, OpenAIUsage } from "@/lib/api/token-usage";
+import { completionParams } from "@/lib/model-params";
 
 /**
  * The coach call, as a pure module.
@@ -28,7 +29,17 @@ import type { UsageCollector, OpenAIUsage } from "@/lib/api/token-usage";
  * never import `@/eval` or `@/lib/pricing`, since the route imports it.
  */
 
-export const COACH_MODEL = process.env.COACH_MODEL ?? "gpt-4o-mini";
+/**
+ * `gpt-5-mini` at `low` reasoning effort. The coach's output — the suggested
+ * answer and the rewrite — is read verbatim by the user, so answer quality is
+ * the product here, and nobody is waiting on a live microphone: drills
+ * feedback renders when it renders. `low` (not `minimal`) buys a planning pass
+ * over the rubric for ~a second of latency; the JSON contract and the
+ * `finish_reason: "length"` guard below already police the failure modes.
+ * Compare against gpt-4o-mini with `COACH_MODEL=gpt-4o-mini npm run
+ * eval:coach -- --live` — the judge is model-independent.
+ */
+export const COACH_MODEL = process.env.COACH_MODEL ?? "gpt-5-mini";
 
 /**
  * Higher than the analyzer's 0.1, deliberately.
@@ -299,8 +310,11 @@ export async function requestCoaching(input: {
     },
     body: JSON.stringify({
       model: COACH_MODEL,
-      temperature: COACH_TEMPERATURE,
-      max_tokens: COACH_MAX_TOKENS,
+      ...completionParams(COACH_MODEL, {
+        temperature: COACH_TEMPERATURE,
+        maxTokens: COACH_MAX_TOKENS,
+        reasoningEffort: "low",
+      }),
       response_format: { type: "json_object" },
       // The system prompt grew from ~150 to ~300 tokens with the real rubric,
       // and is byte-identical for every call of a given round type *and* answer

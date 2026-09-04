@@ -2,7 +2,7 @@
 
 Quick drills and the report's "See a stronger answer" both call one endpoint,
 `/api/coach/suggested-answer`. It is the only user-facing LLM call in this project
-that produces *advice* rather than a score, and until this document existed it
+that produces _advice_ rather than a score, and until this document existed it
 was also the only one with no rubric worth the name and no evaluation at all.
 
 `docs/EVALUATION.md` is about the analyzer. This is about the coach. They are
@@ -29,7 +29,7 @@ whatsoever.** If any part of the report implies drills are "graded", that is
 wrong. Drills give you coaching; the interview gives you a score.
 
 The two only meet in one place, and it is new: `npm run eval:coach` uses the
-analyzer as a *scorer of the coach's output*. That is the subject of the second
+analyzer as a _scorer of the coach's output_. That is the subject of the second
 half of this document, including why it is a weaker form of evidence than it
 first appears.
 
@@ -39,18 +39,18 @@ first appears.
 
 ### The request
 
-| | |
-|---|---|
-| Route | `src/app/api/coach/suggested-answer/route.ts` |
-| Prompt | `src/lib/coach-prompt.ts` |
-| Rubric data | `src/lib/coach-rubric.ts` |
-| Model | `gpt-4o-mini`, overridable with `COACH_MODEL` |
-| Temperature | **0.5** |
-| `max_tokens` | 1000 |
-| Structured output | `response_format: { type: "json_object" }` |
-| Cache key | `prompt_cache_key: coach:${roundType}:${answerMode}` |
-| Rate limit | 20/min/user (`RATE_LIMITS.coach`) |
-| Input caps | question 4,000 chars, answer 10,000 chars |
+|                   |                                                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Route             | `src/app/api/coach/suggested-answer/route.ts`                                                                                          |
+| Prompt            | `src/lib/coach-prompt.ts`                                                                                                              |
+| Rubric data       | `src/lib/coach-rubric.ts`                                                                                                              |
+| Model             | `gpt-5-mini` at `low` reasoning effort, overridable with `COACH_MODEL` (why: [TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where") |
+| Temperature       | **0.5** — applies only if `COACH_MODEL` is set to a GPT-4-family model; GPT-5 rejects the parameter                                    |
+| Output cap        | 1000 visible tokens (`max_completion_tokens` gains reasoning headroom on GPT-5-family)                                                 |
+| Structured output | `response_format: { type: "json_object" }`                                                                                             |
+| Cache key         | `prompt_cache_key: coach:${roundType}:${answerMode}`                                                                                   |
+| Rate limit        | 20/min/user (`RATE_LIMITS.coach`)                                                                                                      |
+| Input caps        | question 4,000 chars, answer 10,000 chars                                                                                              |
 
 **Temperature 0.5, against the analyzer's 0.1.** Deliberate, and the reasoning
 is not "coaching is less important". Scoring has to be reproducible — a
@@ -81,16 +81,16 @@ value from a client would be a prompt-injection surface. It defaults to `text`,
 which emits no extra block at all, so an omitted field coaches exactly as it
 did before the field existed.
 
-| Mode | Sent by | What it changes |
-|---|---|---|
-| `text` | typed drills; text sessions | nothing |
-| `speech` | spoken drills; voice sessions | Tells the model it is reading a live speech-to-text transcript: missing punctuation and capitalisation are artefacts of transcription, to be fixed silently in the rewrite and never spent a tip on. Caps verbal fillers at one tip, since the candidate is separately shown a count. |
-| `code` | the drills editor; any fenced answer | The rewrite must stay code, in the same language and fence — their solution improved, not a description of it. Tips are about correctness, complexity and edge cases. |
+| Mode     | Sent by                              | What it changes                                                                                                                                                                                                                                                                       |
+| -------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`   | typed drills; text sessions          | nothing                                                                                                                                                                                                                                                                               |
+| `speech` | spoken drills; voice sessions        | Tells the model it is reading a live speech-to-text transcript: missing punctuation and capitalisation are artefacts of transcription, to be fixed silently in the rewrite and never spent a tip on. Caps verbal fillers at one tip, since the candidate is separately shown a count. |
+| `code`   | the drills editor; any fenced answer | The rewrite must stay code, in the same language and fence — their solution improved, not a description of it. Tips are about correctness, complexity and edge cases.                                                                                                                 |
 
 Both non-default modes exist for one reason: to stop the coach spending its
-four tips on the *medium* instead of the answer. Before this, a spoken answer
+four tips on the _medium_ instead of the answer. Before this, a spoken answer
 reliably produced tips about punctuation nobody had spoken, and a code answer
-produced a rewrite that was prose *about* the function rather than a better
+produced a rewrite that was prose _about_ the function rather than a better
 function.
 
 The mode is in the cache key because it is in the prompt. Without it the three
@@ -113,20 +113,20 @@ return "This is a behavioral question. A strong answer uses the STAR structure �
 
 So a screening answer about motivation and an HR answer about notice periods
 were both coached as behavioural STAR stories — while the analyzer, in the
-interview, scored those same round types against *"Clarity, motivation, fit,
-concision"* and *"Motivation, values fit, logistics, questions for us"*. The
+interview, scored those same round types against _"Clarity, motivation, fit,
+concision"_ and _"Motivation, values fit, logistics, questions for us"_. The
 coach was aiming at a target the scorer was not using.
 
 `COACH_RUBRICS` is now a `Record<InterviewRoundType, CoachRubric>` — the same
 compile-error-on-incomplete guarantee `round-types.ts` argues for — with four
 fields per round type:
 
-| Field | What it carries |
-|---|---|
-| `shape` | The structural template a strong answer follows |
-| `signals` | What a strong answer demonstrates |
+| Field          | What it carries                                  |
+| -------------- | ------------------------------------------------ |
+| `shape`        | The structural template a strong answer follows  |
+| `signals`      | What a strong answer demonstrates                |
 | `failureModes` | How answers of this type characteristically fail |
-| `exemplar` | What the invented `suggestedAnswer` must show |
+| `exemplar`     | What the invented `suggestedAnswer` must show    |
 
 **The criteria themselves are never re-typed.** The prompt interpolates
 `ROUND_RUBRIC_LABELS[roundType]`, so the coach is told the exact string the
@@ -141,7 +141,7 @@ every page that renders a round-type chip, to be used by one server route.
 
 ### The no-fabrication clause
 
-The old clause read *"Do not fabricate major new achievements"*. That cannot be
+The old clause read _"Do not fabricate major new achievements"_. That cannot be
 tested, because "major" is undefined. It now reads:
 
 > Every specific in `rewrite` — every number, name, date and outcome — must
@@ -158,7 +158,7 @@ a contract so it can be checked is most of what made the contract worth having.
 
 - Strips ``` fences, falls back to `jsonrepair` on a parse failure, and reports
   `repaired: true` when it had to — nothing counted this before.
-- Reports **`omittedFields`**, recorded *before* the `""` defaults fill them in.
+- Reports **`omittedFields`**, recorded _before_ the `""` defaults fill them in.
   The direct analogue of `AnalysisResult.omittedFields`, and it exists for the
   same reason: without it the finished object is complete by construction and a
   completeness metric measures nothing.
@@ -166,7 +166,7 @@ a contract so it can be checked is most of what made the contract worth having.
   outside 2-4, tips past ~12 words.
 - `finish_reason === "length"` is detected and returned rather than thrown, so
   the route can map it to a 502 that names truncation while the harness can
-  *count* truncations. A truncated response is almost-valid JSON, so without
+  _count_ truncations. A truncated response is almost-valid JSON, so without
   this check it failed as a generic parse error that named the wrong cause.
   (The 700 → 1000 token sizing is in `docs/TOKEN-COST.md`.)
 - If both `suggestedAnswer` and `rewrite` come back empty, the route now returns
@@ -218,29 +218,29 @@ comparison is one command rather than a `git checkout` — the same choice
 Measured at `HEAD`, committed to
 [`docs/artifacts/coach-eval-deterministic.txt`](artifacts/coach-eval-deterministic.txt):
 
-| Metric | Before | After |
-|---|---|---|
-| Distinct system prompts | 4 of 6 | **6 of 6** |
-| Rubric criteria named, total | 20 / 29 | **29 / 29** |
-| — `screening` | **0 / 4** | 4 / 4 |
-| — `hr` | **0 / 4** | 4 / 4 |
-| — `behavioral` | 2 / 3 | 3 / 3 |
-| — `technical_swe` | 7 / 7 | 7 / 7 |
-| — `system_design` | 6 / 6 | 6 / 6 |
-| — `case` | 5 / 5 | 5 / 5 |
-| Est. system prompt | ~150 tokens | ~517 tokens, cached per round type |
+| Metric                       | Before      | After                              |
+| ---------------------------- | ----------- | ---------------------------------- |
+| Distinct system prompts      | 4 of 6      | **6 of 6**                         |
+| Rubric criteria named, total | 20 / 29     | **29 / 29**                        |
+| — `screening`                | **0 / 4**   | 4 / 4                              |
+| — `hr`                       | **0 / 4**   | 4 / 4                              |
+| — `behavioral`               | 2 / 3       | 3 / 3                              |
+| — `technical_swe`            | 7 / 7       | 7 / 7                              |
+| — `system_design`            | 6 / 6       | 6 / 6                              |
+| — `case`                     | 5 / 5       | 5 / 5                              |
+| Est. system prompt           | ~150 tokens | ~517 tokens, cached per round type |
 
 Two things worth reading carefully rather than skimming.
 
 **"4 of 6", not 2 of 6.** The prediction written into the plan for this work was
 2 of 6 — reasoning that screening, behavioral and hr shared one branch and the
 three technical types shared the other. Half right: the technical branch
-interpolates `ROUND_RUBRIC_LABELS[roundType]`, so those three *were* already
+interpolates `ROUND_RUBRIC_LABELS[roundType]`, so those three _were_ already
 distinct from each other. Only the three behavioural-family types collapsed
 into one. The harness measured it; the guess was wrong, and the measured number
 is the one in the table.
 
-**`screening` and `hr` scored zero.** Not "low" — the old prompt named *none* of
+**`screening` and `hr` scored zero.** Not "low" — the old prompt named _none_ of
 clarity, motivation, fit, concision, values fit, or logistics, while the
 analyzer scored those rounds on exactly those criteria. That is the single
 clearest statement of what this change fixed.
@@ -262,26 +262,26 @@ back at zero or negative. That is what makes it worth reporting.
 
 **The null model is the identity coach.** A coach whose rewrite is the
 candidate's answer unchanged has an uplift of exactly zero by construction — so
-scoring the original N times *is* the control arm, and the standard deviation of
+scoring the original N times _is_ the control arm, and the standard deviation of
 those scores is the analyzer's test-retest noise floor. Uplift only counts if it
 clears that floor. The second control is `scoreAnswerHeuristically().tips`, a
 regex that also emits tips, which is the null model for the tips claim.
 
 What it reports, and what each row can do to the conclusion:
 
-| Metric | Question | How it can come back bad |
-|---|---|---|
-| Uplift + 95% CI | Does the rewrite beat the original? | CI spans 0 |
-| Noise floor | Is uplift bigger than scoring the same text twice? | uplift ÷ sd < 2 |
-| Exact sign test, Cohen's d_z | Is it beyond what 18 pairs produce by chance? | p > 0.05 |
-| **Uplift by band** | Real coaching, or just weak answers having room? | flat curve |
-| **Word delta, corr(uplift, length)** | Is uplift just more words? | high r |
-| Model-answer band | Is the exemplar exemplary? | not `strong` |
-| Fact retention / novel quantities | Does the rewrite keep their facts? | low retention |
-| Fabrication judge (blind) | Does it invent achievements? | non-zero rate |
-| Tip–gap coverage vs heuristic | Do tips beat a regex? | ties the control |
-| Rubric recovery (`--recovery`) | Does coaching differ by round type? | ~1/6, chance |
-| Contract conformance | Completeness, tip counts, repairs, truncation | any |
+| Metric                               | Question                                           | How it can come back bad |
+| ------------------------------------ | -------------------------------------------------- | ------------------------ |
+| Uplift + 95% CI                      | Does the rewrite beat the original?                | CI spans 0               |
+| Noise floor                          | Is uplift bigger than scoring the same text twice? | uplift ÷ sd < 2          |
+| Exact sign test, Cohen's d_z         | Is it beyond what 18 pairs produce by chance?      | p > 0.05                 |
+| **Uplift by band**                   | Real coaching, or just weak answers having room?   | flat curve               |
+| **Word delta, corr(uplift, length)** | Is uplift just more words?                         | high r                   |
+| Model-answer band                    | Is the exemplar exemplary?                         | not `strong`             |
+| Fact retention / novel quantities    | Does the rewrite keep their facts?                 | low retention            |
+| Fabrication judge (blind)            | Does it invent achievements?                       | non-zero rate            |
+| Tip–gap coverage vs heuristic        | Do tips beat a regex?                              | ties the control         |
+| Rubric recovery (`--recovery`)       | Does coaching differ by round type?                | ~1/6, chance             |
+| Contract conformance                 | Completeness, tip counts, repairs, truncation      | any                      |
 
 The sign test is **exact**, not normal-approximated, because n is 18 — the
 approximation would be quoted to three decimal places it has not earned. The
@@ -298,7 +298,7 @@ question or the round type.
 
 The primary corpus is the existing `FIXTURES` — 18 hand-written answers across
 all six round types with known bands. Reused rather than replaced because
-uplift needs the original's quality to be *known*, the bands supply the headroom
+uplift needs the original's quality to be _known_, the bands supply the headroom
 prediction that makes the metric falsifiable (weak should gain more than strong,
 which starts in the eighties), and the analyzer's behaviour on that exact text
 has already been measured.
@@ -334,7 +334,7 @@ State it here rather than let a marker find it.
 **1. Shared rubric.** The coach is now instructed against
 `ROUND_TYPE_SPECS[t].rubric` and the analyzer scores against
 `ROUND_RUBRIC_LABELS[t]` — literally the same string. Uplift therefore measures
-*instruction-following against a shared rubric*, not pedagogical value to a
+_instruction-following against a shared rubric_, not pedagogical value to a
 human being. Same model family, same author, same prompt idiom.
 
 **2. Shared blind spot, and it is a documented one.**
@@ -349,7 +349,7 @@ than an appendix. **Read uplift next to them, never alone.**
 
 The honest framing: the analyzer is an independent scorer of the coach in the
 sense that it was written, tuned and validated before the coach was evaluated,
-against a different set of claims. It is *not* an independent judge of coaching
+against a different set of claims. It is _not_ an independent judge of coaching
 quality, because it shares the coach's rubric and the coach's blind spots. Uplift
 measures whether the coach moves an answer in the direction the app's own rubric
 points. Whether that direction is the right one is a question for people.

@@ -23,6 +23,7 @@ import {
   handleRouteError,
   unauthorized,
 } from "@/lib/api/errors";
+import { completionParams } from "@/lib/model-params";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
 import { MAX_USER_MESSAGE_CHARS } from "@/lib/api/input-limits";
@@ -92,8 +93,19 @@ export const runtime = "nodejs";
  * a different model is a different prompt cache, so turn 2 could never reuse
  * turn 1's prefix — the session paid the full prompt twice over. Override with
  * INTERVIEWER_MODEL if the trade is worth revisiting.
+ *
+ * `gpt-5-mini` at `minimal` reasoning effort, because this is the one call
+ * where the model *is* the product: persona fidelity, probe phrasing and
+ * steering-block compliance are what the professor's realism requirement
+ * lives or dies on, and gpt-5-mini follows the persona/steering instructions
+ * measurably better than gpt-4o-mini for +$0.10/M in and +$1.40/M out —
+ * fractions of a cent per turn at a 320-token cap. `minimal` effort because
+ * this call streams into a live voice conversation: it skips hidden reasoning
+ * tokens, so first-token latency stays at chat speed. The trade documented in
+ * docs/TOKEN-COST.md §"Which model runs where"; set INTERVIEWER_MODEL back to
+ * gpt-4o-mini to reverse it.
  */
-const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
+const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-5-mini";
 
 /**
  * How long the reply will wait for the candidate's answer to be scored.
@@ -490,8 +502,13 @@ async function requestOpenAI(
       stream: true,
       // Without this a streamed completion reports no usage at all.
       stream_options: { include_usage: true },
-      temperature: 0.7,
-      max_tokens: INTERVIEWER_MAX_TOKENS,
+      // Family-dependent: temperature 0.7 on GPT-4-family, minimal
+      // reasoning effort on GPT-5-family (which rejects temperature).
+      ...completionParams(model, {
+        temperature: 0.7,
+        maxTokens: INTERVIEWER_MAX_TOKENS,
+        reasoningEffort: "minimal",
+      }),
       prompt_cache_key: promptCacheKey,
     }),
   });

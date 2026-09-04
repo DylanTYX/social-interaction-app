@@ -53,6 +53,7 @@ import {
   stdDev,
 } from "@/eval/stats";
 import { UsageCollector } from "@/lib/api/token-usage";
+import { completionParams } from "@/lib/model-params";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 import {
   ROUND_RUBRIC_LABELS,
@@ -299,8 +300,7 @@ async function judgeJson<T>(
     },
     body: JSON.stringify({
       model: JUDGE_MODEL,
-      temperature: 0,
-      max_tokens: maxTokens,
+      ...completionParams(JUDGE_MODEL, { temperature: 0, maxTokens }),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },

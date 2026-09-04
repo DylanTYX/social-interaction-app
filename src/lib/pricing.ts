@@ -31,14 +31,20 @@ export interface ModelPrice {
 }
 
 /**
- * Checked against https://openai.com/api/pricing on 2026-08-07.
+ * Checked against https://developers.openai.com/api/docs/pricing on 2026-09-04.
+ * Note the cached-input ratio differs by family: 50% off on GPT-4o-family,
+ * 90% off on GPT-5-family — which is part of why gpt-5-mini beats gpt-4o-mini
+ * on cached-heavy traffic despite the higher list price.
  *
  * **Re-check before quoting these in a report or a viva.** If a rate has moved,
  * fix it here — every consumer reads this one table.
  */
-export const PRICING_CHECKED_ON = "2026-08-07";
+export const PRICING_CHECKED_ON = "2026-09-04";
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
+  "gpt-5": { input: 1.25, cachedInput: 0.125, output: 10 },
+  "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2 },
+  "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },
   "gpt-4o-mini": { input: 0.15, cachedInput: 0.075, output: 0.6 },
   "gpt-4o": { input: 2.5, cachedInput: 1.25, output: 10 },
   "text-embedding-3-small": { input: 0.02, cachedInput: 0.02, output: 0 },

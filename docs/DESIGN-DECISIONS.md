@@ -140,7 +140,7 @@ in nationality produce prompts differing by exactly the demonym.
 persona speaks English with an Indian accent. Nothing else changes.
 
 This is a real amendment to the sentence above — nationality is no longer read
-*nowhere* else — so the boundary has to be stated precisely rather than waved
+_nowhere_ else — so the boundary has to be stated precisely rather than waved
 at. What the accent may touch is the audio. What it may not touch is anything
 the model writes or the analyzer sees:
 
@@ -156,8 +156,8 @@ caricature, and it would also corrupt the transcript the analyzer grades. The
 sentences are identical; only the audio differs.
 
 **Why this is not the culture corpus in disguise.** The rejected proposal made
-*behaviour* — how demanding, how deferential — a function of national origin.
-This makes an *acoustic property* one, which is the same relationship a person's
+_behaviour_ — how demanding, how deferential — a function of national origin.
+This makes an _acoustic property_ one, which is the same relationship a person's
 accent has to where they grew up. E1 is about behaviour and is untouched: the
 dials still do all the work, and the demonym test still passes unchanged.
 
@@ -217,21 +217,29 @@ they would "describe a product that does not exist".
 
 ---
 
-## 7. `gpt-4o-mini` everywhere, with per-call-site overrides
+## 7. One model per call site, chosen per call site — with overrides
 
-**Decision.** One model for the interviewer, analyzer, summariser, coach and
-resume distillation, each overridable by environment variable.
+**Decision.** Each model call has its own default, set by what its output is
+for: `gpt-5-mini` where the output is the product (the interviewer's turns,
+the coach's suggested answers), `gpt-4o-mini` where determinism or an eval
+baseline matters more than ceiling (analyzer, summary, JD tidy-up, judges).
+Every one is overridable by environment variable, and
+[`model-params.ts`](../src/lib/model-params.ts) builds the request per family
+so an override can cross families without a 400. The full per-site reasoning,
+with prices, lives in [TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where".
 
-**The alternative** is a stronger model on the paths that matter most. The
-opening turn _did_ run on `gpt-4o` for a stronger first impression.
-
-**Why it was removed.** Two models meant two cache keys and two prefixes, so the
-opening turn never warmed the cache the rest of the session would use. The
-quality difference on one turn did not pay for that.
+**The rule that survived from the earlier version of this decision**: never
+two models _within_ one conversation. The opening turn once ran on `gpt-4o`
+for a stronger first impression; two models meant two cache prefixes, so the
+opening turn never warmed the cache the rest of the session used. Different
+models across _different_ call sites keep separate caches anyway, so that
+cost does not apply there.
 
 **What it costs.** The analyzer's known failure — leniency toward fluent,
-confident, wrong answers — might not survive a stronger model. That is untested,
-and it is named as untested in [EVALUATION.md](EVALUATION.md).
+confident, wrong answers — might not survive a stronger model. That is
+untested, and it is named as untested in [EVALUATION.md](EVALUATION.md); the
+gated path is `ANALYZER_MODEL=gpt-5-mini npm run eval` against the committed
+baseline.
 
 ---
 

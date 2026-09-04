@@ -30,10 +30,13 @@ A single text turn makes up to four model calls:
 
 | Call            | Model                    | When                       | Cap               |
 | --------------- | ------------------------ | -------------------------- | ----------------- |
-| Interviewer     | `gpt-4o-mini`            | Every turn                 | 320 output tokens |
+| Interviewer     | `gpt-5-mini`             | Every turn                 | 320 output tokens |
 | Analyzer        | `gpt-4o-mini`            | Every scored turn          | 900 output tokens |
 | Summary refresh | `gpt-4o-mini`            | Every 4th message          | 400 output tokens |
 | JD embedding    | `text-embedding-3-small` | Only on the retrieval path | —                 |
+
+(Why the interviewer and the analyzer are two different model families is
+§"Which model runs where" below.)
 
 One block was deliberately _added_ to the volatile layer, against the general
 direction of this document: the interviewer is now given the questions it has
@@ -63,8 +66,10 @@ Two calls are deliberately skipped rather than optimised:
   the small-JD path is cheaper on _both_ counts.
 
 Rough per-turn total, uncached: **~3,200 input / ~400 output** without a job
-description, **~5,800 / ~400** with one. At `gpt-4o-mini` pricing that is
-roughly $0.0007–0.0011 a turn, so a 10-question round costs about a cent.
+description, **~5,800 / ~400** with one. With the interviewer on `gpt-5-mini`
+and the analyzer on `gpt-4o-mini` that is roughly $0.0012–0.0019 a turn
+(it was $0.0007–0.0011 when everything ran on `gpt-4o-mini`), so a
+10-question round costs about two cents.
 
 That is small enough that the honest conclusion is: **cost was never the real
 problem here.** The reason to do this work is that an unmeasured system can't be
@@ -203,11 +208,11 @@ section first.
 | **`rawAnalysis` no longer stored or returned** | A verbatim duplicate of the entire analysis object was written to `interview_turn_analyses` and sent over the wire every turn, and read by nobody. It roughly doubled both the row and the response payload.                                                                                                                                                                 |
 | **Transcript read bounded**                    | The chat route loaded the _entire_ transcript, then discarded all but the last few messages — growing linearly with session length and defeating the point of the rolling summary. It now reads a fixed window sized to cover the verbatim window, the prior-question lookup, and whatever aged out since the last summary refresh.                                          |
 | **Rolling summary instead of full history**    | The last 6 messages go verbatim; everything older is folded into a compact summary regenerated every 4 messages. Cost stops growing with session length.                                                                                                                                                                                                                     |
-| **Resume distillation, reversed**              | A resume *was* summarised into a 400-token profile at upload, and that profile — not the document — went into every prompt. It saved roughly 1,200 cached tokens a turn and cost the fidelity of the whole resume: the interviewer had never read a candidate's actual words, while its prompt label claimed otherwise. Removed. See "Why the resume is sent whole" below.                |
+| **Resume distillation, reversed**              | A resume _was_ summarised into a 400-token profile at upload, and that profile — not the document — went into every prompt. It saved roughly 1,200 cached tokens a turn and cost the fidelity of the whole resume: the interviewer had never read a candidate's actual words, while its prompt label claimed otherwise. Removed. See "Why the resume is sent whole" below.   |
 | **Similarity floor with a top-1 fallback**     | Chunks below 0.3 cosine similarity aren't worth the tokens, but the floor could remove _everything_, silently dropping role context from both the prompt and that turn's scoring. One weak excerpt beats no context and no signal.                                                                                                                                           |
 | **Summary capped at 400 tokens**               | This was the last uncapped call, and the worst one to leave uncapped: the summary is regenerated _from itself_ and injected into every later prompt, so a single long generation inflated the rest of the session rather than costing once.                                                                                                                                  |
 | **Counting moved out of the LLM**              | The analyzer asked the model for a word count, hesitation-marker count, qualifier count, revision count, metric count, and whether timeframes appear. Six pieces of arithmetic, billed in both the scaffold describing them and the response producing them, from a model with no reason to count accurately. Now `text-metrics.ts`; scaffold down from ~296 to ~245 tokens. |
-| **Coach answers cached**                       | Generated suggested answers lived in React state only, so reopening a report regenerated all of them at full price for identical input. Now persisted per `(session_id, turn_index)` — see migration `0010`.                                                                                                                                                                     |
+| **Coach answers cached**                       | Generated suggested answers lived in React state only, so reopening a report regenerated all of them at full price for identical input. Now persisted per `(session_id, turn_index)` — see migration `0010`.                                                                                                                                                                 |
 | **Three call sites instrumented**              | The coach route, the resume-profile distillation and the 12 competency probe embeddings recorded nothing, so every figure derived from `llm_usage` was an undercount.                                                                                                                                                                                                        |
 | **Duplicate transcript fetch removed**         | Both interview screens fetched `/api/sessions/[id]/resume` twice on every load — the bootstrap hook took the launch config from the response and discarded the transcript, and a second hook re-fetched it.                                                                                                                                                                  |
 | **Stream-failure retry made safe**             | On an SSE failure both screens re-POSTed the identical turn. The route persists _before_ emitting `done`, so a transport failure re-ran all 2-4 model calls and duplicated the answer. It now asks the server what it stored first.                                                                                                                                          |
@@ -287,6 +292,141 @@ attempt to run up the bill.
 
 **Context bounding** — the 12-row transcript window and the rolling summary — is
 designed compression, not truncation, and carries no such risk.
+
+---
+
+## Which model runs where — and why
+
+Checked against the [OpenAI pricing page](https://developers.openai.com/api/docs/pricing)
+and the GPT-5 API docs on **2026-09-04**. Prices are USD per million tokens as
+input / cached input / output. `src/lib/pricing.ts` carries the same table in
+code; if one moves, move both.
+
+| Model         | $/M in | $/M cached | $/M out | Family    |
+| ------------- | ------ | ---------- | ------- | --------- |
+| `gpt-5`       | 1.25   | 0.125      | 10.00   | reasoning |
+| `gpt-5-mini`  | 0.25   | 0.025      | 2.00    | reasoning |
+| `gpt-5-nano`  | 0.05   | 0.005      | 0.40    | reasoning |
+| `gpt-4o-mini` | 0.15   | 0.075      | 0.60    | classic   |
+
+Two API facts shape everything below, both verified against current OpenAI
+docs before any default changed:
+
+1. **The families have different request contracts.** GPT-5-family models
+   reject `temperature` with a 400, take `max_completion_tokens` instead of
+   `max_tokens`, and are steered with `reasoning_effort`
+   (`minimal`/`low`/`medium`/`high`) instead. Every model here is
+   env-overridable, so `src/lib/model-params.ts` builds the request body per
+   family — which is also what makes the eval-gated upgrade paths below
+   actually runnable rather than instant 400s.
+2. **Reasoning tokens bill as output, inside the cap.** Above `minimal`
+   effort, the hidden reasoning pass consumes `max_completion_tokens`, so the
+   helper adds headroom above the visible-output budget. At `minimal` it adds
+   none — `minimal` exists precisely to make a GPT-5 model behave like a fast
+   chat model.
+
+### The decision, per call site
+
+| Call            | Model                    | Effort    | Why this one                                    |
+| --------------- | ------------------------ | --------- | ----------------------------------------------- |
+| Interviewer     | **`gpt-5-mini`**         | `minimal` | The realism-critical call. Upgraded.            |
+| Coach           | **`gpt-5-mini`**         | `low`     | Output is read verbatim. Upgraded.              |
+| Analyzer        | `gpt-4o-mini`            | —         | Determinism + a committed eval baseline. Held.  |
+| Summary         | `gpt-4o-mini`            | —         | Compression; quality ceiling irrelevant. Held.  |
+| JD tidy-up      | `gpt-4o-mini`            | —         | Extraction at temperature 0. Held.              |
+| Eval judges     | `gpt-4o-mini`            | —         | Must stay independent of what they judge. Held. |
+| Embeddings      | `text-embedding-3-small` | —         | No GPT-5 equivalent exists. Held.               |
+| Voice (STT/TTS) | Azure Speech             | —         | Not an OpenAI decision at all. Held.            |
+
+**Interviewer → `gpt-5-mini` at `minimal` effort.** This is the one call where
+the model _is_ the product: persona fidelity, evidence-probe phrasing and
+steering-block compliance are what the realism requirement lives on, and
+instruction-following is exactly what the newer family is better at. The cost
+delta is real but small in context — at the 320-token cap a turn's output costs
+0.064¢ against 0.019¢ — and the **cached-input rate is actually cheaper than
+gpt-4o-mini's** (0.025 vs 0.075 $/M), which matters here specifically because
+the stable/volatile prompt split above was built to make interviewer input
+cache-heavy. `minimal` effort because this call streams into a live voice
+conversation: no hidden reasoning pass, so time-to-first-token stays at chat
+speed and Azure TTS starts speaking on schedule. What it costs us: GPT-5
+ignores `temperature`, so the 0.7 that varied the phrasing is inert on this
+family. Acceptable — question variety never came from sampling noise; it comes
+from the seeded decision engine (probes, curveballs, ladder), which is
+deterministic on purpose.
+
+**Coach → `gpt-5-mini` at `low` effort.** The suggested answer and the rewrite
+are read verbatim by the user — this output _is_ the pedagogy, and it is the
+easiest place in the app to notice a better model. Nobody is holding a live
+microphone open for it, so `low` buys a planning pass over the rubric for
+about a second of extra latency. The `finish_reason: "length"` guard and the
+JSON contract already police the failure modes, and the reasoning headroom
+keeps the visible 1,000-token budget intact. To compare families:
+`COACH_MODEL=gpt-4o-mini npm run eval:coach -- --live` — the judge is a
+separate model either way.
+
+**Analyzer → stays `gpt-4o-mini`, deliberately.** Two reasons, both about
+evidence rather than cost. First, determinism: scoring runs at temperature
+0.1 so the same answer scores the same twice, and GPT-5 has no temperature to
+set. Second, the committed baseline: the 41.0 separation figure and the band
+accuracy in `npm run eval` were measured on gpt-4o-mini; swapping the scorer
+invalidates the eval history and every number quoted in the report. The
+upgrade path exists and is now safe to run — `ANALYZER_MODEL=gpt-5-mini npm
+run eval` — but the model changes only if that run beats the committed
+baseline, and the report's numbers get re-measured with it. A model swap here
+is an eval result, not a default.
+
+**Summary and JD tidy-up → stay `gpt-4o-mini`.** Both are compression jobs
+with a correctness floor, not a quality ceiling: the summary compresses a
+transcript nobody reads directly, the tidy-up strips boilerplate at
+temperature 0 and shows its work for the user to accept or undo. A better
+model has nowhere to show up. `gpt-5-nano` would halve their (already small)
+cost and is the candidate if these ever need trimming — it is priced in
+`pricing.ts` — but swapping models to save fractions of a cent per session,
+against re-validating two prompts, is not a trade worth making today.
+
+**Eval judges → stay `gpt-4o-mini`, permanently on one principle.** The
+persona-eval and coach-eval judges must not share a family with the models
+they judge, or improvements read as a model grading its own homework. Now that
+the interviewer and coach are GPT-5, judge independence _requires_ the judge
+stay off GPT-5.
+
+**Voice stays Azure Speech end-to-end.** STT and TTS are not model-shopping
+decisions here: the accent system (per-nationality voice selection, the
+audition artifact), the phrase-list biasing, and the silence-detection
+handling are all built on Azure SDK primitives, and the speech token proxy
+keeps the key server-side. OpenAI's realtime audio models would replace all of
+that plumbing for no measured quality gain on this app's actual requirement —
+accented, persona-matched TTS.
+
+### What one session costs after the switch
+
+Re-running the §"What one turn costs" arithmetic with the same token counts
+(~2,600 in / ~320 out per interviewer turn, no JD): the interviewer's share of
+a 20-turn session goes from about 0.9¢ to about **2.0¢ uncached** — and less
+than that in practice, because the cached-input discount is 90% where it used
+to be 50%. The analyzer, still on gpt-4o-mini, is unchanged. A practice
+session remains comfortably under a nickel; the cost report
+(`npm run cost:report`) prices both families from the same table, so the
+claim is checkable against `llm_usage` rather than against this paragraph.
+
+### What was considered and rejected
+
+- **`gpt-5` (full) for the interviewer** — 5× the input and output price to
+  make a 320-token conversational turn marginally more polished. The realism
+  gains in this app came from the persona/decision-engine work, not raw model
+  size; nothing in the eval history says the big model moves those numbers.
+- **`gpt-5-nano` everywhere** — cheapest possible wiring, but the two
+  upgraded call sites are the two where output quality is user-visible, and
+  nano is the family's floor, not its midpoint. Nano remains the documented
+  candidate for the two compression jobs.
+- **Routing between models per turn** (a cheap classifier deciding when a
+  turn deserves a stronger model) — the codebase already implements the
+  useful half of this _without a second model_: `detectBehavioralSignals` is
+  a deterministic, zero-cost classifier whose hits escalate into evidence
+  probes through the decision engine. Adding a model-switching layer on top
+  would reintroduce the split-cache problem that §"One model for every
+  interviewer turn" exists to prevent — every switch is a cold cache on both
+  sides.
 
 ---
 
@@ -376,13 +516,13 @@ the candidate never made, or refuse to explore real experience the summariser
 had dropped.
 
 Chunking the resume the way job descriptions are chunked was also considered and
-rejected. Retrieval returns what is *similar* to the current conversation, not
-what has *not been asked yet*, so it narrows rather than opens; the
+rejected. Retrieval returns what is _similar_ to the current conversation, not
+what has _not been asked yet_, so it narrows rather than opens; the
 "ask something new" job already belongs to `formatAskedQuestions` and the
 competency coverage steer; and the retrieval path is `stable: false`, so it
 would leave the cacheable prefix and be billed at full rate every turn.
 
-The general lesson: a token optimisation that changes what the model *knows* is
+The general lesson: a token optimisation that changes what the model _knows_ is
 not a token optimisation, it is a product change, and it should be priced as
 one.
 
@@ -411,17 +551,17 @@ the JD is ever used in.
 
 ## Where the code lives
 
-| Concern                                  | File                                         |
-| ---------------------------------------- | -------------------------------------------- |
-| Usage recording                          | `src/lib/api/token-usage.ts`                 |
-| Usage table                              | `supabase/migrations/0007_llm_usage.sql`     |
-| Prompt layering, cache key, model choice | `src/app/api/chat/route.ts`                  |
-| Analyzer scaffold, cap, truncation check | `src/lib/response-analyzer.ts`               |
-| Rolling summary cadence                  | `src/lib/summary.ts`                         |
-| Similarity floor, small-JD inlining      | `src/lib/db/job-descriptions.ts`             |
-| Resume sent whole, and its one cap            | `src/lib/db/resumes.ts`                      |
-| Over-length notice, shared by both docs   | `src/lib/document-truncation.ts`             |
-| Deterministic text counting              | `src/lib/text-metrics.ts`                    |
-| Input length caps                        | `src/lib/api/input-limits.ts`                |
-| Coach answer cache                       | `supabase/migrations/0010_coach_answers.sql` |
+| Concern                                  | File                                          |
+| ---------------------------------------- | --------------------------------------------- |
+| Usage recording                          | `src/lib/api/token-usage.ts`                  |
+| Usage table                              | `supabase/migrations/0007_llm_usage.sql`      |
+| Prompt layering, cache key, model choice | `src/app/api/chat/route.ts`                   |
+| Analyzer scaffold, cap, truncation check | `src/lib/response-analyzer.ts`                |
+| Rolling summary cadence                  | `src/lib/summary.ts`                          |
+| Similarity floor, small-JD inlining      | `src/lib/db/job-descriptions.ts`              |
+| Resume sent whole, and its one cap       | `src/lib/db/resumes.ts`                       |
+| Over-length notice, shared by both docs  | `src/lib/document-truncation.ts`              |
+| Deterministic text counting              | `src/lib/text-metrics.ts`                     |
+| Input length caps                        | `src/lib/api/input-limits.ts`                 |
+| Coach answer cache                       | `supabase/migrations/0010_coach_answers.sql`  |
 | JD tidy-up (boilerplate stripping)       | `src/app/api/job-descriptions/clean/route.ts` |
