@@ -433,6 +433,14 @@ export function useSpeechAnswer({
         },
       );
 
+      // The recognizer reports failure through its onError callback and then
+      // resolves normally, so reaching this line proves nothing by itself.
+      // onError has already flipped `isRecordingRef` false — arming the
+      // response deadline anyway meant a dead microphone still auto-submitted
+      // "[No response...]" at the three-minute mark, over a question the
+      // candidate had been unable to answer.
+      if (!isRecordingRef.current) return;
+
       // Armed only once the recognizer is actually up. It used to be armed
       // before this await, so microphone permission and Azure's handshake were
       // charged against the candidate's answer time.

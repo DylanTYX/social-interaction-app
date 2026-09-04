@@ -315,6 +315,23 @@ export class SpeechService {
   }
 
   /**
+   * Whether the speaker element is audibly mid-playback *right now*.
+   *
+   * Read from the `<audio>` element itself, not from `isSpeakingFlag` — the
+   * flag mirrors the playback *wait*, so any bug that resolves the wait early
+   * clears the flag while sound is still coming out. This is the check the
+   * auto-start path uses to refuse to open the microphone over live audio:
+   * whatever goes wrong upstream, an element that is unpaused, unended and
+   * past zero is definitionally still speaking.
+   */
+  isAudiblyPlaying(): boolean {
+    const audio = this.queuePlayback?.speakerDestination.internalAudio as
+      HTMLAudioElement | undefined;
+    if (!audio) return false;
+    return !audio.paused && !audio.ended && audio.currentTime > 0;
+  }
+
+  /**
    * Resolves when every queued streaming utterance has actually finished
    * playing. Call it once, after the last `speakQueued` for a turn — it is what
    * closes the audio stream, so nothing may be enqueued after it.
@@ -881,7 +898,27 @@ export class SpeechService {
       // slack for network and buffering.
       const estimateMs = playback.queuedChars * 70 + 5_000;
       const ceiling = setTimeout(
-        finish,
+        () => {
+          // A wait that only the ceiling could end is a diagnosis in itself —
+          // `onAudioEnd` never fired and the poll saw neither an end nor a
+          // stall. Leave a trace for the next report of audio misbehaving.
+          console.warn(
+            `TTS playback wait hit its ceiling (${Math.round(estimateMs / 1000)}s for ${playback.queuedChars} chars).`,
+          );
+          /**
+           * The give-up poll only catches `paused` elements, so a play() that
+           * hangs without rejecting (stalled MediaSource, throttled tab) used
+           * to ride the wait to this ceiling and then count as *heard* — the
+           * one escape that turned an inaudible reply into an opened
+           * microphone with no tap-to-replay card.
+           */
+          if (!sawProgress) {
+            this.reportPlaybackFailure(
+              "Audio playback never started. The browser may be blocking or throttling audio.",
+            );
+          }
+          finish();
+        },
         Math.min(180_000, Math.max(8_000, estimateMs)),
       );
       cleanups.push(() => clearTimeout(ceiling));

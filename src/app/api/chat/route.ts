@@ -247,6 +247,8 @@ function buildPromptLayers(input: {
   loopBrief: string | null;
   resumeContext: string | null;
   behaviorContext: string | null;
+  /** Whether any turns are already persisted — the summary can lag them. */
+  hasTranscript: boolean;
 }): { stablePrompt: string; volatilePrompt: string } {
   const stableJobDescription =
     input.jobDescriptionIsStable && input.jobDescriptionContext
@@ -315,7 +317,14 @@ function buildPromptLayers(input: {
     ...(input.behaviorContext ? [input.behaviorContext, ""] : []),
     input.rollingSummary
       ? `Conversation so far (compact summary):\n${input.rollingSummary}`
-      : "Conversation so far: none yet.",
+      : input.hasTranscript
+        ? // The summary only exists after six messages, so early turns used to
+          // read "none yet" while the transcript below plainly contained the
+          // greeting — and on a silent first turn the model believed it,
+          // introduced itself again, and looked exactly like a session
+          // restarting. The transcript is the authority; say so.
+          "Conversation so far: the interview is already underway. The transcript below is the conversation so far — you have already introduced yourself, so do not do it again."
+        : "Conversation so far: none yet.",
   ].join("\n");
 
   return { stablePrompt, volatilePrompt };
@@ -1017,7 +1026,19 @@ export async function POST(request: Request) {
      * either: it returns nothing before anything is covered and nothing once
      * everything is, which is exactly when a long session starts repeating.
      */
-    const askedQuestions = formatAskedQuestions(conversation);
+    /**
+     * On a silent turn the anti-repeat list is worse than useless: it names
+     * the very question the steering below orders the model to repeat, with
+     * "do not ask these again, or a reworded version". The model obeyed the
+     * list, could not re-ask, and improvised a fresh opening instead — which
+     * is what "it repeats the introduction" looked like. The re-ask *is* the
+     * point of the silent turn, so the list sits out.
+     */
+    const isSilentTurn =
+      !isOpening && userMessage?.trim() === NO_RESPONSE_MESSAGE;
+    const askedQuestions = isSilentTurn
+      ? null
+      : formatAskedQuestions(conversation);
 
     const behaviorContext = [
       steeringContext,
@@ -1032,6 +1053,7 @@ export async function POST(request: Request) {
       personaDescription,
       scenarioContext,
       rollingSummary: session.summary,
+      hasTranscript: recent.length > 0,
       jobDescriptionContext: jobDescription.context,
       // From the session's own column, not the launch snapshot: a JD deleted
       // mid-session must not leave the interviewer still claiming to work
@@ -1079,11 +1101,29 @@ export async function POST(request: Request) {
      * this is the difference between recovering a candidate whose audio
      * failed and monologuing past them.
      */
-    if (!isOpening && userMessage?.trim() === NO_RESPONSE_MESSAGE) {
+    if (isSilentTurn) {
+      const priorQuestion = findPriorQuestion(recent);
       promptMessages.push({
         role: "system",
-        content:
-          "The candidate said nothing before the response timer expired. Do not treat the silence as an answer, and do not move to a new topic. Briefly check they can hear you, then repeat your last question, condensed to one short sentence.",
+        content: [
+          "The candidate said nothing before the response timer expired. Do not treat the silence as an answer, do not move to a new topic, and do not introduce yourself again — the interview is already underway.",
+          "Briefly check they can hear you, then repeat the question you last asked, condensed to one short sentence. The rule against repeating earlier questions does not apply to this re-ask.",
+          priorQuestion ? `Your last message was: "${priorQuestion}"` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      });
+    } else if (!isOpening && userMessage && isTrivialAnswer(userMessage)) {
+      /**
+       * The near-silence twin of the branch above. A cough, an echo of the
+       * interviewer's own voice, or a bare "hmm" latches the recognizer, the
+       * 3-second silence watch submits it, and it misses the placeholder's
+       * exact match — so the one turn where the candidate audibly dropped
+       * off used to reach the model with no steering at all.
+       */
+      promptMessages.push({
+        role: "system",
+        content: `The candidate's entire reply was: "${userMessage.trim().slice(0, 80)}". If that does not answer your question, do not move on and do not introduce yourself again — briefly re-ask your last question or ask them to elaborate.`,
       });
     }
 

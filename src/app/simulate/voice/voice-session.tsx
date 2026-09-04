@@ -73,6 +73,7 @@ import {
   recoverPersistedOpening,
   recoverPersistedTurn,
 } from "@/lib/chat-recovery";
+import { reportClientError } from "@/lib/report-client-error";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 
@@ -206,6 +207,8 @@ function VoiceSimulateInner() {
    */
   const speechServiceRef = useRef(getSpeechService());
   const openingGeneratedRef = useRef(false);
+  /** A resumed question waiting to be voiced once speech is ready. */
+  const resumeSpeakRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
   const voiceConfigRef = useRef(voiceConfig);
   const sessionCompleteRef = useRef(false);
@@ -251,21 +254,31 @@ function VoiceSimulateInner() {
       bootstrap.jobDescriptionTitle ?? "",
       activeScenario.title,
     ],
-    onComplete: async ({ transcript, deliveryNote }) => {
+    onComplete: async ({ transcript, deliveryNote, reason }) => {
       if (transcript) {
         await handleSubmitTranscript(transcript, deliveryNote);
         return;
       }
       /**
-       * Three minutes elapsed and nothing was said.
+       * Empty transcript. What it means depends on *why* the answer ended —
+       * this handler used to be reason-blind and submitted the placeholder
+       * for all three, so tapping stop two seconds in produced a turn that
+       * said "no response before time expired" and the interviewer answering
+       * a silence the candidate never intended.
        *
-       * This used to set "No speech detected" and stop, which left the session
-       * with a closed microphone, no interviewer turn pending and nothing to
-       * click — a dead end reachable by walking away from the screen.
-       * Submitting the same placeholder the text screen uses keeps the
-       * interview moving and makes the silence a scored event rather than a
-       * stuck page.
+       *   - timeout: three minutes elapsed and nothing was said. Submitting
+       *     the placeholder keeps the interview moving and makes the silence
+       *     a scored event rather than a stuck page (a closed mic with no
+       *     pending turn was a dead end reachable by walking away).
+       *   - manual / silence-watch: the candidate is present — reopen the
+       *     conversation instead of manufacturing a "no response" turn.
        */
+      if (reason !== "timeout") {
+        speech.setRecordingError(
+          "No speech was picked up. Tap the microphone to try again.",
+        );
+        return;
+      }
       speech.setRecordingError(null);
       await handleSend(NO_RESPONSE_MESSAGE);
     },
@@ -368,6 +381,23 @@ function VoiceSimulateInner() {
       );
       // A resumed session already has its opening turn.
       openingGeneratedRef.current = true;
+
+      /**
+       * Say the question that is waiting.
+       *
+       * A resumed transcript used to render as text and nothing more — no
+       * audio, no microphone, no error, because the opening latch above
+       * correctly stops a *second* greeting from being generated and no
+       * other path ever voices an existing one. For a voice interview that
+       * reads as "the introduction is not read aloud at all": every reload
+       * or re-entry landed on a silent page. Queue the last interviewer
+       * message; the opening effect speaks it under the same token/loading
+       * gates a fresh greeting gets.
+       */
+      const last = resumed.messages[resumed.messages.length - 1];
+      if (last && last.role !== "user") {
+        resumeSpeakRef.current = last.content;
+      }
     }
     setMessagesHydrated(true);
   }, [bootstrap.status, messagesHydrated, resumed.status, resumed.messages]);
@@ -392,6 +422,7 @@ function VoiceSimulateInner() {
       // reads this synchronously after its await and must not conclude that
       // silence was a successful read.
       playbackFailedRef.current = true;
+      reportClientError("voice-tts", new Error(message));
       if (cancelled) return;
       setRecordingError(message);
     });
@@ -523,6 +554,21 @@ function VoiceSimulateInner() {
     // auto-submit an empty transcript on their behalf.
     if (isWritingCodeRef.current) return;
 
+    /**
+     * Never barge in automatically.
+     *
+     * `startAnswering` stops TTS by design — that is the *manual* barge-in,
+     * the candidate choosing to interrupt. The auto-start path has no such
+     * mandate: it runs on the belief that the interviewer has finished, and
+     * every playback-wait bug so far has turned that belief false and cut the
+     * reply off mid-sentence. Check the speaker element itself and come back
+     * shortly rather than trusting the wait that scheduled us.
+     */
+    if (speechServiceRef.current.isAudiblyPlaying()) {
+      setTimeout(() => void tryAutoStartRecording(), 500);
+      return;
+    }
+
     // `speech.start` reports a lapsed token itself, on the same inline slot.
     // Returning quietly used to leave the interview looking finished:
     // interviewer done speaking, microphone never opening, nothing on screen
@@ -545,14 +591,18 @@ function VoiceSimulateInner() {
     const heard = await speakAiMessage(message);
     if (!isMountedRef.current) return;
 
-    // Cleared either way. A second failure cannot be an activation problem —
-    // the tap supplied it — so leaving the button up would loop the candidate
-    // on a control that has already done all it can. `onPlaybackError` has put
-    // the real reason in the inline slot.
-    setBlockedAudioMessage(null);
-
-    if (heard && !sessionCompleteRef.current) {
-      await tryAutoStartRecording();
+    /**
+     * Cleared only when it worked. On Safari the replay's play() runs
+     * seconds after the click — outside the gesture stack, where it can be
+     * refused again — and clearing unconditionally deleted the only control
+     * that could ever get the audio out. `onPlaybackError` has already put
+     * the reason in the inline slot; the card stays to be tapped again.
+     */
+    if (heard) {
+      setBlockedAudioMessage(null);
+      if (!sessionCompleteRef.current) {
+        await tryAutoStartRecording();
+      }
     }
   };
 
@@ -562,7 +612,29 @@ function VoiceSimulateInner() {
       bootstrap.status !== "ready" ||
       !messagesHydrated ||
       isLoading ||
-      setupError ||
+      setupError
+    ) {
+      return;
+    }
+
+    // A resumed session speaks its waiting question instead of generating
+    // anything. Same gates as a fresh greeting; see the hydration effect.
+    if (resumeSpeakRef.current) {
+      const waiting = resumeSpeakRef.current;
+      resumeSpeakRef.current = null;
+      void (async () => {
+        const heard = await speakAiMessage(waiting);
+        if (!isMountedRef.current || sessionCompleteRef.current) return;
+        if (!heard) {
+          setBlockedAudioMessage(waiting);
+          return;
+        }
+        await tryAutoStartRecording();
+      })();
+      return;
+    }
+
+    if (
       !activePersonaConfig ||
       !activeScenarioValue ||
       messages.length > 0 ||
@@ -579,6 +651,17 @@ function VoiceSimulateInner() {
      * by the fresh generation below and the recovery path in its catch.
      */
     const presentOpening = async (aiMessage: string) => {
+      // An earlier failed attempt may have left its message in the error
+      // card; a recovery that then succeeds must take it down, or the user
+      // reads a live error over a working interview.
+      setError(null);
+
+      if (!aiMessage.trim()) {
+        // Presenting an empty greeting would "speak" nothing, report heard,
+        // and open the microphone on a question that does not exist.
+        throw new Error("The interviewer's greeting came back empty.");
+      }
+
       const openingMessage: DisplayMessage = {
         id: `msg-${Date.now()}-opening`,
         role: "ai",
@@ -635,6 +718,13 @@ function VoiceSimulateInner() {
         await presentOpening(data.aiMessage);
       } catch (err) {
         console.warn("Error generating opening greeting:", err);
+        // Server-side trace: these failures were invisible to the operator —
+        // the card renders client-side and /api/client-errors was only ever
+        // called by render-crash boundaries.
+        reportClientError(
+          "voice-opening",
+          err instanceof Error ? err : new Error(String(err)),
+        );
         if (!isMountedRef.current) return;
 
         /**
@@ -779,6 +869,10 @@ function VoiceSimulateInner() {
       const prosody = {
         ratePercent: paceToRatePercent(activePersonaConfig.pace),
       };
+      // Cleared per turn; the onPlaybackError bridge and the per-sentence
+      // synthesis .catch below both set it, so by the time playback drains
+      // it answers "did this reply actually reach the speakers?".
+      playbackFailedRef.current = false;
       let ttsBuffer = "";
       // Everything the stream has produced this turn. `ttsBuffer` is only the
       // tail not yet handed to the synthesizer, so the difference between them
@@ -825,6 +919,10 @@ function VoiceSimulateInner() {
             .speakQueued(sentence, resolvedVoiceUri, prosody)
             .catch((speakError: unknown) => {
               console.warn("TTS synthesis failed:", speakError);
+              // Marks the whole turn unheard, so the drain below offers a
+              // replay instead of opening the microphone over the missing
+              // half of the reply.
+              playbackFailedRef.current = true;
               if (isMountedRef.current) {
                 setRecordingError(
                   "The interviewer's voice cut out. The transcript is still on screen.",
@@ -950,9 +1048,19 @@ function VoiceSimulateInner() {
         void speechService.waitForQueuedPlayback().finally(async () => {
           if (!isMountedRef.current) return;
           setIsSpeakingTts(false);
-          if (!sessionCompleteRef.current) {
-            await tryAutoStartRecording();
+          if (sessionCompleteRef.current) return;
+          /**
+           * The opening's `heard` check, ported to mid-interview turns. A
+           * reply whose playback failed (synthesis error mid-burst, audio
+           * that never started) used to open the microphone anyway — the
+           * candidate was recorded answering a question they only saw as
+           * text, which is the cut-off-then-mic-kicks-in experience.
+           */
+          if (playbackFailedRef.current) {
+            setBlockedAudioMessage(aiMessage);
+            return;
           }
+          await tryAutoStartRecording();
         });
       } else if (!sessionCompleteRef.current) {
         void tryAutoStartRecording();
@@ -1004,6 +1112,12 @@ function VoiceSimulateInner() {
         }, 1000);
       }
     } catch (requestError) {
+      reportClientError(
+        "voice-turn",
+        requestError instanceof Error
+          ? requestError
+          : new Error(String(requestError)),
+      );
       const messageText =
         requestError instanceof Error
           ? requestError.message
