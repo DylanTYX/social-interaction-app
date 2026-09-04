@@ -9,7 +9,9 @@ export type PracticeMode = "text" | "voice";
 
 export interface VoiceSetupConfig {
   microphoneChecked: boolean;
-  sttEnabled: boolean;
+  // `sttEnabled` was removed: it was set in two UIs and read by nothing — the
+  // voice session opens the microphone regardless. A stored record carrying
+  // the old key parses fine; the literal below simply doesn't copy it.
   ttsEnabled: boolean;
   /**
    * Whether interviewers speak with the accent their nationality selects.
@@ -142,7 +144,6 @@ const MAX_VOICE_FIELD_CHARS = 120;
 function createDefaultVoiceConfig(): VoiceSetupConfig {
   return {
     microphoneChecked: false,
-    sttEnabled: true,
     ttsEnabled: true,
     accentsEnabled: true,
     selectedVoiceName: "",
@@ -201,10 +202,6 @@ export function normalizeVoiceConfig(
 
   return {
     microphoneChecked: Boolean(voiceConfig?.microphoneChecked),
-    sttEnabled:
-      voiceConfig?.sttEnabled === undefined
-        ? defaults.sttEnabled
-        : Boolean(voiceConfig.sttEnabled),
     ttsEnabled:
       voiceConfig?.ttsEnabled === undefined
         ? defaults.ttsEnabled

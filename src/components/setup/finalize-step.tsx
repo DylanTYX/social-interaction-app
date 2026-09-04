@@ -265,29 +265,6 @@ export function FinalizeStep({
                   />
                 </div>
               </div>
-
-              <div className="rounded-xl border border-border bg-white p-3">
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Mic className="h-4 w-4 text-primary" />
-                  Speech-to-text
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    Convert your spoken answer to text.
-                  </p>
-                  <Switch
-                    checked={setup.voiceConfig.sttEnabled}
-                    onCheckedChange={(checked) =>
-                      onUpdate({
-                        voiceConfig: {
-                          ...setup.voiceConfig,
-                          sttEnabled: checked,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </div>
             </div>
 
             {/*
