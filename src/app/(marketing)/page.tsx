@@ -18,6 +18,7 @@ import {
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
+import { ROUND_TYPES } from "@/lib/interview-rounds";
 import { AnimatedDemo } from "@/components/marketing/animated-demo";
 import { Reveal } from "@/components/marketing/reveal";
 import { StatCounter } from "@/components/marketing/stat-counter";
@@ -197,7 +198,13 @@ export default function LandingPage() {
               <div className="flex items-center gap-8 pt-4">
                 <StatCounter value={2} label="Practice modes" />
                 <div className="h-12 w-px bg-slate-200" />
-                <StatCounter value={5} label="Interview round types" />
+                {/* Derived, not typed: this said 5 while the product had 6 —
+                    it was written before cs_fundamentals existed and nothing
+                    forced it to move. Now it cannot go stale. */}
+                <StatCounter
+                  value={ROUND_TYPES.length}
+                  label="Interview round types"
+                />
                 <div className="h-12 w-px bg-slate-200" />
                 <StatCounter value={100} suffix="%" label="Free in beta" />
               </div>
@@ -298,7 +305,8 @@ export default function LandingPage() {
             </h2>
             <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl">
               Answer a real interview question right here — no account needed —
-              and get instant feedback on structure, specificity, and delivery.
+              and get a score, what worked, and what to fix. The full app goes
+              deeper on every dimension.
             </p>
           </Reveal>
           <Reveal>
