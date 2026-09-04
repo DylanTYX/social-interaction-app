@@ -1068,6 +1068,25 @@ export async function POST(request: Request) {
         ]
       : toOpenAIMessages(prompts, recent, userMessage);
 
+    /**
+     * The timer's placeholder is not an answer, and nothing else says so.
+     *
+     * The analyzer already skips it (see `isTrivialAnswer`), which means the
+     * one turn where the candidate has audibly dropped off is also the one
+     * turn that reaches the interviewer with no steering at all — the model
+     * is left to improvise against a bracketed stage direction. Pin the
+     * behaviour instead: check the channel, repeat the question. In voice
+     * this is the difference between recovering a candidate whose audio
+     * failed and monologuing past them.
+     */
+    if (!isOpening && userMessage?.trim() === NO_RESPONSE_MESSAGE) {
+      promptMessages.push({
+        role: "system",
+        content:
+          "The candidate said nothing before the response timer expired. Do not treat the silence as an answer, and do not move to a new topic. Briefly check they can hear you, then repeat your last question, condensed to one short sentence.",
+      });
+    }
+
     const interviewerModel = INTERVIEWER_MODEL;
 
     const buildResult = async (

@@ -69,7 +69,10 @@ import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { readJson } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
-import { recoverPersistedTurn } from "@/lib/chat-recovery";
+import {
+  recoverPersistedOpening,
+  recoverPersistedTurn,
+} from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 
@@ -277,7 +280,16 @@ function VoiceSimulateInner() {
   const isLoading =
     bootstrap.status === "loading" ||
     !messagesHydrated ||
-    (bootstrap.status === "ready" && speech.tokenStatus === "fetching");
+    /**
+     * "idle" counts as loading, not just "fetching". The token effect flips
+     * idle → fetching one render after the bootstrap turns ready, and the
+     * opening effect keys off `isLoading` — so treating idle as ready opened
+     * a window where the greeting was generated and "spoken" before the
+     * speech service had a token. `speakQueued` resolves silently in that
+     * state, which is a silent introduction with no error anywhere.
+     */
+    (bootstrap.status === "ready" &&
+      (speech.tokenStatus === "idle" || speech.tokenStatus === "fetching"));
   const setupError = bootstrap.error ?? speech.tokenError;
 
   useEffect(() => {
@@ -562,6 +574,41 @@ function VoiceSimulateInner() {
 
     openingGeneratedRef.current = true;
 
+    /**
+     * Put the greeting on screen, voice it, and open the microphone — shared
+     * by the fresh generation below and the recovery path in its catch.
+     */
+    const presentOpening = async (aiMessage: string) => {
+      const openingMessage: DisplayMessage = {
+        id: `msg-${Date.now()}-opening`,
+        role: "ai",
+        content: aiMessage,
+        timestamp: formatMessageTime(),
+      };
+
+      setMessages([openingMessage]);
+
+      const heard = await speakAiMessage(aiMessage);
+
+      if (!isMountedRef.current || sessionCompleteRef.current) return;
+
+      /**
+       * Do not open the microphone on a question nobody heard.
+       *
+       * This used to run unconditionally, so a candidate whose browser
+       * blocked the greeting was recorded answering a question that had only
+       * ever appeared as text — and the silence watch would then auto-submit
+       * whatever it caught. Offering the tap is both the fix and the thing
+       * that unblocks audio for the rest of the session.
+       */
+      if (!heard) {
+        setBlockedAudioMessage(aiMessage);
+        return;
+      }
+
+      await tryAutoStartRecording();
+    };
+
     const generateOpening = async () => {
       try {
         if (!bootstrap.sessionId) return;
@@ -585,36 +632,29 @@ function VoiceSimulateInner() {
           return;
         }
 
-        const openingMessage: DisplayMessage = {
-          id: `msg-${Date.now()}-opening`,
-          role: "ai",
-          content: data.aiMessage,
-          timestamp: formatMessageTime(),
-        };
-
-        setMessages([openingMessage]);
-
-        const heard = await speakAiMessage(data.aiMessage);
-
-        if (!isMountedRef.current || sessionCompleteRef.current) return;
-
-        /**
-         * Do not open the microphone on a question nobody heard.
-         *
-         * This used to run unconditionally, so a candidate whose browser
-         * blocked the greeting was recorded answering a question that had only
-         * ever appeared as text — and the silence watch would then auto-submit
-         * whatever it caught. Offering the tap is both the fix and the thing
-         * that unblocks audio for the rest of the session.
-         */
-        if (!heard) {
-          setBlockedAudioMessage(data.aiMessage);
-          return;
-        }
-
-        await tryAutoStartRecording();
+        await presentOpening(data.aiMessage);
       } catch (err) {
         console.warn("Error generating opening greeting:", err);
+        if (!isMountedRef.current) return;
+
+        /**
+         * The failure may be client-side only.
+         *
+         * The route persists the greeting *before* replying and rejects a
+         * second `mode: "opening"` call with "This interview has already
+         * started." — so a dropped response followed by the retry below used
+         * to trap the session: a greeting in the database, an error card on
+         * screen, and every further retry manufacturing the same 400. The
+         * server is the authority on whether the opening landed; ask it
+         * before treating this as fatal.
+         */
+        const recovered = bootstrap.sessionId
+          ? await recoverPersistedOpening(bootstrap.sessionId)
+          : null;
+        if (recovered && isMountedRef.current) {
+          await presentOpening(recovered);
+          return;
+        }
         if (!isMountedRef.current) return;
 
         /**
@@ -1250,8 +1290,11 @@ function VoiceSimulateInner() {
               {error && (
                 <Card className="border-warning-border bg-warning-subtle/80">
                   <CardHeader className="pb-2">
+                    {/* This is the session's error slot, and it was titled
+                        "Coaching note" — so a failed request read as feedback
+                        on the candidate's answer. Say what it is. */}
                     <CardTitle className="text-sm text-warning-emphasis">
-                      Coaching note
+                      Something went wrong
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

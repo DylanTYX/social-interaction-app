@@ -85,3 +85,34 @@ export async function recoverPersistedTurn(
     return null;
   }
 }
+
+/**
+ * The opening greeting, if the server already stored it.
+ *
+ * Same authority argument as above, for turn zero: the route persists the
+ * assistant-only opening row *before* replying, and guards `mode: "opening"`
+ * with "This interview has already started." — so a client-side failure
+ * followed by a retry produces exactly that 400, an error card, and a session
+ * with a greeting in the database and none on screen. The transcript is the
+ * tie-breaker: exactly one assistant message means the opening landed.
+ */
+export async function recoverPersistedOpening(
+  sessionId: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `/api/sessions/${encodeURIComponent(sessionId)}/resume`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as ResumeTranscript;
+    const messages = payload.messages ?? [];
+    if (messages.length !== 1) return null;
+    if (messages[0].role !== "assistant") return null;
+    const content = messages[0].content?.trim();
+    return content || null;
+  } catch {
+    return null;
+  }
+}

@@ -746,8 +746,11 @@ function ChatSimulateInner() {
               {error && (
                 <Card className="border-warning-border bg-warning-subtle/80">
                   <CardHeader className="pb-2">
+                    {/* This is the session's error slot, and it was titled
+                        "Coaching note" — so a failed request read as feedback
+                        on the candidate's answer. Say what it is. */}
                     <CardTitle className="text-sm text-warning-emphasis">
-                      Coaching note
+                      Something went wrong
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
