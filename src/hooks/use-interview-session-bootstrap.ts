@@ -15,6 +15,7 @@ import {
   type InterviewLaunchPayload,
   type InterviewSetupState,
   type VoiceSetupConfig,
+  normalizeVoiceConfig,
 } from "@/lib/interview-setup";
 import { getScenarioByValue } from "@/lib/scenarios";
 import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
@@ -281,7 +282,11 @@ export function sessionRowToLaunch(
     personaConfig: session.personaConfig,
     personaLibraryId: launch?.personaLibraryId,
     practiceMode: session.practiceMode === "voice" ? "voice" : "text",
-    voiceConfig: launch?.voiceConfig ?? DEFAULT.voiceConfig,
+    // Through the normalizer, not `??`: rows written before `launch_meta`
+    // was sanitized can hold a voiceConfig missing `ttsEnabled`, and a raw
+    // spread of that made the whole session silently mute — no audio, no
+    // error, no tap card, because "TTS off" is a legal user choice.
+    voiceConfig: normalizeVoiceConfig(launch?.voiceConfig),
     jobDescription: jobDescriptionMissing
       ? // Deleted out from under the session. Reset to "no JD" rather than
         // carrying the dead reference forward — the interview is genuinely
