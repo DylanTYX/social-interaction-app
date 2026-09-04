@@ -52,10 +52,15 @@ import { parseCodeAnswer } from "@/lib/code-answer";
 import { suggestedBreakMinutes } from "@/lib/interview-progress";
 import { ScoreComparison } from "@/components/report/score-comparison";
 import { CalibrationCard } from "@/components/report/calibration-card";
+import {
+  buildRadarAxes,
+  DimensionRadar,
+} from "@/components/report/dimension-radar";
 import { TurnScore, toTurnFeedback } from "@/components/report/turn-score";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
 import { CoachingResult } from "@/components/coach/coaching-result";
 import type { SuggestedAnswerResult } from "@/lib/coach-contract";
+import type { AnalysisResult } from "@/lib/response-analyzer";
 import { parseCoverage } from "@/lib/competencies";
 
 interface MessageRecord {
@@ -485,6 +490,35 @@ export default function SessionReportPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* The score above is the headline — it drives the decision engine and
+          the trend — and this is the same marks with their shape kept: which
+          dimension earned them. Axes follow the analyzer's two rubric
+          families; absent for sessions with no scored turns. */}
+      {(() => {
+        const axes = buildRadarAxes(
+          (data.turnAnalyses ?? []).flatMap((entry) =>
+            entry.analysis ? [entry.analysis as Partial<AnalysisResult>] : [],
+          ),
+          usesTechnicalRubric,
+        );
+        if (!axes) return null;
+        return (
+          <Card className="border-slate-200/80 bg-white">
+            <CardHeader>
+              <CardTitle className="text-base">Dimension profile</CardTitle>
+              <CardDescription>
+                {usesTechnicalRubric
+                  ? "Averaged across this round's scored answers, on the technical rubric."
+                  : "Averaged across this round's scored answers, on the STAR rubric."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DimensionRadar axes={axes} />
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <CalibrationCard
         sessionId={session.id}
