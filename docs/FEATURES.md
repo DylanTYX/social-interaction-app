@@ -336,14 +336,12 @@ carrying on as though nothing changed.
 **Weekly goal** — set a target number of sessions and track your streak. Both
 count sessions you actually practised in, not ones you opened and closed.
 
-**Settings** — three tabs. _Account_ holds your profile, password reset and
-sign-out. _Interview_ holds what the setup wizard starts with — practice mode,
-streaming, live coaching, and the two voice switches (interviewer speech,
-accents) — saved as you change them, and honest about what they are: running an
-interview updates them to match, so they reflect your most recent setup rather
-than a pinned default. _Data_ exports everything as JSON, states plainly where
-your data goes (OpenAI for text, Azure Speech for voice), and holds the danger
-zone for wiping interview history.
+**Settings** — two tabs. _Account_ holds your profile, password reset and
+sign-out. _Data_ exports everything as JSON, states plainly where your data
+goes (OpenAI for text, Azure Speech for voice), and holds the danger zone for
+wiping interview history. Interview preferences are deliberately not here: the
+setup wizard is their one home — it remembers your last setup, and every one
+of its controls sits on a step you pass through to launch anyway.
 
 ---
 
