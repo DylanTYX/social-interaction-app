@@ -188,6 +188,13 @@ pick the interview back up where you left off.
 
 - Overall score, plus clarity, structure and confidence breakdowns
 - A summary of the conversation
+- A **dimension profile** — a radar over the rubric's sub-scores, averaged
+  across the round's answers. The score stays the headline (it drives the
+  adaptive engine and the trend); the radar shows its *shape* — which
+  dimension earned or cost the marks. Behavioural rounds chart STAR +
+  specificity + clarity; technical rounds chart the seven-part technical
+  rubric. Axis order is fixed, every value is printed on its axis, and
+  outward always means better.
 - The full transcript, with **each answer's own score** and the strengths and
   gaps behind it — so you can see which answer moved the number, not just the
   number
