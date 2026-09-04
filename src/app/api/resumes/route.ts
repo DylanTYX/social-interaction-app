@@ -32,6 +32,7 @@ export async function GET(request: Request) {
 interface ParsedResumePayload {
   rawText: string;
   title: string | null;
+  variant: string | null;
 }
 
 async function parsePayload(request: Request): Promise<ParsedResumePayload> {
@@ -39,21 +40,27 @@ async function parsePayload(request: Request): Promise<ParsedResumePayload> {
 
   if (contentType.includes("multipart/form-data")) {
     const { rawText, fields } = await parsePdfUpload(request, {
-      textFields: ["title"],
+      textFields: ["title", "variant"],
       minChars: MIN_RESUME_CHARS,
       tooLittleTextMessage:
         "Could not extract enough text from the PDF. The file may be image-only or scanned; paste your resume as text instead.",
     });
-    return { rawText, title: fields.title ?? null };
+    return {
+      rawText,
+      title: fields.title ?? null,
+      variant: fields.variant ?? null,
+    };
   }
 
   const body = await readJsonBody<{
     rawText?: unknown;
     title?: unknown;
+    variant?: unknown;
   }>(request);
   const rawText = typeof body.rawText === "string" ? body.rawText : "";
   const title = typeof body.title === "string" ? body.title : null;
-  return { rawText, title };
+  const variant = typeof body.variant === "string" ? body.variant : null;
+  return { rawText, title, variant };
 }
 
 export async function POST(request: Request) {
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
     );
     if (limited) return limited;
 
-    const { rawText, title } = await parsePayload(request);
+    const { rawText, title, variant } = await parsePayload(request);
 
     if (rawText.trim().length < MIN_RESUME_CHARS) {
       return badRequest(
@@ -95,6 +102,7 @@ export async function POST(request: Request) {
       userId: user.id,
       rawText,
       title,
+      variant,
     });
 
     return NextResponse.json({ resume }, { status: 201 });

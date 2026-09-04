@@ -33,10 +33,12 @@ export interface UseResumes {
   uploadText: (input: {
     rawText: string;
     title?: string | null;
+    variant?: string | null;
   }) => Promise<ResumeSummary | null>;
   uploadPdf: (input: {
     file: File;
     title?: string | null;
+    variant?: string | null;
   }) => Promise<ResumeSummary | null>;
   /**
    * Metadata always; the text only when no interview using it is mid-way — the
@@ -120,7 +122,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
   );
 
   const uploadText = useCallback<UseResumes["uploadText"]>(
-    async ({ rawText, title }) => {
+    async ({ rawText, title, variant }) => {
       try {
         // Explicit, because omitting it silently took the route's fallback of 20
         // while the cap is 50 — so a 21st saved item was unreachable from both
@@ -128,7 +130,11 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         const response = await fetch("/api/resumes?limit=50", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ rawText, title: title ?? null }),
+          body: JSON.stringify({
+            rawText,
+            title: title ?? null,
+            variant: variant ?? null,
+          }),
         });
         const payload = await readJson<ApiPayload>(response);
         const resume = payload.resume;
@@ -148,12 +154,15 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
   );
 
   const uploadPdf = useCallback<UseResumes["uploadPdf"]>(
-    async ({ file, title }) => {
+    async ({ file, title, variant }) => {
       try {
         const formData = new FormData();
         formData.append("file", file);
         if (title && title.trim()) {
           formData.append("title", title.trim());
+        }
+        if (variant && variant.trim()) {
+          formData.append("variant", variant.trim());
         }
 
         // Explicit, because omitting it silently took the route's fallback of 20
