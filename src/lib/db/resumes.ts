@@ -133,6 +133,12 @@ export async function createResume(input: {
   userId: string;
   rawText: string;
   title?: string | null;
+  /**
+   * The version label. Settable at creation since the add form's "Label"
+   * field was rerouted here — it used to overwrite `title` and leave this
+   * column unreachable from any add surface.
+   */
+  variant?: string | null;
 }): Promise<ResumeRecord> {
   const rawText = input.rawText.trim();
   if (rawText.length < MIN_RESUME_CHARS) {
@@ -155,6 +161,10 @@ export async function createResume(input: {
     .insert({
       user_id: input.userId,
       title,
+      variant:
+        input.variant && input.variant.trim()
+          ? input.variant.trim().slice(0, 120)
+          : null,
       raw_text: stored,
       truncated_from: truncatedFrom,
       source_type: "text",

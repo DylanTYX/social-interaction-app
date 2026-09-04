@@ -34,10 +34,13 @@ export function emptyResumeDraft(): ResumeDraft {
  * let the two surfaces drift apart in labels, palette and behaviour.
  *
  * Fewer fields than the job description, because a resume has fewer facts about it
- * — no company, no link to a posting. What it does have is a label, and that
- * one matters more here than it does there: a resume's title is *guessed* from the
- * first line of the file, so without a label a library of three resumes reads as
- * three variations on the same name and a date.
+ * — no company, no link to a posting. What it does have is a version label, and
+ * that one matters more here than it does there: a resume's title is *guessed*
+ * from the first line of the file — usually the person's name — so without a
+ * label a library of three resumes reads as three variations on the same name
+ * and a date. The label is saved as the `variant` (the edit dialog's "version"
+ * field), never the title: overwriting the guessed title would make three
+ * differently-named entries that all hide *whose* document they are.
  *
  * There is no tidy-up counterpart. That exists to strip navigation and
  * boilerplate off a posting copied from a careers page; a resume is the user's own
@@ -85,10 +88,16 @@ export function ResumeAddForm({
         </ChoiceChip>
       </div>
 
+      {/* Writes `variant`, the field the edit dialog calls Version and the
+          library search claims to cover. It used to be sent as `title`, which
+          destroyed the guessed name, left the version column empty, and made
+          `variant` unreachable from any add surface — the placeholder even
+          matched the edit dialog's Version field while feeding a different
+          column. */}
       <Field
-        label="Label (optional)"
+        label="Version label (optional)"
         htmlFor="resume-label"
-        hint="Only you see this. Useful once you keep more than one version."
+        hint="Only you see this — e.g. which version of your resume it is. The name is taken from the document itself."
       >
         <Input
           id="resume-label"
@@ -151,11 +160,11 @@ export function useResumeCreator({
 }: {
   uploadText: (input: {
     rawText: string;
-    title?: string | null;
+    variant?: string | null;
   }) => Promise<ResumeSummary | null>;
   uploadPdf: (input: {
     file: File;
-    title?: string | null;
+    variant?: string | null;
   }) => Promise<ResumeSummary | null>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -188,7 +197,9 @@ export function useResumeCreator({
     setBusy(true);
     const created = await uploadText({
       rawText: draft.text,
-      title: draft.label.trim() || null,
+      // The form's label is the *version*; the title stays server-guessed
+      // from the document's first line, as the edit dialog's split intends.
+      variant: draft.label.trim() || null,
     });
     setBusy(false);
     reportTruncation(created);
@@ -200,7 +211,7 @@ export function useResumeCreator({
     setBusy(true);
     const created = await uploadPdf({
       file,
-      title: draft.label.trim() || null,
+      variant: draft.label.trim() || null,
     });
     setBusy(false);
     reportTruncation(created);
