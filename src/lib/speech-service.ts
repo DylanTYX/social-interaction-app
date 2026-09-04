@@ -703,7 +703,11 @@ export class SpeechService {
       ((item.prosody?.ratePercent ?? 0) !== 0 ||
         (item.prosody?.pitchPercent ?? 0) !== 0);
     const ssml = useSsml
-      ? buildProsodySsml(trimmed, playback.voice, item.prosody as ProsodyOptions)
+      ? buildProsodySsml(
+          trimmed,
+          playback.voice,
+          item.prosody as ProsodyOptions,
+        )
       : null;
 
     playback.queuedChars += trimmed.length;
@@ -830,6 +834,7 @@ export class SpeechService {
       // no sticky user activation rejects `play()` inside the SDK with no
       // `.catch`, leaving a paused element at time zero that will never end.
       let sawProgress = false;
+      let ticksAtZero = 0;
       const poll = setInterval(() => {
         /**
          * Torn down under us by a barge-in.
@@ -847,9 +852,22 @@ export class SpeechService {
           sawProgress = true;
           return;
         }
-        // Two seconds in, still at zero and not even trying: nothing is going
-        // to play. Give up rather than hold the microphone shut.
-        if (!sawProgress && audio.paused) {
+        /**
+         * Three seconds at zero and not even trying: nothing is going to
+         * play. Give up rather than hold the microphone shut.
+         *
+         * The grace period is the fix for replies cutting out after a
+         * sentence. This used to fire on the *first* tick, and "paused at
+         * zero, 500ms after close" is not a verdict — it is the normal state
+         * of a destination whose first audio bytes are still in flight from
+         * Azure. The interviewer model streams its reply in one burst, so
+         * this wait now starts almost immediately after the first sentence
+         * was enqueued; the false "did not start" then disposed the
+         * destination — which hard-mutes the element — and auto-opened the
+         * microphone over the rest of the reply.
+         */
+        ticksAtZero += 1;
+        if (ticksAtZero >= 6 && !sawProgress && audio.paused) {
           this.reportPlaybackFailure(
             "Audio playback did not start. The browser may be blocking autoplay.",
           );
