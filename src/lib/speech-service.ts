@@ -254,7 +254,8 @@ export class SpeechService {
     audioConfig: SpeechSDK.AudioConfig;
     /** The resolved catalogue voice, kept whole so SSML can read its locale. */
     voice: SpeechVoiceOption;
-    /** Characters handed to Azure, used to size the playback-wait ceiling. */
+    /** Characters handed to Azure. Diagnostic only — the playback wait
+     * watches element progress and makes no duration estimate from this. */
     queuedChars: number;
   } | null = null;
 
@@ -850,8 +851,28 @@ export class SpeechService {
       // it within a tick. It also catches the autoplay case — a document with
       // no sticky user activation rejects `play()` inside the SDK with no
       // `.catch`, leaving a paused element at time zero that will never end.
+      /**
+       * A progress watchdog, not a size guess.
+       *
+       * This used to end on a ceiling of `queuedChars * 70ms` — "Azure
+       * speaks ~15 chars/second" — which is wrong twice over: personas with
+       * a slow prosody rate speak well below that, and the clock started at
+       * close() while playback starts seconds later. A slow-paced persona's
+       * reply hit the undersized ceiling mid-sentence, the finally block
+       * disposed the destination — hard-muting the element — and the
+       * microphone opened over the rest of the reply. Roughly one audible
+       * sentence, then silence and a hot mic: the reported bug, verbatim.
+       *
+       * A duration estimate can never be honest about pace, buffering and
+       * tab throttling at once, so none is made. The only questions the
+       * watchdog asks of the element are ones it can answer exactly: has it
+       * ended, and is `currentTime` still advancing? Playback that is
+       * progressing is NEVER cut off, however slow; the wait gives up only
+       * on genuine stalls, and says so.
+       */
       let sawProgress = false;
-      let ticksAtZero = 0;
+      let lastTime = -1;
+      let lastProgressAtMs = Date.now();
       const poll = setInterval(() => {
         /**
          * Torn down under us by a barge-in.
@@ -859,68 +880,62 @@ export class SpeechService {
          * `stopSpeaking` mutes the element, resets `currentTime` to 0 and
          * blanks `src` — so `ended` stays false and `currentTime` stays 0,
          * while `sawProgress` is already true from before the interruption.
-         * Neither exit below can fire, and the wait ran to its multi-second
-         * ceiling holding `isSpeakingFlag` and the microphone with it.
+         * Without this exit the wait would idle out on the stall branch
+         * below, holding `isSpeakingFlag` and the microphone with it.
          */
         if (this.queuePlayback !== playback) return finish();
         if (!audio) return;
         if (audio.ended) return finish();
-        if (audio.currentTime > 0) {
-          sawProgress = true;
+
+        if (audio.currentTime > lastTime) {
+          lastTime = audio.currentTime;
+          if (audio.currentTime > 0) sawProgress = true;
+          lastProgressAtMs = Date.now();
           return;
         }
-        /**
-         * Three seconds at zero and not even trying: nothing is going to
-         * play. Give up rather than hold the microphone shut.
-         *
-         * The grace period is the fix for replies cutting out after a
-         * sentence. This used to fire on the *first* tick, and "paused at
-         * zero, 500ms after close" is not a verdict — it is the normal state
-         * of a destination whose first audio bytes are still in flight from
-         * Azure. The interviewer model streams its reply in one burst, so
-         * this wait now starts almost immediately after the first sentence
-         * was enqueued; the false "did not start" then disposed the
-         * destination — which hard-mutes the element — and auto-opened the
-         * microphone over the rest of the reply.
-         */
-        ticksAtZero += 1;
-        if (ticksAtZero >= 6 && !sawProgress && audio.paused) {
-          this.reportPlaybackFailure(
-            "Audio playback did not start. The browser may be blocking autoplay.",
+
+        const stalledForMs = Date.now() - lastProgressAtMs;
+
+        if (!sawProgress) {
+          /**
+           * Never started. "Paused at zero, moments after close" is the
+           * normal state of a destination whose first bytes are still in
+           * flight from Azure — the burst-streaming interviewer model means
+           * this wait begins almost immediately after the first sentence was
+           * enqueued — so the verdict needs patience: a rejected autoplay
+           * `play()` leaves the element paused (3s is conclusive), while a
+           * play() that hangs without rejecting never pauses and gets
+           * longer benefit of the doubt.
+           */
+          if (stalledForMs >= (audio.paused ? 3_000 : 8_000)) {
+            this.reportPlaybackFailure(
+              "Audio playback did not start. The browser may be blocking autoplay.",
+            );
+            finish();
+          }
+          return;
+        }
+
+        // Was audibly playing and has not advanced in ten seconds: the
+        // element is wedged or was torn down in a way the identity check
+        // missed. Ending the wait here releases the microphone; the trace
+        // distinguishes this from a clean finish.
+        if (stalledForMs >= 10_000) {
+          console.warn(
+            `TTS playback stalled at ${lastTime.toFixed(1)}s and did not recover.`,
           );
           finish();
         }
       }, 500);
       cleanups.push(() => clearInterval(poll));
 
-      // Last resort, sized to the audio rather than a flat two minutes: Azure
-      // neural voices run near 15 chars/second, so ~70ms per character plus
-      // slack for network and buffering.
-      const estimateMs = playback.queuedChars * 70 + 5_000;
-      const ceiling = setTimeout(
-        () => {
-          // A wait that only the ceiling could end is a diagnosis in itself —
-          // `onAudioEnd` never fired and the poll saw neither an end nor a
-          // stall. Leave a trace for the next report of audio misbehaving.
-          console.warn(
-            `TTS playback wait hit its ceiling (${Math.round(estimateMs / 1000)}s for ${playback.queuedChars} chars).`,
-          );
-          /**
-           * The give-up poll only catches `paused` elements, so a play() that
-           * hangs without rejecting (stalled MediaSource, throttled tab) used
-           * to ride the wait to this ceiling and then count as *heard* — the
-           * one escape that turned an inaudible reply into an opened
-           * microphone with no tap-to-replay card.
-           */
-          if (!sawProgress) {
-            this.reportPlaybackFailure(
-              "Audio playback never started. The browser may be blocking or throttling audio.",
-            );
-          }
-          finish();
-        },
-        Math.min(180_000, Math.max(8_000, estimateMs)),
-      );
+      // Absolute backstop only — far above any legitimate reply, present so
+      // a pathological element that "advances" forever cannot hold the wait
+      // eternally. Progress-based exits above do all the real work.
+      const ceiling = setTimeout(() => {
+        console.warn("TTS playback wait hit the 5-minute absolute backstop.");
+        finish();
+      }, 300_000);
       cleanups.push(() => clearTimeout(ceiling));
     });
   }
