@@ -6,7 +6,7 @@ import { updateSession } from "@/lib/db/sessions";
 /**
  * `updateSession` goes through an RPC, not a table update.
  *
- * Migration `0012` revokes `update` on `interview_sessions` from
+ * `0002_security.sql` revokes `update` on `interview_sessions` from
  * `authenticated`, because that privilege applied equally to the browser — a
  * signed-in user could set `average_score` or write `launch_meta.loopBrief`
  * (which reaches the interviewer's *stable* system prompt) straight through

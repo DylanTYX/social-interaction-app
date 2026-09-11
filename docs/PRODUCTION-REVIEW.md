@@ -223,7 +223,8 @@ Checked and found sound, recorded so the next review does not re-litigate them:
 - No load testing. The performance findings are read from the code — query
   shapes, fan-out widths, index coverage — not measured.
 - **`0011`'s constraints are `not valid`**, so existing rows stay unchecked
-  until someone runs `validate constraint`. New and updated rows are checked.
+  until someone runs `validate constraint`. New and updated rows are checked. A
+  database set up from the consolidated migrations validates them at creation.
 - **The `0012` RPC path is unit-tested but not yet exercised end to end here.**
   `updateSession` and `UsageCollector.flush` have tests asserting they call
   `update_session_progress` / `record_llm_usage` with the right shape, so a

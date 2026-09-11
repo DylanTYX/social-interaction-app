@@ -177,7 +177,7 @@ a contract so it can be checked is most of what made the contract worth having.
 
 `cacheable` requires **both** `sessionId` and `turnIndex`
 (`route.ts`). The report page sends both, so reopening a report serves coaching
-from `coach_answers` (migration `0010`) instead of paying again. **The drills
+from `coach_answers` instead of paying again. **The drills
 page deliberately sends neither** — a drill has no session and no turn — so
 **every drill submission is a full billed call**, bounded only by the 20/min
 rate limit. This is a deliberate trade, not an oversight, but it means drills

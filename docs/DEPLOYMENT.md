@@ -11,42 +11,25 @@ This guide connects your existing GitHub repo to Vercel and configures Supabase 
 
 Do this **before** or **right after** the first Vercel deploy. Use the **same** Supabase project you use locally, or create a dedicated production project.
 
-### A1. Apply database migrations
+### A1. Set up the database
 
 In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **SQL Editor**, run each file **in order**:
 
-1. `supabase/migrations/0001_init.sql`
-2. `supabase/migrations/0002_job_descriptions.sql`
-3. `supabase/migrations/0003_table_privileges.sql`
-4. `supabase/migrations/0004_resumes.sql`
-5. `supabase/migrations/0005_atomic_turns_and_preset_uniqueness.sql`
-6. `supabase/migrations/0006_turn_analyses.sql`
-7. `supabase/migrations/0007_llm_usage.sql`
-8. `supabase/migrations/0008_resume_profile.sql`
-9. `supabase/migrations/0009_session_columns.sql`
-10. `supabase/migrations/0010_coach_answers.sql`
-11. `supabase/migrations/0011_integrity_constraints.sql`
-12. `supabase/migrations/0012_server_owned_writes.sql`
-13. `supabase/migrations/0013_job_description_metadata.sql`
-14. `supabase/migrations/0014_jd_clean_call_site.sql`
-15. `supabase/migrations/0015_document_metadata.sql`
-16. `supabase/migrations/0016_rename_model_answer_key.sql`
-17. `supabase/migrations/0017_session_updated_at.sql`
-18. `supabase/migrations/0018_session_management.sql`
+1. `supabase/migrations/0001_schema.sql` — tables, constraints, indexes, triggers
+2. `supabase/migrations/0002_security.sql` — row-level security and table privileges
+3. `supabase/migrations/0003_functions.sql` — the functions the app calls
 
-> **`0005` and `0006` are not optional.** Together they create the
-> `append_interview_turn` RPC that `src/lib/db/sessions.ts` calls on every
-> interview turn — `0006` replaces the signature `0005` introduced. Skip either
-> and the app deploys cleanly but fails the moment anyone sends a message.
+That is the whole database, and all three are needed. Without `0003` the app
+deploys cleanly, then fails the moment anyone sends a message: every interview
+turn goes through `append_interview_turn`. Each file is safe to run twice.
+
+> **Already set up with the eighteen older migrations?** Nothing to run. The
+> three files build the same schema and replaced `0001_init` …
+> `0018_session_management` in one step — see `docs/DATA-MODEL.md` → Migrations.
 >
-> **Neither is `0017`.** `0012` redefines the same function to set
-> `interview_sessions.updated_at`, a column only `0017` creates. With `0012` but
-> not `0017`, every turn fails with `42703` — no greeting, no saved messages.
->
-> **Apply `0018` before deploying the version that uses it.** Every page that
-> lists or opens a session reads its new columns (title, tags, folder…). A
-> deployment ahead of its database fails on those pages with "The database is
-> behind this version of the app" — apply the newest migrations and reload.
+> **Changing the schema later:** add a new numbered file (`0004_…`) rather than
+> editing these three. A database that has already run a file will not pick up
+> an edit to it.
 
 (Or use Supabase CLI: `supabase db push` if you have the project linked.)
 
@@ -171,13 +154,9 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | Register succeeds but dashboard redirects to login | Same as above; check cookies / Site URL                                                                |
 | AI never responds / “The interviewer is unavailable” | `OPENAI_API_KEY` missing for this environment (Preview vs Production), rejected, or out of credit — the message says which. Redeploy after changing it |
 | Voice broken                                       | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`                                                         |
-| PDF upload fails                                   | Migrations `0002`/`0004` not applied on production DB                                                  |
+| PDF upload fails                                   | The files in `supabase/migrations` not all applied on the production DB                                |
 | “The database is behind this version of the app” | A migration the deployed code needs is not applied (a missing column or table). Run the newest files in `supabase/migrations`, in order |
-| Every interview turn fails with `(ref … · 42703)`; no greeting, resumed sessions blank | Migration `0017` not applied — since `0012`, `append_interview_turn` sets `interview_sessions.updated_at`, which only `0017` creates |
-| Sending a message 500s                             | Migrations `0005`/`0006` not applied — `append_interview_turn` RPC is missing or has the old signature |
-| Report shows scores but no per-question detail     | Migration `0006` not applied — analyses are not being persisted                                        |
-| Resume context looks truncated                     | Migration `0008` not applied — falls back to raw text, which still works                               |
-| New account has every preset persona twice         | Migration `0005` not applied — the unique index is missing                                             |
+| Sending a message 500s; no greeting, resumed sessions blank | `0003_functions.sql` not applied, so `append_interview_turn` is missing. Run all three files in order — each is safe to rerun |
 | API timeout (~10s) on Hobby                        | Rare for streaming chat; if analyze route times out, retry or upgrade plan                             |
 
 ---
@@ -209,7 +188,7 @@ CLI is optional; the GitHub dashboard flow above is enough.
 
 ## Checklist (printable)
 
-- [ ] Migrations `0001`–`0009` applied on Supabase
+- [ ] Migrations `0001`–`0003` applied on Supabase
 - [ ] Vercel project imported from GitHub
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set
 - [ ] `OPENAI_API_KEY` set

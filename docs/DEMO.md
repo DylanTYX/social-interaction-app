@@ -82,7 +82,7 @@ the response carries usage.prompt_tokens_details.cached_tokens
       ↓
 UsageCollector.record() … .flush()                token-usage.ts:51, 86
       ↓
-one row per model call in llm_usage               migration 0007
+one row per model call in llm_usage               0001_schema.sql
       ↓
 npm run cost-report → costOf() / costWithoutCaching()      pricing.ts
       ↓
@@ -141,12 +141,12 @@ the exception is worth presenting rather than glossing.
 | `docs/` and `docs/artifacts/`                                     | Not in `public/`, no file-serving route, no rewrites                                                                        | Yes — no URL returns them                                                                                     |
 | **A user's own `llm_usage` rows**                                 | **Nothing. The UI simply never renders them**                                                                               | **No**                                                                                                        |
 
-**The last row, stated plainly.** Migration `0007` grants `select, insert` on
+**The last row, stated plainly.** `0002_security.sql` grants `select` on
 `llm_usage` to `authenticated`, and Supabase exposes every granted table over
 PostgREST. A logged-in user can open devtools and read all of _their own_ usage
 rows — model names, token counts, session ids — using the publishable key
-already in their browser. They can also insert forged rows attributed to
-themselves.
+already in their browser. They cannot insert rows: those come only from the
+`record_llm_usage` function.
 
 What they cannot do: read anyone else's rows (RLS blocks it), update or delete
 any row (no grant), or derive dollar cost (the price table is not in the
@@ -187,7 +187,7 @@ scriptable, and its output can be committed.
 | 2   | Dependencies                         | `npm ci`                                                                      | clean install                                                                      |
 | 3   | Types, lint, tests                   | `npx tsc --noEmit && npm run lint && npm test`                                | 0, 0, all passing                                                                  |
 | 4   | Supabase reachable                   | `curl -s -o /dev/null -w "%{http_code}\n" $NEXT_PUBLIC_SUPABASE_URL/rest/v1/` | `401` (correct for an unauthenticated probe)                                       |
-| 5   | **Migrations `0001`–`0010` applied** | Supabase dashboard → SQL editor                                               | `llm_usage` and `coach_answers` exist. Without `0007` there is no cost demo at all |
+| 5   | **Migrations `0001`–`0003` applied** | Supabase dashboard → SQL editor                                               | `llm_usage` and `coach_answers` exist. Without them there is no cost demo at all |
 | 6   | OpenAI key has credit                | `npm run eval -- --runs=1 --only=<one fixture>`                               | completes without a 429                                                            |
 | 7   | App starts                           | `npm run dev`                                                                 | loads at `localhost:3000`                                                          |
 | 8   | **Full dry run**                     | everything below, end to end                                                  | on the machine and network you will present from                                   |

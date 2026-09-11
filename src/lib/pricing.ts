@@ -62,7 +62,7 @@ export interface CostBreakdown {
 /**
  * What one recorded call cost, or `null` if the model has no published rate here.
  *
- * `cachedTokens` is a *subset of* `promptTokens` (see migration `0007`), so the
+ * `cachedTokens` is a *subset of* `promptTokens` (see `llm_usage` in `0001_schema.sql`), so the
  * full-rate portion is the difference. Getting that backwards would double-count
  * the cached tokens, which is the whole point of splitting them out.
  */

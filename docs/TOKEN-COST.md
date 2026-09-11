@@ -459,7 +459,7 @@ claim is checkable against `llm_usage` rather than against this paragraph.
 
   The _principle_ underneath the suggestion — retrieve what you already
   generated instead of generating it again — is sound, and it is applied where
-  it actually pays: coach answers (migration `0010`) and JD embeddings
+  it actually pays: coach answers and JD embeddings
   (computed once).
 
   There is a legitimate **quality** argument for a curated bank — consistency,
@@ -554,7 +554,7 @@ the JD is ever used in.
 | Concern                                  | File                                          |
 | ---------------------------------------- | --------------------------------------------- |
 | Usage recording                          | `src/lib/api/token-usage.ts`                  |
-| Usage table                              | `supabase/migrations/0007_llm_usage.sql`      |
+| Usage table                              | `supabase/migrations/0001_schema.sql`         |
 | Prompt layering, cache key, model choice | `src/app/api/chat/route.ts`                   |
 | Analyzer scaffold, cap, truncation check | `src/lib/response-analyzer.ts`                |
 | Rolling summary cadence                  | `src/lib/summary.ts`                          |
@@ -563,5 +563,5 @@ the JD is ever used in.
 | Over-length notice, shared by both docs  | `src/lib/document-truncation.ts`              |
 | Deterministic text counting              | `src/lib/text-metrics.ts`                     |
 | Input length caps                        | `src/lib/api/input-limits.ts`                 |
-| Coach answer cache                       | `supabase/migrations/0010_coach_answers.sql`  |
+| Coach answer cache                       | `supabase/migrations/0001_schema.sql`         |
 | JD tidy-up (boilerplate stripping)       | `src/app/api/job-descriptions/clean/route.ts` |

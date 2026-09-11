@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 
 /**
- * Cached coach suggested answers. See `supabase/migrations/0010_coach_answers.sql`.
+ * Cached coach suggested answers. The table is in `supabase/migrations/0001_schema.sql`.
  *
  * Follows the columns-constant / Row interface / `rowToX` mapper shape used by
  * the rest of `lib/db`, so the snake_case boundary stays in one place.
@@ -31,11 +31,12 @@ interface CoachAnswerRow {
 /**
  * Tolerate a row written before `suggestedAnswer` was called that.
  *
- * `0016_rename_model_answer_key.sql` rewrites the key in place, so this is
- * belt-and-braces for the window where code is deployed and the migration is
- * not — a gap in which every cached turn would otherwise render with the
- * suggested-answer panel silently missing, which reads as a broken feature
- * rather than a stale cache. Delete once 0016 has run everywhere.
+ * A data migration (the retired `0016_rename_model_answer_key`) rewrote the key
+ * in place, and a database set up from the current migrations never holds it.
+ * This is belt-and-braces for a database restored from before that rewrite,
+ * where every cached turn would otherwise render with the suggested-answer
+ * panel silently missing — which reads as a broken feature rather than a stale
+ * cache.
  */
 function decodePayload(row: CoachAnswerRow): CoachAnswerPayload {
   const { modelAnswer, ...payload } = row.answer;
