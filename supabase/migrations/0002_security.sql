@@ -61,16 +61,6 @@ create policy "resumes_owner_all" on resumes
   with check (user_id = auth.uid());
 grant select, insert, update, delete on table resumes to authenticated;
 
--- A folder carries nothing server-owned, so plain writes are fine. Filing a
--- session in one is a session write, and checks folder ownership there.
-alter table session_folders enable row level security;
-drop policy if exists "session_folders_owner_all" on session_folders;
-create policy "session_folders_owner_all" on session_folders
-  for all
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
-grant select, insert, update, delete on table session_folders to authenticated;
-
 -- Created and deleted directly (creation goes through the API, which sanitises
 -- `launch_meta`); never updated directly.
 alter table interview_sessions enable row level security;

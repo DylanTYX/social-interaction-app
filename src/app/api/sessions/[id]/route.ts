@@ -114,7 +114,6 @@ function parseOrganisation(body: {
   pinned?: unknown;
   notes?: unknown;
   archived?: unknown;
-  folderId?: unknown;
 }) {
   // Blank resets the session to its generated title.
   const title =
@@ -153,14 +152,8 @@ function parseOrganisation(body: {
         ? new Date().toISOString()
         : null
       : undefined;
-  const folderId =
-    body.folderId === undefined
-      ? undefined
-      : body.folderId === null
-        ? null
-        : parseUuid(body.folderId, "folder id");
 
-  return { title, notes, tags, pinned, archivedAt, folderId };
+  return { title, notes, tags, pinned, archivedAt };
 }
 
 export async function PATCH(request: Request, ctx: RouteParams) {
@@ -190,7 +183,6 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       pinned?: unknown;
       notes?: unknown;
       archived?: unknown;
-      folderId?: unknown;
     }>(request);
 
     const organisation = parseOrganisation(body);

@@ -9,11 +9,12 @@
 --
 -- These replace eighteen incremental migrations (`0001_init` through
 -- `0018_session_management`, still in git history at df74b64). They build the
--- same end state, written directly, so what only existed to move an older
--- database forward is gone: duplicate-row clean-ups, JSONB backfills, a vector
--- index that was later replaced, superseded function signatures, and privileges
--- granted in one file and revoked in a later one. A database that has already
--- run the eighteen needs nothing from here.
+-- same end state, written directly (less session folders, removed afterwards),
+-- so what only existed to move an older database forward is gone: duplicate-row
+-- clean-ups, JSONB backfills, a vector index that was later replaced, superseded
+-- function signatures, and privileges granted in one file and revoked in a later
+-- one. A database that has already
+-- run the eighteen needs only the folder removal in docs/DATA-MODEL.md.
 --
 -- Every statement is guarded (`if not exists`, `drop … if exists`, `create or
 -- replace`), so running a file twice is harmless.
@@ -150,30 +151,6 @@ create trigger resumes_set_updated_at
   for each row execute function set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- session_folders
---
--- Created before interview_sessions, which references it.
--- ---------------------------------------------------------------------------
-create table if not exists session_folders (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint session_folders_name_length
-    check (char_length(btrim(name)) between 1 and 60)
-);
-
--- One "Acme" per user, however it is capitalised.
-create unique index if not exists session_folders_user_name_idx
-  on session_folders (user_id, lower(name));
-
-drop trigger if exists session_folders_set_updated_at on session_folders;
-create trigger session_folders_set_updated_at
-  before update on session_folders
-  for each row execute function set_updated_at();
-
--- ---------------------------------------------------------------------------
 -- interview_sessions
 -- ---------------------------------------------------------------------------
 create table if not exists interview_sessions (
@@ -210,7 +187,6 @@ create table if not exists interview_sessions (
   pinned boolean not null default false,
   notes text,
   archived_at timestamptz,
-  folder_id uuid references session_folders(id) on delete set null,
   started_at timestamptz not null default now(),
   ended_at timestamptz,
   created_at timestamptz not null default now(),
@@ -250,8 +226,6 @@ create index if not exists sessions_persona_name_trgm_idx
 
 create index if not exists sessions_tags_idx
   on interview_sessions using gin (tags);
-create index if not exists sessions_user_folder_idx
-  on interview_sessions (user_id, folder_id);
 create index if not exists sessions_user_pinned_idx
   on interview_sessions (user_id, pinned, created_at desc);
 

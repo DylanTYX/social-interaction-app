@@ -116,7 +116,7 @@ describe("DELETE /api/sessions/[id]", () => {
 
 describe("PATCH /api/sessions/[id] — organising a session", () => {
   /**
-   * Rename, tags, pin, notes, archive and folder arrived together (0018). The
+   * Rename, tags, pin, notes and archive arrived together (0018). The
    * risk in adding them was to the fields already there: a rename is a PATCH
    * that mentions nothing else, and the route used to turn a missing summary
    * into null — which clears it.
@@ -150,7 +150,6 @@ describe("PATCH /api/sessions/[id] — organising a session", () => {
     expect(input.summary).toBeUndefined();
     expect(input.tags).toBeUndefined();
     expect(input.archivedAt).toBeUndefined();
-    expect(input.folderId).toBeUndefined();
   });
 
   it("normalises tags and refuses more than the limit", async () => {
@@ -170,15 +169,4 @@ describe("PATCH /api/sessions/[id] — organising a session", () => {
     expect(sent(1).archivedAt).toBeNull();
   });
 
-  it("moves to a folder, out of one, and refuses a malformed folder id", async () => {
-    await patch({ folderId: "33333333-3333-4333-8333-333333333333" });
-    expect(sent(0).folderId).toBe("33333333-3333-4333-8333-333333333333");
-
-    await patch({ folderId: null });
-    expect(sent(1).folderId).toBeNull();
-
-    const bad = await patch({ folderId: "not-a-uuid" });
-    expect(bad.status).toBeGreaterThanOrEqual(400);
-    expect(updateSession).toHaveBeenCalledTimes(2);
-  });
 });

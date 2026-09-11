@@ -47,7 +47,6 @@ export interface InterviewSessionSummary {
   pinned?: boolean;
   notes?: string | null;
   archivedAt?: string | null;
-  folderId?: string | null;
 }
 
 export interface InterviewHistoryFilters {
@@ -56,8 +55,6 @@ export interface InterviewHistoryFilters {
   mode?: "text" | "voice";
   status?: InterviewSessionSummary["status"];
   tag?: string;
-  /** A folder id, or "none" for sessions in no folder. */
-  folder?: string;
   archived?: ArchivedView;
   sort?: SessionSort;
   score?: ScoreBand;
@@ -112,7 +109,6 @@ export function useInterviewHistory(
     mode,
     status: statusFilter,
     tag,
-    folder,
     archived,
     sort,
     score,
@@ -127,14 +123,13 @@ export function useInterviewHistory(
       if (mode) params.set("mode", mode);
       if (statusFilter) params.set("status", statusFilter);
       if (tag) params.set("tag", tag);
-      if (folder) params.set("folder", folder);
       if (archived) params.set("archived", archived);
       if (sort) params.set("sort", sort);
       if (score && score !== "any") params.set("score", score);
       if (since && since !== "any") params.set("since", since);
       return `/api/sessions?${params.toString()}`;
     },
-    [limit, query, mode, statusFilter, tag, folder, archived, sort, score, since],
+    [limit, query, mode, statusFilter, tag, archived, sort, score, since],
   );
 
   const fetchPage = useCallback(

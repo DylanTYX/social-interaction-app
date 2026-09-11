@@ -6,7 +6,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ChevronDown,
   Code2,
   FileText,
   Gauge,
@@ -16,16 +15,15 @@ import {
   MessageSquare,
   MessagesSquare,
   Mic,
+  MoreHorizontal,
   Pin,
   PinOff,
   Printer,
   RotateCcw,
-  Share2,
   Sparkles,
   Timer,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -64,14 +62,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ACCENT_BAR, InsightCard } from "@/components/report/insight-card";
+import { InsightCard } from "@/components/report/insight-card";
 import { ScoreReveal } from "@/components/report/score-reveal";
 import { SessionNotesCard } from "@/components/report/session-notes-card";
 import { EditableTitle } from "@/components/sessions/editable-title";
-import { TagEditor } from "@/components/sessions/tag-editor";
-import { useSessionTags } from "@/hooks/use-session-tags";
 import {
   communicationDetail,
   durationDetail,
@@ -127,7 +124,6 @@ interface SessionRecord {
   endedAt: string | null;
   /** Organisation fields (migration 0018); absent on an older database. */
   title?: string | null;
-  tags?: string[];
   pinned?: boolean;
   notes?: string | null;
 }
@@ -210,7 +206,6 @@ export default function SessionReportPage({
   );
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [nextRoundError, setNextRoundError] = useState<string | null>(null);
-  const { tags: tagSuggestions } = useSessionTags();
 
   useEffect(() => {
     let cancelled = false;
@@ -406,13 +401,15 @@ export default function SessionReportPage({
     // exit.
     <div className={cn("mx-auto max-w-5xl space-y-6 p-8", CONTENT_ENTER)}>
       {/*
-        Title, what the session was, and its tags on the left; the actions on
-        the right. "Practise again" is the one thing most people do next, so it
-        is the only primary button — sharing is a menu rather than two more
-        buttons of equal weight beside it.
+        What the session was on the left, what to do next on the right. The
+        report is for reading: tags and the rest of the organising live on the
+        Sessions page, so the header carries a title you can click to rename,
+        one line of facts, and the job it was practice for. "Practise again" is
+        the one thing most people do next, so it is the only button; pinning and
+        sharing sit behind one menu.
       */}
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 space-y-2">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
             Session report
           </p>
@@ -422,73 +419,63 @@ export default function SessionReportPage({
             generatedTitle={session.scenarioTitle ?? session.scenarioValue}
             onRenamed={(title) => updateReportSession({ title })}
           />
-          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-            <Badge variant="outline" className="gap-1">
-              <ModeIcon className="h-3 w-3" />
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <ModeIcon className="h-3.5 w-3.5" aria-hidden />
               {session.practiceMode === "voice" ? "Voice" : "Text"}
-            </Badge>
-            <Badge variant="outline">{session.personaName}</Badge>
-            <Badge variant="secondary">
+            </span>
+            <span aria-hidden>·</span>
+            <span>{session.personaName}</span>
+            <span aria-hidden>·</span>
+            <span>
               {scoredAnswers} scored answer{scoredAnswers === 1 ? "" : "s"}
-            </Badge>
-            {jobDescription && (
-              <Badge
-                variant="outline"
-                className="max-w-full border-primary-border bg-primary-subtle text-primary-emphasis"
-                title={jobDescription.title}
-              >
-                <FileText className="mr-1 h-3 w-3 shrink-0" />
-                {/* Role at company when both are known, which is what the
-                    interviewer was actually told. */}
-                <span className="truncate">
-                  {[jobDescription.roleTitle, jobDescription.company]
-                    .filter(Boolean)
-                    .join(" at ") || jobDescription.title}
-                </span>
-              </Badge>
-            )}
+            </span>
+            <span aria-hidden>·</span>
             <span>{formatReportDate(session.startedAt)}</span>
-          </div>
-          <TagEditor
-            sessionId={session.id}
-            tags={session.tags ?? []}
-            suggestions={tagSuggestions.map((entry) => entry.tag)}
-            onChange={(tags) => updateReportSession({ tags })}
-          />
+          </p>
+          {jobDescription && (
+            <p
+              className="flex min-w-0 items-center gap-1.5 text-sm text-slate-600"
+              title={jobDescription.title}
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+              {/* Role at company when both are known, which is what the
+                  interviewer was actually told. */}
+              <span className="truncate">
+                {[jobDescription.roleTitle, jobDescription.company]
+                  .filter(Boolean)
+                  .join(" at ") || jobDescription.title}
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2 print:hidden">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => void handleTogglePin()}
-            aria-pressed={session.pinned === true}
-            aria-label={session.pinned ? "Unpin session" : "Pin session"}
-            title={session.pinned ? "Unpin" : "Pin to the top of your sessions"}
-          >
-            {session.pinned ? (
-              <PinOff className="h-4 w-4" />
-            ) : (
-              <Pin className="h-4 w-4" />
-            )}
-          </Button>
-          {/* The report used to end at the transcript for a single-round
-              session — its only forward action was "Start next round", which
-              exists only for loops. */}
           <Button className="gap-1.5" onClick={handlePractiseAgain}>
             <RotateCcw className="h-4 w-4" />
             Practise again
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-1.5">
-                <Share2 className="h-4 w-4" />
-                Share
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void handleTogglePin()}>
+                {session.pinned ? (
+                  <PinOff className="h-4 w-4" />
+                ) : (
+                  <Pin className="h-4 w-4" />
+                )}
+                {session.pinned ? "Unpin from your sessions" : "Pin to top of your sessions"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void handleCopyLink()}>
                 <Link2 className="h-4 w-4" />
                 Copy link
@@ -511,60 +498,63 @@ export default function SessionReportPage({
                 "animate-in fade-in-0 slide-in-from-bottom-2 duration-500 ease-soft",
             )}
           >
-            <div className="grid gap-4 md:grid-cols-5">
-              <Card className="relative overflow-hidden border-slate-200/80 bg-white md:col-span-2">
-                <div
-                  className={cn("absolute inset-y-0 left-0 w-1", ACCENT_BAR.blue)}
-                  aria-hidden
-                />
-                <CardHeader className="pb-2">
-                  <CardTitle
-                    as="div"
-                    className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500"
-                  >
-                    <span
+            <div className="grid gap-4 sm:grid-cols-3">
+              {/* Full width, so the score has room for what qualifies it — the
+                  change since last time, your prediction, and how hard this
+                  interviewer was — without squeezing the three cards below.
+                  Card, tile and type follow the analytics page's stat cards. */}
+              <Card className="shadow-soft sm:col-span-3">
+                <CardContent className="p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-600">
+                      Overall score
+                    </p>
+                    <div
                       className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-lg",
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
                         TILE_COLORS.blue,
                       )}
                     >
-                      <Gauge className="h-4 w-4" aria-hidden />
-                    </span>
-                    Overall score
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-4xl font-bold tabular-nums text-slate-900">
-                    {formatScore(displayedScore)}
-                  </p>
-                  <ScoreComparison
-                    sessionId={session.id}
-                    currentScore={displayedScore}
-                    currentStartedAt={session.startedAt}
-                  />
-                  {prediction?.kind === "guessed" && displayedScore !== null && (
-                    <p className="text-sm font-medium text-slate-700">
-                      {predictionDetail(prediction.guess, displayedScore)}
-                    </p>
-                  )}
-                  {/* The rubric is persona-blind, but the *questions* are not:
-                      difficulty folds in (strictness - warmth), so easier
-                      questions get better answers. Two scores from different
-                      interviewers are not the same achievement. */}
-                  {(() => {
-                    const difficulty = describeDifficulty(
-                      session.personaConfig?.strictness,
-                      session.personaConfig?.warmth,
-                    );
-                    return (
-                      <p className="text-xs leading-relaxed text-slate-500">
-                        <span className="font-medium text-slate-600">
-                          {difficulty.label}.
-                        </span>{" "}
-                        {difficulty.note}
+                      <Gauge className="h-5 w-5" aria-hidden />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-4xl font-bold tabular-nums text-slate-900">
+                        {formatScore(displayedScore)}
                       </p>
-                    );
-                  })()}
+                      <ScoreComparison
+                        sessionId={session.id}
+                        currentScore={displayedScore}
+                        currentStartedAt={session.startedAt}
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:max-w-md sm:border-l sm:border-slate-200 sm:pl-5">
+                      {prediction?.kind === "guessed" && displayedScore !== null && (
+                        <p className="text-sm font-medium text-slate-700">
+                          {predictionDetail(prediction.guess, displayedScore)}
+                        </p>
+                      )}
+                      {/* The rubric is persona-blind, but the *questions* are not:
+                          difficulty folds in (strictness - warmth), so easier
+                          questions get better answers. Two scores from different
+                          interviewers are not the same achievement. */}
+                      {(() => {
+                        const difficulty = describeDifficulty(
+                          session.personaConfig?.strictness,
+                          session.personaConfig?.warmth,
+                        );
+                        return (
+                          <p className="text-xs leading-relaxed text-slate-500">
+                            <span className="font-medium text-slate-600">
+                              {difficulty.label}.
+                            </span>{" "}
+                            {difficulty.note}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -696,12 +686,6 @@ export default function SessionReportPage({
         </Card>
       )}
 
-      <SessionNotesCard
-        sessionId={session.id}
-        notes={session.notes ?? null}
-        onSaved={(notes) => updateReportSession({ notes })}
-      />
-
       <CompetencyCoverageCard coverage={coverage} />
 
       {session.summary && (
@@ -804,6 +788,12 @@ export default function SessionReportPage({
           )}
         </CardContent>
       </Card>
+
+      <SessionNotesCard
+        sessionId={session.id}
+        notes={session.notes ?? null}
+        onSaved={(notes) => updateReportSession({ notes })}
+      />
     </div>
   );
 }

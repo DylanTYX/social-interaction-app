@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Archive,
   ArchiveRestore,
-  Folder,
   GitCompareArrows,
   Pin,
   PinOff,
@@ -26,12 +25,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { MAX_SESSION_TAG_CHARS } from "@/lib/api/input-limits";
-import type { SessionFolder } from "@/lib/session-actions";
 import { normalizeTag } from "@/lib/session-organisation";
 
 /**
@@ -39,7 +36,6 @@ import { normalizeTag } from "@/lib/session-organisation";
  */
 export function BulkActionBar({
   count,
-  folders,
   tagSuggestions,
   showingArchived,
   busy,
@@ -47,12 +43,10 @@ export function BulkActionBar({
   onArchive,
   onPin,
   onAddTag,
-  onMove,
   onDelete,
   onCompare,
 }: {
   count: number;
-  folders: SessionFolder[];
   tagSuggestions: string[];
   showingArchived: boolean;
   busy: boolean;
@@ -60,7 +54,6 @@ export function BulkActionBar({
   onArchive: (archive: boolean) => void;
   onPin: (pin: boolean) => void;
   onAddTag: (tag: string) => void;
-  onMove: (folderId: string | null) => void;
   onDelete: () => void;
   /** Present only when exactly two sessions are selected. */
   onCompare: (() => void) | null;
@@ -88,24 +81,6 @@ export function BulkActionBar({
           <Tag className="h-4 w-4" />
           Add tag
         </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5 bg-white" disabled={busy}>
-              <Folder className="h-4 w-4" />
-              Move to
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {folders.map((folder) => (
-              <DropdownMenuItem key={folder.id} onSelect={() => onMove(folder.id)}>
-                {folder.name}
-              </DropdownMenuItem>
-            ))}
-            {folders.length > 0 && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={() => onMove(null)}>No folder</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

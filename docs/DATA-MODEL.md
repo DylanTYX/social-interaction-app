@@ -57,7 +57,6 @@ a `loop_id`.
 | `updated_at`                                                 | Last write to the row, kept by a trigger and by `append_interview_turn`. That function once set it before any migration had created it, and every turn failed with `42703` — `migrations.test.ts` now checks function bodies against the schema |
 | `title`                                                      | The candidate's own name for the session. **Separate from `scenario_title`**, which the interviewer's prompt reads — renaming must not change what a resumed interviewer is told |
 | `tags`, `pinned`, `notes`, `archived_at`                     | Organisation: free labels (GIN-indexed), kept-at-top, private report notes, and hidden-not-deleted. Archived sessions still count in every statistic |
-| `folder_id`                                                  | At most one folder, from `session_folders`; `on delete set null`, so deleting a folder unfiles its sessions |
 
 ### `interview_messages` — the transcript
 
@@ -120,18 +119,7 @@ and no turn, so every drill submission is a full billed call.
 
 ---
 
-
-### `session_folders`
-
-One user's folders for grouping sessions. Plain table writes under the
-owner policy — a folder carries nothing server-owned — with a case-insensitive
-unique name per user. A session is filed through `update_session_progress`,
-which checks the folder belongs to the caller: the foreign key alone would
-accept anyone's folder id.
-
----
-
-## Authorisation: one rule, applied ten times
+## Authorisation: one rule, applied nine times
 
 Row-level security is on for every table, and every policy is the same shape:
 
@@ -152,7 +140,7 @@ Three things are server-owned and enforced below the route layer:
 | Field                   | Enforced by                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------- |
 | `launch_meta.loopBrief` | `sanitizeLaunchMeta` strips it on POST; PATCH strips it. Only `next-round` writes it. |
-| Session progress and organisation | `update_session_progress`, a `security definer` function, including title, tags, pin, notes, archive and folder — with a folder-ownership check |
+| Session progress and organisation | `update_session_progress`, a `security definer` function, including title, tags, pin, notes and archive |
 | Usage rows              | `record_llm_usage`, likewise                                                          |
 
 `loopBrief` matters most: it lands **verbatim in a system prompt**, and since the
@@ -169,7 +157,7 @@ by a test — so no candidate-controlled text can reach a system message.
 | `append_interview_turn`        | Writes both messages, the analysis and the session update **in one transaction**. Called on every turn.                                                     |
 | `match_job_description_chunks` | pgvector similarity search, scoped by `auth.uid()`                                                                                                          |
 | `record_llm_usage`             | Server-owned usage insert                                                                                                                                   |
-| `update_session_progress`      | Every session write after creation: progress and the organisation fields, checking an assigned folder belongs to the caller                   |
+| `update_session_progress`      | Every session write after creation: progress and the organisation fields (title, tags, pin, notes, archive)                   |
 | `llm_usage_summary`            | Per-user cost rollup. Filters on `auth.uid()`, which is null for the `postgres` role — so it returns nothing from the SQL editor. Query the table directly. |
 | `set_updated_at`               | Trigger function                                                                                                                                            |
 
@@ -198,14 +186,16 @@ granting `update` on sessions in one file only to revoke it nine files later.
 The three files write the end state directly.
 
 **Checked equivalent, once, on 2026-09-12.** Both versions were built into an
-empty Postgres (PGlite, with a stub `auth` schema) and their catalogs compared.
+empty Postgres (PGlite, with a stub `auth` schema), the eighteen followed by
+the folder removal below, and their catalogs compared.
 Columns, constraints, indexes, triggers, policies, grants and function
 definitions match, with two intended differences: the check constraints are
 validated at creation instead of `not valid` (a new database has no older rows
 to exempt), and the comment on `coach_answers.answer` no longer mentions the
 rename. The same smoke test gave identical results on both. It covered turns,
 organisation patches, cross-user access and rejected values. Running the three
-files a second time, or over a database the eighteen built, changes nothing.
+files a second time, or over a database the eighteen and the removal built,
+changes nothing.
 
 Two properties are checked on every test run by `src/lib/db/migrations.test.ts`:
 no function writes a column the schema lacks, and no statement uses a table
@@ -213,6 +203,26 @@ before a file has created it.
 
 **Changing the schema:** add `0004_…`. Editing one of the three would not reach
 a database that has already run it.
+
+### Session folders, removed
+
+Folders shipped in `0018` and were taken out on 2026-09-12, before any database
+had been set up from the three files, so those files never create them. Tags
+already group sessions and filter the list.
+
+A database that ran `0018` still has `session_folders` and
+`interview_sessions.folder_id`. Deploy the code without folders first — the
+version before it reads `folder_id` on every session list — then, in the SQL
+editor, run `0003_functions.sql` again so `update_session_progress` stops
+writing the column, followed by:
+
+```sql
+alter table interview_sessions drop column if exists folder_id;  -- its index and foreign key go with it
+drop table if exists session_folders;                             -- and its policy and trigger
+```
+
+The folders are deleted. The sessions that were in them are kept, with their
+tags, notes and scores.
 
 ### Where the old numbers went
 
@@ -238,7 +248,7 @@ where each change lives now.
 | `0015_document_metadata`                  | resume label and notes, truncation records, the `resumes` `updated_at` trigger               | `0001_schema`                                           |
 | `0016_rename_model_answer_key`            | rewrote `modelAnswer` to `suggestedAnswer` in cached coach payloads                          | nowhere — it changed data, not schema                   |
 | `0017_session_updated_at`                 | `interview_sessions.updated_at`, which the turn function writes                              | `0001_schema`                                           |
-| `0018_session_management`                 | session title, tags, pin, notes, archive, folders                                            | all three                                               |
+| `0018_session_management`                 | session title, tags, pin, notes, archive, folders                                            | `0001_schema`, `0003_functions` — folders since removed |
 
 ---
 

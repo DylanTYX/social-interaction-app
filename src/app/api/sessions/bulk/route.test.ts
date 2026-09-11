@@ -86,13 +86,6 @@ describe("POST /api/sessions/bulk", () => {
     expect(await response.json()).toEqual({ updated: 1, failed: 1 });
   });
 
-  it("needs a folder to move to, and accepts null to unfile", async () => {
-    expect((await post({ ids: [A], action: "move" })).status).toBe(400);
-    const response = await post({ ids: [A], action: "move", folderId: null });
-    expect(response.status).toBe(200);
-    expect(patchSession).toHaveBeenCalledWith({}, A, { folderId: null });
-  });
-
   it("deletes through the single-session delete", async () => {
     await post({ ids: [A, B], action: "delete" });
     expect(deleteSession).toHaveBeenCalledTimes(2);

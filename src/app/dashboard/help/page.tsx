@@ -2,9 +2,11 @@ import Link from "next/link";
 import {
   BarChart3,
   BookOpen,
+  ClipboardList,
   Command,
   Lightbulb,
   Mic,
+  SlidersHorizontal,
   Target,
 } from "lucide-react";
 
@@ -30,7 +32,40 @@ interface Guide {
   points: { label: string; body: string }[];
 }
 
+/**
+ * Every number and behaviour stated here is read from the code that produces
+ * it, not from memory: the pace bands and filler rules from `speech-metrics.ts`,
+ * the answer limits from the chat and voice pages, the technical axes from
+ * `dimension-radar.tsx`. This page previously told people to aim for 130–160
+ * words a minute (the app's bands are 110–185), that speaking interrupts the
+ * interviewer (only tapping the mic does), and called a score card by a name
+ * the report no longer uses. Change the source, then change this.
+ */
 const GUIDES: Guide[] = [
+  {
+    icon: SlidersHorizontal,
+    color: "bg-primary-muted text-primary",
+    title: "Before you start",
+    description: "A few setup choices change what the practice feels like.",
+    points: [
+      {
+        label: "Text or voice",
+        body: "Both are scored on the same rubric. Text is there for when speaking aloud isn't an option — a quiet train, a sore throat, or a voice you can't use.",
+      },
+      {
+        label: "Accents",
+        body: "In voice mode each interviewer speaks English with their nationality's accent, and neutral English when there's no matching voice. Switch off Interviewer accents in setup's last step to hear neutral English throughout.",
+      },
+      {
+        label: "Difficulty",
+        body: "Stricter, less warm interviewers ask harder questions. The report says how hard yours was, so compare scores from similar interviewers.",
+      },
+      {
+        label: "Time",
+        body: "Each answer has a limit: five minutes in text, three in voice.",
+      },
+    ],
+  },
   {
     icon: Target,
     color: "bg-primary-muted text-primary",
@@ -72,12 +107,16 @@ const GUIDES: Guide[] = [
         body: "Concrete details, numbers, and named outcomes score higher than vague claims.",
       },
       {
-        label: "Confidence",
-        body: "Clear, direct phrasing without hedging or filler reads as more credible.",
+        label: "Communication",
+        body: "Clear, direct phrasing without hedging reads as more credible. It's the Communication card on your report.",
       },
       {
-        label: "Adaptive follow-ups",
-        body: "The interviewer drills into weak spots — vague answers get probed harder.",
+        label: "Follow-ups",
+        body: "The interviewer probes weak spots — an unclear role, an unquantified result. How hard depends on the interviewer.",
+      },
+      {
+        label: "Predict first",
+        body: "The first time you open a report, guess your overall score before it's shown. The gap between how it felt and how it went is worth knowing.",
       },
     ],
   },
@@ -101,6 +140,10 @@ const GUIDES: Guide[] = [
         body: "State time/space complexity and where the bottlenecks are.",
       },
       {
+        label: "Edge cases",
+        body: "Say what happens with empty, huge or malformed input. Edge cases and code quality are scored separately from correctness.",
+      },
+      {
         label: "Iterate",
         body: "Start simple, get it working, then optimize. Mention what you'd improve with more time.",
       },
@@ -110,23 +153,48 @@ const GUIDES: Guide[] = [
     icon: Mic,
     color: "bg-primary-muted text-primary",
     title: "Voice delivery",
-    description: "Voice mode measures how you sound, not just what you say.",
+    description:
+      "Voice mode also tells you how you sounded. Delivery is feedback — your score comes from what you said.",
     points: [
       {
         label: "Pace",
-        body: "Aim for ~130–160 words per minute. Too fast reads as nervous; too slow loses the room.",
+        body: "Roughly 110–185 words a minute reads as measured or conversational. Slower or faster gets flagged.",
       },
       {
         label: "Filler words",
-        body: "'Um', 'like', 'basically' — a short pause is always better than a filler.",
+        body: "'Um', 'uh', 'you know', 'I mean' and 'sort of' are counted; 'like' and 'basically' only next to a hesitation. A short pause beats a filler.",
       },
       {
         label: "Pauses",
-        body: "A deliberate pause before answering shows composure. Long mid-answer gaps don't.",
+        body: "Gaps of more than about a second and a half mid-answer are counted. Taking a moment before you start is fine.",
       },
       {
-        label: "Barge-in",
-        body: "You can start speaking to interrupt the interviewer — just like a real conversation.",
+        label: "Interrupting",
+        body: "Tap the mic while the interviewer is talking to cut in. Otherwise it opens by itself when they finish.",
+      },
+    ],
+  },
+  {
+    icon: ClipboardList,
+    color: "bg-primary-muted text-primary",
+    title: "After the interview",
+    description: "The report is where the practice turns into progress.",
+    points: [
+      {
+        label: "Each answer",
+        body: "Every scored answer shows its score. Open 'See a stronger answer' for your answer rewritten, a suggested answer and tips.",
+      },
+      {
+        label: "Takeaways",
+        body: "The report ends with a private box for what you'll do differently. Write it while it's fresh.",
+      },
+      {
+        label: "Practise again",
+        body: "Reruns the same setup. Change one thing — a harder interviewer, a longer round — before you start.",
+      },
+      {
+        label: "Compare",
+        body: "On the Sessions page, tick two attempts and choose Compare to see what changed.",
       },
     ],
   },
@@ -165,7 +233,7 @@ export default function HelpPage() {
                 <dl className="space-y-3">
                   {guide.points.map((point) => (
                     <div key={point.label} className="flex gap-3">
-                      <dt className="w-24 shrink-0 text-sm font-semibold text-slate-900">
+                      <dt className="w-28 shrink-0 text-sm font-semibold text-slate-900">
                         {point.label}
                       </dt>
                       <dd className="flex-1 text-sm leading-relaxed text-slate-600">
@@ -193,7 +261,12 @@ export default function HelpPage() {
                 <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium">
                   ⌘K
                 </kbd>{" "}
-                anywhere to jump to a page or start practicing instantly.
+                (
+                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium">
+                  Ctrl K
+                </kbd>{" "}
+                on Windows) anywhere to jump to a page or start practicing
+                instantly.
               </p>
             </div>
           </div>

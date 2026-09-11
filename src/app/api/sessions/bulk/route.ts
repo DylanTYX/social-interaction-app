@@ -20,7 +20,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 /**
- * One action applied to many sessions: archive, pin, tag, file or delete.
+ * One action applied to many sessions: archive, pin, tag or delete.
  *
  * Each session is written through the same path as a single change —
  * `patchSession` into `update_session_progress`, which re-checks ownership, or
@@ -37,7 +37,6 @@ const ACTIONS = [
   "unpin",
   "add_tag",
   "remove_tag",
-  "move",
   "delete",
 ] as const;
 type BulkAction = (typeof ACTIONS)[number];
@@ -95,7 +94,6 @@ export async function POST(request: Request) {
       ids?: unknown;
       action?: unknown;
       tag?: unknown;
-      folderId?: unknown;
     }>(request);
 
     const action = ACTIONS.find((candidate) => candidate === body.action) as
@@ -125,17 +123,6 @@ export async function POST(request: Request) {
         const pinned = action === "pin";
         return NextResponse.json(
           await settle(ids, (id) => patchSession(supabase, id, { pinned })),
-        );
-      }
-
-      case "move": {
-        if (body.folderId === undefined) {
-          throw new ClientVisibleError("Choose a folder.");
-        }
-        const folderId =
-          body.folderId === null ? null : parseUuid(body.folderId, "folder id");
-        return NextResponse.json(
-          await settle(ids, (id) => patchSession(supabase, id, { folderId })),
         );
       }
 

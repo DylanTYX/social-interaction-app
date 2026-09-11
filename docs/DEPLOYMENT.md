@@ -23,9 +23,10 @@ That is the whole database, and all three are needed. Without `0003` the app
 deploys cleanly, then fails the moment anyone sends a message: every interview
 turn goes through `append_interview_turn`. Each file is safe to run twice.
 
-> **Already set up with the eighteen older migrations?** Nothing to run. The
-> three files build the same schema and replaced `0001_init` …
-> `0018_session_management` in one step — see `docs/DATA-MODEL.md` → Migrations.
+> **Already set up with the eighteen older migrations?** The three files build
+> the same schema, except that session folders have since been removed. Drop
+> them as `docs/DATA-MODEL.md` → Migrations describes; nothing else needs
+> running.
 >
 > **Changing the schema later:** add a new numbered file (`0004_…`) rather than
 > editing these three. A database that has already run a file will not pick up
