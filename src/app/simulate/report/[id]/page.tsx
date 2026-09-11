@@ -6,14 +6,23 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ChevronDown,
+  Code2,
   FileText,
+  Gauge,
   Lightbulb,
-  Mic,
-  MessageSquare,
-  Sparkles,
-  Printer,
   Link2,
+  ListChecks,
+  MessageSquare,
+  MessagesSquare,
+  Mic,
+  Pin,
+  PinOff,
+  Printer,
   RotateCcw,
+  Share2,
+  Sparkles,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +60,27 @@ import { isTechnicalRound } from "@/lib/round-types";
 import { parseCodeAnswer } from "@/lib/code-answer";
 import { suggestedBreakMinutes } from "@/lib/interview-progress";
 import { ScoreComparison } from "@/components/report/score-comparison";
-import { CalibrationCard } from "@/components/report/calibration-card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ACCENT_BAR, InsightCard } from "@/components/report/insight-card";
+import { ScoreReveal } from "@/components/report/score-reveal";
+import { SessionNotesCard } from "@/components/report/session-notes-card";
+import { EditableTitle } from "@/components/sessions/editable-title";
+import { TagEditor } from "@/components/sessions/tag-editor";
+import { useSessionTags } from "@/hooks/use-session-tags";
+import {
+  communicationDetail,
+  durationDetail,
+  predictionDetail,
+  starDetail,
+  technicalDetail,
+} from "@/lib/report-insights";
+import { patchSessionRequest } from "@/lib/session-actions";
+import { TILE_COLORS } from "@/lib/tile-colors";
 import {
   buildRadarAxes,
   DimensionRadar,
@@ -96,6 +125,11 @@ interface SessionRecord {
   metrics: Record<string, unknown> | null;
   startedAt: string;
   endedAt: string | null;
+  /** Organisation fields (migration 0018); absent on an older database. */
+  title?: string | null;
+  tags?: string[];
+  pinned?: boolean;
+  notes?: string | null;
 }
 
 /** The scored-answer rows as they arrive over the wire. */
@@ -145,6 +179,16 @@ function formatScore(score: number | null): string {
   return score === null ? "—" : `${Math.round(score)}%`;
 }
 
+function formatReportDate(iso: string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return "";
+  return new Date(ts).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function formatTimestamp(iso: string | null): string {
   if (!iso) return "";
   const ts = Date.parse(iso);
@@ -166,6 +210,7 @@ export default function SessionReportPage({
   );
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [nextRoundError, setNextRoundError] = useState<string | null>(null);
+  const { tags: tagSuggestions } = useSessionTags();
 
   useEffect(() => {
     let cancelled = false;
@@ -246,6 +291,29 @@ export default function SessionReportPage({
   const confidenceScore = pickNumber(session.metrics, "averageConfidenceScore");
   const starScore = pickNumber(session.metrics, "averageSTARScore");
   const usesTechnicalRubric = isTechnicalRound(currentRound?.type);
+  const analyses = (data.turnAnalyses ?? []).flatMap((entry) =>
+    entry.analysis ? [entry.analysis] : [],
+  );
+  const scoredAnswers = (data.turnAnalyses ?? []).length;
+  const displayedScore = overallScore ?? session.averageScore;
+
+  /** Reflect an organisation change the server has accepted. */
+  const updateReportSession = (patch: Partial<SessionRecord>) =>
+    setData((current) =>
+      current ? { ...current, session: { ...current.session, ...patch } } : current,
+    );
+
+  const handleTogglePin = async () => {
+    const pinned = session.pinned !== true;
+    updateReportSession({ pinned });
+    try {
+      await patchSessionRequest(session.id, { pinned });
+      toast.success(pinned ? "Pinned to the top of your sessions" : "Unpinned");
+    } catch (err) {
+      updateReportSession({ pinned: !pinned });
+      toast.error(err instanceof Error ? err.message : "Couldn't update this session.");
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -337,193 +405,232 @@ export default function SessionReportPage({
     // this page needed chrome: you land here after every session and had one
     // exit.
     <div className={cn("mx-auto max-w-5xl space-y-6 p-8", CONTENT_ENTER)}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      {/*
+        Title, what the session was, and its tags on the left; the actions on
+        the right. "Practise again" is the one thing most people do next, so it
+        is the only primary button — sharing is a menu rather than two more
+        buttons of equal weight beside it.
+      */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-2">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
             Session report
           </p>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {session.scenarioTitle ?? session.scenarioValue}
-          </h1>
+          <EditableTitle
+            sessionId={session.id}
+            title={session.title ?? null}
+            generatedTitle={session.scenarioTitle ?? session.scenarioValue}
+            onRenamed={(title) => updateReportSession({ title })}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <Badge variant="outline" className="gap-1">
+              <ModeIcon className="h-3 w-3" />
+              {session.practiceMode === "voice" ? "Voice" : "Text"}
+            </Badge>
+            <Badge variant="outline">{session.personaName}</Badge>
+            <Badge variant="secondary">
+              {scoredAnswers} scored answer{scoredAnswers === 1 ? "" : "s"}
+            </Badge>
+            {jobDescription && (
+              <Badge
+                variant="outline"
+                className="max-w-full border-primary-border bg-primary-subtle text-primary-emphasis"
+                title={jobDescription.title}
+              >
+                <FileText className="mr-1 h-3 w-3 shrink-0" />
+                {/* Role at company when both are known, which is what the
+                    interviewer was actually told. */}
+                <span className="truncate">
+                  {[jobDescription.roleTitle, jobDescription.company]
+                    .filter(Boolean)
+                    .join(" at ") || jobDescription.title}
+                </span>
+              </Badge>
+            )}
+            <span>{formatReportDate(session.startedAt)}</span>
+          </div>
+          <TagEditor
+            sessionId={session.id}
+            tags={session.tags ?? []}
+            suggestions={tagSuggestions.map((entry) => entry.tag)}
+            onChange={(tags) => updateReportSession({ tags })}
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1">
-            <ModeIcon className="h-3 w-3" />
-            {session.practiceMode === "voice" ? "Voice" : "Text"}
-          </Badge>
-          <Badge variant="outline">{session.personaName}</Badge>
-          <Badge variant="secondary">{session.turnCount} turns</Badge>
-          {jobDescription && (
-            <Badge
-              variant="outline"
-              className="border-primary-border bg-primary-subtle text-primary-emphasis"
-              title={jobDescription.title}
-            >
-              <FileText className="mr-1 h-3 w-3" />
-              {/* Role at company when both are known, which is what the
-                  interviewer was actually told. */}
-              <span className="max-w-[180px] truncate">
-                {[jobDescription.roleTitle, jobDescription.company]
-                  .filter(Boolean)
-                  .join(" at ") || jobDescription.title}
-              </span>
-            </Badge>
-          )}
-          <div className="ml-1 flex items-center gap-2 print:hidden">
-            {/* The report used to end at the transcript for a single-round
-                session — its only forward action was "Start next round", which
-                exists only for loops. */}
-            <Button size="sm" className="gap-1.5" onClick={handlePractiseAgain}>
-              <RotateCcw className="h-4 w-4" />
-              Practise again
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={handleCopyLink}
-            >
-              <Link2 className="h-4 w-4" />
-              Copy link
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => window.print()}
-            >
-              <Printer className="h-4 w-4" />
-              Download PDF
-            </Button>
-          </div>
+        <div className="flex items-center gap-2 print:hidden">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => void handleTogglePin()}
+            aria-pressed={session.pinned === true}
+            aria-label={session.pinned ? "Unpin session" : "Pin session"}
+            title={session.pinned ? "Unpin" : "Pin to the top of your sessions"}
+          >
+            {session.pinned ? (
+              <PinOff className="h-4 w-4" />
+            ) : (
+              <Pin className="h-4 w-4" />
+            )}
+          </Button>
+          {/* The report used to end at the transcript for a single-round
+              session — its only forward action was "Start next round", which
+              exists only for loops. */}
+          <Button className="gap-1.5" onClick={handlePractiseAgain}>
+            <RotateCcw className="h-4 w-4" />
+            Practise again
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-1.5">
+                <Share2 className="h-4 w-4" />
+                Share
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void handleCopyLink()}>
+                <Link2 className="h-4 w-4" />
+                Copy link
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => window.print()}>
+                <Printer className="h-4 w-4" />
+                Download PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-slate-200/80 bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle
-              as="div"
-              className="text-xs uppercase tracking-[0.16em] text-slate-500"
-            >
-              Overall score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">
-              {formatScore(overallScore ?? session.averageScore)}
-            </p>
-            <ScoreComparison
-              sessionId={session.id}
-              currentScore={overallScore ?? session.averageScore}
-              currentStartedAt={session.startedAt}
-            />
-            {/* The rubric is persona-blind, but the *questions* are not:
-                difficulty folds in (strictness - warmth), so easier questions
-                get better answers. Two scores from different interviewers are
-                not the same achievement, and nothing used to say so. */}
+      <ScoreReveal sessionId={session.id} actualScore={displayedScore}>
+        {(prediction, justRevealed) => (
+          <div
+            className={cn(
+              "space-y-6",
+              justRevealed &&
+                "animate-in fade-in-0 slide-in-from-bottom-2 duration-500 ease-soft",
+            )}
+          >
+            <div className="grid gap-4 md:grid-cols-5">
+              <Card className="relative overflow-hidden border-slate-200/80 bg-white md:col-span-2">
+                <div
+                  className={cn("absolute inset-y-0 left-0 w-1", ACCENT_BAR.blue)}
+                  aria-hidden
+                />
+                <CardHeader className="pb-2">
+                  <CardTitle
+                    as="div"
+                    className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-lg",
+                        TILE_COLORS.blue,
+                      )}
+                    >
+                      <Gauge className="h-4 w-4" aria-hidden />
+                    </span>
+                    Overall score
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-4xl font-bold tabular-nums text-slate-900">
+                    {formatScore(displayedScore)}
+                  </p>
+                  <ScoreComparison
+                    sessionId={session.id}
+                    currentScore={displayedScore}
+                    currentStartedAt={session.startedAt}
+                  />
+                  {prediction?.kind === "guessed" && displayedScore !== null && (
+                    <p className="text-sm font-medium text-slate-700">
+                      {predictionDetail(prediction.guess, displayedScore)}
+                    </p>
+                  )}
+                  {/* The rubric is persona-blind, but the *questions* are not:
+                      difficulty folds in (strictness - warmth), so easier
+                      questions get better answers. Two scores from different
+                      interviewers are not the same achievement. */}
+                  {(() => {
+                    const difficulty = describeDifficulty(
+                      session.personaConfig?.strictness,
+                      session.personaConfig?.warmth,
+                    );
+                    return (
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        <span className="font-medium text-slate-600">
+                          {difficulty.label}.
+                        </span>{" "}
+                        {difficulty.note}
+                      </p>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              <InsightCard
+                color="teal"
+                icon={MessagesSquare}
+                label="Communication"
+                value={
+                  confidenceScore === null
+                    ? "—"
+                    : `${Math.round(confidenceScore * 10)}%`
+                }
+                detail={communicationDetail(confidenceScore, analyses)}
+              />
+              <InsightCard
+                color={usesTechnicalRubric ? "indigo" : "purple"}
+                icon={usesTechnicalRubric ? Code2 : ListChecks}
+                label={usesTechnicalRubric ? "Technical rubric" : "STAR average"}
+                value={starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
+                detail={
+                  usesTechnicalRubric
+                    ? technicalDetail(analyses)
+                    : starDetail(analyses)
+                }
+              />
+              <InsightCard
+                color="orange"
+                icon={Timer}
+                label="Duration"
+                value={formatDuration(session.durationMinutes)}
+                detail={durationDetail(session.durationMinutes, scoredAnswers)}
+              />
+            </div>
+
+            {/* The same marks with their shape kept: which dimension earned
+                them. Axes follow the analyzer's two rubric families; absent for
+                sessions with no scored turns. */}
             {(() => {
-              const difficulty = describeDifficulty(
-                session.personaConfig?.strictness,
-                session.personaConfig?.warmth,
+              const axes = buildRadarAxes(
+                (data.turnAnalyses ?? []).flatMap((entry) =>
+                  entry.analysis
+                    ? [entry.analysis as Partial<AnalysisResult>]
+                    : [],
+                ),
+                usesTechnicalRubric,
               );
+              if (!axes) return null;
               return (
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  <span className="font-medium text-slate-600">
-                    {difficulty.label}.
-                  </span>{" "}
-                  {difficulty.note}
-                </p>
+                <Card className="border-slate-200/80 bg-white">
+                  <CardHeader>
+                    <CardTitle className="text-base">Dimension profile</CardTitle>
+                    <CardDescription>
+                      {usesTechnicalRubric
+                        ? "Averaged across this round's scored answers, on the technical rubric."
+                        : "Averaged across this round's scored answers, on the STAR rubric."}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DimensionRadar axes={axes} />
+                  </CardContent>
+                </Card>
               );
             })()}
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200/80 bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle
-              as="div"
-              className="text-xs uppercase tracking-[0.16em] text-slate-500"
-            >
-              Communication
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">
-              {confidenceScore === null
-                ? "—"
-                : `${Math.round(confidenceScore * 10)}%`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200/80 bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle
-              as="div"
-              className="text-xs uppercase tracking-[0.16em] text-slate-500"
-            >
-              {usesTechnicalRubric ? "Technical rubric" : "STAR average"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">
-              {starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200/80 bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle
-              as="div"
-              className="text-xs uppercase tracking-[0.16em] text-slate-500"
-            >
-              Duration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-slate-900">
-              {formatDuration(session.durationMinutes)}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* The score above is the headline — it drives the decision engine and
-          the trend — and this is the same marks with their shape kept: which
-          dimension earned them. Axes follow the analyzer's two rubric
-          families; absent for sessions with no scored turns. */}
-      {(() => {
-        const axes = buildRadarAxes(
-          (data.turnAnalyses ?? []).flatMap((entry) =>
-            entry.analysis ? [entry.analysis as Partial<AnalysisResult>] : [],
-          ),
-          usesTechnicalRubric,
-        );
-        if (!axes) return null;
-        return (
-          <Card className="border-slate-200/80 bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Dimension profile</CardTitle>
-              <CardDescription>
-                {usesTechnicalRubric
-                  ? "Averaged across this round's scored answers, on the technical rubric."
-                  : "Averaged across this round's scored answers, on the STAR rubric."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DimensionRadar axes={axes} />
-            </CardContent>
-          </Card>
-        );
-      })()}
-
-      <CalibrationCard
-        sessionId={session.id}
-        actualScore={overallScore ?? session.averageScore}
-      />
+          </div>
+        )}
+      </ScoreReveal>
 
       {loop?.enabled && currentRound && (
         <Card className="border-primary-border/80 bg-primary-subtle/40">
@@ -588,6 +695,12 @@ export default function SessionReportPage({
           )}
         </Card>
       )}
+
+      <SessionNotesCard
+        sessionId={session.id}
+        notes={session.notes ?? null}
+        onSaved={(notes) => updateReportSession({ notes })}
+      />
 
       <CompetencyCoverageCard coverage={coverage} />
 
