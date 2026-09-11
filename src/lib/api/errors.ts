@@ -30,8 +30,38 @@ const GENERIC_500 = "Something went wrong. Please try again.";
  * — so the only way to log-and-500 is now the one that checks first.
  */
 function serverError(scope: string, error: unknown): NextResponse {
-  console.error(`[${scope}]`, error);
-  return NextResponse.json({ error: GENERIC_500 }, { status: 500 });
+  const ref =
+    globalThis.crypto?.randomUUID?.().slice(0, 8) ??
+    Math.random().toString(36).slice(2, 10);
+  const code = safeErrorCode(error);
+  console.error(`[${scope}] ref=${ref}${code ? ` code=${code}` : ""}`, error);
+  // `error` stays the stable generic message. `ref` ties what the user sees to
+  // one log line; `code` is a database error class when there is one. Neither
+  // carries a message, a table name or a stack.
+  return NextResponse.json(
+    { error: GENERIC_500, ref, ...(code ? { code } : {}) },
+    { status: 500 },
+  );
+}
+
+/**
+ * A database error class, if the error carries one — and only that.
+ *
+ * "Something went wrong" on every failure meant a report from a deployed
+ * session could not be told apart from any other: a missing grant, a missing
+ * function and an OpenAI outage all read the same, and the only way to learn
+ * which was to find the right line in a log the reporter cannot see. A
+ * Postgres SQLSTATE (`42501`) or PostgREST code (`PGRST202`) names the class of
+ * failure without naming anything inside it.
+ */
+function safeErrorCode(error: unknown): string | null {
+  const code =
+    typeof error === "object" && error !== null
+      ? (error as { code?: unknown }).code
+      : undefined;
+  return typeof code === "string" && /^([0-9A-Z]{5}|PGRST\d{3})$/.test(code)
+    ? code
+    : null;
 }
 
 /** 400 with a message written by us — safe to show the user verbatim. */

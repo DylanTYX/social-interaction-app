@@ -21,6 +21,25 @@ describe("readJson", () => {
     ).rejects.toThrow("Resume is too short.");
   });
 
+  it("shows the reference and error class a generic failure carries", async () => {
+    // Without these, every server failure read "Something went wrong" on
+    // screen, and a report could not be matched to its log line.
+    await expect(
+      readJson(
+        new Response(
+          JSON.stringify({
+            error: "Something went wrong. Please try again.",
+            ref: "a1b2c3d4",
+            code: "42501",
+          }),
+          { status: 500 },
+        ),
+      ),
+    ).rejects.toThrow(
+      "Something went wrong. Please try again. (ref a1b2c3d4 · 42501)",
+    );
+  });
+
   it("falls back to the status when the error body is not JSON", async () => {
     // A proxy 502 or an auth redirect returns HTML; parsing it would mask the
     // real status.
