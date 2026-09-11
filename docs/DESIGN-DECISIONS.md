@@ -201,9 +201,11 @@ produced a plain voice for Brazilian women and a multilingual voice for
 Brazilian men, which the listener judged to keep the accent. The rule is now a
 default rather than a ban: a multilingual voice is listed only with an audition
 behind it, and a test enforces that. Japanese and Vietnamese were removed rather
-than left as nationalities the randomiser hands out without the accent. A
-persona can still hold one — the preset Yuki Tanaka is Japanese — and it falls
-back to neutral English with the reason shown.
+than left as nationalities the randomiser hands out without the accent. The
+Japanese preset, Yuki Tanaka, was replaced by Aisyah Rahman (Singaporean) with
+identical dials, so the demo's strict/warm contrast and its numbers are
+unchanged; existing libraries are migrated in place. A typed nationality with no
+accent voice still falls back to neutral English with the reason shown.
 
 ---
 

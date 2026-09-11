@@ -188,7 +188,7 @@ expert / generalist** is round type + JD retrieval (Layers 1–2); **hinting**
 is the deferred hint ladder.
 
 The six preset personas carry styles that summarise the dials they already had
-— Yuki Tanaka (strictness 9, pushback 9) was always a bar raiser; the field
+— Aisyah Rahman (strictness 9, pushback 9) was always a bar raiser; the field
 just names it.
 
 ## 7. Measured, not asserted

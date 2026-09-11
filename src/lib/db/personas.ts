@@ -73,6 +73,124 @@ async function selectPersonas(
 }
 
 /**
+ * Presets that shipped once and have since been replaced, keyed by the old
+ * name, valued by the `PRESET_PERSONAS` key that replaces them.
+ *
+ * Presets are copied into each account on its first library load and never
+ * refreshed after that — only "Restore presets" prunes — so changing
+ * `PRESET_PERSONAS` alone leaves every existing account holding the old one.
+ */
+export const RETIRED_PRESETS: Readonly<Record<string, string>> = {
+  // Japanese has no accent voice; see the note on the replacement preset.
+  "Yuki Tanaka": "aisyah rahman",
+};
+
+export interface PresetMaintenance {
+  /** Retired preset rows rewritten as their replacement, keeping the row id. */
+  replace: Array<{ id: string; name: string; config: PersonaConfig }>;
+  /** Retired preset rows whose replacement is already in the library. */
+  remove: string[];
+  /** Shipped preset rows saved before presets carried a voice gender. */
+  backfillVoice: Array<{ id: string; config: PersonaConfig }>;
+}
+
+/**
+ * What an existing library needs to match the shipped presets. Pure, so it can
+ * be tested without a database.
+ *
+ * A retired preset is rewritten in place rather than deleted and re-inserted:
+ * a multi-round loop stores the interviewer as a persona id, and a deleted row
+ * would silently hand that round back to the session's default interviewer.
+ * Only `kind: "preset"` rows are touched — a user who saved their own persona
+ * under a retired name keeps it. The voice backfill adds the one missing field
+ * and leaves every other edit alone.
+ */
+export function planPresetMaintenance(
+  existing: readonly PersonaRecord[],
+): PresetMaintenance {
+  const plan: PresetMaintenance = { replace: [], remove: [], backfillVoice: [] };
+  const presetNames = new Set(
+    existing.filter((row) => row.kind === "preset").map((row) => row.name),
+  );
+  const shippedByName = new Map(
+    Object.values(PRESET_PERSONAS).map((config) => [config.name, config]),
+  );
+
+  for (const row of existing) {
+    if (row.kind !== "preset") continue;
+
+    const replacementKey = RETIRED_PRESETS[row.name];
+    if (replacementKey) {
+      const replacement = PRESET_PERSONAS[replacementKey];
+      if (!replacement) continue;
+      if (presetNames.has(replacement.name)) {
+        plan.remove.push(row.id);
+      } else {
+        plan.replace.push({
+          id: row.id,
+          name: replacement.name,
+          config: replacement,
+        });
+        presetNames.add(replacement.name);
+      }
+      continue;
+    }
+
+    const shipped = shippedByName.get(row.name);
+    if (shipped?.voiceGender && row.config.voiceGender === undefined) {
+      plan.backfillVoice.push({
+        id: row.id,
+        config: { ...row.config, voiceGender: shipped.voiceGender },
+      });
+    }
+  }
+
+  return plan;
+}
+
+async function maintainPresets(
+  supabase: SupabaseClient,
+  existing: PersonaRecord[],
+): Promise<PersonaRecord[]> {
+  const plan = planPresetMaintenance(existing);
+  if (
+    plan.replace.length === 0 &&
+    plan.remove.length === 0 &&
+    plan.backfillVoice.length === 0
+  ) {
+    return existing;
+  }
+
+  try {
+    for (const row of plan.replace) {
+      const { error } = await supabase
+        .from("personas")
+        .update({ name: row.name, config: row.config })
+        .eq("id", row.id);
+      if (error) throw error;
+    }
+    for (const id of plan.remove) {
+      const { error } = await supabase.from("personas").delete().eq("id", id);
+      if (error) throw error;
+    }
+    for (const row of plan.backfillVoice) {
+      const { error } = await supabase
+        .from("personas")
+        .update({ config: row.config })
+        .eq("id", row.id);
+      if (error) throw error;
+    }
+  } catch (error) {
+    // Housekeeping must never cost someone their library. The next load
+    // re-plans from whatever did commit and tries again.
+    console.error("[personas] preset maintenance failed", error);
+    return existing;
+  }
+
+  return selectPersonas(supabase);
+}
+
+/**
  * Returns the user's persona library, seeding the built-in presets the first
  * time we see them. The seeding happens inside this function so callers do
  * not need to think about it.
@@ -93,7 +211,7 @@ export async function listPersonas(
 ): Promise<PersonaRecord[]> {
   const existing = await selectPersonas(supabase);
   if (existing.length > 0) {
-    return existing;
+    return maintainPresets(supabase, existing);
   }
 
   // First-time user: seed presets.

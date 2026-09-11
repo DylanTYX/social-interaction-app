@@ -52,7 +52,7 @@ PersonaConfig { strictness, warmth, pace, pushback, communicationStyle }
             Pure arithmetic. Reproduces exactly, every time, offline.
 ```
 
-**This is the thing to lead with.** "Yuki 7/10, Isabella 5/10 on an identical
+**This is the thing to lead with.** "Aisyah 7/10, Isabella 5/10 on an identical
 answer" is not a sample from a stochastic model — it is a computation. Your
 examiner can read `estimateFollowupDifficulty`, do the arithmetic by hand, and
 get the same number. That is a far stronger position than "look, the questions
@@ -118,7 +118,7 @@ This ordering is itself part of the contribution — worth saying out loud.
 |     | Kind of evidence                                      | Example here                                                                                                                                  |
 | --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Deterministic computation** — reproduces exactly    | `npm run eval:persona`, the difficulty numbers                                                                                                |
-| 2   | **A test that fails when the claim stops being true** | `persona-engine.test.ts` fails if Yuki and Isabella's dials converge; `pricing.test.ts` fails if cached tokens are ever billed as extra input |
+| 2   | **A test that fails when the claim stops being true** | `persona-engine.test.ts` fails if Aisyah and Isabella's dials converge; `pricing.test.ts` fails if cached tokens are ever billed as extra input |
 | 3   | **Measured rows, nothing sampled**                    | `llm_usage` — one row per model call                                                                                                          |
 | 4   | **Blind measurement**                                 | the judge is never told which persona produced the text, so it cannot agree with the label                                                    |
 | 5   | **Committed artifacts**                               | `docs/artifacts/`, so a network failure costs nothing                                                                                         |
@@ -205,7 +205,7 @@ npm run eval:persona
 
 No API calls, no network, byte-identical every run. Safe on stage.
 
-It prints, for **Yuki Tanaka** (analytical, strictness 9 / warmth 4 / pace 4 /
+It prints, for **Aisyah Rahman** (analytical, strictness 9 / warmth 4 / pace 4 /
 pushback 9) against **Isabella Rodriguez** (diplomatic, 6 / 9 / 6 / 4):
 
 - the exact instruction lines that differ between the two system prompts
@@ -223,7 +223,7 @@ pushback 9) against **Isabella Rodriguez** (diplomatic, 6 / 9 / 6 / 4):
 **Why this pair.** Chosen by inspection, not at random. Sarah Chen and Lars
 Petersen would prove nothing — both `direct` at strictness 8, they differ in a
 single pace sentence. A test (`persona-engine.test.ts`) fails if a future edit
-brings Yuki and Isabella's dials together, so the comparison cannot quietly
+brings Aisyah and Isabella's dials together, so the comparison cannot quietly
 stop demonstrating anything.
 
 **What to say:** _"Same question, same answer, same round type. The only

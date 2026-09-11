@@ -56,7 +56,7 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
  * the persona system has any effect at all it shows here. If it does *not* show
  * here, it does not exist.
  */
-const STRICT = PRESET_PERSONAS["yuki tanaka"];
+const STRICT = PRESET_PERSONAS["aisyah rahman"];
 const WARM = PRESET_PERSONAS["isabella rodriguez"];
 
 /**

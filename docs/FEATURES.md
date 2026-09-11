@@ -373,9 +373,9 @@ Worth knowing up front:
   so the words come out rebuilt rather than accented. Brazilian failed a first
   pass and was re-auditioned across every voice the locale offers; it now uses
   a plain female voice and a multilingual male one. Japanese and Vietnamese were
-  removed. You can still type any nationality — and the preset Yuki Tanaka is
-  Japanese — but one with no accent voice uses neutral English, and the setup
-  screen says so. Method, clips and verdicts: `docs/artifacts/voice-audition.md`
+  removed, and the preset interviewer who was Japanese was replaced. You can
+  still type any nationality; one with no accent voice uses neutral English, and
+  the setup screen says so. Method, clips and verdicts: `docs/artifacts/voice-audition.md`
   and `docs/artifacts/voice-audition-explore.md`.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
