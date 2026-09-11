@@ -166,7 +166,7 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | --- | ------------------ | --------------------------------------------- | --------------------------------------------------------------- | ----- | ----- |
 | R1  | Report content     | Open report after session                     | Scores, dimensions, feedback visible                            | ☐     |       |
 | R2  | Score comparison   | Second completed session                      | Delta vs previous session if shown                              | ☐     |       |
-| R3  | Calibration card   | Predict score → reveal                        | Interaction works; no layout break                              | ☐     |       |
+| R3  | Predict before reveal | Open a report you have not opened before | Scores hidden until you predict or skip; after Reveal, the overall card shows the gap; reopening goes straight to scores | ☐     |       |
 | R4  | Print / PDF        | **Download PDF** (browser print)              | Print preview readable; chrome hidden                           | ☐     |       |
 | R5  | Next round         | If multi-round configured                     | Starts next round without error                                 | ☐     |       |
 | R6  | Per-answer scores  | Scroll the transcript                         | Each of your answers shows its own score plus strengths/gaps    | ☐     |       |
@@ -190,6 +190,21 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | L7  | Analytics           | After 2+ sessions                     | Charts/stats populate                                                    | ☐     |       |
 | L8  | Trend restraint     | With fewer than 4 scored sessions     | Charts say how many you have rather than drawing a line through 2 points | ☐     |       |
 | L9  | Competency coverage | Open analytics                        | Lists all twelve competencies, blind spots first, marked "not yet"       | ☐     |       |
+
+
+### Managing sessions
+
+| ID  | Test                  | Steps                                                                                   | Expected                                                                                      | Pass? | Notes |
+| --- | --------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----- | ----- |
+| M1  | Rename from report    | Click the report title, type a new name, press Enter; then clear it and press Enter     | New name shows on the report, sessions list and dashboard; clearing restores the generated title | ☐     |       |
+| M2  | Tags                  | Add two tags on a report (try "acme" then "Acme"); remove one                            | Duplicate in a different case is ignored; tags show on the sessions row and in the tag filter | ☐     |       |
+| M3  | Pin                   | Pin an older session from its row menu                                                  | It moves to the top of the list with a pin icon                                               | ☐     |       |
+| M4  | Folders               | Create a folder, move a session into it, filter by it, then delete the folder            | Filter shows only that session; after deleting, the session remains, unfiled                  | ☐     |       |
+| M5  | Archive               | Archive a completed session; turn on Show archived; unarchive it                          | Hidden from the list, visible under Show archived; dashboard stats unchanged                  | ☐     |       |
+| M6  | Sort and filter       | Sort by highest score; filter to 80%+ and last 7 days                                     | Order and results match; Clear filters resets everything                                      | ☐     |       |
+| M7  | Bulk actions          | Tick three sessions; add a tag, move them to a folder, then archive them                 | All three change; a toast reports how many were updated                                       | ☐     |       |
+| M8  | Compare               | Tick exactly two sessions and choose Compare                                             | Side-by-side scores with the change between them; links open each report                     | ☐     |       |
+| M9  | Notes                 | Write notes on a report, save, reload                                                   | Notes persist; Save is disabled until the text changes                                        | ☐     |       |
 
 ### 4.8 Settings & account
 
