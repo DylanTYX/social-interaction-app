@@ -191,12 +191,20 @@ export function VoiceInput({
         </div>
       )}
 
-      {/* Fixed height: the control changes appearance between states, never size. */}
-      <div className="flex h-21 flex-col items-center justify-center gap-1.5">
-        <div className="relative">
+      {/*
+        Stable size without a fixed height. This was `h-21 justify-center` —
+        84px for a 56px button, a caption and the silence countdown, which
+        need more than that. Centred content that overflows spills both ways,
+        so the button and the recording ring rose into the transcript box
+        above. Every slot now has its own reserved height instead: padding
+        that contains the ring, a one-line caption, and a line held open for
+        the countdown so it can appear without moving anything.
+      */}
+      <div className="flex flex-col items-center gap-2 pt-1">
+        <div className="relative p-2">
           {state === "recording" && (
             <span
-              className="pointer-events-none absolute -inset-1 animate-breathe rounded-full ring-4 ring-destructive/40"
+              className="pointer-events-none absolute inset-1 animate-breathe rounded-full ring-4 ring-destructive/40"
               aria-hidden="true"
             />
           )}
@@ -224,10 +232,17 @@ export function VoiceInput({
           </Button>
         </div>
 
-        <p className="text-xs font-medium text-slate-500">{caption}</p>
+        <p className="h-4 text-center text-xs leading-4 font-medium text-slate-500">
+          {caption}
+        </p>
 
-        {/* Sits under the caption so the countdown appears without moving it. */}
-        <SilenceIndicator silenceStartedAtMs={silenceStartedAtMs} />
+        {/* A reserved line, so the countdown appears without moving the caption. */}
+        <div className="flex h-4 items-center">
+          <SilenceIndicator
+            silenceStartedAtMs={silenceStartedAtMs}
+            className="leading-4"
+          />
+        </div>
       </div>
     </div>
   );
