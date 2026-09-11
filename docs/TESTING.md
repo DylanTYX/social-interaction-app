@@ -6,7 +6,7 @@ untested area that nobody has named is an accident, and an untested area with a
 reason is a decision.
 
 ```
-npm test          659 tests, no network         ← layers 1-3
+npm test          671 tests, no network         ← layers 1-3
 npm run eval      the analyzer, against a golden set    ← layer 4
 npm run eval:coach    the coach, against the analyzer   ← layer 4
 npm run eval:persona  do personas actually differ?      ← layer 4
@@ -69,7 +69,7 @@ logic that _could_ be component state has been pulled into layer 1 instead.
 
 **These three currently fail to run**, and that is an upstream packaging bug, not
 a project one: `jsdom` 30 pulls `html-encoding-sniffer` 6, which `require()`s the
-ESM-only `@exodus/bytes`. Recorded rather than hidden. The 659 passing tests are
+ESM-only `@exodus/bytes`. Recorded rather than hidden. The 671 passing tests are
 layers 1 and 2.
 
 ## Layer 4 — Evaluation harnesses
@@ -152,7 +152,7 @@ accuracy figure means "agreement with one person". See
 
 ## What a test being present actually proves here
 
-Worth stating for a reader who counts tests: 659 is not a quality claim. Two
+Worth stating for a reader who counts tests: 671 is not a quality claim. Two
 examples of the difference.
 
 **A test that proves something.** `asked-questions.test.ts` asserts the collector
