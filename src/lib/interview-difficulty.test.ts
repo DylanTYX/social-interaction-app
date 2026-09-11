@@ -14,7 +14,7 @@ import { describeDifficulty, difficultyBias } from "@/lib/interview-difficulty";
 
 describe("difficultyBias", () => {
   it("matches the expression the interviewer prompt actually uses", () => {
-    // Yuki: strictness 9, warmth 4.
+    // Aisyah Rahman: strictness 9, warmth 4.
     expect(difficultyBias(9, 4)).toBe(1.25);
     // Isabella: strictness 6, warmth 9.
     expect(difficultyBias(6, 9)).toBe(-0.75);

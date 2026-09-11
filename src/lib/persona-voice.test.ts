@@ -50,9 +50,9 @@ const ALL_NATIONALITIES = [
  *
  * Every voice either locale offers was auditioned and none carried a usable
  * accent, so both were removed rather than shipped as a nationality that
- * silently speaks American. Nothing stops a persona holding one — typed free
- * text can, and the preset Yuki Tanaka is Japanese — and those fall back to
- * neutral English with the reason on screen, which the tests below pin.
+ * silently speaks American. No preset or generated persona holds one. Typed
+ * free text still can, and falls back to neutral English with the reason on
+ * screen, which the tests below pin.
  */
 const REMOVED_NATIONALITIES = ["Japanese", "Vietnamese"];
 const SUPPORTED_NATIONALITIES = ALL_NATIONALITIES.filter(
@@ -173,18 +173,31 @@ describe("coverage", () => {
     }
   });
 
-  it("tells a preset with a removed nationality why it has no accent", () => {
-    // Yuki Tanaka is Japanese. She keeps her biography, loses the accent, and
-    // the setup screen says so instead of quietly playing an American voice.
+  it("gives every preset an accent", () => {
+    // The Japanese preset was replaced rather than left speaking neutral
+    // English; no shipped interviewer should be missing the feature.
     for (const preset of Object.values(PRESET_PERSONAS)) {
-      const resolved = resolveVoiceForPersona({ nationality: preset.nationality });
-      if (REMOVED_NATIONALITIES.includes(preset.nationality)) {
-        expect(
-          describeResolvedVoice(resolved, preset.name, preset.nationality),
-        ).toContain("neutral English");
-      } else {
-        expect(resolved.source, preset.name).toBe("nationality");
-      }
+      expect(REMOVED_NATIONALITIES, preset.name).not.toContain(
+        preset.nationality,
+      );
+      expect(
+        resolveVoiceForPersona({ nationality: preset.nationality }).source,
+        preset.name,
+      ).toBe("nationality");
+    }
+  });
+
+  it("gives every preset the voice gender it was written with", () => {
+    // No preset set one, and an absent preference takes the locale's first
+    // voice — so Marcus Johnson and Lars Petersen spoke as women.
+    for (const preset of Object.values(PRESET_PERSONAS)) {
+      expect(preset.voiceGender, preset.name).toMatch(/^(female|male)$/);
+      const resolved = resolveVoiceForPersona({
+        nationality: preset.nationality,
+        voiceGender: preset.voiceGender,
+      });
+      const voice = ACCENT_VOICES.find((v) => v.uri === resolved.uri);
+      expect(voice?.gender, preset.name).toBe(preset.voiceGender);
     }
   });
 });

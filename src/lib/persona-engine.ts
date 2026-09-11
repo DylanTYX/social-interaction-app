@@ -375,10 +375,17 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
 /**
  * Preset configurations for existing personas (backward compatibility)
  */
+/**
+ * `voiceGender` is set on every preset, and it is authored, not inferred: these
+ * are written characters, so choosing their voice is part of writing them. It
+ * used to be absent on all six, and an absent preference takes the locale's
+ * first voice — which made Marcus Johnson and Lars Petersen speak as women.
+ */
 export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "sarah chen": {
     name: "Sarah Chen",
     nationality: "Chinese",
+    voiceGender: "female",
     industry: "Big Tech",
     seniority: "Senior Product Manager",
     communicationStyle: "direct",
@@ -406,6 +413,7 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "marcus johnson": {
     name: "Marcus Johnson",
     nationality: "American",
+    voiceGender: "male",
     industry: "Finance",
     seniority: "VP of Operations",
     communicationStyle: "diplomatic",
@@ -434,9 +442,17 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     ],
   },
 
-  "yuki tanaka": {
-    name: "Yuki Tanaka",
-    nationality: "Japanese",
+  // Was Yuki Tanaka, Japanese. Japanese has no voice that speaks accented
+  // English — every one auditioned rebuilt the words out of Japanese sounds —
+  // so a Japanese preset could only ever speak neutral English. Replaced rather
+  // than deleted, with every dial, trait and role unchanged: this is the strict
+  // half of the demo's contrasting pair, and the numbers quoted from it
+  // (7/10 against Isabella's 5/10) depend only on those. Existing libraries are
+  // migrated by `RETIRED_PRESETS` in `db/personas.ts`.
+  "aisyah rahman": {
+    name: "Aisyah Rahman",
+    nationality: "Singaporean",
+    voiceGender: "female",
     industry: "Manufacturing",
     seniority: "Plant Director",
     communicationStyle: "analytical",
@@ -460,6 +476,7 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "priya sharma": {
     name: "Priya Sharma",
     nationality: "Indian",
+    voiceGender: "female",
     industry: "Consulting",
     seniority: "Managing Partner",
     communicationStyle: "collaborative",
@@ -487,6 +504,7 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "lars petersen": {
     name: "Lars Petersen",
     nationality: "Swedish",
+    voiceGender: "male",
     industry: "Renewable Energy",
     seniority: "CTO",
     communicationStyle: "direct",
@@ -514,6 +532,7 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "isabella rodriguez": {
     name: "Isabella Rodriguez",
     nationality: "Spanish",
+    voiceGender: "female",
     industry: "Marketing",
     seniority: "Chief Marketing Officer",
     communicationStyle: "diplomatic",
@@ -553,7 +572,7 @@ export function getPersonaConfig(nameOrAlias: string): PersonaConfig | null {
   const aliasMap: Record<string, string> = {
     sarah: "sarah chen",
     marcus: "marcus johnson",
-    yuki: "yuki tanaka",
+    aisyah: "aisyah rahman",
     priya: "priya sharma",
     lars: "lars petersen",
     isabella: "isabella rodriguez",

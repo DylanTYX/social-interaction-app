@@ -1,3 +1,9 @@
+NOTE (2026-09-11): recorded before the strict preset was renamed from Yuki
+Tanaka (Japanese) to Aisyah Rahman (Singaporean). Every dial, trait and role
+is unchanged, so every number below still holds; only the name and the
+nationality line in the prompt differ. `npm run eval:persona` prints the
+current name.
+
 ========================================================================
 DETERMINISTIC — no API calls, identical on every run
 ========================================================================

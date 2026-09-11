@@ -45,11 +45,11 @@ describe("two personas produce different instructions", () => {
   // The maximum-divergence pair in the shipped library. Sarah Chen and Lars
   // Petersen would be a poor choice — both `direct` at strictness 8, they
   // differ only in one pace sentence — so the demo uses these two.
-  const yuki = PRESET_PERSONAS["yuki tanaka"];
+  const aisyah = PRESET_PERSONAS["aisyah rahman"];
   const isabella = PRESET_PERSONAS["isabella rodriguez"];
 
   it("has the contrasting pair the demo relies on", () => {
-    expect(yuki, "Yuki Tanaka missing from PRESET_PERSONAS").toBeTruthy();
+    expect(aisyah, "Aisyah Rahman missing from PRESET_PERSONAS").toBeTruthy();
     expect(
       isabella,
       "Isabella Rodriguez missing from PRESET_PERSONAS",
@@ -59,15 +59,15 @@ describe("two personas produce different instructions", () => {
   it("differs on every one of the four behavioural dials", () => {
     // If a future edit brings their dials closer together, the demo quietly
     // stops demonstrating anything. This fails loudly instead.
-    expect(yuki.strictness).not.toBe(isabella.strictness);
-    expect(yuki.warmth).not.toBe(isabella.warmth);
-    expect(yuki.pace).not.toBe(isabella.pace);
-    expect(yuki.pushback).not.toBe(isabella.pushback);
-    expect(yuki.communicationStyle).not.toBe(isabella.communicationStyle);
+    expect(aisyah.strictness).not.toBe(isabella.strictness);
+    expect(aisyah.warmth).not.toBe(isabella.warmth);
+    expect(aisyah.pace).not.toBe(isabella.pace);
+    expect(aisyah.pushback).not.toBe(isabella.pushback);
+    expect(aisyah.communicationStyle).not.toBe(isabella.communicationStyle);
   });
 
   it("produces materially different prompts, not just a different name", () => {
-    const a = generatePersonaPrompt(yuki);
+    const a = generatePersonaPrompt(aisyah);
     const b = generatePersonaPrompt(isabella);
     expect(a).not.toBe(b);
 
@@ -148,11 +148,11 @@ describe("nationality is background, not behaviour", () => {
   it("changes nothing behavioural when only the nationality changes", () => {
     // The claim the guard exists to support: nationality is biography. Two
     // otherwise-identical personas must differ by exactly the demonym.
-    const a = generatePersonaPrompt(persona({ nationality: "Japanese" }));
+    const a = generatePersonaPrompt(persona({ nationality: "Korean" }));
     const b = generatePersonaPrompt(persona({ nationality: "Brazilian" }));
 
     expect(a).not.toBe(b);
-    expect(a.replace("Japanese", "Brazilian")).toBe(b);
+    expect(a.replace("Korean", "Brazilian")).toBe(b);
   });
 });
 
@@ -195,13 +195,13 @@ describe("strictness and warmth reach the decision engine, not just the prompt",
   it("separates the two demo personas on the same answer", () => {
     // The number the demo puts on screen. Same candidate answer, same round,
     // different interviewer — a different difficulty target for the follow-up.
-    const yuki = PRESET_PERSONAS["yuki tanaka"];
+    const aisyah = PRESET_PERSONAS["aisyah rahman"];
     const isabella = PRESET_PERSONAS["isabella rodriguez"];
 
     const strict = estimateFollowupDifficulty(analysis, {
       personaName: "Test Interviewer",
-      strictness: yuki.strictness,
-      warmth: yuki.warmth,
+      strictness: aisyah.strictness,
+      warmth: aisyah.warmth,
     });
     const warm = estimateFollowupDifficulty(analysis, {
       personaName: "Test Interviewer",
