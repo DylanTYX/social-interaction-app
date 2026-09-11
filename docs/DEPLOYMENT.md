@@ -32,6 +32,7 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 15. `supabase/migrations/0015_document_metadata.sql`
 16. `supabase/migrations/0016_rename_model_answer_key.sql`
 17. `supabase/migrations/0017_session_updated_at.sql`
+18. `supabase/migrations/0018_session_management.sql`
 
 > **`0005` and `0006` are not optional.** Together they create the
 > `append_interview_turn` RPC that `src/lib/db/sessions.ts` calls on every
@@ -41,6 +42,11 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 > **Neither is `0017`.** `0012` redefines the same function to set
 > `interview_sessions.updated_at`, a column only `0017` creates. With `0012` but
 > not `0017`, every turn fails with `42703` — no greeting, no saved messages.
+>
+> **Apply `0018` before deploying the version that uses it.** Every page that
+> lists or opens a session reads its new columns (title, tags, folder…). A
+> deployment ahead of its database fails on those pages with "The database is
+> behind this version of the app" — apply the newest migrations and reload.
 
 (Or use Supabase CLI: `supabase db push` if you have the project linked.)
 
@@ -166,6 +172,7 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | AI never responds / “The interviewer is unavailable” | `OPENAI_API_KEY` missing for this environment (Preview vs Production), rejected, or out of credit — the message says which. Redeploy after changing it |
 | Voice broken                                       | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`                                                         |
 | PDF upload fails                                   | Migrations `0002`/`0004` not applied on production DB                                                  |
+| “The database is behind this version of the app” | A migration the deployed code needs is not applied (a missing column or table). Run the newest files in `supabase/migrations`, in order |
 | Every interview turn fails with `(ref … · 42703)`; no greeting, resumed sessions blank | Migration `0017` not applied — since `0012`, `append_interview_turn` sets `interview_sessions.updated_at`, which only `0017` creates |
 | Sending a message 500s                             | Migrations `0005`/`0006` not applied — `append_interview_turn` RPC is missing or has the old signature |
 | Report shows scores but no per-question detail     | Migration `0006` not applied — analyses are not being persisted                                        |

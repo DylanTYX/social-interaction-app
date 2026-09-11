@@ -16,6 +16,18 @@ import { NextResponse } from "next/server";
 const GENERIC_500 = "Something went wrong. Please try again.";
 
 /**
+ * Postgres and PostgREST codes that mean the database schema is older than
+ * the code — a column or table the app reads does not exist yet.
+ *
+ * Every one of these reached the screen as "something went wrong", which is
+ * how a database missing one migration took down every interview turn with
+ * nothing to say why. The fix is always the same, so say it.
+ */
+const SCHEMA_BEHIND_CODES = new Set(["42703", "42P01", "PGRST204", "PGRST205"]);
+const SCHEMA_BEHIND =
+  "The database is behind this version of the app. Apply the newest migrations in supabase/migrations, in order.";
+
+/**
  * Log the real error server-side and return an opaque 500.
  *
  * `scope` is a short tag identifying the handler (e.g. "POST /api/chat") so
@@ -39,7 +51,11 @@ function serverError(scope: string, error: unknown): NextResponse {
   // one log line; `code` is a database error class when there is one. Neither
   // carries a message, a table name or a stack.
   return NextResponse.json(
-    { error: GENERIC_500, ref, ...(code ? { code } : {}) },
+    {
+      error: code && SCHEMA_BEHIND_CODES.has(code) ? SCHEMA_BEHIND : GENERIC_500,
+      ref,
+      ...(code ? { code } : {}),
+    },
     { status: 500 },
   );
 }

@@ -51,6 +51,18 @@ describe("an unexpected server error", () => {
   });
 });
 
+describe("a database older than the code", () => {
+  it.each(["42703", "42P01", "PGRST204", "PGRST205"])(
+    "says to apply migrations for %s instead of 'something went wrong'",
+    async (code) => {
+      const { status, body } = await respond(Object.assign(new Error("x"), { code }));
+      expect(status).toBe(500);
+      expect(body.error).toMatch(/database is behind .* migrations/i);
+      expect(body.code).toBe(code);
+    },
+  );
+});
+
 describe("a client-visible error", () => {
   it("is returned as authored, with no reference attached", async () => {
     const { status, body } = await respond(new ClientVisibleError("Resume is too short.", 400));

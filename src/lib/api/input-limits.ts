@@ -73,3 +73,21 @@ export const MAX_PERSONA_FIELD_CHARS = 200;
 
 /** Entries in a persona list field (traits, boundaries, interest areas). */
 export const MAX_PERSONA_LIST_ITEMS = 12;
+
+/** A session's display name. Matches `interview_sessions_title_length` (0018). */
+export const MAX_SESSION_TITLE_CHARS = 120;
+
+/** Private notes on a report. Matches `interview_sessions_notes_length` (0018). */
+export const MAX_SESSION_NOTES_CHARS = 4_000;
+
+/** Tags on one session. Matches `interview_sessions_tag_count` (0018). */
+export const MAX_SESSION_TAGS = 12;
+
+/** One tag — long enough for "system design round 2", short enough for a chip. */
+export const MAX_SESSION_TAG_CHARS = 32;
+
+/** A folder name. Matches `session_folders_name_length` (0018). */
+export const MAX_FOLDER_NAME_CHARS = 60;
+
+/** Sessions changed by one bulk action. */
+export const MAX_BULK_SESSIONS = 100;
