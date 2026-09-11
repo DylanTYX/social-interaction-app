@@ -95,7 +95,9 @@ vi.mock("microsoft-cognitiveservices-speech-sdk", () => ({
   CancellationDetails: { fromResult: () => ({ reason: "Error" }) },
 }));
 
-const { SpeechService } = await import("@/lib/speech-service");
+const { SpeechService, STOP_LISTENING_TIMEOUT_MS } = await import(
+  "@/lib/speech-service"
+);
 
 function service() {
   const instance = SpeechService.getInstance();
@@ -305,5 +307,33 @@ describe("SSML: accent, content language, and the voice-name attribute", () => {
     await flush();
 
     expect(FakeSpeakerAudioDestination.last).toBe(first);
+  });
+});
+
+describe("recognition teardown", () => {
+  it("finishes stopping even when the SDK never calls back", async () => {
+    // A recognizer whose Azure session has already dropped can leave both
+    // stop callbacks unfired. `finish` holds its stopping latch across this
+    // await, so an unbounded wait kept the hook "busy" for the rest of the
+    // page — and the automatic microphone after every question returned
+    // silently on that flag.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const speech = service();
+    const internals = speech as unknown as { recognizer: unknown };
+    internals.recognizer = { stopContinuousRecognitionAsync: () => {} };
+
+    let resolved = false;
+    const stopping = speech.stopListening().then(() => {
+      resolved = true;
+    });
+
+    await flush();
+    expect(resolved).toBe(false);
+
+    vi.advanceTimersByTime(STOP_LISTENING_TIMEOUT_MS);
+    await stopping;
+    expect(resolved).toBe(true);
+
+    internals.recognizer = null;
   });
 });

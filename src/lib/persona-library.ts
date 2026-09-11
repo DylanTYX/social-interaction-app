@@ -114,8 +114,8 @@ export async function resetPersonaLibrary(): Promise<PersonaLibraryEntry[]> {
  * Nationalities the persona randomiser can produce.
  *
  * Exported so `persona-voice.test.ts` can assert every one of them resolves to
- * a voice rather than duplicating the list and drifting from it: adding a 21st
- * nationality here should fail that test, not silently fall back.
+ * a voice rather than duplicating the list and drifting from it: adding a
+ * nationality here without an accent voice should fail that test, not fall back.
  */
 export const NATIONALITY_POOL = [
   "American",
@@ -129,7 +129,6 @@ export const NATIONALITY_POOL = [
   "Indian",
   "Indonesian",
   "Italian",
-  "Japanese",
   "Kenyan",
   "Korean",
   "Mexican",
@@ -137,7 +136,6 @@ export const NATIONALITY_POOL = [
   "Singaporean",
   "Spanish",
   "Swedish",
-  "Vietnamese",
 ];
 
 const INDUSTRY_POOL = [

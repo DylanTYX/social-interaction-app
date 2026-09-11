@@ -145,7 +145,7 @@ personas" works at all — only orthogonal parameters compose.
 | Adaptability | ABSORBED — it is the engine | Fixed→Adaptive *is* the analyzer→ladder→steering loop, always on. A dial would let a persona ignore the answer — the arXiv failure mode, not a style. |
 | Formality | ALREADY REPRESENTED | `communicationStyle` is this axis; a second dial would alias it. |
 | Pressure | REJECTED — not orthogonal | Emergent from strictness + pushback + pace + the `stress` style, which is its packaged, opt-in form. |
-| Feedback frequency | REJECTED — violates the invariant | Mid-interview evaluative feedback leaks evaluation through the persona. `ACKNOWLEDGE_STRENGTH` is the bounded version; richer feedback belongs to the coach and report, persona-blind by design. |
+| Feedback frequency | REJECTED — violates the invariant | Mid-interview evaluative feedback leaks evaluation through the persona, and it is what made the interviewer read as a tutor. `ACKNOWLEDGE_STRENGTH` no longer means praise: the model is shown it as `RAISE_THE_BAR` and told not to compliment the answer. Feedback belongs to the coach and report, persona-blind by design. |
 | Breadth | COVERED by Layer 3 + coverage | The `deep_dive`↔`conversational` axis plus `PIVOT_TOPIC`'s coverage targeting. |
 | Technical depth | NOT A PERSONALITY | What the interviewer knows deeply is Layers 1–2 (round type + JD). A "shallow senior engineer" is roleplay incoherence, not a parameter. |
 

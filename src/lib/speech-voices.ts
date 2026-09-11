@@ -92,17 +92,7 @@ export interface AccentVoice extends SpeechVoiceOption {
 }
 
 /**
- * Voices that can carry an accent, one female and one male per locale.
- *
- * Only plain neural voices are listed. Azure's `*MultilingualNeural` and
- * `*:DragonHDLatestNeural` variants are excluded on purpose: they advertise
- * 100+ secondary locales and are engineered to sound *near-native* in each,
- * which would silently defeat this entire feature — a `zh-CN` multilingual
- * voice reading English sounds American. `persona-voice.test.ts` asserts none
- * of them creep back in.
- */
-/**
- * Why the three rejected locales are rejected, written once.
+ * Why a rejected plain voice is rejected, written once.
  *
  * The failure is not "a strong accent". A monolingual voice has a
  * grapheme-to-phoneme front end built for one orthography, so English text is
@@ -111,17 +101,25 @@ export interface AccentVoice extends SpeechVoiceOption {
  * out of the wrong sound system — which is a different thing from a speaker of
  * that language having an accent in English, and is not what this feature is
  * for.
- *
- * Nothing better exists in the catalogue: every plain voice in these locales
- * advertises zero secondary locales, and the only alternatives are the
- * `Multilingual`/`DragonHD` variants, which are built to sound *native* in
- * English and would leave the feature wired up but inaudible.
  */
 const NOT_AN_ACCENT =
   "Rejected on listening: renders English through the voice's own phonotactics " +
   "rather than accenting it. Not a strong accent — the words are rebuilt from " +
-  "the wrong sound system. No better voice exists in this locale";
+  "the wrong sound system";
 
+/**
+ * Voices that can carry an accent, one female and one male per locale.
+ *
+ * Mostly plain neural voices. Azure's `*MultilingualNeural` and
+ * `*:DragonHDLatestNeural` variants advertise ~90 secondary locales and are
+ * designed to sound native in each, so they were first kept out on the theory
+ * that they would carry no accent. That theory had never been listened to.
+ * Brazilian failed on the plain voices first sampled, so the locale was
+ * re-auditioned across every voice it offers, and the listener judged a
+ * multilingual variant to keep the accent for the male persona. It is here on
+ * the strength of the ear, not the metadata, and `persona-voice.test.ts`
+ * refuses any multilingual row that lacks that audition.
+ */
 export const ACCENT_VOICES: readonly AccentVoice[] = [
   // ---------------------------------------------------------------------
   // Real English locales. Native English voices with regional accents, so
@@ -160,15 +158,14 @@ export const ACCENT_VOICES: readonly AccentVoice[] = [
   // Native-locale voices reading English — the only route to a Chinese,
   // Swedish (etc.) accent, since Azure has no `en-CN` or `en-SE`. Every one
   // was synthesised and listened to on 2026-08-23; `a()` passed, `r()` did
-  // not. Rejected rows stay here on purpose. Method and clips:
-  // `docs/artifacts/voice-audition.md`.
+  // not. Brazilian failed that pass and was re-auditioned across every voice
+  // in its locale on 2026-09-11, which is where the `m()` row comes from.
+  // Japanese and Vietnamese were removed outright. Rejected rows stay here on
+  // purpose. Method and clips:
+  // `docs/artifacts/voice-audition.md`, `voice-audition-explore.md`.
   // ---------------------------------------------------------------------
   a("Xiaoxiao — Chinese", "zh-CN-XiaoxiaoNeural", "zh-CN", "female", "3%"),
   a("Yunxi — Chinese", "zh-CN-YunxiNeural", "zh-CN", "male", "3%"),
-  r("Nanami — Japanese", "ja-JP-NanamiNeural", "ja-JP", "female",
-    `${NOT_AN_ACCENT}; 2 of 7 plain ja-JP voices sampled. WER 29%.`),
-  r("Keita — Japanese", "ja-JP-KeitaNeural", "ja-JP", "male",
-    `${NOT_AN_ACCENT}; 2 of 7 plain ja-JP voices sampled. WER 50%.`),
   a("Sun-Hi — Korean", "ko-KR-SunHiNeural", "ko-KR", "female", "38%"),
   a("In-Joon — Korean", "ko-KR-InJoonNeural", "ko-KR", "male", "38%"),
   a("Sofie — Swedish", "sv-SE-SofieNeural", "sv-SE", "female", "0%"),
@@ -183,14 +180,12 @@ export const ACCENT_VOICES: readonly AccentVoice[] = [
   a("Conrad — German", "de-DE-ConradNeural", "de-DE", "male", "3%"),
   a("Elsa — Italian", "it-IT-ElsaNeural", "it-IT", "female", "0%"),
   a("Diego — Italian", "it-IT-DiegoNeural", "it-IT", "male", "0%"),
+  a("Leila — Brazilian", "pt-BR-LeilaNeural", "pt-BR", "female", "29%", "2026-09-11"),
+  m("Macerio — Brazilian", "pt-BR-MacerioMultilingualNeural", "pt-BR", "male"),
   r("Francisca — Brazilian", "pt-BR-FranciscaNeural", "pt-BR", "female",
-    `${NOT_AN_ACCENT}; 2 of 16 plain pt-BR voices sampled. WER 71%.`),
+    `${NOT_AN_ACCENT}. Superseded by Leila, chosen from all 16 plain pt-BR voices. WER 71%.`),
   r("Antônio — Brazilian", "pt-BR-AntonioNeural", "pt-BR", "male",
-    `${NOT_AN_ACCENT}; 2 of 16 plain pt-BR voices sampled. WER 56%.`),
-  r("Hoai My — Vietnamese", "vi-VN-HoaiMyNeural", "vi-VN", "female",
-    `${NOT_AN_ACCENT}; both available vi-VN voices sampled. WER 65%.`),
-  r("Nam Minh — Vietnamese", "vi-VN-NamMinhNeural", "vi-VN", "male",
-    `${NOT_AN_ACCENT}; both available vi-VN voices sampled. WER 65%.`),
+    `${NOT_AN_ACCENT}. Superseded by Macerio (multilingual); no plain pt-BR male voice was chosen. WER 56%.`),
   a("Christel — Danish", "da-DK-ChristelNeural", "da-DK", "female", "0%"),
   a("Jeppe — Danish", "da-DK-JeppeNeural", "da-DK", "male", "21%"),
   a("Gadis — Indonesian", "id-ID-GadisNeural", "id-ID", "female", "26%"),
@@ -230,6 +225,7 @@ function a(
   locale: string,
   gender: VoiceGender,
   wer: string,
+  verifiedOn = "2026-08-23",
 ): AccentVoice {
   return {
     name,
@@ -237,9 +233,38 @@ function a(
     locale,
     gender,
     verified: true,
-    verifiedOn: "2026-08-23",
+    verifiedOn,
     region: "southeastasia",
     note: `Auditioned by ear and accepted: accented English, followable. Recogniser WER ${wer}.`,
+  };
+}
+
+/**
+ * A multilingual or HD voice, **accepted** on listening for its accent.
+ *
+ * Separate from `a()` because these were excluded by rule until tested: they
+ * are designed to sound native in every language they support, which ought to
+ * mean no accent at all. The note records that a listener heard otherwise,
+ * because nothing else justifies the row.
+ */
+function m(
+  name: string,
+  uri: string,
+  locale: string,
+  gender: VoiceGender,
+): AccentVoice {
+  return {
+    name,
+    uri,
+    locale,
+    gender,
+    verified: true,
+    verifiedOn: "2026-09-11",
+    region: "southeastasia",
+    note:
+      "Multilingual voice, auditioned by ear in the full-locale pass and chosen " +
+      "over every plain voice of its gender in the locale: judged to keep the " +
+      "accent. Recogniser WER 0%.",
   };
 }
 

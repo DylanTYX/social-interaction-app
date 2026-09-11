@@ -7,7 +7,7 @@
  *   npm run eval:voices -- --live --stt  # + speech-to-text round trip
  *   npm run eval:voices -- --serve       # listen in a browser (recommended)
  *   npm run eval:voices -- --play        # listen in the terminal
- *   npm run eval:voices -- --live --only=Chinese,Japanese
+ *   npm run eval:voices -- --live --only=Chinese,Korean
  *
  * ## Why this exists
  *
@@ -30,11 +30,12 @@
  *
  * **Only a person can decide any of the three.** The automation sorts the queue.
  *
- * Outcome 2 is the one thing catchable without listening, and it comes from
- * catalogue metadata rather than audio: Azure's `*MultilingualNeural` and
- * `*:DragonHDLatestNeural` variants advertise 100+ secondary locales and are
- * engineered to sound near-native in each. They are excluded from
- * `ACCENT_VOICES` and asserted against in the tests.
+ * Outcome 2 is presumed from catalogue metadata, not caught: Azure's
+ * `*MultilingualNeural` and `*:DragonHDLatestNeural` variants advertise ~90
+ * secondary locales and are designed to sound native in each. That presumption
+ * kept them out of `ACCENT_VOICES` until `--explore` put it to the ear, and for
+ * Brazilian it was wrong. The tests now require an audition before
+ * any multilingual voice is listed.
  *
  * `--stt` adds a rough signal for outcome 3: synthesise, recognise the audio
  * back with an `en-US` recogniser, and compare to the source. It is worth
@@ -94,6 +95,7 @@ const AUDITION_SENTENCE =
 const WER_INTELLIGIBILITY_CEILING = 0.15;
 
 const OUT_DIR = path.join("docs", "artifacts", "voice-audition");
+const EXPLORE_SHEET = path.join("docs", "artifacts", "voice-audition-explore.md");
 const SHEET = path.join("docs", "artifacts", "voice-audition.md");
 const CATALOGUE = (region: string) =>
   path.join("docs", "artifacts", `azure-voices-${region}.json`);
@@ -105,6 +107,7 @@ interface Args {
   play: boolean;
   page: boolean;
   serve: boolean;
+  explore: string[];
   only: string[];
 }
 
@@ -117,6 +120,11 @@ function parseArgs(argv: string[]): Args {
     play: argv.includes("--play"),
     page: argv.includes("--page"),
     serve: argv.includes("--serve"),
+    explore: (argv.find((a) => a.startsWith("--explore=")) ?? "")
+      .slice("--explore=".length)
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean),
     only: only ? only.slice("--only=".length).split(",").map((s) => s.trim()).filter(Boolean) : [],
   };
 }
@@ -230,6 +238,29 @@ function candidates(only: string[]): Candidate[] {
 // ---------------------------------------------------------------------------
 // --live: synthesis
 // ---------------------------------------------------------------------------
+
+/**
+ * A long run trips Azure's concurrency limit — "ResourceExhausted / No free
+ * synthesizer", websocket 1013. That is a throttle, not a verdict on the voice,
+ * and letting it land in the sheet as a failure would misreport the one thing
+ * this harness exists to establish.
+ */
+async function synthesiseWithRetry(
+  key: string,
+  region: string,
+  voiceUri: string,
+  outFile: string,
+): Promise<{ ok: boolean; bytes: number; detail: string }> {
+  for (let attempt = 1; ; attempt += 1) {
+    const result = await synthesise(key, region, voiceUri, outFile);
+    const transient = /ResourceExhausted|No free synthesizer|1013|Timeout/i.test(
+      result.detail,
+    );
+    if (result.ok || !transient || attempt >= 3) return result;
+    process.stdout.write(`retry ${attempt} `);
+    await new Promise((r) => setTimeout(r, attempt * 4000));
+  }
+}
 
 function synthesise(
   key: string,
@@ -471,10 +502,35 @@ function play(rows: SheetRow[]): void {
  * by relative path rather than embedded, so the page stays a few KB however
  * many clips there are.
  */
+/** Explore-sheet rows, so the page can offer those clips too. */
+function readExploreSheet(): SheetRow[] {
+  if (!fs.existsSync(EXPLORE_SHEET)) return [];
+  return fs
+    .readFileSync(EXPLORE_SHEET, "utf8")
+    .split("\n")
+    .filter((line) => /^\| [a-z]{2}-[A-Z]{2} \|/.test(line))
+    .map((line) => {
+      const c = line.split("|").map((cell) => cell.trim());
+      const uri = c[2].replace(/`/g, "");
+      return {
+        index: "",
+        nationality: `${c[1]} — every voice`,
+        uri,
+        locale: c[1],
+        gender: `${c[3]}, ${c[4]}`,
+        wer: c[6],
+        auto: c[4] === "multilingual" ? "expected to sound native — confirm" : "plain",
+        heard: c[7],
+        file: path.join(OUT_DIR, `explore-${uri}.wav`),
+      };
+    });
+}
+
 function writePage(rows: SheetRow[]): void {
   const control = rows.find((r) => r.uri === "en-US-AriaNeural");
   const groups = new Map<string, SheetRow[]>();
   for (const r of rows) groups.set(r.nationality, [...(groups.get(r.nationality) ?? []), r]);
+  const explore = readExploreSheet().filter((r) => fs.existsSync(r.file));
 
   const rel = (r: SheetRow) => path.basename(r.file);
   const card = (r: SheetRow) => `
@@ -530,6 +586,19 @@ ${[...groups]
       `<h2>${nationality}</h2><table>${items.map(card).join("")}</table>`,
   )
   .join("\n")}
+${
+  explore.length
+    ? `<h2 style="margin-top:2.5rem">Full-locale exploration</h2>
+<p class="note">Every voice these locales have, because rejecting a locale after hearing two of
+sixteen is a sample, not a test. The <code>multilingual</code> ones are here to check an assumption:
+they are excluded from the shipped table on the theory that they sound near-native in English and
+therefore carry no accent. All of them scored 0% WER, which tells you they are intelligible and
+tells you nothing about whether they have an accent — that is the question for your ears.</p>
+${[...new Map(explore.map((r) => [r.locale, explore.filter((x) => x.locale === r.locale)]))]
+  .map(([loc, items]) => `<h3>${loc}</h3><table>${items.map(card).join("")}</table>`)
+  .join("\n")}`
+    : ""
+}
 <h2>Your verdicts</h2>
 <p class="note">Paste into <code>docs/artifacts/voice-audition.md</code>, or tell Claude which to enable.</p>
 <textarea id="out" readonly></textarea>
@@ -592,6 +661,97 @@ function serve(port: number): void {
     });
 }
 
+// ---------------------------------------------------------------------------
+// --explore: audition every voice a locale has, not just the shipped two
+// ---------------------------------------------------------------------------
+
+/**
+ * The shipped table carries one female and one male per locale, which is the
+ * right shape for a mapping and the wrong shape for deciding whether a locale
+ * is usable at all. Different voices in the same locale can behave quite
+ * differently on foreign text, so writing a locale off after hearing two of
+ * sixteen is a sampling claim the audition cannot support.
+ *
+ * This reads the committed catalogue instead, so a rejected locale can be given
+ * a proper hearing before the rejection is called final. Deliberately includes
+ * the `Multilingual`/`DragonHD` variants, which were once excluded from
+ * `ACCENT_VOICES` on the theory that they sound native in English. Listening
+ * overturned that for Brazilian, so they stay in the pass.
+ */
+function exploreCandidates(
+  locales: string[],
+  region: string,
+): Array<{ uri: string; locale: string; gender: string; multilingual: boolean }> {
+  const file = CATALOGUE(region);
+  if (!fs.existsSync(file)) {
+    console.error(`No catalogue at ${file}. Run: npm run eval:voices -- --list`);
+    process.exit(1);
+  }
+  const catalogue = JSON.parse(fs.readFileSync(file, "utf8")) as {
+    voices: Array<{ ShortName: string; Locale: string; Gender: string; Status: string }>;
+  };
+  return catalogue.voices
+    .filter((v) => locales.includes(v.Locale) && v.Status === "GA")
+    .map((v) => ({
+      uri: v.ShortName,
+      locale: v.Locale,
+      gender: v.Gender.toLowerCase(),
+      multilingual: /Multilingual|DragonHD/.test(v.ShortName),
+    }))
+    .sort((a, b) => a.locale.localeCompare(b.locale) || a.uri.localeCompare(b.uri));
+}
+
+interface ExploreRow {
+  uri: string;
+  locale: string;
+  gender: string;
+  multilingual: boolean;
+  file: string;
+  ok: boolean;
+  detail: string;
+  heard: string;
+  wer: number | null;
+}
+
+function writeExploreSheet(rows: ExploreRow[], region: string, chars: number): void {
+  const lines: string[] = [];
+  lines.push("# Accent audition — full-locale exploration");
+  lines.push("");
+  lines.push(
+    "A locale rejected after hearing two of its voices has been sampled, not tested. " +
+      "This is every GA voice those locales have, so the rejection can be called final " +
+      "on evidence rather than on a sample of two.",
+  );
+  lines.push("");
+  lines.push(`- Run: ${new Date().toISOString().slice(0, 10)}`);
+  lines.push(`- Region: \`${region}\``);
+  lines.push(`- Characters synthesised: ${chars}`);
+  lines.push(`- Command: \`npm run eval:voices -- --explore=${[...new Set(rows.map((r) => r.locale))].join(",")} --stt\``);
+  lines.push("");
+  lines.push("Same sentence as the main audition:");
+  lines.push("");
+  lines.push(`> ${AUDITION_SENTENCE}`);
+  lines.push("");
+  lines.push(
+    "`Multilingual` and `DragonHD` voices are included on purpose. They are excluded from " +
+      "the shipped table on the theory that they render English near-natively and so carry no " +
+      "accent — listen and confirm, because that theory was never tested.",
+  );
+  lines.push("");
+  lines.push("| Locale | Voice | Gender | Kind | Synth | WER | Recognised as | Accent | Verdict |");
+  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+  for (const r of rows) {
+    lines.push(
+      `| ${r.locale} | \`${r.uri}\` | ${r.gender} | ${r.multilingual ? "multilingual" : "plain"} | ` +
+        `${r.ok ? "ok" : "FAIL: " + r.detail} | ${r.wer === null ? "" : (r.wer * 100).toFixed(0) + "%"} | ` +
+        `${r.heard ? r.heard.slice(0, 80) : ""} | | |`,
+    );
+  }
+  lines.push("");
+  fs.writeFileSync(EXPLORE_SHEET, lines.join("\n"));
+  console.log(`\nWrote ${EXPLORE_SHEET}`);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
@@ -624,6 +784,37 @@ async function main(): Promise<void> {
     if (!args.live) return;
   }
 
+  if (args.explore.length > 0) {
+    const found = exploreCandidates(args.explore, region);
+    console.log(`${found.length} voices across ${args.explore.join(", ")}\n`);
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    const done: ExploreRow[] = [];
+    let exploreChars = 0;
+    for (const [i, c] of found.entries()) {
+      const file = path.join(OUT_DIR, `explore-${c.uri}.wav`);
+      process.stdout.write(
+        `[${i + 1}/${found.length}] ${c.uri.padEnd(34)} ${(c.multilingual ? "multi" : "plain").padEnd(6)} `,
+      );
+      const result = await synthesiseWithRetry(key, region, c.uri, file);
+      exploreChars += AUDITION_SENTENCE.length;
+      let heard = "";
+      let wer: number | null = null;
+      if (result.ok && args.stt) {
+        heard = await recognise(key, region, file);
+        wer = wordErrorRate(AUDITION_SENTENCE, heard);
+      }
+      console.log(
+        result.ok
+          ? `ok${wer === null ? "" : `  WER ${(wer * 100).toFixed(0)}%`}`
+          : `FAIL ${result.detail}`,
+      );
+      done.push({ ...c, file, ok: result.ok, detail: result.detail, heard, wer });
+    }
+    writeExploreSheet(done, region, exploreChars);
+    console.log(`\nnpm run eval:voices -- --serve   to listen`);
+    return;
+  }
+
   const rows = candidates(args.only);
 
   if (!args.live) {
@@ -650,7 +841,7 @@ async function main(): Promise<void> {
     const stem = `${String(c.index).padStart(2, "0")}-${c.nationality}-${c.voice.uri}`;
     const file = path.join(OUT_DIR, `${stem}.wav`);
     process.stdout.write(`[${c.index}/${rows.length}] ${c.nationality.padEnd(12)} ${c.voice.uri.padEnd(28)} `);
-    const result = await synthesise(key, region, c.voice.uri, file);
+    const result = await synthesiseWithRetry(key, region, c.voice.uri, file);
     chars += AUDITION_SENTENCE.length;
     let heard = "";
     let wer: number | null = null;

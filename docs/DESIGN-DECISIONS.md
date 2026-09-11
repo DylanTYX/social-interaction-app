@@ -192,6 +192,19 @@ Nothing in the product ever runs a recogniser over the interviewer's voice — t
 synthesised audio goes straight to the speaker — so a clip with a poor WER that
 a listener can follow is perfectly shippable.
 
+**The multilingual exclusion was an assumption, and it got tested.** Azure's
+multilingual and HD voices are designed to sound native in every language they
+support, so they were kept out of the table on the theory that they would carry
+no accent. Brazilian failed a first pass on two voices, so the locale was
+re-auditioned across every voice it offers, multilingual ones included. That
+produced a plain voice for Brazilian women and a multilingual voice for
+Brazilian men, which the listener judged to keep the accent. The rule is now a
+default rather than a ban: a multilingual voice is listed only with an audition
+behind it, and a test enforces that. Japanese and Vietnamese were removed rather
+than left as nationalities the randomiser hands out without the accent. A
+persona can still hold one — the preset Yuki Tanaka is Japanese — and it falls
+back to neutral English with the reason shown.
+
 ---
 
 ## 6. Code is reviewed, never executed

@@ -250,7 +250,7 @@ const REASONS: Record<
     EXPLORE_RESULT:
       "The result is not clear or quantified, so probe for impact.",
     ACKNOWLEDGE_STRENGTH:
-      "The response is strong, so acknowledge it and push deeper.",
+      "The response is strong, so raise the bar and push deeper.",
     PROBE_ACTION:
       "The answer is usable, but the action details need more depth.",
     ASSESS_THINKING:
@@ -270,7 +270,7 @@ const REASONS: Record<
     EXPLORE_RESULT:
       "The outcome is unclear, so ask what the solution actually achieves and how they would measure it.",
     ACKNOWLEDGE_STRENGTH:
-      "The solution is strong, so acknowledge it and raise the difficulty — scale it up or add a constraint.",
+      "The solution is strong, so raise the difficulty — scale it up or add a constraint.",
     PROBE_ACTION:
       "The approach is sound but the solution is incomplete, so probe the implementation.",
     ASSESS_THINKING:

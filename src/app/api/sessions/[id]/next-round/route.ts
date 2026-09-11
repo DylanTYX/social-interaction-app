@@ -37,6 +37,8 @@ import type { InterviewSetupState } from "@/lib/interview-setup";
 import { unauthorized, handleRouteError } from "@/lib/api/errors";
 
 export const runtime = "nodejs";
+// Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
+export const maxDuration = 60;
 
 interface RouteParams {
   params: Promise<{ id: string }>;

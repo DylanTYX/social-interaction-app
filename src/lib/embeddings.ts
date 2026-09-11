@@ -1,3 +1,4 @@
+import { missingOpenAIKey, openAIResponseError } from "@/lib/api/openai-errors";
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
 
 const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
@@ -21,7 +22,7 @@ export async function createEmbeddings(
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+    throw missingOpenAIKey();
   }
 
   const response = await fetch(OPENAI_EMBEDDINGS_URL, {
@@ -38,9 +39,10 @@ export async function createEmbeddings(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `OpenAI embedding request failed: ${response.status} ${errorText}`,
-    );
+    throw openAIResponseError(response.status, errorText, {
+      model: EMBEDDING_MODEL,
+      call: "embedding",
+    });
   }
 
   const data = (await response.json()) as {

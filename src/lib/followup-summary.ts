@@ -13,7 +13,7 @@ export function summarizeFollowup(
   const actionSnippet = excerpt(analysis.starAnalysis.action.summary || "", 4);
 
   if (strategy === "ACKNOWLEDGE_STRENGTH") {
-    return `Strong response on ${topic}. Push for deeper reasoning after acknowledging the strength.`;
+    return `Strong response on ${topic}. Raise the bar with a harder follow-up on the reasoning.`;
   }
 
   if (strategy === "DRILL_SPECIFICITY" && actionSnippet) {
