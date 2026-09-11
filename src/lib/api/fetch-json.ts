@@ -15,8 +15,18 @@ export async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let message = `Request failed (HTTP ${response.status}).`;
     try {
-      const parsed = JSON.parse(text) as { error?: string };
+      const parsed = JSON.parse(text) as {
+        error?: string;
+        ref?: string;
+        code?: string;
+      };
       if (parsed?.error) message = parsed.error;
+      // A generic server error carries a reference into the log. Show it, so a
+      // report of "something went wrong" can be matched to the failure.
+      const detail = [parsed?.ref && `ref ${parsed.ref}`, parsed?.code]
+        .filter(Boolean)
+        .join(" · ");
+      if (detail) message = `${message} (${detail})`;
     } catch {
       // Non-JSON error body; the status message is the best we have.
     }
