@@ -738,16 +738,18 @@ export class SpeechService {
     const playback = this.ensureQueuePlayback(item.voiceUri);
     const trimmed = item.text.trim();
 
+    // The voice's own rate adjustment stacks on the persona's pace. Applied
+    // here rather than at the call sites, so every path that speaks — the
+    // greeting, streamed replies, a replay — gets it without remembering to.
+    const prosody: ProsodyOptions = {
+      ratePercent:
+        (item.prosody?.ratePercent ?? 0) + (playback.voice.ratePercent ?? 0),
+      pitchPercent: item.prosody?.pitchPercent ?? 0,
+    };
     const useSsml =
-      Boolean(item.prosody) &&
-      ((item.prosody?.ratePercent ?? 0) !== 0 ||
-        (item.prosody?.pitchPercent ?? 0) !== 0);
+      (prosody.ratePercent ?? 0) !== 0 || (prosody.pitchPercent ?? 0) !== 0;
     const ssml = useSsml
-      ? buildProsodySsml(
-          trimmed,
-          playback.voice,
-          item.prosody as ProsodyOptions,
-        )
+      ? buildProsodySsml(trimmed, playback.voice, prosody)
       : null;
 
     playback.queuedChars += trimmed.length;

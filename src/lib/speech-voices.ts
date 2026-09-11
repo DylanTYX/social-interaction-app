@@ -41,6 +41,13 @@ export interface SpeechVoiceOption {
    */
   locale: string;
   gender: VoiceGender;
+  /**
+   * A per-voice speaking-rate adjustment, in percent, added to whatever the
+   * persona's pace asks for. For voices whose natural delivery is slow enough
+   * to drag an interview: Azure's catalogue puts both Singaporean voices at
+   * 133 words per minute against 150 for the US and UK defaults.
+   */
+  ratePercent?: number;
 }
 
 /**
@@ -131,8 +138,9 @@ export const ACCENT_VOICES: readonly AccentVoice[] = [
   v("Ryan — British", "en-GB-RyanNeural", "en-GB", "male"),
   v("Neerja — Indian", "en-IN-NeerjaNeural", "en-IN", "female"),
   v("Prabhat — Indian", "en-IN-PrabhatNeural", "en-IN", "male"),
-  v("Luna — Singaporean", "en-SG-LunaNeural", "en-SG", "female"),
-  v("Wayne — Singaporean", "en-SG-WayneNeural", "en-SG", "male"),
+  // +15%: the slowest delivery in the table, and Aisyah's patient pace slowed it further.
+  v("Luna — Singaporean", "en-SG-LunaNeural", "en-SG", "female", 15),
+  v("Wayne — Singaporean", "en-SG-WayneNeural", "en-SG", "male", 15),
   v("Natasha — Australian", "en-AU-NatashaNeural", "en-AU", "female"),
   v("William — Australian", "en-AU-WilliamNeural", "en-AU", "male"),
   v("Clara — Canadian", "en-CA-ClaraNeural", "en-CA", "female"),
@@ -198,12 +206,14 @@ function v(
   uri: string,
   locale: string,
   gender: VoiceGender,
+  ratePercent?: number,
 ): AccentVoice {
   return {
     name,
     uri,
     locale,
     gender,
+    ...(ratePercent ? { ratePercent } : {}),
     verified: true,
     verifiedOn: "2026-08-23",
     region: "southeastasia",

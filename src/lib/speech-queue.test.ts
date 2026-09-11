@@ -310,6 +310,36 @@ describe("SSML: accent, content language, and the voice-name attribute", () => {
   });
 });
 
+describe("per-voice speaking rate", () => {
+  it("speeds a Singaporean voice up even when the persona's pace is neutral", async () => {
+    // Both en-SG voices deliver at 133 wpm against 150 for the defaults. With
+    // no persona adjustment the plain-text path used to run, so the voice's
+    // own rate had nowhere to go.
+    const speech = service();
+    void speech.speakQueued("Tell me about the project.", "en-SG-LunaNeural");
+    await flush();
+    expect(pendingSynthesis[0].text).toContain('rate="+15%"');
+  });
+
+  it("stacks on the persona's pace rather than replacing it", async () => {
+    const speech = service();
+    void speech.speakQueued("Tell me about the project.", "en-SG-LunaNeural", {
+      ratePercent: -5,
+    });
+    await flush();
+    expect(pendingSynthesis[0].text).toContain('rate="+10%"');
+  });
+
+  it("leaves voices without an adjustment alone", async () => {
+    const speech = service();
+    void speech.speakQueued("Tell me about the project.", "en-GB-SoniaNeural", {
+      ratePercent: 10,
+    });
+    await flush();
+    expect(pendingSynthesis[0].text).toContain('rate="+10%"');
+  });
+});
+
 describe("recognition teardown", () => {
   it("finishes stopping even when the SDK never calls back", async () => {
     // A recognizer whose Azure session has already dropped can leave both
