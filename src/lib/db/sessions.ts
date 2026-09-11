@@ -927,3 +927,49 @@ export async function getSessionTags(
     ),
   );
 }
+
+/**
+ * Add seconds the session page was open and on screen.
+ *
+ * Through `record_session_activity`, which adds at most two minutes a call,
+ * only to a session the caller owns that is still in progress. Returns the new
+ * total, or null when nothing was added (someone else's session, or one that
+ * has already finished).
+ */
+export async function recordSessionActivity(
+  supabase: SupabaseClient,
+  sessionId: string,
+  seconds: number,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc("record_session_activity", {
+    p_session_id: sessionId,
+    p_seconds: seconds,
+  });
+  if (error) throw error;
+  return typeof data === "number" ? data : null;
+}
+
+/**
+ * The on-screen seconds recorded for a session, or null when there is no
+ * reading.
+ *
+ * Read on its own rather than added to `SESSION_COLUMNS`, so a database without
+ * the column breaks only the duration, which then falls back to elapsed time,
+ * instead of every session list and report.
+ */
+export async function getSessionActiveSeconds(
+  supabase: SupabaseClient,
+  sessionId: string,
+): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select("active_seconds")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (error) {
+    if (error.code === "42703") return null;
+    throw error;
+  }
+  const value = (data as { active_seconds?: unknown } | null)?.active_seconds;
+  return typeof value === "number" ? value : null;
+}

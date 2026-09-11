@@ -27,6 +27,7 @@ import {
   dimensionSnapshotFromAnalysis,
   type DimensionSnapshot,
 } from "@/lib/session-launch-meta";
+import { useActiveSessionTime } from "@/hooks/use-active-session-time";
 
 /**
  * Scored-turn bookkeeping for an interview session.
@@ -85,8 +86,14 @@ async function persistTurn(
   input: {
     metrics: InterviewMetrics;
     snapshots: DimensionSnapshot[];
-    /** Non-null marks the session finished, and adds status/duration/endedAt. */
+    /** Non-null marks the session finished, and adds status and endedAt. */
     completedAt: InterviewSessionState | null;
+    /**
+     * Sends the on-screen time counted since the last report. Awaited before a
+     * completion write: the server turns the recorded total into the duration,
+     * and stops accepting time once the session is completed.
+     */
+    flushActiveTime?: () => Promise<void>;
   },
 ): Promise<void> {
   const body: Record<string, unknown> = {
@@ -97,12 +104,11 @@ async function persistTurn(
   };
 
   if (input.completedAt) {
-    const startedAtMs = Date.parse(input.completedAt.createdAt);
     body.status = "completed";
     body.endedAt = new Date().toISOString();
-    body.durationMinutes = Number.isFinite(startedAtMs)
-      ? Math.max(1, Math.round((Date.now() - startedAtMs) / 60000))
-      : null;
+    // No duration: this hook's mount time is not when the interview started,
+    // and the server derives it from the time the page was on screen.
+    await input.flushActiveTime?.();
   }
 
   try {
@@ -177,6 +183,14 @@ export function useInterviewTurnState(input: {
   // this mount's own counter independently reached the target. A resumed
   // interview ran its full length again.
   const scoredTurns = restoredTurns + sessionState.turnCount;
+  const stage = interviewStage(
+    { ...identifiedState, turnCount: scoredTurns },
+    targetTurns,
+  );
+  // Counts while this screen is open and on screen, until the round ends; the
+  // total becomes the session's duration. Both the text and voice screens get
+  // it from here.
+  const flushActiveTime = useActiveSessionTime(sessionId, stage !== "report");
   const [analyses, setAnalyses] = useState<AnalysisResult[]>(
     input.initialAnalyses ?? [],
   );
@@ -292,6 +306,7 @@ export function useInterviewTurnState(input: {
           metrics: nextMetrics,
           snapshots: nextSnapshots,
           completedAt: complete ? nextState : null,
+          flushActiveTime,
         });
       }
 
@@ -304,6 +319,7 @@ export function useInterviewTurnState(input: {
       sessionId,
       identifiedState,
       targetTurns,
+      flushActiveTime,
     ],
   );
 
@@ -334,6 +350,7 @@ export function useInterviewTurnState(input: {
         metrics: finalMetrics,
         snapshots: effectiveSnapshots,
         completedAt: completedState,
+        flushActiveTime,
       });
     }
 
@@ -344,16 +361,14 @@ export function useInterviewTurnState(input: {
     sessionId,
     identifiedState,
     restoredTurns,
+    flushActiveTime,
   ]);
 
   return {
     sessionState: identifiedState,
     targetTurns,
     scoredTurns,
-    stage: interviewStage(
-      { ...identifiedState, turnCount: scoredTurns },
-      targetTurns,
-    ),
+    stage,
     analyses: effectiveAnalyses,
     metrics,
     lastFollowupPrompt,

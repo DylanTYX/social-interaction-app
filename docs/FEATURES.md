@@ -223,6 +223,8 @@ pick the interview back up where you left off.
   then communication, STAR (or the technical rubric) and duration, each with one
   line saying what to act on: your weakest STAR part, how much you hedged, time
   per answer.
+- **Duration is time in the session** — counted only while the interview is
+  open and on screen, so leaving and finishing later adds nothing.
 - **Your takeaways** — the report ends with a private box for what you will do
   differently, written once you have read the scores, transcript and coaching.
 - **A header for reading** — click the title to rename the report. Pin, Copy
