@@ -46,7 +46,6 @@ export interface SessionRecord {
   notes: string | null;
   /** Set when archived. Archived sessions still count in every statistic. */
   archivedAt: string | null;
-  folderId: string | null;
   startedAt: string;
   endedAt: string | null;
   createdAt: string;
@@ -87,7 +86,6 @@ interface SessionRow {
   pinned?: boolean | null;
   notes?: string | null;
   archived_at?: string | null;
-  folder_id?: string | null;
   started_at: string;
   ended_at: string | null;
   created_at: string;
@@ -132,7 +130,6 @@ const SESSION_COLUMNS = `
   pinned,
   notes,
   archived_at,
-  folder_id,
   started_at,
   ended_at,
   created_at
@@ -198,7 +195,6 @@ function rowToSession(row: SessionRow): SessionRecord {
     pinned: row.pinned === true,
     notes: row.notes ?? null,
     archivedAt: row.archived_at ?? null,
-    folderId: row.folder_id ?? null,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     createdAt: row.created_at,
@@ -224,8 +220,6 @@ export interface ListSessionsOptions {
   status?: SessionStatus;
   /** Sessions carrying this exact tag. */
   tag?: string;
-  /** A folder id, `null` for sessions in no folder, or undefined for any. */
-  folderId?: string | null;
   /** Defaults to "all" — see `ArchivedView`. */
   archived?: ArchivedView;
   /** Absent keeps plain newest-first; present also floats pinned sessions up. */
@@ -266,7 +260,6 @@ export async function listSessions(
     mode,
     status,
     tag,
-    folderId,
     archived = "all",
     sort,
     minScore,
@@ -300,8 +293,6 @@ export async function listSessions(
   if (mode) request = request.eq("practice_mode", mode);
   if (status) request = request.eq("status", status);
   if (tag) request = request.contains("tags", [tag]);
-  if (folderId === null) request = request.is("folder_id", null);
-  else if (folderId) request = request.eq("folder_id", folderId);
   if (archived === "active") request = request.is("archived_at", null);
   if (archived === "archived") {
     request = request.not("archived_at", "is", null);
@@ -598,7 +589,6 @@ export interface UpdateSessionInput {
   pinned?: boolean;
   notes?: string | null;
   archivedAt?: string | null;
-  folderId?: string | null;
 }
 
 /**
@@ -636,7 +626,6 @@ export async function patchSession(
   if (input.pinned !== undefined) patch.pinned = input.pinned;
   if (input.notes !== undefined) patch.notes = input.notes;
   if (input.archivedAt !== undefined) patch.archived_at = input.archivedAt;
-  if (input.folderId !== undefined) patch.folder_id = input.folderId;
 
   /**
    * Through an RPC, not a direct update.

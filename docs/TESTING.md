@@ -6,7 +6,7 @@ untested area that nobody has named is an accident, and an untested area with a
 reason is a decision.
 
 ```
-npm test          736 tests, no network         ← layers 1-3
+npm test          730 tests, no network         ← layers 1-3
 npm run eval      the analyzer, against a golden set    ← layer 4
 npm run eval:coach    the coach, against the analyzer   ← layer 4
 npm run eval:persona  do personas actually differ?      ← layer 4

@@ -30,7 +30,6 @@ import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
 import { BulkActionBar } from "@/components/sessions/bulk-action-bar";
-import { FolderBar } from "@/components/sessions/folder-bar";
 import {
   RenameSessionDialog,
   type RenameTarget,
@@ -41,14 +40,12 @@ import {
   useInterviewHistory,
   type InterviewSessionSummary,
 } from "@/hooks/use-interview-history";
-import { useSessionFolders } from "@/hooks/use-session-folders";
 import { useSessionTags } from "@/hooks/use-session-tags";
 import { CONTENT_ENTER } from "@/lib/motion";
 import {
   bulkSessionsRequest,
   patchSessionRequest,
   type BulkSessionAction,
-  type SessionFolder,
   type SessionPatch,
 } from "@/lib/session-actions";
 import {
@@ -68,12 +65,12 @@ const PAGE_SIZE = 25;
 
 /**
  * Every session, and the tools to keep a growing history usable: rename, tag,
- * pin, file into folders, archive, sort and filter, act on several at once,
- * and compare two attempts.
+ * pin, archive, sort and filter, act on several at once, and compare two
+ * attempts.
  *
  * Organisation changes go through the same session PATCH as everything else,
  * and a change that moves a row out of the current view (pin reorders, archive
- * hides, a move out of the filtered folder) refetches rather than guessing
+ * hides) refetches rather than guessing
  * where the row now belongs.
  */
 export default function SessionsLibraryPage() {
@@ -85,7 +82,6 @@ export default function SessionsLibraryPage() {
   const [scoreBand, setScoreBand] = useState<ScoreBand>("any");
   const [since, setSince] = useState<SinceWindow>("any");
   const [tagFilter, setTagFilter] = useState("all");
-  const [folder, setFolder] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
 
   // Debounced so a refetch does not fire on every keystroke. The filter runs in
@@ -114,19 +110,11 @@ export default function SessionsLibraryPage() {
     score: scoreBand,
     since,
     tag: tagFilter === "all" ? undefined : tagFilter,
-    folder: folder === "all" ? undefined : folder,
     // The sessions page hides archived sessions unless asked. The API's own
     // default is "all", because the dashboard's statistics still count them.
     archived: showArchived ? "archived" : "active",
   });
 
-  const {
-    folders,
-    refresh: refreshFolders,
-    create: createFolder,
-    rename: renameFolder,
-    remove: removeFolder,
-  } = useSessionFolders();
   const { tags: tagCounts, refresh: refreshTags } = useSessionTags();
   const tagSuggestions = tagCounts.map((entry) => entry.tag);
 
@@ -143,8 +131,6 @@ export default function SessionsLibraryPage() {
   const [pendingDelete, setPendingDelete] =
     useState<InterviewSessionSummary | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
-  const [pendingFolderDelete, setPendingFolderDelete] =
-    useState<SessionFolder | null>(null);
   const [deleting, setDeleting] = useState(false);
   // The row being animated out. Set before the request goes out, so the list
   // responds the moment the user confirms rather than after a round trip.
@@ -181,7 +167,6 @@ export default function SessionsLibraryPage() {
       const updated = await patchSessionRequest(session.id, patch);
       patchLocal(session.id, updated);
       if (options.message) toast.success(options.message);
-      if (patch.folderId !== undefined) void refreshFolders();
       if (options.refetch) await refresh();
     } catch (err) {
       toast.error(
@@ -192,7 +177,7 @@ export default function SessionsLibraryPage() {
 
   const runBulk = async (
     action: BulkSessionAction,
-    extra: { tag?: string; folderId?: string | null } = {},
+    extra: { tag?: string } = {},
   ) => {
     const ids = visibleSelected;
     if (ids.length === 0) return;
@@ -210,7 +195,7 @@ export default function SessionsLibraryPage() {
           : `${updated} session${updated === 1 ? "" : "s"} ${verb}`,
       );
       setSelectedIds([]);
-      await Promise.all([refresh(), refreshFolders(), refreshTags()]);
+      await Promise.all([refresh(), refreshTags()]);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Couldn't update those sessions.",
@@ -235,26 +220,12 @@ export default function SessionsLibraryPage() {
       if (!response.ok) throw new Error("Failed to delete the session.");
       toast.success("Session deleted");
       setSelectedIds((current) => current.filter((id) => id !== targetId));
-      await Promise.all([refresh(), refreshFolders(), refreshTags()]);
+      await Promise.all([refresh(), refreshTags()]);
     } catch {
       setExitingId(null);
       toast.error("Could not delete that session. Try again.");
     } finally {
       setDeleting(false);
-    }
-  };
-
-  const handleDeleteFolder = async () => {
-    if (!pendingFolderDelete) return;
-    const target = pendingFolderDelete;
-    setPendingFolderDelete(null);
-    try {
-      await removeFolder(target.id);
-      if (folder === target.id) setFolder("all");
-      toast.success(`Folder “${target.name}” deleted`);
-      await refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't delete that folder.");
     }
   };
 
@@ -265,7 +236,6 @@ export default function SessionsLibraryPage() {
     setScoreBand("any");
     setSince("any");
     setTagFilter("all");
-    setFolder("all");
     setShowArchived(false);
   };
 
@@ -276,7 +246,6 @@ export default function SessionsLibraryPage() {
     scoreBand !== "any" ||
     since !== "any" ||
     tagFilter !== "all" ||
-    folder !== "all" ||
     showArchived;
 
   const isLoading = status === "loading" && sessions.length === 0;
@@ -286,7 +255,7 @@ export default function SessionsLibraryPage() {
       <PageHeader
         eyebrow="History"
         title="Your interview sessions"
-        description="Every interview you've started. Rename, tag, pin and file them into folders, or tick two to compare attempts."
+        description="Every interview you've started. Rename, tag, pin or archive them, or tick two to compare attempts."
         icon={<History className="h-6 w-6" />}
         iconColor="indigo"
         actions={
@@ -297,18 +266,6 @@ export default function SessionsLibraryPage() {
             </Link>
           </Button>
         }
-      />
-
-      <FolderBar
-        folders={folders}
-        active={folder}
-        onSelect={setFolder}
-        onCreate={async (name) => {
-          await createFolder(name);
-          toast.success(`Folder “${name}” created`);
-        }}
-        onRename={renameFolder}
-        onDelete={setPendingFolderDelete}
       />
 
       <Card className="shadow-soft">
@@ -473,7 +430,6 @@ export default function SessionsLibraryPage() {
         <div className={`space-y-2 ${CONTENT_ENTER}`}>
           <BulkActionBar
             count={visibleSelected.length}
-            folders={folders}
             tagSuggestions={tagSuggestions}
             showingArchived={showArchived}
             busy={bulkBusy}
@@ -481,7 +437,6 @@ export default function SessionsLibraryPage() {
             onArchive={(archive) => void runBulk(archive ? "archive" : "unarchive")}
             onPin={(pin) => void runBulk(pin ? "pin" : "unpin")}
             onAddTag={(tag) => void runBulk("add_tag", { tag })}
-            onMove={(folderId) => void runBulk("move", { folderId })}
             onDelete={() => setPendingBulkDelete(true)}
             onCompare={
               visibleSelected.length === 2
@@ -519,7 +474,6 @@ export default function SessionsLibraryPage() {
               index={index}
               exiting={exitingId === session.id}
               selected={selectedIds.includes(session.id)}
-              folders={folders}
               onToggleSelect={() => toggleSelect(session.id)}
               onRename={() =>
                 setRenameTarget({
@@ -542,18 +496,6 @@ export default function SessionsLibraryPage() {
                   {
                     message: session.pinned ? "Unpinned" : "Pinned to the top",
                     refetch: true,
-                  },
-                )
-              }
-              onMove={(folderId) =>
-                void applyPatch(
-                  session,
-                  { folderId },
-                  {
-                    message: folderId
-                      ? `Moved to “${folders.find((entry) => entry.id === folderId)?.name ?? "folder"}”`
-                      : "Removed from its folder",
-                    refetch: folder !== "all",
                   },
                 )
               }
@@ -642,23 +584,6 @@ export default function SessionsLibraryPage() {
           setPendingBulkDelete(false);
           await runBulk("delete");
         }}
-      />
-
-      <ConfirmDeleteDialog
-        open={pendingFolderDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingFolderDelete(null);
-        }}
-        title="Delete this folder?"
-        description={
-          pendingFolderDelete
-            ? `“${pendingFolderDelete.name}” is removed. Its ${pendingFolderDelete.sessionCount} session${
-                pendingFolderDelete.sessionCount === 1 ? "" : "s"
-              } stay, unfiled.`
-            : ""
-        }
-        confirmLabel="Delete folder"
-        onConfirm={() => void handleDeleteFolder()}
       />
     </div>
   );

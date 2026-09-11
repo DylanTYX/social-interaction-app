@@ -136,7 +136,7 @@ describe("the migration files", () => {
   it("reads the migrations it claims to check", () => {
     // Guards against a parser that finds nothing and so passes vacuously.
     expect([...(schemaColumns(migrations).get("interview_sessions") ?? [])]).toEqual(
-      expect.arrayContaining(["turn_count", "status", "summary", "updated_at", "folder_id"]),
+      expect.arrayContaining(["turn_count", "status", "summary", "updated_at", "archived_at"]),
     );
     expect([...latestFunctions(migrations).keys()]).toEqual(
       expect.arrayContaining(["append_interview_turn", "update_session_progress", "record_llm_usage"]),

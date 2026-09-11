@@ -93,10 +93,10 @@ export function ScoreReveal({
     };
 
     return (
-      <Card className="border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white">
+      <Card className="border-primary-border bg-gradient-to-br from-primary-subtle via-white to-white">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Gauge className="h-4 w-4 text-blue-600" aria-hidden />
+            <Gauge className="h-4 w-4 text-primary" aria-hidden />
             Before you see your score
           </CardTitle>
           <CardDescription>
@@ -109,7 +109,7 @@ export function ScoreReveal({
           <div>
             <div className="flex items-end justify-between">
               <span className="text-sm text-slate-600">Your prediction</span>
-              <span className="text-4xl font-bold tabular-nums text-blue-700">{guess}%</span>
+              <span className="text-4xl font-bold tabular-nums text-primary-emphasis">{guess}%</span>
             </div>
             <input
               type="range"
@@ -120,7 +120,7 @@ export function ScoreReveal({
               aria-label="Your predicted score"
               aria-valuetext={`${guess} percent`}
               onChange={(event) => setGuess(Number(event.target.value))}
-              className="mt-3 w-full accent-blue-600"
+              className="mt-3 w-full accent-primary"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">

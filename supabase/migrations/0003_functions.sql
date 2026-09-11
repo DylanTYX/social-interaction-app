@@ -148,7 +148,7 @@ grant execute on function append_interview_turn(
 --
 -- One jsonb patch rather than a long parameter list, so "key absent" (leave
 -- the column alone) and "key present and null" (clear it) stay distinguishable
--- — a null `ended_at` or `folder_id` is a real value.
+-- — a null `ended_at` or `notes` is a real value.
 -- ---------------------------------------------------------------------------
 create or replace function update_session_progress(
   p_session_id uuid,
@@ -160,19 +160,6 @@ security definer
 set search_path = public
 as $$
 begin
-  -- A folder id from the caller is an id, not a permission. Checked here
-  -- because this function bypasses RLS, and the foreign key would accept any
-  -- existing folder, including another user's.
-  if p_patch ? 'folder_id' and p_patch ->> 'folder_id' is not null then
-    if not exists (
-      select 1 from session_folders f
-      where f.id = (p_patch ->> 'folder_id')::uuid and f.user_id = auth.uid()
-    ) then
-      raise exception 'Folder % not found or not accessible', p_patch ->> 'folder_id'
-        using errcode = 'foreign_key_violation';
-    end if;
-  end if;
-
   update interview_sessions set
     status = case
       when p_patch ? 'status' then p_patch ->> 'status' else status end,
@@ -215,10 +202,7 @@ begin
       when p_patch ? 'notes' then p_patch ->> 'notes' else notes end,
     archived_at = case
       when p_patch ? 'archived_at' then (p_patch ->> 'archived_at')::timestamptz
-      else archived_at end,
-    folder_id = case
-      when p_patch ? 'folder_id' then (p_patch ->> 'folder_id')::uuid
-      else folder_id end
+      else archived_at end
   -- The ownership check RLS would have done. Without it, `security definer`
   -- would let any authenticated caller patch any session by id.
   where id = p_session_id and user_id = auth.uid();

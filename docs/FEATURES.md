@@ -219,12 +219,15 @@ pick the interview back up where you left off.
   hidden until you predict your overall score (or skip). The overall card then
   shows how far off you were. Noticing the gap between how an interview felt and
   how it went is a skill in itself.
-- **Score cards that explain themselves** — overall, communication, STAR (or the
-  technical rubric) and duration, each colour-coded with one line saying what to
-  act on: your weakest STAR part, how much you hedged, time per answer.
-- **Make the report yours** — click the title to rename it, add tags, pin it,
-  and keep private notes on what to do differently. Copy link and Download PDF
-  sit under **Share**.
+- **Score cards that explain themselves** — the overall score across the top,
+  then communication, STAR (or the technical rubric) and duration, each with one
+  line saying what to act on: your weakest STAR part, how much you hedged, time
+  per answer.
+- **Your takeaways** — the report ends with a private box for what you will do
+  differently, written once you have read the scores, transcript and coaching.
+- **A header for reading** — click the title to rename the report. Pin, Copy
+  link and Download PDF sit in the **⋯** menu; tags are managed from the
+  Sessions page.
 
 ### The loop report
 
@@ -363,8 +366,6 @@ The **Sessions** page keeps a growing history usable:
 
 - **Rename** a session (the generated title is replaced only in lists and the
   report — the interview itself is untouched), **tag** it, and **pin** it to the top.
-- **Folders** — group sessions, filter by folder, rename or delete a folder
-  (its sessions stay, unfiled).
 - **Archive** — hide a session without deleting it. Archived sessions still
   count in your dashboard and analytics; turn on **Show archived** to see them.
 - **Sort and filter** by newest, oldest or score, by score band, date range,

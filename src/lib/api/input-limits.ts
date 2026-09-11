@@ -86,8 +86,5 @@ export const MAX_SESSION_TAGS = 12;
 /** One tag — long enough for "system design round 2", short enough for a chip. */
 export const MAX_SESSION_TAG_CHARS = 32;
 
-/** A folder name. Matches `session_folders_name_length` (`0001_schema.sql`). */
-export const MAX_FOLDER_NAME_CHARS = 60;
-
 /** Sessions changed by one bulk action. */
 export const MAX_BULK_SESSIONS = 100;

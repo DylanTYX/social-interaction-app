@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   Archive,
   ArchiveRestore,
-  Folder,
   MessageSquare,
   Mic,
   MoreHorizontal,
@@ -22,16 +21,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import type { InterviewSessionSummary } from "@/hooks/use-interview-history";
 import { formatRelativeDate } from "@/lib/format";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
-import type { SessionFolder } from "@/lib/session-actions";
 import { displayTitle } from "@/lib/session-organisation";
 import { cn } from "@/lib/utils";
 
@@ -55,12 +50,10 @@ export function SessionRow({
   index,
   exiting,
   selected,
-  folders,
   onToggleSelect,
   onRename,
   onEditTags,
   onTogglePin,
-  onMove,
   onToggleArchive,
   onDelete,
 }: {
@@ -68,19 +61,16 @@ export function SessionRow({
   index: number;
   exiting: boolean;
   selected: boolean;
-  folders: SessionFolder[];
   onToggleSelect: () => void;
   onRename: () => void;
   onEditTags: () => void;
   onTogglePin: () => void;
-  onMove: (folderId: string | null) => void;
   onToggleArchive: () => void;
   onDelete: () => void;
 }) {
   const ModeIcon = session.practiceMode === "voice" ? Mic : MessageSquare;
   const title = displayTitle(session);
   const tags = session.tags ?? [];
-  const folder = folders.find((entry) => entry.id === session.folderId) ?? null;
   const archived = Boolean(session.archivedAt);
 
   return (
@@ -130,11 +120,6 @@ export function SessionRow({
               {archived && (
                 <Badge variant="outline" className="gap-1 border-slate-300 text-slate-600">
                   <Archive className="h-3 w-3" /> Archived
-                </Badge>
-              )}
-              {folder && (
-                <Badge variant="outline" className="gap-1 border-sky-200 bg-sky-50 text-sky-700">
-                  <Folder className="h-3 w-3" /> {folder.name}
                 </Badge>
               )}
             </div>
@@ -199,26 +184,6 @@ export function SessionRow({
               {session.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
               {session.pinned ? "Unpin" : "Pin to top"}
             </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Folder className="h-4 w-4" /> Move to folder
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {folders.map((entry) => (
-                  <DropdownMenuItem
-                    key={entry.id}
-                    disabled={entry.id === session.folderId}
-                    onSelect={() => onMove(entry.id)}
-                  >
-                    {entry.name}
-                  </DropdownMenuItem>
-                ))}
-                {folders.length > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem disabled={!session.folderId} onSelect={() => onMove(null)}>
-                  No folder
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
             <DropdownMenuItem onSelect={onToggleArchive}>
               {archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
               {archived ? "Unarchive" : "Archive"}

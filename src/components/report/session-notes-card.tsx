@@ -17,7 +17,11 @@ import { MAX_SESSION_NOTES_CHARS } from "@/lib/api/input-limits";
 import { patchSessionRequest } from "@/lib/session-actions";
 
 /**
- * Private notes on a report — what to do differently next time.
+ * Private takeaways at the end of a report — what to do differently next time.
+ *
+ * Last on the page on purpose: it is written after reading the scores, the
+ * transcript and the coaching, not in the middle of them. Stored as the
+ * session's `notes`.
  *
  * Saved on request rather than on every keystroke: each save is a write to the
  * session, and a half-typed thought is not worth storing.
@@ -43,24 +47,23 @@ export function SessionNotesCard({
         notes: draft.trim() || null,
       });
       onSaved(session.notes);
-      toast.success("Notes saved");
+      toast.success("Takeaways saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save your notes.");
+      toast.error(err instanceof Error ? err.message : "Couldn't save your takeaways.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Card className="relative overflow-hidden border-amber-200/80 bg-amber-50/40">
-      <div className="absolute inset-y-0 left-0 w-1 bg-amber-400" aria-hidden />
+    <Card className="border-slate-200/80 bg-white print:break-inside-avoid">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <StickyNote className="h-4 w-4 text-amber-600" aria-hidden />
-          Your notes
+          <StickyNote className="h-4 w-4 text-slate-500" aria-hidden />
+          Your takeaways
         </CardTitle>
         <CardDescription>
-          Private to you. What would you do differently next time?
+          What will you do differently next time? Only you can see this.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -70,7 +73,7 @@ export function SessionNotesCard({
           rows={4}
           placeholder="e.g. Lead with the result in the conflict story; slow down on the system design intro."
           onChange={(event) => setDraft(event.target.value)}
-          className="bg-white print:hidden"
+          className="print:hidden"
         />
         {notes && (
           <p className="hidden whitespace-pre-line text-sm text-slate-700 print:block">{notes}</p>
@@ -80,7 +83,7 @@ export function SessionNotesCard({
             {draft.length.toLocaleString()} / {MAX_SESSION_NOTES_CHARS.toLocaleString()}
           </span>
           <Button size="sm" onClick={() => void save()} disabled={saving || unchanged}>
-            {saving ? "Saving…" : unchanged && notes ? "Saved" : "Save notes"}
+            {saving ? "Saving…" : unchanged && notes ? "Saved" : "Save"}
           </Button>
         </div>
       </CardContent>

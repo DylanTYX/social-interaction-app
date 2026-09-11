@@ -1,27 +1,21 @@
 import type { LucideIcon } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
-
-/** A solid accent per tile colour, for the bar down a card's left edge. */
-export const ACCENT_BAR: Record<TileColor, string> = {
-  blue: "bg-blue-500",
-  purple: "bg-purple-500",
-  indigo: "bg-indigo-500",
-  green: "bg-green-500",
-  orange: "bg-orange-500",
-  pink: "bg-pink-500",
-  teal: "bg-teal-500",
-};
 
 /**
  * A score card that says something.
  *
  * Communication, STAR average and Duration each used to be a label and a bare
  * number, so three of the four report cards read as empty beside the one that
- * had a sentence. Colour says which kind of measure this is — the same tile
- * palette the dashboard uses — and `detail` says the one thing to act on.
+ * had a sentence. `detail` says the one thing to act on.
+ *
+ * Built exactly like the analytics page's stat cards — label left, tile right,
+ * the same tile palette — so a number looks the same wherever the app shows
+ * one. The label is sentence case on one line: an uppercase, letter-spaced label
+ * beside an icon did not fit a fifth of the report's width, and "Communication"
+ * was cut off.
  */
 export function InsightCard({
   color,
@@ -39,22 +33,21 @@ export function InsightCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("relative overflow-hidden border-slate-200/80 bg-white", className)}>
-      <div className={cn("absolute inset-y-0 left-0 w-1", ACCENT_BAR[color])} aria-hidden />
-      <CardHeader className="pb-2">
-        <CardTitle
-          as="div"
-          className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-slate-500"
-        >
-          <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", TILE_COLORS[color])}>
-            <Icon className="h-4 w-4" aria-hidden />
-          </span>
-          {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1.5">
+    <Card className={cn("shadow-soft", className)}>
+      <CardContent className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-slate-600">{label}</p>
+          <div
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+              TILE_COLORS[color],
+            )}
+          >
+            <Icon className="h-5 w-5" aria-hidden />
+          </div>
+        </div>
         <p className="text-3xl font-bold tabular-nums text-slate-900">{value}</p>
-        <p className="text-xs leading-relaxed text-slate-600">{detail}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
       </CardContent>
     </Card>
   );
