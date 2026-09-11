@@ -2,7 +2,7 @@
 --
 -- Run after 0002_security.sql.
 --
--- Three of these are `security definer`: they run with the owner's privileges
+-- Four of these are `security definer`: they run with the owner's privileges
 -- and bypass RLS, because they write what 0002_security.sql does not let
 -- `authenticated` write directly. That is the point and also the hazard, so
 -- each one filters on `user_id = auth.uid()` itself and none accepts a user id
@@ -216,6 +216,43 @@ $$;
 
 revoke all on function update_session_progress(uuid, jsonb) from public;
 grant execute on function update_session_progress(uuid, jsonb) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Time spent in a session
+--
+-- The session page reports the seconds it was open and on screen, every half
+-- minute and when it is hidden or closed. Adding rather than accepting a total
+-- means a retry, a second tab or a lost request can only under-count, never
+-- replace a larger total with a smaller one.
+--
+-- Each call adds at most two minutes and the total stops at a day. A session
+-- no longer in progress is left alone, so a page left open after the interview
+-- ends adds nothing to its duration. Returns the new total, or null when
+-- nothing was added.
+-- ---------------------------------------------------------------------------
+create or replace function record_session_activity(
+  p_session_id uuid,
+  p_seconds int
+)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  total int;
+begin
+  update interview_sessions
+  set active_seconds = least(active_seconds + greatest(0, least(coalesce(p_seconds, 0), 120)), 86400)
+  where id = p_session_id and user_id = auth.uid() and status = 'in_progress'
+  returning active_seconds into total;
+
+  return total;
+end;
+$$;
+
+revoke all on function record_session_activity(uuid, int) from public;
+grant execute on function record_session_activity(uuid, int) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Token accounting

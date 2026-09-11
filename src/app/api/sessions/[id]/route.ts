@@ -1,10 +1,12 @@
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   deleteSession,
   getSession,
+  getSessionActiveSeconds,
   updateSession,
   type SessionStatus,
 } from "@/lib/db/sessions";
@@ -156,6 +158,41 @@ function parseOrganisation(body: {
   return { title, notes, tags, pinned, archivedAt };
 }
 
+/**
+ * The duration to store when a session completes.
+ *
+ * The time the session page was open and on screen, which the page adds up in
+ * `active_seconds` as the interview runs (`useActiveSessionTime`). Elapsed time
+ * since `started_at` is only the fallback, for a session with nothing recorded:
+ * one begun before active time existed, or a database without the column.
+ */
+async function completedDurationMinutes(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<number | null | undefined> {
+  const activeSeconds = await getSessionActiveSeconds(supabase, id);
+  if (activeSeconds !== null && activeSeconds > 0) {
+    // A session that really did take under a minute still reads as one.
+    return parseDurationMinutes(Math.max(1, Math.round(activeSeconds / 60)));
+  }
+
+  const existing = await getSession(supabase, id);
+  const startedAtMs = existing ? Date.parse(existing.startedAt) : Number.NaN;
+  if (!Number.isFinite(startedAtMs)) return undefined;
+  /**
+   * Clamped through the same helper as the client path.
+   *
+   * This derived value had no upper bound while `parseDurationMinutes` capped
+   * the client's at 24h — and `interview_sessions_duration_range` checks
+   * `duration_minutes <= 1440`. So a session left open overnight violated the
+   * constraint and the completion write failed outright, leaving the interview
+   * permanently unfinishable.
+   */
+  return parseDurationMinutes(
+    Math.max(1, Math.round((Date.now() - startedAtMs) / 60000)),
+  );
+}
+
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
@@ -197,41 +234,16 @@ export async function PATCH(request: Request, ctx: RouteParams) {
     /**
      * Duration is derived here, not taken from the client.
      *
-     * The client computed it from the moment its own hook mounted, which is
-     * only the session start for a session begun in that tab. Resume a
-     * thirty-minute interview, answer two questions and end it, and the stored
-     * duration was four minutes — and the dashboard's "practice time" tile sums
-     * exactly this column, so every resumed session undercounted it.
-     *
-     * The row knows when it actually started, so ask it.
+     * The client's figure started when its hook mounted, so a resumed session
+     * under-counted. Elapsed time since `started_at` replaced it and
+     * over-counted instead: leave a session for an hour and come back, and the
+     * hour was practice time on the report, the dashboard and the loop total.
+     * It is now the time the page was actually on screen.
      */
     let durationMinutes = parseDurationMinutes(body.durationMinutes);
     if (status === "completed") {
-      const existing = await getSession(supabase, id);
-      const startedAtMs = existing
-        ? Date.parse(existing.startedAt)
-        : Number.NaN;
-      /**
-       * Clamped through the same helper as the client path.
-       *
-       * This derived value had no upper bound while `parseDurationMinutes`
-       * capped the client's at 24h — and `0011` adds
-       * `check (duration_minutes <= 1440)`. So a session left open overnight
-       * did not merely record ~600 minutes of "practice time": past 24 hours it
-       * violated the constraint and the completion write failed outright,
-       * leaving the interview permanently unfinishable.
-       *
-       * `Math.max(1, …)` stays inside the clamp: a session that really did take
-       * under a minute still reads as one, and one that ran for a week reads as
-       * a day rather than failing.
-       */
-      const elapsedMinutes = Math.max(
-        1,
-        Math.round((Date.now() - startedAtMs) / 60000),
-      );
-      durationMinutes = Number.isFinite(startedAtMs)
-        ? parseDurationMinutes(elapsedMinutes)
-        : durationMinutes;
+      durationMinutes =
+        (await completedDurationMinutes(supabase, id)) ?? durationMinutes;
     }
 
     const session = await updateSession(supabase, id, {

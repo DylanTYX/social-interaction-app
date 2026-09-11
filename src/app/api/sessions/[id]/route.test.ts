@@ -15,6 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getCurrentUser = vi.fn();
 const deleteSession = vi.fn();
 const updateSession = vi.fn();
+const getSession = vi.fn();
+const getSessionActiveSeconds = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   getCurrentUser: () => getCurrentUser(),
@@ -26,6 +28,9 @@ vi.mock("@/lib/db/sessions", async (importOriginal) => {
     ...actual,
     deleteSession: (...args: unknown[]) => deleteSession(...args),
     updateSession: (...args: unknown[]) => updateSession(...args),
+    getSession: (...args: unknown[]) => getSession(...args),
+    getSessionActiveSeconds: (...args: unknown[]) =>
+      getSessionActiveSeconds(...args),
   };
 });
 
@@ -49,6 +54,8 @@ beforeEach(() => {
   deleteSession.mockResolvedValue(undefined);
   updateSession.mockReset();
   updateSession.mockResolvedValue({ id: SESSION_ID });
+  getSession.mockReset();
+  getSessionActiveSeconds.mockReset();
 });
 
 describe("DELETE /api/sessions/[id]", () => {
@@ -169,4 +176,72 @@ describe("PATCH /api/sessions/[id] — organising a session", () => {
     expect(sent(1).archivedAt).toBeNull();
   });
 
+});
+
+describe("PATCH /api/sessions/[id] — the duration of a completed session", () => {
+  /**
+   * Duration was the time since the session started, so leaving an interview
+   * for three hours and finishing it later recorded three hours of practice.
+   * It is the time the page was on screen now, with elapsed time only for a
+   * session that recorded none.
+   */
+  const complete = () =>
+    PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        // What an older client still sends; the server must not trust it.
+        body: JSON.stringify({ status: "completed", durationMinutes: 999 }),
+      }),
+      ctx(SESSION_ID),
+    );
+  const minutesAgo = (minutes: number) =>
+    new Date(Date.now() - minutes * 60_000).toISOString();
+
+  beforeEach(() => {
+    getCurrentUser.mockResolvedValue({ supabase: {}, user: { id: "u1" } });
+  });
+
+  it("uses the time on screen, not the time since the session started", async () => {
+    getSessionActiveSeconds.mockResolvedValue(12 * 60 + 20);
+    getSession.mockResolvedValue({ id: SESSION_ID, startedAt: minutesAgo(180) });
+
+    await complete();
+
+    expect(updateSession.mock.calls[0][2].durationMinutes).toBe(12);
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it("reads a session on screen for under a minute as one minute", async () => {
+    getSessionActiveSeconds.mockResolvedValue(20);
+    await complete();
+    expect(updateSession.mock.calls[0][2].durationMinutes).toBe(1);
+  });
+
+  it("falls back to elapsed time when nothing was recorded", async () => {
+    getSessionActiveSeconds.mockResolvedValue(0);
+    getSession.mockResolvedValue({ id: SESSION_ID, startedAt: minutesAgo(25) });
+    await complete();
+    expect(updateSession.mock.calls[0][2].durationMinutes).toBe(25);
+  });
+
+  it("still caps the fallback at a day", async () => {
+    getSessionActiveSeconds.mockResolvedValue(null);
+    getSession.mockResolvedValue({ id: SESSION_ID, startedAt: minutesAgo(3 * 24 * 60) });
+    await complete();
+    expect(updateSession.mock.calls[0][2].durationMinutes).toBe(1440);
+  });
+
+  it("does not look duration up for a change that is not a completion", async () => {
+    await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Acme" }),
+      }),
+      ctx(SESSION_ID),
+    );
+    expect(getSessionActiveSeconds).not.toHaveBeenCalled();
+    expect(getSession).not.toHaveBeenCalled();
+  });
 });

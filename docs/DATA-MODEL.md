@@ -51,6 +51,7 @@ a `loop_id`.
 | `status`                                                     | `in_progress` / `completed` / `abandoned`                                                                                                                                                                                                  |
 | `summary`                                                    | The rolling summary, maintained server-side and sent instead of the full transcript, so tokens stay bounded                                                                                                                                |
 | `turn_count`, `average_score`, `duration_minutes`, `metrics` | Aggregates                                                                                                                                                                                                                                 |
+| `active_seconds` | Seconds the session page was open and on screen, added by `record_session_activity` as the interview runs. `duration_minutes` is derived from it at completion, so time away from the page does not count |
 | `loop_id`, `loop_progress`                                   | Loop chaining                                                                                                                                                                                                           |
 | `launch_meta`                                                | The setup that produced this round — including `loopBrief`, which is **server-owned**                                                                                                                                                      |
 | `competency_coverage`                                        | The 12-slot coverage vector, accumulated as the round runs                                                                                                                                                                                 |
@@ -158,6 +159,7 @@ by a test — so no candidate-controlled text can reach a system message.
 | `match_job_description_chunks` | pgvector similarity search, scoped by `auth.uid()`                                                                                                          |
 | `record_llm_usage`             | Server-owned usage insert                                                                                                                                   |
 | `update_session_progress`      | Every session write after creation: progress and the organisation fields (title, tags, pin, notes, archive)                   |
+| `record_session_activity`      | Adds on-screen seconds to a session: at most two minutes a call, only while it is in progress |
 | `llm_usage_summary`            | Per-user cost rollup. Filters on `auth.uid()`, which is null for the `postgres` role — so it returns nothing from the SQL editor. Query the table directly. |
 | `set_updated_at`               | Trigger function                                                                                                                                            |
 
@@ -187,14 +189,14 @@ The three files write the end state directly.
 
 **Checked equivalent, once, on 2026-09-12.** Both versions were built into an
 empty Postgres (PGlite, with a stub `auth` schema), the eighteen followed by
-the folder removal below, and their catalogs compared.
+the two steps below, and their catalogs compared.
 Columns, constraints, indexes, triggers, policies, grants and function
 definitions match, with two intended differences: the check constraints are
 validated at creation instead of `not valid` (a new database has no older rows
 to exempt), and the comment on `coach_answers.answer` no longer mentions the
 rename. The same smoke test gave identical results on both. It covered turns,
 organisation patches, cross-user access and rejected values. Running the three
-files a second time, or over a database the eighteen and the removal built,
+files a second time, or over a database the eighteen and those steps built,
 changes nothing.
 
 Two properties are checked on every test run by `src/lib/db/migrations.test.ts`:
@@ -204,25 +206,39 @@ before a file has created it.
 **Changing the schema:** add `0004_…`. Editing one of the three would not reach
 a database that has already run it.
 
-### Session folders, removed
+### A database that ran the eighteen
 
-Folders shipped in `0018` and were taken out on 2026-09-12, before any database
-had been set up from the three files, so those files never create them. Tags
-already group sessions and filter the list.
+Two changes came after the three files replaced the eighteen, and a database
+set up from the eighteen needs both. Session folders were removed — tags
+already group sessions — and sessions gained `active_seconds`, so a duration
+counts only time spent in the session. A new database gets both from the three
+files.
 
-A database that ran `0018` still has `session_folders` and
-`interview_sessions.folder_id`. Deploy the code without folders first — the
-version before it reads `folder_id` on every session list — then, in the SQL
-editor, run `0003_functions.sql` again so `update_session_progress` stops
-writing the column, followed by:
+The order matters, because each version of the app reads what its schema has.
+**Before deploying** the version with active time, run in the SQL editor:
+
+```sql
+alter table interview_sessions
+  add column if not exists active_seconds int not null default 0;
+alter table interview_sessions
+  drop constraint if exists interview_sessions_active_seconds_range;
+alter table interview_sessions
+  add constraint interview_sessions_active_seconds_range
+  check (active_seconds >= 0 and active_seconds <= 86400);
+```
+
+then run `0003_functions.sql` again: it adds `record_session_activity` and stops
+`update_session_progress` writing `folder_id`. **After** the deploy — the
+version before it reads `folder_id` on every session list:
 
 ```sql
 alter table interview_sessions drop column if exists folder_id;  -- its index and foreign key go with it
 drop table if exists session_folders;                             -- and its policy and trigger
 ```
 
-The folders are deleted. The sessions that were in them are kept, with their
-tags, notes and scores.
+The folders are deleted; the sessions in them keep their tags, notes and
+scores. Finished sessions keep the duration they were given. One in progress at
+the deploy counts only its time on screen afterwards.
 
 ### Where the old numbers went
 

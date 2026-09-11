@@ -9,12 +9,13 @@
 --
 -- These replace eighteen incremental migrations (`0001_init` through
 -- `0018_session_management`, still in git history at df74b64). They build the
--- same end state, written directly (less session folders, removed afterwards),
+-- same end state, written directly (with two later changes: folders removed and
+-- active time added),
 -- so what only existed to move an older database forward is gone: duplicate-row
 -- clean-ups, JSONB backfills, a vector index that was later replaced, superseded
 -- function signatures, and privileges granted in one file and revoked in a later
--- one. A database that has already
--- run the eighteen needs only the folder removal in docs/DATA-MODEL.md.
+-- one. A database that has already run the eighteen needs only the two steps
+-- in docs/DATA-MODEL.md → Migrations.
 --
 -- Every statement is guarded (`if not exists`, `drop … if exists`, `create or
 -- replace`), so running a file twice is harmless.
@@ -181,6 +182,10 @@ create table if not exists interview_sessions (
   competency_coverage jsonb,
   average_score int,
   duration_minutes int,
+  -- Seconds the session page was open and on screen, added as the interview
+  -- runs by record_session_activity. duration_minutes is derived from it at
+  -- completion, so time away from the page does not count.
+  active_seconds int not null default 0,
   -- Organisation, all written through update_session_progress.
   title text,
   tags text[] not null default '{}',
@@ -193,6 +198,7 @@ create table if not exists interview_sessions (
   updated_at timestamptz not null default now(),
   constraint interview_sessions_average_score_range check (average_score is null or (average_score >= 0 and average_score <= 100)),
   constraint interview_sessions_duration_range check (duration_minutes is null or (duration_minutes >= 0 and duration_minutes <= 1440)),
+  constraint interview_sessions_active_seconds_range check (active_seconds >= 0 and active_seconds <= 86400),
   constraint interview_sessions_turn_count_non_negative check (turn_count >= 0),
   constraint interview_sessions_title_length check (title is null or char_length(title) between 1 and 120),
   constraint interview_sessions_notes_length check (notes is null or char_length(notes) <= 4000),

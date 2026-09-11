@@ -168,6 +168,7 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | R2  | Score comparison   | Second completed session                      | Delta vs previous session if shown                              | ☐     |       |
 | R3  | Predict before reveal | Open a report you have not opened before | Scores hidden until you predict or skip; after Reveal, the overall card shows the gap; reopening goes straight to scores | ☐     |       |
 | R4  | Print / PDF        | **⋯ → Download PDF** (browser print)          | Print preview readable; chrome hidden                           | ☐     |       |
+| R5  | Duration           | Start a text session, answer once, switch to another tab for 3 min, come back, answer, **End session** | Report duration leaves out the 3 minutes away | ☐     |       |
 | R5  | Next round         | If multi-round configured                     | Starts next round without error                                 | ☐     |       |
 | R6  | Per-answer scores  | Scroll the transcript                         | Each of your answers shows its own score plus strengths/gaps    | ☐     |       |
 | R7  | Difficulty context | Read under the overall score                  | Names the interviewer's difficulty band and what it means       | ☐     |       |
