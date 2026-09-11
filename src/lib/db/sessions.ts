@@ -146,7 +146,7 @@ const SESSION_COLUMNS = `
  * an answer only the history and stats views need.
  *
  * PostgREST resolves the embed through the `session_id` foreign key declared in
- * `0006_turn_analyses.sql`, and `turn_analyses_session_idx` covers it.
+ * `0001_schema.sql`, and `turn_analyses_session_idx` covers it.
  */
 const SESSION_LIST_COLUMNS = `${SESSION_COLUMNS},
   interview_turn_analyses(count)
@@ -368,7 +368,7 @@ export async function countSessionsForJobDescription(
 }
 
 /**
- * The same count for a resume, backed by `sessions_resume_idx` (migration 0004).
+ * The same count for a resume, backed by `sessions_resume_idx` (`0001_schema.sql`).
  *
  * The resume needs it for two things: the same delete warning, and the refusal in
  * `updateResume` — the interviewer re-reads the stored text on every turn, so
@@ -728,7 +728,7 @@ export async function listMessages(
 /**
  * Append one interview turn and bump `turn_count`, atomically.
  *
- * This delegates to the `append_interview_turn` RPC (migration 0005) rather
+ * This delegates to the `append_interview_turn` RPC (`0003_functions.sql`) rather
  * than doing it client-side. The previous implementation derived `turn_index`
  * from a `turn_count` read at the top of the request, then inserted and bumped
  * in two separate statements — so two overlapping turns on one session wrote

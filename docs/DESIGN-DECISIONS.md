@@ -278,7 +278,7 @@ run rather than claiming it passed.
 ## 9. Server-owned fields are enforced by the database, not by the route
 
 **Decision.** Session progress and usage recording go through
-`security definer` functions (migrations `0011`, `0012`). `sanitizeLaunchMeta`
+`security definer` functions (`supabase/migrations/0003_functions.sql`). `sanitizeLaunchMeta`
 strips client-supplied values for anything the server owns — `loopBrief` most
 importantly, since it lands verbatim in a system prompt.
 

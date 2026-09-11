@@ -113,7 +113,7 @@ async function main() {
     // The single likeliest cause, and the one a demo hits an hour beforehand.
     if (error.message.includes("does not exist")) {
       console.error(
-        "  `llm_usage` is missing — apply supabase/migrations/0007_llm_usage.sql.",
+        "  `llm_usage` is missing — run the files in supabase/migrations, in order.",
       );
     }
     process.exitCode = 1;

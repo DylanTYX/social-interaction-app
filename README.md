@@ -92,33 +92,21 @@ cp .env.local.example .env.local
 Model overrides (`INTERVIEWER_MODEL`, `ANALYZER_MODEL`, …) are documented in
 `.env.local.example`.
 
-### 3. Apply migrations
+### 3. Set up the database
 
-In the Supabase dashboard → **SQL Editor**, run every file in
-`supabase/migrations/` **in numerical order**:
+In the Supabase dashboard → **SQL Editor**, run the three files in
+`supabase/migrations/` **in order**:
 
-| Migration | Adds |
+| File | Creates |
 |---|---|
-| `0001_init` | personas, sessions, messages, RLS |
-| `0002_job_descriptions` | JD storage, pgvector chunks, retrieval RPC |
-| `0003_table_privileges` | grants for the `authenticated` role |
-| `0004_resumes` | resume storage |
-| `0005_atomic_turns_and_preset_uniqueness` | atomic turn RPC, uniqueness constraints |
-| `0006_turn_analyses` | per-turn analysis persistence |
-| `0007_llm_usage` | token accounting |
-| `0008_resume_profile` | distilled resume profile (**no longer read or written** — see `formatResumeForPrompt`) |
-| `0009_session_columns` | server-owned session fields promoted out of JSONB |
-| `0010_coach_answers` | cache for generated suggested answers |
-| `0011_integrity_constraints` | value checks moved from route handlers into the database |
-| `0012_server_owned_writes` | session and usage writes move behind security-definer functions |
-| `0013_job_description_metadata` | JD company, source URL, notes |
-| `0014_jd_clean_call_site` | the tidy-up call site in the usage vocabulary |
-| `0015_document_metadata` | resume label and notes, truncation records, the `resumes` `updated_at` trigger |
-| `0016_rename_model_answer_key` | renames `modelAnswer` to `suggestedAnswer` in cached coach payloads |
+| `0001_schema.sql` | extensions, tables, constraints, indexes, triggers |
+| `0002_security.sql` | row-level security and table privileges |
+| `0003_functions.sql` | the functions the app calls — the atomic turn append, session updates, usage recording, retrieval |
 
-> `0005` and `0006` are **not optional** — `src/lib/db/sessions.ts` calls the
-> `append_interview_turn` RPC on every interview turn. Without them the app
-> builds and deploys cleanly, then fails on the first message.
+> All three are needed. `src/lib/db/sessions.ts` calls `append_interview_turn` on
+> every interview turn, so without `0003` the app builds and deploys cleanly, then
+> fails on the first message. How these replaced eighteen incremental migrations
+> is in `docs/DATA-MODEL.md` → Migrations.
 
 ### 4. Run
 
@@ -275,13 +263,12 @@ Two design decisions worth knowing:
   short-lived token minted by `/api/speech-token`.
 - Errors are logged server-side and returned generically, so Postgres and
   OpenAI internals don't reach clients.
-- **`llm_usage` is readable by its owner over PostgREST.** Migration `0007`
-  grants `select, insert` to `authenticated`, so a logged-in user can read their
-  own token counts from devtools even though no UI renders them. RLS blocks
-  every other user's rows, there is no update or delete grant, and the price
-  table is not in the browser, so cost cannot be derived. Recording is written
-  with the user's own session rather than a privileged one, so revoking the
-  grant would stop recording — a documented trade-off, not an oversight.
+- **`llm_usage` is readable by its owner over PostgREST.** `0002_security.sql`
+  grants `select` to `authenticated`, so a logged-in user can read their own
+  token counts from devtools even though no UI renders them. RLS blocks every
+  other user's rows, rows are inserted only through the `record_llm_usage`
+  function, and the price table is not in the browser, so cost cannot be
+  derived.
 - Security headers (HSTS, `X-Frame-Options`, `Permissions-Policy`) in
   `next.config.ts`. CSP is deliberately deferred until the Azure Speech
   websocket origins are inventoried — see the comment there.

@@ -197,7 +197,7 @@ async function maintainPresets(
  *
  * The read-then-insert is inherently racy — two concurrent first loads (two
  * tabs, or the library and the setup wizard) both see an empty table. The
- * partial unique index `personas_user_preset_name_idx` (migration 0005) makes
+ * partial unique index `personas_user_preset_name_idx` (`0001_schema.sql`) makes
  * the loser's insert fail instead of duplicating every preset; we treat that
  * failure as "somebody else just seeded" and re-read.
  *

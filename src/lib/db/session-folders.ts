@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Folders for grouping sessions (migration 0018).
+ * Folders for grouping sessions (`session_folders` in `0001_schema.sql`).
  *
  * A session sits in at most one folder. Deleting a folder leaves its sessions
  * in place, unfiled — `folder_id` is `on delete set null` — because a folder is
