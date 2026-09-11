@@ -1,3 +1,4 @@
+import { displayTitle } from "@/lib/session-organisation";
 import type { InterviewSessionSummary } from "@/hooks/use-interview-history";
 
 export interface SessionRecommendation {
@@ -55,7 +56,7 @@ export function getSuggestedNextSession(
         : `/simulate/chat?session=${inProgress.id}`;
     return {
       id: "resume",
-      title: `Continue: ${inProgress.scenarioTitle ?? inProgress.scenarioValue}`,
+      title: `Continue: ${displayTitle(inProgress)}`,
       description: `Pick up your in-progress ${inProgress.practiceMode} session with ${inProgress.personaName}.`,
       href: path,
       reason: "You have an interview still in progress.",

@@ -215,10 +215,16 @@ pick the interview back up where you left off.
   ambiguity, leadership, prioritisation, ownership, and so on) the interview
   actually explored, and which it didn't. The gaps tell you what to practise
   next.
-- **Calibration** — guess your score before revealing it. The gap between what
-  you thought and what you got is worth knowing.
-- Comparison against your previous session
-- Print or save as PDF
+- **Predict, then reveal** — the first time you open a report, your scores stay
+  hidden until you predict your overall score (or skip). The overall card then
+  shows how far off you were. Noticing the gap between how an interview felt and
+  how it went is a skill in itself.
+- **Score cards that explain themselves** — overall, communication, STAR (or the
+  technical rubric) and duration, each colour-coded with one line saying what to
+  act on: your weakest STAR part, how much you hedged, time per answer.
+- **Make the report yours** — click the title to rename it, add tags, pin it,
+  and keep private notes on what to do differently. Copy link and Download PDF
+  sit under **Share**.
 
 ### The loop report
 
@@ -349,6 +355,23 @@ setup wizard is their one home — it remembers your last setup, and every one
 of its controls sits on a step you pass through to launch anyway.
 
 ---
+
+
+## Managing your sessions
+
+The **Sessions** page keeps a growing history usable:
+
+- **Rename** a session (the generated title is replaced only in lists and the
+  report — the interview itself is untouched), **tag** it, and **pin** it to the top.
+- **Folders** — group sessions, filter by folder, rename or delete a folder
+  (its sessions stay, unfiled).
+- **Archive** — hide a session without deleting it. Archived sessions still
+  count in your dashboard and analytics; turn on **Show archived** to see them.
+- **Sort and filter** by newest, oldest or score, by score band, date range,
+  tag, mode and status, alongside search.
+- **Select several** to tag, move, pin, archive or delete them together.
+- **Compare two sessions** — tick two and choose Compare to see every score
+  side by side with the change between them.
 
 ## Current limitations
 

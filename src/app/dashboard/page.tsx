@@ -1,5 +1,6 @@
 "use client";
 
+import { displayTitle } from "@/lib/session-organisation";
 import { useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -182,7 +183,7 @@ export default function DashboardPage() {
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {resumeHref
-                ? `${inProgress?.scenarioTitle ?? inProgress?.scenarioValue} · ${inProgress?.personaName}`
+                ? `${inProgress ? displayTitle(inProgress) : ""} · ${inProgress?.personaName}`
                 : (suggestion?.reason ??
                   "Set up a round, pick an interviewer, and go.")}
             </p>
@@ -320,7 +321,7 @@ export default function DashboardPage() {
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-foreground transition-colors group-hover:text-primary-emphasis">
-                            {session.scenarioTitle ?? session.scenarioValue}
+                            {displayTitle(session)}
                           </p>
                           <p className="flex items-center gap-2 text-sm text-muted-foreground">
                             <span>{session.personaName}</span>
