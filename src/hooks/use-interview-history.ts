@@ -2,6 +2,12 @@
 
 import { readJson } from "@/lib/api/fetch-json";
 import { useCallback, useRef, useEffect, useState } from "react";
+import type {
+  ArchivedView,
+  ScoreBand,
+  SessionSort,
+  SinceWindow,
+} from "@/lib/session-organisation";
 
 export interface InterviewSessionSummary {
   id: string;
@@ -35,6 +41,13 @@ export interface InterviewSessionSummary {
    * the cross-session question the per-session report cannot.
    */
   competencyCoverage?: unknown;
+  /** The candidate's own name for the session (migration 0018). */
+  title?: string | null;
+  tags?: string[];
+  pinned?: boolean;
+  notes?: string | null;
+  archivedAt?: string | null;
+  folderId?: string | null;
 }
 
 export interface InterviewHistoryFilters {
@@ -42,6 +55,13 @@ export interface InterviewHistoryFilters {
   query?: string;
   mode?: "text" | "voice";
   status?: InterviewSessionSummary["status"];
+  tag?: string;
+  /** A folder id, or "none" for sessions in no folder. */
+  folder?: string;
+  archived?: ArchivedView;
+  sort?: SessionSort;
+  score?: ScoreBand;
+  since?: SinceWindow;
 }
 
 export interface UseInterviewHistory {
@@ -56,6 +76,8 @@ export interface UseInterviewHistory {
   hasMore: boolean;
   /** True only while appending, so a list can stay on screen during it. */
   loadingMore: boolean;
+  /** Apply a change the server has already accepted, without a refetch. */
+  patchLocal: (id: string, patch: Partial<InterviewSessionSummary>) => void;
 }
 
 /**
@@ -85,7 +107,17 @@ export function useInterviewHistory(
 
   // Destructured so the callbacks depend on the values, not on an object
   // identity that changes every render.
-  const { query, mode, status: statusFilter } = filters;
+  const {
+    query,
+    mode,
+    status: statusFilter,
+    tag,
+    folder,
+    archived,
+    sort,
+    score,
+    since,
+  } = filters;
 
   const buildUrl = useCallback(
     (offset: number) => {
@@ -94,9 +126,15 @@ export function useInterviewHistory(
       if (query?.trim()) params.set("q", query.trim());
       if (mode) params.set("mode", mode);
       if (statusFilter) params.set("status", statusFilter);
+      if (tag) params.set("tag", tag);
+      if (folder) params.set("folder", folder);
+      if (archived) params.set("archived", archived);
+      if (sort) params.set("sort", sort);
+      if (score && score !== "any") params.set("score", score);
+      if (since && since !== "any") params.set("since", since);
       return `/api/sessions?${params.toString()}`;
     },
-    [limit, query, mode, statusFilter],
+    [limit, query, mode, statusFilter, tag, folder, archived, sort, score, since],
   );
 
   const fetchPage = useCallback(
@@ -188,6 +226,15 @@ export function useInterviewHistory(
     };
   }, [refresh]);
 
+  const patchLocal = useCallback(
+    (id: string, patch: Partial<InterviewSessionSummary>) => {
+      setSessions((current) =>
+        current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+      );
+    },
+    [],
+  );
+
   return {
     sessions,
     status,
@@ -197,5 +244,6 @@ export function useInterviewHistory(
     total,
     hasMore: sessions.length < total,
     loadingMore,
+    patchLocal,
   };
 }

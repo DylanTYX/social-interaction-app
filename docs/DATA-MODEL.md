@@ -54,6 +54,10 @@ a `loop_id`.
 | `loop_id`, `loop_progress`                                   | Loop chaining (migration `0009`)                                                                                                                                                                                                           |
 | `launch_meta`                                                | The setup that produced this round — including `loopBrief`, which is **server-owned**                                                                                                                                                      |
 | `competency_coverage`                                        | The 12-slot coverage vector, accumulated as the round runs                                                                                                                                                                                 |
+| `updated_at`                                                 | Last write to the row. Added by `0017`: `0012`'s `append_interview_turn` has set it since that migration, on a column that did not exist until then |
+| `title`                                                      | The candidate's own name for the session. **Separate from `scenario_title`**, which the interviewer's prompt reads — renaming must not change what a resumed interviewer is told (`0018`) |
+| `tags`, `pinned`, `notes`, `archived_at`                     | Organisation: free labels (GIN-indexed), kept-at-top, private report notes, and hidden-not-deleted. Archived sessions still count in every statistic (`0018`) |
+| `folder_id`                                                  | At most one folder, from `session_folders`; `on delete set null`, so deleting a folder unfiles its sessions (`0018`) |
 
 ### `interview_messages` — the transcript
 
@@ -115,7 +119,18 @@ and no turn, so every drill submission is a full billed call.
 
 ---
 
-## Authorisation: one rule, applied nine times
+
+### `session_folders`
+
+One user's folders for grouping sessions (`0018`). Plain table writes under the
+owner policy — a folder carries nothing server-owned — with a case-insensitive
+unique name per user. A session is filed through `update_session_progress`,
+which checks the folder belongs to the caller: the foreign key alone would
+accept anyone's folder id.
+
+---
+
+## Authorisation: one rule, applied ten times
 
 Row-level security is on for every table, and every policy is the same shape:
 
@@ -136,7 +151,7 @@ Three things are server-owned and enforced below the route layer:
 | Field                   | Enforced by                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------- |
 | `launch_meta.loopBrief` | `sanitizeLaunchMeta` strips it on POST; PATCH strips it. Only `next-round` writes it. |
-| Session progress        | `update_session_progress`, a `security definer` function (migration `0012`)           |
+| Session progress and organisation | `update_session_progress`, a `security definer` function (`0012`); title, tags, pin, notes, archive and folder added in `0018`, with a folder-ownership check |
 | Usage rows              | `record_llm_usage`, likewise                                                          |
 
 `loopBrief` matters most: it lands **verbatim in a system prompt**, and since the
@@ -153,7 +168,7 @@ by a test — so no candidate-controlled text can reach a system message.
 | `append_interview_turn`        | Writes both messages, the analysis and the session update **in one transaction**. Called on every turn.                                                     |
 | `match_job_description_chunks` | pgvector similarity search, scoped by `auth.uid()`                                                                                                          |
 | `record_llm_usage`             | Server-owned usage insert                                                                                                                                   |
-| `update_session_progress`      | Server-owned progress update                                                                                                                                |
+| `update_session_progress`      | Every session write after creation: progress, and since `0018` the organisation fields — checking an assigned folder belongs to the caller                   |
 | `llm_usage_summary`            | Per-user cost rollup. Filters on `auth.uid()`, which is null for the `postgres` role — so it returns nothing from the SQL editor. Query the table directly. |
 | `set_updated_at`               | Trigger function                                                                                                                                            |
 
@@ -186,6 +201,8 @@ the production-review hardening.
 | `0014_jd_clean_call_site`                 | the tidy-up call site in the usage vocabulary                                          |
 | `0015_document_metadata`                  | resume label and notes, truncation records, the `resumes` `updated_at` trigger         |
 | `0016_rename_model_answer_key`            | renames `modelAnswer` to `suggestedAnswer` in cached coach payloads                    |
+| `0017_session_updated_at`                | the `interview_sessions.updated_at` column `0012`'s turn function writes — without it every turn failed with `42703` |
+| `0018_session_management`                | session title, tags, pin, notes, archive, folders; `update_session_progress` extended to write them                      |
 
 ---
 

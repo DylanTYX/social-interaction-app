@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getCurrentUser = vi.fn();
 const deleteSession = vi.fn();
+const updateSession = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   getCurrentUser: () => getCurrentUser(),
@@ -24,10 +25,11 @@ vi.mock("@/lib/db/sessions", async (importOriginal) => {
   return {
     ...actual,
     deleteSession: (...args: unknown[]) => deleteSession(...args),
+    updateSession: (...args: unknown[]) => updateSession(...args),
   };
 });
 
-const { DELETE } = await import("@/app/api/sessions/[id]/route");
+const { DELETE, PATCH } = await import("@/app/api/sessions/[id]/route");
 
 /**
  * Real uuids, because the route now validates the shape before it reaches the
@@ -45,6 +47,8 @@ beforeEach(() => {
   getCurrentUser.mockReset();
   deleteSession.mockReset();
   deleteSession.mockResolvedValue(undefined);
+  updateSession.mockReset();
+  updateSession.mockResolvedValue({ id: SESSION_ID });
 });
 
 describe("DELETE /api/sessions/[id]", () => {
@@ -107,5 +111,74 @@ describe("DELETE /api/sessions/[id]", () => {
     );
 
     expect(response.status).toBe(500);
+  });
+});
+
+describe("PATCH /api/sessions/[id] — organising a session", () => {
+  /**
+   * Rename, tags, pin, notes, archive and folder arrived together (0018). The
+   * risk in adding them was to the fields already there: a rename is a PATCH
+   * that mentions nothing else, and the route used to turn a missing summary
+   * into null — which clears it.
+   */
+  const patch = (body: unknown) =>
+    PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      ctx(SESSION_ID),
+    );
+  const sent = (call = 0) => updateSession.mock.calls[call][2];
+
+  beforeEach(() => {
+    getCurrentUser.mockResolvedValue({ supabase: {}, user: { id: "u1" } });
+  });
+
+  it("renames, and a blank title resets to the generated one", async () => {
+    await patch({ title: "  Acme final round  " });
+    expect(sent(0).title).toBe("Acme final round");
+
+    await patch({ title: "   " });
+    expect(sent(1).title).toBeNull();
+  });
+
+  it("leaves every other field alone when only the title is sent", async () => {
+    await patch({ title: "Acme" });
+    const input = sent();
+    expect(input.summary).toBeUndefined();
+    expect(input.tags).toBeUndefined();
+    expect(input.archivedAt).toBeUndefined();
+    expect(input.folderId).toBeUndefined();
+  });
+
+  it("normalises tags and refuses more than the limit", async () => {
+    await patch({ tags: ["Acme", "acme", " #round 2 "] });
+    expect(sent().tags).toEqual(["Acme", "round 2"]);
+
+    const tooMany = await patch({ tags: Array.from({ length: 13 }, (_, i) => `t${i}`) });
+    expect(tooMany.status).toBe(400);
+    expect(updateSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("stamps the archive time on the server and clears it to unarchive", async () => {
+    await patch({ archived: true });
+    expect(Date.parse(sent(0).archivedAt)).not.toBeNaN();
+
+    await patch({ archived: false });
+    expect(sent(1).archivedAt).toBeNull();
+  });
+
+  it("moves to a folder, out of one, and refuses a malformed folder id", async () => {
+    await patch({ folderId: "33333333-3333-4333-8333-333333333333" });
+    expect(sent(0).folderId).toBe("33333333-3333-4333-8333-333333333333");
+
+    await patch({ folderId: null });
+    expect(sent(1).folderId).toBeNull();
+
+    const bad = await patch({ folderId: "not-a-uuid" });
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+    expect(updateSession).toHaveBeenCalledTimes(2);
   });
 });

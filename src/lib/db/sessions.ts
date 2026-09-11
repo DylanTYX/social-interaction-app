@@ -5,6 +5,7 @@ import type {
   SessionLaunchMeta,
 } from "@/lib/session-launch-meta";
 import type { CompetencyCoverage } from "@/lib/competencies";
+import type { ArchivedView, SessionSort } from "@/lib/session-organisation";
 
 export type PracticeMode = "text" | "voice";
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
@@ -37,6 +38,15 @@ export interface SessionRecord {
   loopId: string | null;
   loopProgress: LoopProgress | null;
   competencyCoverage: CompetencyCoverage | null;
+  /** The candidate's own name for the session; null means use the generated one. */
+  title: string | null;
+  tags: string[];
+  pinned: boolean;
+  /** Private notes written on the report. */
+  notes: string | null;
+  /** Set when archived. Archived sessions still count in every statistic. */
+  archivedAt: string | null;
+  folderId: string | null;
   startedAt: string;
   endedAt: string | null;
   createdAt: string;
@@ -71,6 +81,13 @@ interface SessionRow {
   loop_id: string | null;
   loop_progress: LoopProgress | null;
   competency_coverage: CompetencyCoverage | null;
+  // Optional: absent on a database that has not applied 0018.
+  title?: string | null;
+  tags?: string[] | null;
+  pinned?: boolean | null;
+  notes?: string | null;
+  archived_at?: string | null;
+  folder_id?: string | null;
   started_at: string;
   ended_at: string | null;
   created_at: string;
@@ -110,6 +127,12 @@ const SESSION_COLUMNS = `
   loop_id,
   loop_progress,
   competency_coverage,
+  title,
+  tags,
+  pinned,
+  notes,
+  archived_at,
+  folder_id,
   started_at,
   ended_at,
   created_at
@@ -170,6 +193,12 @@ function rowToSession(row: SessionRow): SessionRecord {
     loopId: row.loop_id,
     loopProgress: row.loop_progress,
     competencyCoverage: row.competency_coverage,
+    title: row.title ?? null,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    pinned: row.pinned === true,
+    notes: row.notes ?? null,
+    archivedAt: row.archived_at ?? null,
+    folderId: row.folder_id ?? null,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     createdAt: row.created_at,
@@ -193,6 +222,19 @@ export interface ListSessionsOptions {
   query?: string;
   mode?: "text" | "voice";
   status?: SessionStatus;
+  /** Sessions carrying this exact tag. */
+  tag?: string;
+  /** A folder id, `null` for sessions in no folder, or undefined for any. */
+  folderId?: string | null;
+  /** Defaults to "all" — see `ArchivedView`. */
+  archived?: ArchivedView;
+  /** Absent keeps plain newest-first; present also floats pinned sessions up. */
+  sort?: SessionSort;
+  /** Inclusive bounds on `average_score`. */
+  minScore?: number;
+  maxScore?: number;
+  /** ISO timestamp; sessions created on or after it. */
+  since?: string;
 }
 
 export interface ListSessionsResult {
@@ -217,23 +259,69 @@ export async function listSessions(
   supabase: SupabaseClient,
   options: ListSessionsOptions = {},
 ): Promise<ListSessionsResult> {
-  const { limit = 25, offset = 0, query, mode, status } = options;
+  const {
+    limit = 25,
+    offset = 0,
+    query,
+    mode,
+    status,
+    tag,
+    folderId,
+    archived = "all",
+    sort,
+    minScore,
+    maxScore,
+    since,
+  } = options;
 
   let request = supabase
     .from("interview_sessions")
-    .select(SESSION_LIST_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false });
+    .select(SESSION_LIST_COLUMNS, { count: "exact" });
+
+  /**
+   * Ordering changes only when a sort is asked for. The dashboard, the
+   * analytics page and the report's score comparison read this same list with
+   * none and expect plain newest-first; only the sessions page sends one, and
+   * only there do pinned sessions rise to the top.
+   */
+  if (sort) {
+    request = request.order("pinned", { ascending: false });
+    if (sort === "score_high" || sort === "score_low") {
+      request = request.order("average_score", {
+        ascending: sort === "score_low",
+        nullsFirst: false,
+      });
+    }
+    request = request.order("created_at", { ascending: sort === "oldest" });
+  } else {
+    request = request.order("created_at", { ascending: false });
+  }
 
   if (mode) request = request.eq("practice_mode", mode);
   if (status) request = request.eq("status", status);
+  if (tag) request = request.contains("tags", [tag]);
+  if (folderId === null) request = request.is("folder_id", null);
+  else if (folderId) request = request.eq("folder_id", folderId);
+  if (archived === "active") request = request.is("archived_at", null);
+  if (archived === "archived") {
+    request = request.not("archived_at", "is", null);
+  }
+  if (typeof minScore === "number") {
+    request = request.gte("average_score", minScore);
+  }
+  if (typeof maxScore === "number") {
+    request = request.lte("average_score", maxScore);
+  }
+  if (since) request = request.gte("created_at", since);
 
   const trimmed = query?.trim();
   if (trimmed) {
-    // Matches what the client-side filter matched: scenario title or persona.
-    // `%` and `,` would otherwise break out of the `or` filter's own syntax.
+    // The candidate's own title first, then the generated one and the
+    // persona. `%` and `,` would otherwise break out of the `or` filter's own
+    // syntax.
     const safe = trimmed.replace(/[%,()]/g, " ");
     request = request.or(
-      `scenario_title.ilike.%${safe}%,persona_name.ilike.%${safe}%`,
+      `title.ilike.%${safe}%,scenario_title.ilike.%${safe}%,persona_name.ilike.%${safe}%`,
     );
   }
 
@@ -505,13 +593,25 @@ export interface UpdateSessionInput {
   loopId?: string | null;
   loopProgress?: LoopProgress | null;
   competencyCoverage?: CompetencyCoverage | null;
+  title?: string | null;
+  tags?: string[];
+  pinned?: boolean;
+  notes?: string | null;
+  archivedAt?: string | null;
+  folderId?: string | null;
 }
 
-export async function updateSession(
+/**
+ * Write a session patch without reading the row back.
+ *
+ * Split out of `updateSession` for the bulk actions: tagging or archiving a
+ * hundred sessions does not need a hundred rows re-selected afterwards.
+ */
+export async function patchSession(
   supabase: SupabaseClient,
   id: string,
   input: UpdateSessionInput,
-): Promise<SessionRecord> {
+): Promise<void> {
   const patch: Record<string, unknown> = {};
   if (input.status !== undefined) patch.status = input.status;
   if (input.summary !== undefined) patch.summary = input.summary;
@@ -531,6 +631,13 @@ export async function updateSession(
     patch.duration_minutes = input.durationMinutes;
   if (input.endedAt !== undefined) patch.ended_at = input.endedAt;
 
+  if (input.title !== undefined) patch.title = input.title;
+  if (input.tags !== undefined) patch.tags = input.tags;
+  if (input.pinned !== undefined) patch.pinned = input.pinned;
+  if (input.notes !== undefined) patch.notes = input.notes;
+  if (input.archivedAt !== undefined) patch.archived_at = input.archivedAt;
+  if (input.folderId !== undefined) patch.folder_id = input.folderId;
+
   /**
    * Through an RPC, not a direct update.
    *
@@ -549,6 +656,14 @@ export async function updateSession(
     p_patch: patch,
   });
   if (rpcError) throw rpcError;
+}
+
+export async function updateSession(
+  supabase: SupabaseClient,
+  id: string,
+  input: UpdateSessionInput,
+): Promise<SessionRecord> {
+  await patchSession(supabase, id, input);
 
   // Read back separately: the function returns void, and the caller wants the
   // row as it now stands.
@@ -774,4 +889,52 @@ export async function getPreviousTurnSignal(
       : null;
 
   return { strategy: data.strategy ?? null, nextFocus };
+}
+
+/**
+ * Every tag the user has used, most used first, for the tag filter and the
+ * editor's suggestions. Bounded: tags are counted client-side of Postgres over
+ * at most the newest 1,000 sessions, which is far past a practising
+ * candidate's history.
+ */
+export async function listSessionTags(
+  supabase: SupabaseClient,
+): Promise<Array<{ tag: string; count: number }>> {
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select("tags")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+
+  const counts = new Map<string, { tag: string; count: number }>();
+  for (const row of (data ?? []) as Array<{ tags?: string[] | null }>) {
+    for (const tag of row.tags ?? []) {
+      const key = tag.toLocaleLowerCase();
+      const entry = counts.get(key) ?? { tag, count: 0 };
+      entry.count += 1;
+      counts.set(key, entry);
+    }
+  }
+  return [...counts.values()].sort(
+    (a, b) => b.count - a.count || a.tag.localeCompare(b.tag),
+  );
+}
+
+/** Current tags for a set of sessions, keyed by id. RLS drops foreign ids. */
+export async function getSessionTags(
+  supabase: SupabaseClient,
+  ids: readonly string[],
+): Promise<Map<string, string[]>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("interview_sessions")
+    .select("id, tags")
+    .in("id", [...ids]);
+  if (error) throw error;
+  return new Map(
+    ((data ?? []) as Array<{ id: string; tags?: string[] | null }>).map(
+      (row) => [row.id, row.tags ?? []],
+    ),
+  );
 }

@@ -8,9 +8,20 @@ import {
   updateSession,
   type SessionStatus,
 } from "@/lib/db/sessions";
-import { handleRouteError, notFound, unauthorized } from "@/lib/api/errors";
+import {
+  ClientVisibleError,
+  handleRouteError,
+  notFound,
+  unauthorized,
+} from "@/lib/api/errors";
 import { parseBoundedString, parseUuid } from "@/lib/api/query";
-import { MAX_SUMMARY_CHARS } from "@/lib/api/input-limits";
+import {
+  MAX_SESSION_NOTES_CHARS,
+  MAX_SESSION_TAGS,
+  MAX_SESSION_TITLE_CHARS,
+  MAX_SUMMARY_CHARS,
+} from "@/lib/api/input-limits";
+import { normalizeTags } from "@/lib/session-organisation";
 
 export const runtime = "nodejs";
 // Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
@@ -89,6 +100,69 @@ function parseTimestamp(value: unknown): string | null | undefined {
   return Number.isFinite(Date.parse(value)) ? value : undefined;
 }
 
+/**
+ * The fields a candidate uses to organise a session (migration 0018).
+ *
+ * Every one is optional, and a missing key means "leave it alone" — so none is
+ * parsed unless it was sent. That matters because the parsers turn anything
+ * that is not a string into null, and null is a real value that clears the
+ * column.
+ */
+function parseOrganisation(body: {
+  title?: unknown;
+  tags?: unknown;
+  pinned?: unknown;
+  notes?: unknown;
+  archived?: unknown;
+  folderId?: unknown;
+}) {
+  // Blank resets the session to its generated title.
+  const title =
+    body.title === undefined
+      ? undefined
+      : parseBoundedString(body.title, {
+          field: "title",
+          max: MAX_SESSION_TITLE_CHARS,
+        });
+  const notes =
+    body.notes === undefined
+      ? undefined
+      : parseBoundedString(body.notes, {
+          field: "notes",
+          max: MAX_SESSION_NOTES_CHARS,
+        });
+
+  let tags: string[] | undefined;
+  if (body.tags !== undefined) {
+    if (!Array.isArray(body.tags)) {
+      throw new ClientVisibleError("tags must be a list of labels.");
+    }
+    tags = normalizeTags(body.tags);
+    if (tags.length > MAX_SESSION_TAGS) {
+      throw new ClientVisibleError(
+        `A session can have up to ${MAX_SESSION_TAGS} tags.`,
+      );
+    }
+  }
+
+  const pinned = typeof body.pinned === "boolean" ? body.pinned : undefined;
+  // The server stamps the time; the client only says archived or not.
+  const archivedAt =
+    typeof body.archived === "boolean"
+      ? body.archived
+        ? new Date().toISOString()
+        : null
+      : undefined;
+  const folderId =
+    body.folderId === undefined
+      ? undefined
+      : body.folderId === null
+        ? null
+        : parseUuid(body.folderId, "folder id");
+
+  return { title, notes, tags, pinned, archivedAt, folderId };
+}
+
 export async function PATCH(request: Request, ctx: RouteParams) {
   try {
     const { supabase, user } = await getCurrentUser();
@@ -111,7 +185,15 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       averageScore?: unknown;
       durationMinutes?: unknown;
       endedAt?: unknown;
+      title?: unknown;
+      tags?: unknown;
+      pinned?: unknown;
+      notes?: unknown;
+      archived?: unknown;
+      folderId?: unknown;
     }>(request);
+
+    const organisation = parseOrganisation(body);
 
     const status: SessionStatus | undefined =
       body.status === "completed" ||
@@ -164,10 +246,18 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       status,
       // The server feeds this straight back into the next interviewer prompt,
       // so an unbounded value inflates every remaining turn of the session.
-      summary: parseBoundedString(body.summary, {
-        field: "summary",
-        max: MAX_SUMMARY_CHARS,
-      }),
+      //
+      // Parsed only when sent. `parseBoundedString` returns null for a missing
+      // value, and null clears the column — so every PATCH that did not mention
+      // the summary used to wipe it, which a rename or a tag edit would now do
+      // on every call.
+      summary:
+        body.summary === undefined
+          ? undefined
+          : parseBoundedString(body.summary, {
+              field: "summary",
+              max: MAX_SUMMARY_CHARS,
+            }),
       metrics: stripServerOwnedMetrics(body.metrics),
       // These three used to pass through untouched into Postgres `int` and
       // `timestamptz` columns, so a NaN or an out-of-range number surfaced as
@@ -175,6 +265,7 @@ export async function PATCH(request: Request, ctx: RouteParams) {
       averageScore: parseScore(body.averageScore),
       durationMinutes,
       endedAt: parseTimestamp(body.endedAt),
+      ...organisation,
     });
 
     return NextResponse.json({ session });

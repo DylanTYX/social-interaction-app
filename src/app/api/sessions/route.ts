@@ -2,12 +2,16 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { parseBoundedString, parseLimit, parseOffset, parseOptionalUuid, parseUuid } from "@/lib/api/query";
 import {
-  parseBoundedString,
-  parseLimit,
-  parseOffset,
-  parseOptionalUuid,
-} from "@/lib/api/query";
+  normalizeTag,
+  parseArchivedView,
+  parseScoreBand,
+  parseSessionSort,
+  parseSinceWindow,
+  scoreBandRange,
+  sinceToIso,
+} from "@/lib/session-organisation";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
   createSession,
@@ -57,12 +61,37 @@ export async function GET(request: Request) {
         ? statusParam
         : undefined;
 
+    // Organisation filters (migration 0018). All optional, and absent keeps
+    // the list exactly as the dashboard and analytics have always read it —
+    // including archived sessions, which still count in their statistics.
+    const tag = normalizeTag(searchParams.get("tag")) ?? undefined;
+    const folderParam = searchParams.get("folder");
+    const folderId =
+      folderParam === "none"
+        ? null
+        : folderParam
+          ? parseUuid(folderParam, "folder")
+          : undefined;
+    const archived = parseArchivedView(searchParams.get("archived"));
+    const sort = parseSessionSort(searchParams.get("sort"));
+    const { min: minScore, max: maxScore } = scoreBandRange(
+      parseScoreBand(searchParams.get("score")),
+    );
+    const since = sinceToIso(parseSinceWindow(searchParams.get("since")));
+
     const { sessions, total } = await listSessions(supabase, {
       limit,
       offset,
       query,
       mode,
       status,
+      tag,
+      folderId,
+      archived,
+      sort,
+      minScore,
+      maxScore,
+      since,
     });
     return NextResponse.json({ sessions, total });
   } catch (error) {
