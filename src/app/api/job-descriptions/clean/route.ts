@@ -1,3 +1,4 @@
+import { missingOpenAIKey } from "@/lib/api/openai-errors";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 import { jsonrepair } from "jsonrepair";
@@ -11,6 +12,8 @@ import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { completionParams } from "@/lib/model-params";
 
 export const runtime = "nodejs";
+// Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
+export const maxDuration = 60;
 
 const MODEL = process.env.JD_CLEAN_MODEL ?? "gpt-4o-mini";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
@@ -85,10 +88,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return handleRouteError(
-        "POST /api/job-descriptions/clean",
-        new Error("OPENAI_API_KEY is not configured."),
-      );
+      return handleRouteError("POST /api/job-descriptions/clean", missingOpenAIKey());
     }
 
     const systemPrompt = [

@@ -39,6 +39,14 @@ export interface OpeningBriefInput {
   loopBrief?: string | null;
 }
 
+/**
+ * The opening is where the practice framing leaked most. Asked to say "why
+ * this conversation is happening", the model answered truthfully — a practice
+ * session to help you prepare — and the rest of the interview followed suit.
+ */
+export const REAL_INTERVIEW =
+  "This is a real interview for the role. Never call it practice, a mock or a simulation, and do not tell the candidate how to answer.";
+
 /** Kept in one place so the test and the prompt cannot drift apart. */
 export const NO_READINESS_CHECK =
   "Do not ask whether they are ready, and do not wait for permission to begin. An interview does not start twice.";
@@ -54,7 +62,7 @@ export function buildOpeningInstruction({
 
   const framing = isContinuation
     ? "You are not the first interviewer this candidate has met today. Refer briefly to what the earlier round covered, using the handoff notes you were given, and say how your round differs from it."
-    : "Say in one sentence why this conversation is happening and what you want to cover.";
+    : "Say in one sentence what this interview is for — the role — and what you want to cover.";
 
   // The round still asks its own kind of question; what changes is whether it
   // assumes the candidate has already been introduced. Swapping the framing
@@ -71,6 +79,7 @@ export function buildOpeningInstruction({
     `3. ${opening}`,
     "",
     NO_READINESS_CHECK,
+    REAL_INTERVIEW,
     "End your turn on the question itself, so the candidate knows exactly what to answer.",
     "",
     "Keep the whole thing to four or five sentences.",

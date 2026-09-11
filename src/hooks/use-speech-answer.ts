@@ -90,6 +90,12 @@ export interface UseSpeechAnswer {
   discard: () => Promise<void>;
   /** True while recording or mid-stop; the window in which `start` is a no-op. */
   isBusy: () => boolean;
+  /**
+   * True only while a stop is settling. Lets a caller tell "the microphone is
+   * already open" (nothing to do) from "the last answer is still closing"
+   * (worth waiting a moment), which `isBusy` folds together.
+   */
+  isStopping: () => boolean;
   isInitialized: () => boolean;
 }
 
@@ -538,6 +544,7 @@ export function useSpeechAnswer({
     () => isRecordingRef.current || isStoppingRef.current,
     [],
   );
+  const isStopping = useCallback(() => isStoppingRef.current, []);
   const isInitialized = useCallback(
     () => speechServiceRef.current.isInitialized(),
     [],
@@ -557,6 +564,7 @@ export function useSpeechAnswer({
     stop,
     discard,
     isBusy,
+    isStopping,
     isInitialized,
   };
 }

@@ -13,6 +13,8 @@ import { parseBoundedString, parseUuid } from "@/lib/api/query";
 import { MAX_SUMMARY_CHARS } from "@/lib/api/input-limits";
 
 export const runtime = "nodejs";
+// Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
+export const maxDuration = 60;
 
 interface RouteParams {
   params: Promise<{ id: string }>;

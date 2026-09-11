@@ -60,6 +60,7 @@ import {
   extractSpeakableSentences,
   getSpeechService,
   paceToRatePercent,
+  STOP_LISTENING_TIMEOUT_MS,
 } from "@/lib/speech-service";
 import { resolveVoiceForPersona } from "@/lib/persona-voice";
 import { useSpeechAnswer } from "@/hooks/use-speech-answer";
@@ -80,6 +81,14 @@ import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
 /** Retries of the opening greeting before the error is left standing. */
 const MAX_OPENING_ATTEMPTS = 2;
+
+/**
+ * How long the automatic microphone waits for the previous answer's stop to
+ * settle. Just past the bound on `stopListening`, so a stop that the SDK never
+ * acknowledges has always released before this gives up.
+ */
+const AUTO_START_STOP_GRACE_MS = STOP_LISTENING_TIMEOUT_MS + 1_000;
+const AUTO_START_STOP_TICK_MS = 250;
 
 type DisplayMessage = {
   id: string;
@@ -545,9 +554,22 @@ function VoiceSimulateInner() {
     await speech.start();
   };
 
-  const tryAutoStartRecording = async () => {
+  /**
+   * Open the microphone once the interviewer has finished — and never give up
+   * silently.
+   *
+   * Every refusal here used to be a bare `return`, while the composer read
+   * "Your mic opens when the interviewer finishes". One stuck flag left the
+   * candidate waiting on a promise the page had already abandoned, with
+   * nothing on screen and nothing in the log. The reasons are now separated:
+   *
+   *   - already recording: the candidate tapped in first; nothing to do.
+   *   - a stop still settling from the last answer: wait briefly and retry.
+   *   - still settling after the grace period: say "tap the microphone",
+   *     and send the reason to /api/client-errors so the log shows it.
+   */
+  const tryAutoStartRecording = async (stopWaits = 0) => {
     if (!isMountedRef.current) return;
-    if (speech.isBusy()) return;
     if (sessionCompleteRef.current) return;
     // The candidate is typing. Reopening the microphone here would record the
     // room over an answer they are writing, and the silence watch would then
@@ -565,9 +587,32 @@ function VoiceSimulateInner() {
      * shortly rather than trusting the wait that scheduled us.
      */
     if (speechServiceRef.current.isAudiblyPlaying()) {
-      setTimeout(() => void tryAutoStartRecording(), 500);
+      setTimeout(() => void tryAutoStartRecording(stopWaits), 500);
       return;
     }
+
+    if (speech.isStopping()) {
+      // Counted in ticks rather than timed, which keeps a wall-clock read out
+      // of the component body.
+      if (stopWaits * AUTO_START_STOP_TICK_MS < AUTO_START_STOP_GRACE_MS) {
+        setTimeout(
+          () => void tryAutoStartRecording(stopWaits + 1),
+          AUTO_START_STOP_TICK_MS,
+        );
+        return;
+      }
+      reportClientError(
+        "voice-auto-start",
+        new Error(
+          "The previous answer's stop had not settled after the interviewer finished; the microphone was not opened automatically.",
+        ),
+      );
+      setRecordingError("Tap the microphone to answer.");
+      return;
+    }
+
+    // Already open — the candidate barged in before playback ended.
+    if (speech.isBusy()) return;
 
     // `speech.start` reports a lapsed token itself, on the same inline slot.
     // Returning quietly used to leave the interview looking finished:
@@ -757,12 +802,23 @@ function VoiceSimulateInner() {
          * session was over before it began, and the only way out was a reload.
          */
         openingGeneratedRef.current = false;
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Could not start the interview. Retrying…",
-        );
-        setOpeningAttempt((attempt) => attempt + 1);
+        const willRetry = openingAttempt < MAX_OPENING_ATTEMPTS;
+        const reason =
+          err instanceof Error ? err.message : "Could not start the interview.";
+        setError(willRetry ? `${reason} Retrying…` : reason);
+        /**
+         * Spaced, not immediate. Every attempt used to fire the moment the
+         * last one failed, so a transient cold-start failure spent all the
+         * retries inside a second and left the error standing.
+         */
+        if (willRetry) {
+          const delayMs = 1_500 * (openingAttempt + 1);
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setOpeningAttempt((attempt) => attempt + 1);
+            }
+          }, delayMs);
+        }
       }
     };
 
@@ -1075,22 +1131,16 @@ function VoiceSimulateInner() {
         return;
       }
 
-      // The hint arrives with the reply, derived from the same analysis that
-      // produced the score. Voice used to discard it.
-      if (result.microFeedback) {
-        const micro = result.microFeedback;
-        setMessages((current) =>
-          current.map((item) =>
-            item.id === userMessageId
-              ? {
-                  ...item,
-                  feedbackHint: micro.hint,
-                  feedbackTone: micro.tone,
-                }
-              : item,
-          ),
-        );
-      }
+      /**
+       * No coaching line under the candidate's answer.
+       *
+       * The hint used to be attached here, which put a running critique on
+       * screen while the interviewer was still talking — the single clearest
+       * signal that this was a tutor rather than an interview. A real
+       * interviewer does not grade you mid-interview. The same analysis is
+       * persisted with the turn and shown in the report afterwards, so
+       * nothing is lost; it just arrives when feedback would.
+       */
 
       const applied = turn.applyTurn(result);
       if (!applied) return;
@@ -1388,6 +1438,18 @@ function VoiceSimulateInner() {
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-4">
+              {/* The opening takes a model call — several seconds on a cold
+                  start — and the transcript used to sit empty for all of it,
+                  so a slow start and a broken one looked identical. */}
+              {bootstrap.status === "ready" &&
+                messages.length === 0 &&
+                !error &&
+                !blockedAudioMessage && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
+                    {activePersonaConfig.name} is joining the interview…
+                  </div>
+                )}
               {messages.map((msg) => (
                 <ChatMessage
                   key={msg.id}

@@ -90,6 +90,9 @@ function buildProsodySsml(
   )}</prosody></voice></speak>`;
 }
 
+/** How long `stopListening` waits for the SDK before moving on. */
+export const STOP_LISTENING_TIMEOUT_MS = 3_000;
+
 /** Map a persona pace dial (1=patient … 10=fast) to an SSML rate delta. */
 export function paceToRatePercent(pace: number | undefined): number {
   const safe = Number.isFinite(pace) ? (pace as number) : 5;
@@ -544,18 +547,37 @@ export class SpeechService {
 
     const recognizer = this.recognizer;
 
+    /**
+     * Bounded, because the SDK does not promise to call back.
+     *
+     * A recognizer whose session Azure has already dropped can leave
+     * `stopContinuousRecognitionAsync` with neither callback ever firing.
+     * `finish` in `useSpeechAnswer` sets its stopping latch before awaiting
+     * this, so an unbounded wait here held that latch for the rest of the
+     * page: every later attempt to open the microphone — including the
+     * automatic one after each question — returned silently on "busy", and
+     * the answer that triggered the stop was never submitted either.
+     */
     await new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(guard);
+        resolve();
+      };
+      const guard = setTimeout(() => {
+        console.warn("Stopping recognition did not complete within 3s; continuing.");
+        done();
+      }, STOP_LISTENING_TIMEOUT_MS);
       try {
-        recognizer.stopContinuousRecognitionAsync(
-          () => resolve(),
-          (error) => {
-            console.error("Error stopping recognition:", error);
-            resolve();
-          },
-        );
+        recognizer.stopContinuousRecognitionAsync(done, (error) => {
+          console.error("Error stopping recognition:", error);
+          done();
+        });
       } catch (error) {
         console.error("Error invoking stopContinuousRecognitionAsync:", error);
-        resolve();
+        done();
       }
     });
   }

@@ -60,7 +60,7 @@ const PLAYBOOKS: InterviewerPlaybook[] = [
     id: "acknowledge-strength",
     tags: ["positive", "warmth"],
     content:
-      "When the candidate does something well, acknowledge it briefly before the next question.",
+      "When the candidate gives a strong answer, do not compliment it. Raise the bar with a harder follow-up, the way a real interviewer does.",
   },
 ];
 

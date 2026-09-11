@@ -163,8 +163,13 @@ starts it.
 - **The interviewer adapts.** Your answer is scored _before_ the next question
   is written, and the verdict steers what comes next. A vague answer gets
   drilled for specifics; a strong one gets pushed a level deeper.
-- **Live coaching** (optional) shows a one-line hint under each of your answers,
-  plus running scores for clarity, specificity, confidence and structure.
+- **Live coaching** (optional, text interviews only) shows a one-line hint under
+  each of your answers, plus running scores for clarity, specificity, confidence
+  and structure. Voice interviews never show it: a real interviewer does not
+  grade you mid-interview, so the same feedback waits for the report.
+- **The interviewer behaves like a real one.** It never calls the interview
+  practice, never praises or grades your answers out loud, and never explains
+  how to structure an answer. It assesses; the coaching comes afterwards.
 - **Progress** is shown in the header — "Question 4 of ~10" — so you know how
   much is left.
 - **Streaming** shows the interviewer's reply as it's written. In voice mode it
@@ -361,17 +366,17 @@ Worth knowing up front:
 - **English only.** Interviewers speak English whatever their nationality. The
   *accent* varies — an Indian persona speaks with an Indian accent — but the
   language never does.
-- **Three of the twenty nationalities have no accent: Japanese, Vietnamese and
-  Brazilian.** Azure has real English voices for fourteen locales, and those
-  work. The rest need a native-locale voice reading English, which was
-  auditioned clip by clip; most were accepted, and these three were not. The
-  failure is not "too strong an accent" — a monolingual voice pronounces English
-  through its own sound system, so the words come out rebuilt rather than
-  accented. No better voice exists in those locales: every alternative either
-  advertises no English at all or is one of Azure's multilingual voices, which
-  are built to sound native and would remove the accent entirely. Those personas
-  use neutral English and the setup screen says so. Method, clips and per-voice
-  verdicts: `docs/artifacts/voice-audition.md`.
+- **Japanese and Vietnamese have no accent, and were dropped from the random
+  persona generator.** Azure has real English voices for fourteen locales, and
+  those work. The rest need a native-locale voice reading English, auditioned
+  clip by clip. Some voices pronounce English through their own sound system,
+  so the words come out rebuilt rather than accented. Brazilian failed a first
+  pass and was re-auditioned across every voice the locale offers; it now uses
+  a plain female voice and a multilingual male one. Japanese and Vietnamese were
+  removed. You can still type any nationality — and the preset Yuki Tanaka is
+  Japanese — but one with no accent voice uses neutral English, and the setup
+  screen says so. Method, clips and verdicts: `docs/artifacts/voice-audition.md`
+  and `docs/artifacts/voice-audition-explore.md`.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
   network. The setup wizard now requires the microphone check to pass before a

@@ -16,6 +16,7 @@
  * cheaper per turn than the main reply.
  */
 
+import { missingOpenAIKey, openAIResponseError } from "@/lib/api/openai-errors";
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
 
@@ -144,7 +145,7 @@ export async function updateRollingSummary(
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+    throw missingOpenAIKey();
   }
 
   const prompt = buildPrompt(input.previousSummary, olderMessages);
@@ -177,7 +178,10 @@ export async function updateRollingSummary(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Summary generation failed: ${response.status} ${text}`);
+    throw openAIResponseError(response.status, text, {
+      model: SUMMARY_MODEL,
+      call: "summary",
+    });
   }
 
   const data = (await response.json()) as {

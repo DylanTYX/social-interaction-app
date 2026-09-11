@@ -10,9 +10,10 @@ import { describe, expect, it } from "vitest";
  *     Chinese accent means a `zh-CN` voice reading English, which can come out
  *     mangled. The `verified` flag gates that, and only a test makes the flag
  *     mean anything.
- *   - Azure's `*Multilingual*` voices sound near-native in English. One of
- *     those in the accent table would leave the feature looking wired up while
- *     doing nothing at all.
+ *   - Azure's multilingual voices are designed to sound native in English, so
+ *     one in the table is presumed accentless — the feature wired up and
+ *     inaudible. A few were auditioned and kept an accent; any multilingual
+ *     row has to carry that audition.
  *   - The randomiser can emit a nationality the table has never heard of. That
  *     should fail here, not fall back in production.
  *
@@ -43,6 +44,20 @@ const ALL_NATIONALITIES = [
   ...NATIONALITY_POOL,
   ...Object.values(PRESET_PERSONAS).map((persona) => persona.nationality),
 ];
+
+/**
+ * Nationalities deliberately taken out of the accent map.
+ *
+ * Every voice either locale offers was auditioned and none carried a usable
+ * accent, so both were removed rather than shipped as a nationality that
+ * silently speaks American. Nothing stops a persona holding one — typed free
+ * text can, and the preset Yuki Tanaka is Japanese — and those fall back to
+ * neutral English with the reason on screen, which the tests below pin.
+ */
+const REMOVED_NATIONALITIES = ["Japanese", "Vietnamese"];
+const SUPPORTED_NATIONALITIES = ALL_NATIONALITIES.filter(
+  (n) => !REMOVED_NATIONALITIES.includes(n),
+);
 
 describe("normalizeNationality", () => {
   it.each([
@@ -77,7 +92,7 @@ describe("every nationality the app can produce resolves", () => {
     expect(isKnownVoiceUri(resolved.uri)).toBe(true);
   });
 
-  it.each(ALL_NATIONALITIES)("%s maps to a locale", (nationality) => {
+  it.each(SUPPORTED_NATIONALITIES)("%s maps to a locale", (nationality) => {
     // Weaker than "has a usable voice" on purpose: an unauditioned locale is
     // still mapped, it just does not resolve yet.
     expect(localeForNationality(nationality)).not.toBeNull();
@@ -85,32 +100,37 @@ describe("every nationality the app can produce resolves", () => {
 });
 
 describe("an unverified accent never reaches a user", () => {
-  it("falls back to neutral English, and says which case it is", () => {
-    const unverified = ACCENT_VOICES.filter((voice) => !voice.verified);
+  it("never resolves a rejected voice, for any nationality or voice gender", () => {
+    // Rejected rows stay in the table as evidence. Brazilian carries rejected
+    // plain voices right beside the accepted ones, which is exactly
+    // where a lookup that ignored `verified` would pick the wrong row.
+    const rejected = new Set(
+      ACCENT_VOICES.filter((v) => !v.verified).map((v) => v.uri),
+    );
     expect(
-      unverified.length,
-      "no unverified voices left — delete this test or the flag",
+      rejected.size,
+      "no rejected voices left — delete this test or the flag",
     ).toBeGreaterThan(0);
 
-    for (const voice of unverified) {
-      const nationality = ALL_NATIONALITIES.find(
-        (candidate) => localeForNationality(candidate) === voice.locale,
-      );
-      if (!nationality) continue;
-      const resolved = resolveVoiceForPersona({ nationality });
-      expect(resolved.uri).toBe(DEFAULT_VOICE_URI);
-      expect(resolved.source).toBe("default");
-      expect(resolved.reason).toBe("not-yet-auditioned");
+    for (const nationality of ALL_NATIONALITIES) {
+      for (const voiceGender of ["female", "male", "unspecified"] as const) {
+        const resolved = resolveVoiceForPersona({ nationality, voiceGender });
+        expect(
+          rejected.has(resolved.uri),
+          `${nationality}/${voiceGender} resolved to ${resolved.uri}`,
+        ).toBe(false);
+      }
     }
   });
 
-  it("distinguishes a rejected accent from a nationality it never knew", () => {
-    // These read identically to the user unless the copy separates them, and
-    // they mean very different things: one was tried and found not to be an
-    // accent at all, the other is a nationality the table has never heard of.
-    expect(resolveVoiceForPersona({ nationality: "Japanese" }).reason).toBe(
-      "not-yet-auditioned",
-    );
+  it("says why an accent is missing, and tells the cases apart", () => {
+    // Japanese and Vietnamese were removed outright — no locale, no voices —
+    // so they read as nationalities the table does not know, which they are.
+    for (const nationality of REMOVED_NATIONALITIES) {
+      const resolved = resolveVoiceForPersona({ nationality });
+      expect(resolved.reason, nationality).toBe("no-accent-for-nationality");
+      expect(resolved.uri).toBe(DEFAULT_VOICE_URI);
+    }
     expect(resolveVoiceForPersona({ nationality: "Martian" }).reason).toBe(
       "no-accent-for-nationality",
     );
@@ -121,6 +141,51 @@ describe("an unverified accent never reaches a user", () => {
       resolveVoiceForPersona({ nationality: "Indian", accentsEnabled: false })
         .reason,
     ).toBe("accents-off");
+    // "not-yet-auditioned" cannot be reached from here while every mapped
+    // locale has a verified voice; `pickVoiceFrom` covers it directly.
+  });
+});
+
+describe("the Brazilian decision", () => {
+  it.each([
+    ["Brazilian", "female", "pt-BR-LeilaNeural"],
+    ["Brazilian", "male", "pt-BR-MacerioMultilingualNeural"],
+  ] as const)("%s %s speaks as %s", (nationality, voiceGender, uri) => {
+    // Chosen by ear from every voice the locale offers. Pinned because the
+    // rejected plain voices sit beside them in the table, and a reordering
+    // there should not quietly change who speaks.
+    expect(resolveVoiceForPersona({ nationality, voiceGender }).uri).toBe(uri);
+  });
+});
+
+describe("coverage", () => {
+  it("gives every nationality the randomiser produces an accent", () => {
+    for (const nationality of NATIONALITY_POOL) {
+      expect(resolveVoiceForPersona({ nationality }).source, nationality).toBe(
+        "nationality",
+      );
+    }
+  });
+
+  it("never hands out a removed nationality from the randomiser", () => {
+    for (const removed of REMOVED_NATIONALITIES) {
+      expect(NATIONALITY_POOL).not.toContain(removed);
+    }
+  });
+
+  it("tells a preset with a removed nationality why it has no accent", () => {
+    // Yuki Tanaka is Japanese. She keeps her biography, loses the accent, and
+    // the setup screen says so instead of quietly playing an American voice.
+    for (const preset of Object.values(PRESET_PERSONAS)) {
+      const resolved = resolveVoiceForPersona({ nationality: preset.nationality });
+      if (REMOVED_NATIONALITIES.includes(preset.nationality)) {
+        expect(
+          describeResolvedVoice(resolved, preset.name, preset.nationality),
+        ).toContain("neutral English");
+      } else {
+        expect(resolved.source, preset.name).toBe("nationality");
+      }
+    }
   });
 });
 
@@ -186,11 +251,21 @@ describe("a stated voice gender that cannot be honoured", () => {
 });
 
 describe("the accent table is internally consistent", () => {
-  it("never lists a Multilingual voice", () => {
-    // These advertise 100+ secondary locales and are engineered to sound
-    // near-native in each, so a zh-CN one reading English sounds American.
-    for (const voice of ACCENT_VOICES) {
-      expect(voice.uri).not.toMatch(/Multilingual|DragonHD/i);
+  it("admits a multilingual voice only on the strength of an audition", () => {
+    // Designed to sound native in English, so presumed to carry no accent. The
+    // presumption was wrong for the few in the table, but it is the right
+    // default: a multilingual row with no audition behind it is exactly the
+    // silent no-op this guards against.
+    const multilingual = ACCENT_VOICES.filter((v) =>
+      /Multilingual|DragonHD/i.test(v.uri),
+    );
+    for (const voice of multilingual) {
+      expect(voice.verified, `${voice.uri} is multilingual but unverified`).toBe(
+        true,
+      );
+      expect(voice.note, `${voice.uri} has no audition note`).toMatch(
+        /Multilingual voice, auditioned by ear/,
+      );
     }
   });
 

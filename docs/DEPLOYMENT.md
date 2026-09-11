@@ -98,6 +98,16 @@ Optional model overrides (leave unset unless you want to change models):
 
 **Tip:** Copy values from your local `.env.local` — never commit that file.
 
+**Two Vercel traps that look like app bugs.** Environment variables are scoped
+per environment, and a branch deployment runs in **Preview** — a key added only
+to Production is missing there. And a changed variable only reaches a *new*
+deployment, so redeploy after adding one. Either way the app still signs in and
+creates a session, then fails on the interviewer's first word; the error card
+now says which variable is missing instead of "Something went wrong".
+
+Routes that call OpenAI set `maxDuration = 60`, which every Vercel plan allows,
+so a cold start no longer depends on the platform's default function timeout.
+
 ### B3. Deploy
 
 1. Click **Deploy** (or push to `main` if you connected Git integration).
@@ -141,7 +151,7 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | “Supabase is not configured”                       | Add `NEXT_PUBLIC_SUPABASE_*` in Vercel env; redeploy                                                   |
 | Login works locally, not on Vercel                 | Add production URL to Supabase **Redirect URLs**                                                       |
 | Register succeeds but dashboard redirects to login | Same as above; check cookies / Site URL                                                                |
-| AI never responds                                  | `OPENAI_API_KEY` missing or invalid; check function logs                                               |
+| AI never responds / “The interviewer is unavailable” | `OPENAI_API_KEY` missing for this environment (Preview vs Production), rejected, or out of credit — the message says which. Redeploy after changing it |
 | Voice broken                                       | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`                                                         |
 | PDF upload fails                                   | Migrations `0002`/`0004` not applied on production DB                                                  |
 | Sending a message 500s                             | Migrations `0005`/`0006` not applied — `append_interview_turn` RPC is missing or has the old signature |

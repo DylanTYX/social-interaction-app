@@ -151,7 +151,7 @@ _One tester, one fresh account._
 | V5  | Silence submits     | Answer, then stay quiet                                                 | Countdown appears ~1.5s in; submits at 3s                                            | ☐     |       |
 | V6  | Thinking pause      | Pause mid-answer for ~2s, then continue                                 | Not cut off; countdown resets                                                        | ☐     |       |
 | V7  | Accent matches      | Use a persona with nationality **Indian** (or Singaporean, Nigerian, British); start a voice interview | The voice is the accent named on the Review screen, not the default US voice | ☐     |       |
-| V8  | No accent is stated | Use a persona with nationality **Chinese** (or Swedish, Japanese)       | Review says neutral English will be used and why; the interview runs normally        | ☐     |       |
+| V8  | No accent is stated | Type a nationality with no accent voice, e.g. **Vietnamese** or **Thai** | Review says neutral English will be used and why; the interview runs normally        | ☐     |       |
 | V9  | Accents off         | Turn "Interviewer accents" off on Review, start with an Indian persona  | Neutral English is used instead                                                      | ☐     |       |
 | V10 | Loop voices differ  | Build a 2-round loop with interviewers of different nationalities       | The voice changes at the round boundary — the two rounds sound like two people       | ☐     |       |
 

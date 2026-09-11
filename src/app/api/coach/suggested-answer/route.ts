@@ -1,3 +1,4 @@
+import { missingOpenAIKey } from "@/lib/api/openai-errors";
 import { readJsonBody } from "@/lib/api/read-json";
 import { NextResponse } from "next/server";
 
@@ -21,6 +22,8 @@ import {
 } from "@/lib/api/input-limits";
 
 export const runtime = "nodejs";
+// Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
+export const maxDuration = 60;
 
 /**
  * Far past any real interview — the longest configured round is a few dozen
@@ -97,10 +100,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return handleRouteError(
-        "POST /api/coach/suggested-answer",
-        new Error("OPENAI_API_KEY is not configured."),
-      );
+      return handleRouteError("POST /api/coach/suggested-answer", missingOpenAIKey());
     }
 
     // "coach" has been a declared LlmCallSite since the usage table was added,
