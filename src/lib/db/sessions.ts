@@ -224,11 +224,6 @@ export interface ListSessionsOptions {
   archived?: ArchivedView;
   /** Absent keeps plain newest-first; present also floats pinned sessions up. */
   sort?: SessionSort;
-  /** Inclusive bounds on `average_score`. */
-  minScore?: number;
-  maxScore?: number;
-  /** ISO timestamp; sessions created on or after it. */
-  since?: string;
 }
 
 export interface ListSessionsResult {
@@ -262,9 +257,6 @@ export async function listSessions(
     tag,
     archived = "all",
     sort,
-    minScore,
-    maxScore,
-    since,
   } = options;
 
   let request = supabase
@@ -297,13 +289,6 @@ export async function listSessions(
   if (archived === "archived") {
     request = request.not("archived_at", "is", null);
   }
-  if (typeof minScore === "number") {
-    request = request.gte("average_score", minScore);
-  }
-  if (typeof maxScore === "number") {
-    request = request.lte("average_score", maxScore);
-  }
-  if (since) request = request.gte("created_at", since);
 
   const trimmed = query?.trim();
   if (trimmed) {

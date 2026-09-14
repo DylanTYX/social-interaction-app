@@ -2,12 +2,7 @@
 
 import { readJson } from "@/lib/api/fetch-json";
 import { useCallback, useRef, useEffect, useState } from "react";
-import type {
-  ArchivedView,
-  ScoreBand,
-  SessionSort,
-  SinceWindow,
-} from "@/lib/session-organisation";
+import type { ArchivedView, SessionSort } from "@/lib/session-organisation";
 
 export interface InterviewSessionSummary {
   id: string;
@@ -57,8 +52,6 @@ export interface InterviewHistoryFilters {
   tag?: string;
   archived?: ArchivedView;
   sort?: SessionSort;
-  score?: ScoreBand;
-  since?: SinceWindow;
 }
 
 export interface UseInterviewHistory {
@@ -111,8 +104,6 @@ export function useInterviewHistory(
     tag,
     archived,
     sort,
-    score,
-    since,
   } = filters;
 
   const buildUrl = useCallback(
@@ -125,11 +116,9 @@ export function useInterviewHistory(
       if (tag) params.set("tag", tag);
       if (archived) params.set("archived", archived);
       if (sort) params.set("sort", sort);
-      if (score && score !== "any") params.set("score", score);
-      if (since && since !== "any") params.set("since", since);
       return `/api/sessions?${params.toString()}`;
     },
-    [limit, query, mode, statusFilter, tag, archived, sort, score, since],
+    [limit, query, mode, statusFilter, tag, archived, sort],
   );
 
   const fetchPage = useCallback(

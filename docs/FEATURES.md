@@ -370,9 +370,10 @@ The **Sessions** page keeps a growing history usable:
   report — the interview itself is untouched), **tag** it, and **pin** it to the top.
 - **Archive** — hide a session without deleting it. Archived sessions still
   count in your dashboard and analytics; turn on **Show archived** to see them.
-- **Sort and filter** by newest, oldest or score, by score band, date range,
-  tag, mode and status, alongside search.
-- **Select several** to tag, move, pin, archive or delete them together.
+- **Sort and filter** by newest, oldest or score, and narrow the list by
+  text or voice, status, or tag. Search covers the title, scenario and
+  interviewer.
+- **Select several** to tag, pin, archive or delete them together.
 - **Compare two sessions** — tick two and choose Compare to see every score
   side by side with the change between them.
 

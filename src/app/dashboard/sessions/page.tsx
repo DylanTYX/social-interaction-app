@@ -50,12 +50,8 @@ import {
 } from "@/lib/session-actions";
 import {
   displayTitle,
-  SCORE_BANDS,
   SESSION_SORTS,
-  SINCE_WINDOWS,
-  type ScoreBand,
   type SessionSort,
-  type SinceWindow,
 } from "@/lib/session-organisation";
 
 type ModeFilter = "all" | "text" | "voice";
@@ -79,8 +75,6 @@ export default function SessionsLibraryPage() {
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SessionSort>("newest");
-  const [scoreBand, setScoreBand] = useState<ScoreBand>("any");
-  const [since, setSince] = useState<SinceWindow>("any");
   const [tagFilter, setTagFilter] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
 
@@ -107,8 +101,6 @@ export default function SessionsLibraryPage() {
     mode: modeFilter === "all" ? undefined : modeFilter,
     status: statusFilter === "all" ? undefined : statusFilter,
     sort,
-    score: scoreBand,
-    since,
     tag: tagFilter === "all" ? undefined : tagFilter,
     // The sessions page hides archived sessions unless asked. The API's own
     // default is "all", because the dashboard's statistics still count them.
@@ -233,8 +225,6 @@ export default function SessionsLibraryPage() {
     setQuery("");
     setModeFilter("all");
     setStatusFilter("all");
-    setScoreBand("any");
-    setSince("any");
     setTagFilter("all");
     setShowArchived(false);
   };
@@ -243,8 +233,6 @@ export default function SessionsLibraryPage() {
     debouncedQuery.trim() !== "" ||
     modeFilter !== "all" ||
     statusFilter !== "all" ||
-    scoreBand !== "any" ||
-    since !== "any" ||
     tagFilter !== "all" ||
     showArchived;
 
@@ -269,7 +257,7 @@ export default function SessionsLibraryPage() {
       />
 
       <Card className="shadow-soft">
-        <CardContent className="space-y-3 py-4">
+        <CardContent className="py-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -309,41 +297,13 @@ export default function SessionsLibraryPage() {
                 <SelectItem value="abandoned">Abandoned</SelectItem>
               </SelectContent>
             </Select>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
             <Select value={sort} onValueChange={(value) => setSort(value as SessionSort)}>
               <SelectTrigger className="w-[160px]" aria-label="Sort">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {SESSION_SORTS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={scoreBand} onValueChange={(value) => setScoreBand(value as ScoreBand)}>
-              <SelectTrigger className="w-[150px]" aria-label="Score">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SCORE_BANDS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={since} onValueChange={(value) => setSince(value as SinceWindow)}>
-              <SelectTrigger className="w-[150px]" aria-label="Date">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SINCE_WINDOWS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

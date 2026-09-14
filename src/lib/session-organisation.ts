@@ -21,53 +21,6 @@ export function parseSessionSort(value: unknown): SessionSort | undefined {
   return SESSION_SORTS.find((sort) => sort.value === value)?.value;
 }
 
-export type ScoreBand = "any" | "strong" | "fair" | "weak";
-
-export const SCORE_BANDS: ReadonlyArray<{
-  value: ScoreBand;
-  label: string;
-  min?: number;
-  max?: number;
-}> = [
-  { value: "any", label: "Any score" },
-  { value: "strong", label: "80% and above", min: 80 },
-  { value: "fair", label: "60–79%", min: 60, max: 79 },
-  { value: "weak", label: "Below 60%", max: 59 },
-];
-
-export function parseScoreBand(value: unknown): ScoreBand {
-  return SCORE_BANDS.find((band) => band.value === value)?.value ?? "any";
-}
-
-export function scoreBandRange(band: ScoreBand): { min?: number; max?: number } {
-  const found = SCORE_BANDS.find((entry) => entry.value === band);
-  return { min: found?.min, max: found?.max };
-}
-
-export type SinceWindow = "any" | "7d" | "30d" | "90d";
-
-export const SINCE_WINDOWS: ReadonlyArray<{
-  value: SinceWindow;
-  label: string;
-  days?: number;
-}> = [
-  { value: "any", label: "Any time" },
-  { value: "7d", label: "Last 7 days", days: 7 },
-  { value: "30d", label: "Last 30 days", days: 30 },
-  { value: "90d", label: "Last 90 days", days: 90 },
-];
-
-export function parseSinceWindow(value: unknown): SinceWindow {
-  return SINCE_WINDOWS.find((window) => window.value === value)?.value ?? "any";
-}
-
-export function sinceToIso(window: SinceWindow, now = Date.now()): string | undefined {
-  const days = SINCE_WINDOWS.find((entry) => entry.value === window)?.days;
-  return days === undefined
-    ? undefined
-    : new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
-}
-
 /**
  * Which sessions a list shows by archive state. The API defaults to "all"
  * when nothing is asked for: archiving hides a session from the sessions page,

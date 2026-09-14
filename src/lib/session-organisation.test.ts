@@ -13,12 +13,8 @@ import {
   normalizeTag,
   normalizeTags,
   parseArchivedView,
-  parseScoreBand,
   parseSessionSort,
-  parseSinceWindow,
   removeTag,
-  scoreBandRange,
-  sinceToIso,
 } from "@/lib/session-organisation";
 
 describe("tags", () => {
@@ -64,19 +60,6 @@ describe("sort and filter parameters", () => {
   it("accepts only known sorts", () => {
     expect(parseSessionSort("score_high")).toBe("score_high");
     expect(parseSessionSort("drop table")).toBeUndefined();
-  });
-
-  it("maps score bands to inclusive integer ranges", () => {
-    expect(scoreBandRange(parseScoreBand("strong"))).toEqual({ min: 80, max: undefined });
-    expect(scoreBandRange(parseScoreBand("fair"))).toEqual({ min: 60, max: 79 });
-    expect(scoreBandRange(parseScoreBand("weak"))).toEqual({ min: undefined, max: 59 });
-    expect(scoreBandRange(parseScoreBand("nonsense"))).toEqual({ min: undefined, max: undefined });
-  });
-
-  it("turns a date window into a cut-off", () => {
-    const now = Date.parse("2026-09-12T00:00:00Z");
-    expect(sinceToIso(parseSinceWindow("7d"), now)).toBe("2026-09-05T00:00:00.000Z");
-    expect(sinceToIso(parseSinceWindow("any"), now)).toBeUndefined();
   });
 
   it("has no archive filter unless one is asked for", () => {

@@ -6,11 +6,7 @@ import { parseBoundedString, parseLimit, parseOffset, parseOptionalUuid } from "
 import {
   normalizeTag,
   parseArchivedView,
-  parseScoreBand,
   parseSessionSort,
-  parseSinceWindow,
-  scoreBandRange,
-  sinceToIso,
 } from "@/lib/session-organisation";
 import { parsePersonaConfig } from "@/lib/persona-schema";
 import {
@@ -67,10 +63,6 @@ export async function GET(request: Request) {
     const tag = normalizeTag(searchParams.get("tag")) ?? undefined;
     const archived = parseArchivedView(searchParams.get("archived"));
     const sort = parseSessionSort(searchParams.get("sort"));
-    const { min: minScore, max: maxScore } = scoreBandRange(
-      parseScoreBand(searchParams.get("score")),
-    );
-    const since = sinceToIso(parseSinceWindow(searchParams.get("since")));
 
     const { sessions, total } = await listSessions(supabase, {
       limit,
@@ -81,9 +73,6 @@ export async function GET(request: Request) {
       tag,
       archived,
       sort,
-      minScore,
-      maxScore,
-      since,
     });
     return NextResponse.json({ sessions, total });
   } catch (error) {
