@@ -57,7 +57,14 @@ export const COACH_FIXTURES: CoachFixture[] = [
       "So we had a lot of problems with our release process, it was taking like 3 hours every time and we did it twice a week. I looked at it and there was a lot of manual steps, I think 14 of them. Anyway I ended up automating some of it over about 2 months and afterwards it was down to about 25 minutes. The team was happier. I think in the end we were doing maybe 8 releases a week instead of 2. That's basically it, it was mostly just scripting really, nothing that clever.",
     rationale:
       "Every number a strong answer needs is present — 3 hours, twice a week, 14 steps, 2 months, 25 minutes, 2 to 8 releases — but there is no structure, no stated task, the actions are vague ('automating some of it'), and the candidate actively undercuts their own result. Weak on delivery, dense in facts. The one fixture where surfacing versus inventing can actually be told apart.",
-    checkableFacts: ["3 hours", "twice a week", "14", "2 months", "25 minutes", "8"],
+    checkableFacts: [
+      "3 hours",
+      "twice a week",
+      "14",
+      "2 months",
+      "25 minutes",
+      "8",
+    ],
   },
   {
     id: "dense-screening",

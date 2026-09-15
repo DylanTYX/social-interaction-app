@@ -47,10 +47,7 @@ function logFactorial(n: number): number {
 
 function binomialPmf(k: number, n: number): number {
   return Math.exp(
-    logFactorial(n) -
-      logFactorial(k) -
-      logFactorial(n - k) -
-      n * Math.LN2, // p = 0.5, so p^k (1-p)^(n-k) = 2^-n
+    logFactorial(n) - logFactorial(k) - logFactorial(n - k) - n * Math.LN2, // p = 0.5, so p^k (1-p)^(n-k) = 2^-n
   );
 }
 

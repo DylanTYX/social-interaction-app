@@ -95,7 +95,11 @@ const AUDITION_SENTENCE =
 const WER_INTELLIGIBILITY_CEILING = 0.15;
 
 const OUT_DIR = path.join("docs", "artifacts", "voice-audition");
-const EXPLORE_SHEET = path.join("docs", "artifacts", "voice-audition-explore.md");
+const EXPLORE_SHEET = path.join(
+  "docs",
+  "artifacts",
+  "voice-audition-explore.md",
+);
 const SHEET = path.join("docs", "artifacts", "voice-audition.md");
 const CATALOGUE = (region: string) =>
   path.join("docs", "artifacts", `azure-voices-${region}.json`);
@@ -125,7 +129,13 @@ function parseArgs(argv: string[]): Args {
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean),
-    only: only ? only.slice("--only=".length).split(",").map((s) => s.trim()).filter(Boolean) : [],
+    only: only
+      ? only
+          .slice("--only=".length)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [],
   };
 }
 
@@ -162,7 +172,9 @@ async function fetchCatalogue(key: string, region: string): Promise<void> {
     headers: { "Ocp-Apim-Subscription-Key": key },
   });
   if (!response.ok) {
-    console.error(`Voice list failed: ${response.status} ${response.statusText}`);
+    console.error(
+      `Voice list failed: ${response.status} ${response.statusText}`,
+    );
     process.exit(1);
   }
   const raw = (await response.json()) as Array<
@@ -201,7 +213,11 @@ async function fetchCatalogue(key: string, region: string): Promise<void> {
       2,
     ) + "\n",
   );
-  const locales = [...new Set(voices.filter((v) => v.Locale.startsWith("en-")).map((v) => v.Locale))].sort();
+  const locales = [
+    ...new Set(
+      voices.filter((v) => v.Locale.startsWith("en-")).map((v) => v.Locale),
+    ),
+  ].sort();
   console.log(`Wrote ${file} — ${voices.length} voices.`);
   console.log(`English locales in ${region}: ${locales.join(" ")}`);
 }
@@ -222,7 +238,9 @@ interface Candidate {
  */
 function candidates(only: string[]): Candidate[] {
   const nationalities = NATIONALITY_POOL.filter(
-    (n) => only.length === 0 || only.some((o) => o.toLowerCase() === n.toLowerCase()),
+    (n) =>
+      only.length === 0 ||
+      only.some((o) => o.toLowerCase() === n.toLowerCase()),
   );
   const rows: Candidate[] = [];
   for (const nationality of nationalities) {
@@ -253,9 +271,8 @@ async function synthesiseWithRetry(
 ): Promise<{ ok: boolean; bytes: number; detail: string }> {
   for (let attempt = 1; ; attempt += 1) {
     const result = await synthesise(key, region, voiceUri, outFile);
-    const transient = /ResourceExhausted|No free synthesizer|1013|Timeout/i.test(
-      result.detail,
-    );
+    const transient =
+      /ResourceExhausted|No free synthesizer|1013|Timeout/i.test(result.detail);
     if (result.ok || !transient || attempt >= 3) return result;
     process.stdout.write(`retry ${attempt} `);
     await new Promise((r) => setTimeout(r, attempt * 4000));
@@ -285,7 +302,9 @@ function synthesise(
           ok,
           bytes: ok ? result.audioData.byteLength : 0,
           // A voice that fails in this region is a result, not a row to skip.
-          detail: ok ? "" : `${SpeechSDK.ResultReason[result.reason]} ${result.errorDetails ?? ""}`.trim(),
+          detail: ok
+            ? ""
+            : `${SpeechSDK.ResultReason[result.reason]} ${result.errorDetails ?? ""}`.trim(),
         });
         if (ok) {
           fs.writeFileSync(outFile, Buffer.from(result.audioData));
@@ -305,7 +324,11 @@ function synthesise(
 // ---------------------------------------------------------------------------
 
 const NORMALISE = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9' ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 /** Levenshtein distance over words, divided by reference length. */
 function wordErrorRate(reference: string, hypothesis: string): number {
@@ -370,7 +393,8 @@ function autoVerdict(r: Row): string {
   if (!r.ok) return "no audio — synthesis failed";
   if (r.voice.locale.startsWith("en-")) return "native English locale";
   if (r.wer === null) return "no WER — run with --stt";
-  if (r.wer > WER_INTELLIGIBILITY_CEILING) return `listen closely — recogniser struggled`;
+  if (r.wer > WER_INTELLIGIBILITY_CEILING)
+    return `listen closely — recogniser struggled`;
   return "listen";
 }
 
@@ -383,7 +407,12 @@ interface Row extends Candidate {
   wer: number | null;
 }
 
-function writeSheet(rows: Row[], region: string, chars: number, stt: boolean): void {
+function writeSheet(
+  rows: Row[],
+  region: string,
+  chars: number,
+  stt: boolean,
+): void {
   const lines: string[] = [];
   lines.push("# Accent audition");
   lines.push("");
@@ -392,7 +421,9 @@ function writeSheet(rows: Row[], region: string, chars: number, stt: boolean): v
   lines.push(`- SDK: microsoft-cognitiveservices-speech-sdk`);
   lines.push(`- Format: Riff24Khz16BitMonoPcm`);
   lines.push(`- Characters synthesised: ${chars}`);
-  lines.push(`- Command: \`npm run eval:voices -- --live${stt ? " --stt" : ""}\``);
+  lines.push(
+    `- Command: \`npm run eval:voices -- --live${stt ? " --stt" : ""}\``,
+  );
   lines.push("");
   lines.push("Sentence, identical for every voice:");
   lines.push("");
@@ -414,7 +445,9 @@ function writeSheet(rows: Row[], region: string, chars: number, stt: boolean): v
   lines.push(
     "| # | Nationality | Voice | Locale | Gender | Synth | WER | Auto | Recognised as | Accent (none/slight/clear) | Verdict (use/reject) |",
   );
-  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+  lines.push(
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+  );
   for (const r of rows) {
     lines.push(
       `| ${r.index} | ${r.nationality} | \`${r.voice.uri}\` | ${r.voice.locale} | ${r.voice.gender} | ` +
@@ -424,7 +457,9 @@ function writeSheet(rows: Row[], region: string, chars: number, stt: boolean): v
     );
   }
   lines.push("");
-  lines.push(`Audio: \`${OUT_DIR}/\` (git-ignored — regenerate rather than commit).`);
+  lines.push(
+    `Audio: \`${OUT_DIR}/\` (git-ignored — regenerate rather than commit).`,
+  );
   lines.push("");
   fs.writeFileSync(SHEET, lines.join("\n"));
   console.log(`\nWrote ${SHEET}`);
@@ -519,7 +554,10 @@ function readExploreSheet(): SheetRow[] {
         locale: c[1],
         gender: `${c[3]}, ${c[4]}`,
         wer: c[6],
-        auto: c[4] === "multilingual" ? "expected to sound native — confirm" : "plain",
+        auto:
+          c[4] === "multilingual"
+            ? "expected to sound native — confirm"
+            : "plain",
         heard: c[7],
         file: path.join(OUT_DIR, `explore-${uri}.wav`),
       };
@@ -529,7 +567,8 @@ function readExploreSheet(): SheetRow[] {
 function writePage(rows: SheetRow[]): void {
   const control = rows.find((r) => r.uri === "en-US-AriaNeural");
   const groups = new Map<string, SheetRow[]>();
-  for (const r of rows) groups.set(r.nationality, [...(groups.get(r.nationality) ?? []), r]);
+  for (const r of rows)
+    groups.set(r.nationality, [...(groups.get(r.nationality) ?? []), r]);
   const explore = readExploreSheet().filter((r) => fs.existsSync(r.file));
 
   const rel = (r: SheetRow) => path.basename(r.file);
@@ -594,8 +633,18 @@ sixteen is a sample, not a test. The <code>multilingual</code> ones are here to 
 they are excluded from the shipped table on the theory that they sound near-native in English and
 therefore carry no accent. All of them scored 0% WER, which tells you they are intelligible and
 tells you nothing about whether they have an accent — that is the question for your ears.</p>
-${[...new Map(explore.map((r) => [r.locale, explore.filter((x) => x.locale === r.locale)]))]
-  .map(([loc, items]) => `<h3>${loc}</h3><table>${items.map(card).join("")}</table>`)
+${[
+  ...new Map(
+    explore.map((r) => [
+      r.locale,
+      explore.filter((x) => x.locale === r.locale),
+    ]),
+  ),
+]
+  .map(
+    ([loc, items]) =>
+      `<h3>${loc}</h3><table>${items.map(card).join("")}</table>`,
+  )
   .join("\n")}`
     : ""
 }
@@ -681,14 +730,26 @@ function serve(port: number): void {
 function exploreCandidates(
   locales: string[],
   region: string,
-): Array<{ uri: string; locale: string; gender: string; multilingual: boolean }> {
+): Array<{
+  uri: string;
+  locale: string;
+  gender: string;
+  multilingual: boolean;
+}> {
   const file = CATALOGUE(region);
   if (!fs.existsSync(file)) {
-    console.error(`No catalogue at ${file}. Run: npm run eval:voices -- --list`);
+    console.error(
+      `No catalogue at ${file}. Run: npm run eval:voices -- --list`,
+    );
     process.exit(1);
   }
   const catalogue = JSON.parse(fs.readFileSync(file, "utf8")) as {
-    voices: Array<{ ShortName: string; Locale: string; Gender: string; Status: string }>;
+    voices: Array<{
+      ShortName: string;
+      Locale: string;
+      Gender: string;
+      Status: string;
+    }>;
   };
   return catalogue.voices
     .filter((v) => locales.includes(v.Locale) && v.Status === "GA")
@@ -698,7 +759,9 @@ function exploreCandidates(
       gender: v.Gender.toLowerCase(),
       multilingual: /Multilingual|DragonHD/.test(v.ShortName),
     }))
-    .sort((a, b) => a.locale.localeCompare(b.locale) || a.uri.localeCompare(b.uri));
+    .sort(
+      (a, b) => a.locale.localeCompare(b.locale) || a.uri.localeCompare(b.uri),
+    );
 }
 
 interface ExploreRow {
@@ -713,7 +776,11 @@ interface ExploreRow {
   wer: number | null;
 }
 
-function writeExploreSheet(rows: ExploreRow[], region: string, chars: number): void {
+function writeExploreSheet(
+  rows: ExploreRow[],
+  region: string,
+  chars: number,
+): void {
   const lines: string[] = [];
   lines.push("# Accent audition — full-locale exploration");
   lines.push("");
@@ -726,7 +793,9 @@ function writeExploreSheet(rows: ExploreRow[], region: string, chars: number): v
   lines.push(`- Run: ${new Date().toISOString().slice(0, 10)}`);
   lines.push(`- Region: \`${region}\``);
   lines.push(`- Characters synthesised: ${chars}`);
-  lines.push(`- Command: \`npm run eval:voices -- --explore=${[...new Set(rows.map((r) => r.locale))].join(",")} --stt\``);
+  lines.push(
+    `- Command: \`npm run eval:voices -- --explore=${[...new Set(rows.map((r) => r.locale))].join(",")} --stt\``,
+  );
   lines.push("");
   lines.push("Same sentence as the main audition:");
   lines.push("");
@@ -738,7 +807,9 @@ function writeExploreSheet(rows: ExploreRow[], region: string, chars: number): v
       "accent — listen and confirm, because that theory was never tested.",
   );
   lines.push("");
-  lines.push("| Locale | Voice | Gender | Kind | Synth | WER | Recognised as | Accent | Verdict |");
+  lines.push(
+    "| Locale | Voice | Gender | Kind | Synth | WER | Recognised as | Accent | Verdict |",
+  );
   lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
   for (const r of rows) {
     lines.push(
@@ -761,7 +832,9 @@ async function main(): Promise<void> {
     const all = readSheet();
     const rows = args.only.length
       ? all.filter((r) =>
-          args.only.some((o) => o.toLowerCase() === r.nationality.toLowerCase()),
+          args.only.some(
+            (o) => o.toLowerCase() === r.nationality.toLowerCase(),
+          ),
         )
       : all;
     if (rows.length === 0) {
@@ -808,7 +881,14 @@ async function main(): Promise<void> {
           ? `ok${wer === null ? "" : `  WER ${(wer * 100).toFixed(0)}%`}`
           : `FAIL ${result.detail}`,
       );
-      done.push({ ...c, file, ok: result.ok, detail: result.detail, heard, wer });
+      done.push({
+        ...c,
+        file,
+        ok: result.ok,
+        detail: result.detail,
+        heard,
+        wer,
+      });
     }
     writeExploreSheet(done, region, exploreChars);
     console.log(`\nnpm run eval:voices -- --serve   to listen`);
@@ -819,17 +899,26 @@ async function main(): Promise<void> {
 
   if (!args.live) {
     const unverified = ACCENT_VOICES.filter((v) => !v.verified);
-    console.log(`${ACCENT_VOICES.length} voices mapped, ${unverified.length} still unverified.\n`);
+    console.log(
+      `${ACCENT_VOICES.length} voices mapped, ${unverified.length} still unverified.\n`,
+    );
     const byLocale = new Map<string, AccentVoice[]>();
     for (const v of unverified) {
       byLocale.set(v.locale, [...(byLocale.get(v.locale) ?? []), v]);
     }
     for (const [locale, voices] of [...byLocale].sort()) {
-      console.log(`  ${locale.padEnd(7)} ${voices.map((v) => v.uri.replace(locale + "-", "")).join(", ")}`);
+      console.log(
+        `  ${locale.padEnd(7)} ${voices.map((v) => v.uri.replace(locale + "-", "")).join(", ")}`,
+      );
     }
     const unmapped = NATIONALITY_POOL.filter((n) => !localeForNationality(n));
-    if (unmapped.length) console.log(`\nNationalities with no locale at all: ${unmapped.join(", ")}`);
-    console.log(`\n${rows.length} candidates would be auditioned. Re-run with --live to synthesise.`);
+    if (unmapped.length)
+      console.log(
+        `\nNationalities with no locale at all: ${unmapped.join(", ")}`,
+      );
+    console.log(
+      `\n${rows.length} candidates would be auditioned. Re-run with --live to synthesise.`,
+    );
     return;
   }
 
@@ -840,7 +929,9 @@ async function main(): Promise<void> {
   for (const c of rows) {
     const stem = `${String(c.index).padStart(2, "0")}-${c.nationality}-${c.voice.uri}`;
     const file = path.join(OUT_DIR, `${stem}.wav`);
-    process.stdout.write(`[${c.index}/${rows.length}] ${c.nationality.padEnd(12)} ${c.voice.uri.padEnd(28)} `);
+    process.stdout.write(
+      `[${c.index}/${rows.length}] ${c.nationality.padEnd(12)} ${c.voice.uri.padEnd(28)} `,
+    );
     const result = await synthesiseWithRetry(key, region, c.voice.uri, file);
     chars += AUDITION_SENTENCE.length;
     let heard = "";
@@ -864,13 +955,21 @@ async function main(): Promise<void> {
   console.log(
     `\n${done.filter((r) => r.voice.locale.startsWith("en-")).length} native English voices need no audition.`,
   );
-  console.log(`${rejected.length} the recogniser struggled with — listen to these too, it is not the judge:`);
+  console.log(
+    `${rejected.length} the recogniser struggled with — listen to these too, it is not the judge:`,
+  );
   for (const r of rejected) {
-    console.log(`  ${r.nationality.padEnd(12)} ${r.voice.uri.padEnd(26)} WER ${((r.wer ?? 0) * 100).toFixed(0)}%`);
+    console.log(
+      `  ${r.nationality.padEnd(12)} ${r.voice.uri.padEnd(26)} WER ${((r.wer ?? 0) * 100).toFixed(0)}%`,
+    );
   }
-  console.log(`\n${listen.length} passed the intelligibility floor and need an ear:`);
+  console.log(
+    `\n${listen.length} passed the intelligibility floor and need an ear:`,
+  );
   for (const r of listen) {
-    console.log(`  ${String(r.index).padStart(2)} ${r.nationality.padEnd(12)} ${r.voice.uri.padEnd(26)} ${r.file}`);
+    console.log(
+      `  ${String(r.index).padStart(2)} ${r.nationality.padEnd(12)} ${r.voice.uri.padEnd(26)} ${r.file}`,
+    );
   }
   console.log(
     `\nAll ${listen.length + rejected.length} need an ear. Two different questions:\n` +
