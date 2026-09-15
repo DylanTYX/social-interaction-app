@@ -15,6 +15,9 @@ interface StatCounterProps {
  * Counts up from 0 to `value` the first time it scrolls into view. The count
  * itself — rAF, ease-out, reduced-motion handling — lives in `useCountUp`;
  * what's left here is the "first time it scrolls into view" part.
+ *
+ * The number is set in the display face in navy, the same treatment as every
+ * large figure on the landing page; see docs/DESIGN.md.
  */
 export function StatCounter({
   value,
@@ -57,12 +60,12 @@ export function StatCounter({
   }, [value, start]);
 
   return (
-    <div ref={ref}>
-      <p className="text-3xl font-bold text-slate-900">
+    <div ref={ref} className="flex flex-col items-center gap-1.5 text-center">
+      <p className="font-display text-[clamp(1.9rem,2.6vw,2.4rem)] font-bold leading-none tracking-[-0.03em] text-navy tabular-nums">
         {display}
         {suffix}
       </p>
-      <p className="text-sm text-slate-600">{label}</p>
+      <p className="text-[14.5px] text-slate-600">{label}</p>
     </div>
   );
 }

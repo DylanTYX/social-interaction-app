@@ -31,6 +31,20 @@ export const TILE_COLORS_INTERACTIVE: Record<TileColor, string> = {
   teal: "bg-teal-100 text-teal-600 group-hover:bg-teal-200",
 };
 
+/**
+ * A solid stroke of the accent, for the colour edge on a round card or a dot
+ * beside a round's name. Same hue family as the tiles, full strength.
+ */
+export const TILE_ACCENT: Record<TileColor, string> = {
+  blue: "bg-blue-600",
+  purple: "bg-purple-600",
+  indigo: "bg-indigo-600",
+  green: "bg-green-600",
+  orange: "bg-orange-500",
+  pink: "bg-pink-600",
+  teal: "bg-teal-600",
+};
+
 /** Matching hover border for a card wrapping one of the tiles above. */
 export const TILE_BORDERS: Record<TileColor, string> = {
   blue: "hover:border-blue-200",

@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Check,
-  Lightbulb,
-  RefreshCw,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCountUp } from "@/hooks/use-count-up";
@@ -16,6 +10,8 @@ import {
   scoreAnswerHeuristically,
   type HeuristicFeedback,
 } from "@/lib/answer-heuristics";
+import { TILE_COLORS } from "@/lib/tile-colors";
+import { cn } from "@/lib/utils";
 
 const SAMPLE_QUESTIONS = [
   "Tell me about a time you led a project under a tight deadline.",
@@ -23,6 +19,13 @@ const SAMPLE_QUESTIONS = [
   "Tell me about a goal you failed to reach. What did you learn?",
 ];
 
+/**
+ * One question, answered in the browser, scored by the heuristic. The card
+ * keeps a single working height on desktop: the answer box fills it, then
+ * gives that room to the result, so the copy beside it never jumps when a
+ * score appears. That is what lets the section be middle-aligned like every
+ * other two-column section on the page.
+ */
 export function TryQuestion() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answer, setAnswer] = useState("");
@@ -34,9 +37,11 @@ export function TryQuestion() {
   } = useCountUp(700);
 
   const question = SAMPLE_QUESTIONS[questionIndex];
+  const ready = answer.trim().length >= 10;
+  const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
 
   const handleScore = () => {
-    if (answer.trim().length < 10) return;
+    if (!ready) return;
     const result = scoreAnswerHeuristically(answer);
     setFeedback(result);
     startScoreCount(result.score);
@@ -50,106 +55,108 @@ export function TryQuestion() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft-lg">
-      <div className="border-b border-slate-100 bg-linear-to-r from-primary-subtle to-primary-subtle/60 px-6 py-4">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          <Sparkles className="h-3.5 w-3.5" />
-          Try it now — no sign-up
+    <div className="flex flex-col overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-soft-md lg:min-h-120">
+      <div className="flex flex-col gap-2 border-b border-slate-100 px-5.5 py-4.5">
+        <span
+          className={cn(
+            "inline-flex h-6 items-center self-start rounded-md px-2 text-xs font-semibold",
+            TILE_COLORS.purple,
+          )}
+        >
+          Behavioral
+        </span>
+        <p className="font-display text-xl font-semibold leading-snug tracking-[-0.01em] text-slate-900">
+          {question}
         </p>
-        <p className="mt-1 text-lg font-semibold text-slate-900">{question}</p>
       </div>
 
-      <div className="space-y-4 p-6">
+      <div className="flex flex-1 flex-col gap-3.5 px-5.5 pt-5 pb-5.5">
+        <label htmlFor="try-answer" className="sr-only">
+          Your answer
+        </label>
         <textarea
+          id="try-answer"
           value={answer}
           onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type how you'd actually answer this…"
           rows={5}
-          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-sm leading-relaxed outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-muted"
+          className="min-h-33 w-full flex-1 resize-y rounded-[10px] border border-slate-200 bg-slate-50 p-3.5 text-[15px] leading-relaxed outline-none transition-colors focus:border-primary focus:bg-white focus:ring-[3px] focus:ring-primary-muted"
         />
 
         {!feedback ? (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {answer.trim().length < 10
-                ? "Write a sentence or two to get a score"
-                : `${answer.trim().split(/\s+/).length} words`}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[13px] text-slate-500">
+              {ready
+                ? `${wordCount} ${wordCount === 1 ? "word" : "words"}`
+                : "Write a sentence or two to get a score"}
             </span>
-            <Button
-              onClick={handleScore}
-              disabled={answer.trim().length < 10}
-              className="gap-2"
-            >
+            <Button onClick={handleScore} disabled={!ready} className="gap-2">
               Score my answer
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+          <div className="flex flex-col gap-3.5" aria-live="polite">
             <div className="flex items-center gap-4">
               <div
-                className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl text-2xl font-bold tabular-nums ${
+                className={cn(
+                  "flex h-15 w-15 shrink-0 items-center justify-center rounded-xl font-display text-2xl font-bold tabular-nums",
                   feedback.score >= 80
                     ? "bg-success-muted text-success-emphasis"
                     : feedback.score >= 60
-                      ? "bg-primary-muted text-primary-emphasis"
-                      : "bg-warning-muted text-warning-emphasis"
-                }`}
+                      ? "bg-primary-subtle text-primary"
+                      : "bg-warning-muted text-warning-emphasis",
+                )}
               >
                 {displayScore}
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-[15px] font-semibold text-slate-900">
                   {feedback.score >= 80
                     ? "Strong answer"
                     : feedback.score >= 60
                       ? "Solid start"
                       : "Room to grow"}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-[13px] text-slate-500">
                   Quick heuristic score · the full coach goes much deeper
                 </p>
               </div>
             </div>
 
-            {feedback.strengths.length > 0 && (
-              <ul className="space-y-1">
+            {(feedback.strengths.length > 0 || feedback.tips.length > 0) && (
+              <ul className="flex flex-col gap-2">
                 {feedback.strengths.map((item, index) => (
                   <li
-                    key={index}
-                    className="flex items-start gap-2 text-sm text-success-emphasis"
+                    key={`s-${index}`}
+                    className="grid grid-cols-[8px_1fr] items-start gap-2.5 text-sm leading-relaxed text-slate-600"
                   >
-                    <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="mt-1.75 h-2 w-2 rounded-[2px] bg-success" />
                     {item}
                   </li>
                 ))}
-              </ul>
-            )}
-
-            {feedback.tips.length > 0 && (
-              <ul className="space-y-1">
                 {feedback.tips.map((item, index) => (
                   <li
-                    key={index}
-                    className="flex items-start gap-2 text-sm text-slate-700"
+                    key={`t-${index}`}
+                    className="grid grid-cols-[8px_1fr] items-start gap-2.5 text-sm leading-relaxed text-slate-600"
                   >
-                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <span className="mt-1.75 h-2 w-2 rounded-[2px] bg-warning" />
                     {item}
                   </li>
                 ))}
               </ul>
             )}
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button asChild className="flex-1 gap-2">
-                <Link href="/auth/register">
-                  Get full AI feedback
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button variant="outline" onClick={handleReset} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Try another
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Try another question
+              </button>
+              <Button variant="outline" asChild>
+                <Link href="/auth/register">Get the full report</Link>
               </Button>
             </div>
           </div>
