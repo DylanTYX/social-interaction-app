@@ -208,8 +208,16 @@ one listener, in `docs/artifacts/voice-audition.md`.
 
 ### 4.8 Settings & account
 
-| ID  | Test           | Steps                                             | Expected                                 | Pass? | Notes |
-| --- | -------------- | ------------------------------------------------- | ---------------------------------------- | ----- | ----- |
+| ID  | Test               | Steps                                                                       | Expected                                                                                  | Pass? | Notes |
+| --- | ------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----- | ----- |
+| A1  | Profile            | Change your first name, press **Save changes**, reload                      | Save is disabled until the name changes; "Unsaved changes" shows; the new name persists   | ☐     |       |
+| A2  | Password reset     | **Email me a reset link**                                                   | The row says the link was sent to your address; the email arrives                         | ☐     |       |
+| A3  | Data export        | Under Your data, **Download**                                               | A JSON file downloads with sessions, transcripts, personas and job descriptions           | ☐     |       |
+| A4  | Delete all sessions | **Delete all sessions**, confirm                                           | The dialog states how many; afterwards Sessions is empty and the libraries are untouched  | ☐     |       |
+| A5  | Sign out           | **Sign out**                                                                | Lands on sign-in; `/dashboard` needs signing in again                                     | ☐     |       |
+| A6  | Section links      | ⌘K → **Export or delete your data**                                         | Settings opens scrolled to Your data                                                      | ☐     |       |
+
+--- | -------------- | ------------------------------------------------- | ---------------------------------------- | ----- | ----- |
 | A1  | Profile tab    | Update display fields if available                | Saves without error                      | ☐     |       |
 | A2  | Defaults       | Change default mode / streaming / coaching → save | Next setup pre-filled                    | ☐     |       |
 | A3  | Voice settings | Adjust voice options if shown                     | Persists                                 | ☐     |       |

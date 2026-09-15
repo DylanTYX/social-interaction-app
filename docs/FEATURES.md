@@ -362,10 +362,10 @@ practised. It counts sessions you actually practised in, not ones you opened
 and closed. There are no streaks or badges: interview preparation is not a daily
 habit, and a badge for a high score rewards picking an easier interviewer.
 
-**Settings** — two tabs. _Account_ holds your profile, password reset and
-sign-out. _Data_ exports everything as JSON, states plainly where your data
-goes (OpenAI for text, Azure Speech for voice), and holds the danger zone for
-wiping interview history. Interview preferences are deliberately not here: the
+**Settings** — one page in five sections: your profile, sign-in and security
+(password reset, sign-out), a download of your data as JSON, where your data
+goes (OpenAI for text, Azure Speech for voice, and what this app keeps), and
+deleting your interview history, which says how many sessions it will delete. Interview preferences are deliberately not here: the
 setup wizard is their one home — it remembers your last setup, and every one
 of its controls sits on a step you pass through to launch anyway.
 

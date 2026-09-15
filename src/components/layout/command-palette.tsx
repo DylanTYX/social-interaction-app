@@ -172,13 +172,12 @@ const COMMANDS: Command[] = [
     group: "help",
     keywords: "account preferences",
   },
-  // Reachable now that tab state lives in the URL. Password and the data
-  // controls were four levels down and unaddressable before.
+  // `?section=` scrolls the settings page to that section.
   {
     id: "account",
     label: "Account & security",
     icon: ShieldCheck,
-    href: "/dashboard/settings?tab=account",
+    href: "/dashboard/settings?section=security",
     group: "help",
     keywords: "password sign out session",
   },
@@ -186,7 +185,7 @@ const COMMANDS: Command[] = [
     id: "data",
     label: "Export or delete your data",
     icon: Database,
-    href: "/dashboard/settings?tab=data",
+    href: "/dashboard/settings?section=data",
     group: "help",
     keywords: "download backup wipe sessions",
   },

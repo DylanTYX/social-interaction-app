@@ -104,8 +104,8 @@ a case ID in [UAT.md](UAT.md).
 | #   | Requirement                                          | Implemented in                         | Checked by                 |
 | --- | ---------------------------------------------------- | -------------------------------------- | -------------------------- |
 | F24 | Email/password auth; a user sees only their own data | Supabase auth + RLS on all nine tables | `route.test.ts` auth cases |
-| F25 | Export all data as JSON                              | `api/me/export`                        | UAT A4                     |
-| F26 | Delete interview history from settings; account rows cascade on auth deletion (no UI path) | `dashboard/settings`, FK cascade       | UAT A5                     |
+| F25 | Export all data as JSON                              | `api/me/export`                        | UAT A3                     |
+| F26 | Delete interview history from settings; account rows cascade on auth deletion (no UI path) | `dashboard/settings`, FK cascade       | UAT A4                     |
 
 ---
 

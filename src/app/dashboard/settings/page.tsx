@@ -2,41 +2,22 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  ShieldCheck,
-  Database,
-  Download,
-  LogOut,
-  Trash2,
-  KeyRound,
-} from "lucide-react";
-import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
-import { InitialsAvatar } from "@/components/ui/initials-avatar";
-import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
-import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { Download, KeyRound, LogOut, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
+import { Field } from "@/components/ui/field";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
+import { getDisplayName, useCurrentUser } from "@/hooks/use-current-user";
+import { useInterviewHistory } from "@/hooks/use-interview-history";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 type SaveState =
   | { kind: "idle" }
@@ -45,74 +26,83 @@ type SaveState =
   | { kind: "error"; message: string };
 
 /**
- * Two tabs.
- *
- * There used to be five, then three — and the Interview tab died on a
- * double-check: `loadInterviewSetup` has exactly two consumers, the wizard and
- * this page, so nothing ever read those values independently. Every control it
- * offered also exists on wizard steps you cannot skip (mode on Context,
- * the four toggles on Review), and the wizard persists them on every run,
- * overwriting whatever was set here. A second, weaker copy of five wizard
- * controls is not a preference system; the wizard is the one home for
- * interview configuration, and Settings holds the account and the data.
+ * The sections, in page order. `?section=` scrolls to one, which is how the
+ * command palette's "Account & security" and "Export or delete your data" land
+ * on the right part of the page.
  */
-const SETTINGS_TABS = ["account", "data"] as const;
-type SettingsTab = (typeof SETTINGS_TABS)[number];
+const SECTIONS = ["profile", "security", "data", "privacy", "delete"] as const;
+type SectionId = (typeof SECTIONS)[number];
 
+const PAGE_DESCRIPTION =
+  "Your account and your data. Interview preferences are chosen each time you set up an interview.";
+
+/**
+ * Settings: one page, five sections, each a heading beside its card.
+ *
+ * It was two tabs, Account and Data, holding five short blocks between them.
+ * Everything fits on one screen and a half, so the tabs only hid half of it
+ * behind a click and made "where is export?" a guess. Now every section is in
+ * view as you scroll, named on the left and acted on on the right, and each
+ * card is a list of rows: what it is, what it does, one button.
+ *
+ * Interview preferences are deliberately not here. The setup wizard is their
+ * one home: it remembers your last setup, and every one of its controls sits
+ * on a step you pass through to start an interview anyway.
+ */
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, status, error: authError } = useCurrentUser();
-
-  /**
-   * Which tab is open, mirrored in `?tab=` so the sidebar, the command palette
-   * and the back button can address a specific tab. Read against an allowlist
-   * so an unrecognised value, including a retired tab name, falls back to
-   * Account rather than rendering an empty tab.
-   */
-  const [tab, setTab] = useState<SettingsTab>(() => {
-    const requested = searchParams.get("tab") ?? "";
-    if (SETTINGS_TABS.includes(requested as SettingsTab)) {
-      return requested as SettingsTab;
-    }
-    return "account";
-  });
-
-  const handleTabChange = (next: string) => {
-    setTab(next as SettingsTab);
-    // `replace`, not `push`: flipping tabs should not fill the history stack,
-    // but the URL still has to be copyable. `scroll: false` stops a long tab
-    // from jumping to the top.
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", next);
-    router.replace(`/dashboard/settings?${params.toString()}`, {
-      scroll: false,
-    });
-  };
+  // One row is enough: the hook reports the total, which is all the delete
+  // section needs to say what it would delete.
+  const {
+    total: sessionCount,
+    status: sessionsStatus,
+    refresh: refreshSessions,
+  } = useInterviewHistory(1);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  /** The name as last saved, so Save only lights up when something changed. */
+  const [savedName, setSavedName] = useState({ first: "", last: "" });
   const [profileState, setProfileState] = useState<SaveState>({ kind: "idle" });
 
   const [resetState, setResetState] = useState<SaveState>({ kind: "idle" });
   const [exportState, setExportState] = useState<SaveState>({ kind: "idle" });
   const [confirmWipeOpen, setConfirmWipeOpen] = useState(false);
-  const [wipeState, setWipeState] = useState<SaveState>({ kind: "idle" });
 
-  // Hydrate profile fields from Supabase user.
+  // Hydrate profile fields from the Supabase user.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     const meta = user.user_metadata ?? {};
+    const first = typeof meta.first_name === "string" ? meta.first_name : "";
+    const last = typeof meta.last_name === "string" ? meta.last_name : "";
     queueMicrotask(() => {
       if (cancelled) return;
-      setFirstName(typeof meta.first_name === "string" ? meta.first_name : "");
-      setLastName(typeof meta.last_name === "string" ? meta.last_name : "");
+      setFirstName(first);
+      setLastName(last);
+      setSavedName({ first, last });
     });
     return () => {
       cancelled = true;
     };
   }, [user]);
+
+  // Scroll to the section a link asked for, once the page has rendered it.
+  const requestedSection = searchParams.get("section");
+  const isSignedIn = Boolean(user);
+  useEffect(() => {
+    if (!isSignedIn) return;
+    if (!SECTIONS.includes(requestedSection as SectionId)) return;
+    document
+      .getElementById(`settings-${requestedSection}`)
+      ?.scrollIntoView({ block: "start" });
+  }, [isSignedIn, requestedSection]);
+
+  const nameChanged =
+    firstName.trim() !== savedName.first.trim() ||
+    lastName.trim() !== savedName.last.trim();
 
   const handleSaveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -132,6 +122,7 @@ function SettingsPageInner() {
         setProfileState({ kind: "error", message: error.message });
         return;
       }
+      setSavedName({ first: firstName.trim(), last: lastName.trim() });
       setProfileState({ kind: "saved" });
       toast.success("Profile saved.");
       router.refresh();
@@ -212,8 +203,11 @@ function SettingsPageInner() {
     }
   };
 
+  /**
+   * Resolves either way, so the dialog closes, and reports a failure as a
+   * toast, the way the library pages report a failed delete.
+   */
   const handleWipeSessions = async () => {
-    setWipeState({ kind: "saving" });
     try {
       const response = await fetch("/api/me/sessions", { method: "DELETE" });
       if (!response.ok) {
@@ -224,30 +218,21 @@ function SettingsPageInner() {
           detail?.error ?? `Delete failed (HTTP ${response.status}).`,
         );
       }
-      setWipeState({ kind: "saved" });
       toast.success("All sessions deleted.");
-      setConfirmWipeOpen(false);
+      void refreshSessions();
       router.refresh();
     } catch (error) {
-      setWipeState({
-        kind: "error",
-        message:
-          error instanceof Error ? error.message : "Failed to delete sessions.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete sessions.",
+      );
     }
   };
 
-  if (status === "loading") {
-    return (
-      <PageContainer>
-        <Skeleton className="h-32 rounded-xl" />
-      </PageContainer>
-    );
-  }
+  if (status === "loading") return <SettingsSkeleton />;
 
-  // `!user` used to share the skeleton branch above, so a signed-out visitor
-  // watched a placeholder pulse forever with nothing to act on. Signed out and
-  // still loading are different states and need different screens.
+  // Signed out and still loading are different states and need different
+  // screens: a skeleton that pulses forever gives a signed-out visitor
+  // nothing to act on.
   if (!user) {
     return (
       <PageContainer>
@@ -256,8 +241,7 @@ function SettingsPageInner() {
             authError ? "We couldn't verify your session" : "You're signed out"
           }
           description={
-            authError ??
-            "Sign in to change your practice defaults, manage your voice, or export your data."
+            authError ?? "Sign in to manage your account and your data."
           }
           primaryAction={{ label: "Sign in", href: "/auth/login" }}
         />
@@ -265,285 +249,353 @@ function SettingsPageInner() {
     );
   }
 
-  const displayName = getDisplayName(user);
+  const email = user.email ?? "";
+  const shownName = `${firstName} ${lastName}`.trim() || getDisplayName(user);
+  const joined = formatJoined(user.created_at);
+  const sessionsKnown = sessionsStatus === "ready";
+  const nothingToDelete = sessionsKnown && sessionCount === 0;
 
   return (
-    // The shared page frame, with no background of its own: the shell owns
-    // the page ground on every dashboard route.
     <PageContainer>
-      <PageHeader
-        title="Settings"
-        description="Manage your account and your data. Interview preferences live in the setup wizard."
-      />
+      <PageHeader title="Settings" description={PAGE_DESCRIPTION} />
 
-      <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="grid w-full max-w-xs grid-cols-2">
-          <TabsTrigger value="account" className="gap-2" aria-label="Account">
-            <ShieldCheck className="h-4 w-4" />
-            <span className="hidden sm:inline">Account</span>
-          </TabsTrigger>
-          <TabsTrigger value="data" className="gap-2" aria-label="Data">
-            <Database className="h-4 w-4" />
-            <span className="hidden sm:inline">Data</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="account" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Profile</CardTitle>
-              <CardDescription>
-                Shown in the navbar and used to greet you in the app.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                {/* Your own avatar, derived from your name like every other
-                    one — a persona you built and "this is you" should not
-                    share a fixed gradient. */}
-                <InitialsAvatar
-                  name={`${firstName} ${lastName}`.trim() || displayName}
-                  size="lg"
-                  shape="square"
-                />
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {`${firstName} ${lastName}`.trim() || user.email}
-                  </p>
-                  <p className="text-sm text-slate-500">{user.email}</p>
-                </div>
+      <div>
+        <SettingsSection
+          id="profile"
+          title="Profile"
+          description="How the app greets you and names you."
+        >
+          <Card className="gap-0 py-0">
+            <div className="flex items-center gap-4 border-b border-slate-100 px-5 py-4">
+              <InitialsAvatar name={shownName} size="lg" tone="you" />
+              <div className="min-w-0">
+                <p className="truncate font-display text-lg font-semibold tracking-tight text-slate-900">
+                  {shownName}
+                </p>
+                <p className="truncate text-sm text-slate-500">{email}</p>
+                {joined && (
+                  <p className="text-xs text-slate-500">Joined {joined}</p>
+                )}
               </div>
+            </div>
 
-              <form onSubmit={handleSaveProfile} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
+            <form onSubmit={handleSaveProfile}>
+              <div className="space-y-6 px-5 py-5">
+                <div className="grid gap-6 sm:grid-cols-2">
                   <Field label="First name" htmlFor="firstName">
                     <Input
                       id="firstName"
+                      autoComplete="given-name"
                       value={firstName}
                       onChange={(event) => setFirstName(event.target.value)}
-                      placeholder="First name"
                     />
                   </Field>
                   <Field label="Last name" htmlFor="lastName">
                     <Input
                       id="lastName"
+                      autoComplete="family-name"
                       value={lastName}
                       onChange={(event) => setLastName(event.target.value)}
-                      placeholder="Last name"
                     />
                   </Field>
                 </div>
-
-                <Field
-                  label="Email"
-                  htmlFor="email"
-                  hint="Your email is the one you sign in with."
-                >
-                  <Input
-                    id="email"
-                    type="email"
-                    value={user.email ?? ""}
-                    disabled
-                  />
-                </Field>
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="submit"
-                    disabled={profileState.kind === "saving"}
-                  >
-                    {profileState.kind === "saving"
-                      ? "Saving…"
-                      : "Save profile"}
-                  </Button>
-                  {profileState.kind === "error" && (
-                    <span className="text-sm text-destructive">
-                      {profileState.message}
-                    </span>
-                  )}
+                {/* Read-only, so it is shown as a value rather than as a
+                    disabled field that looks as if it might unlock. */}
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Email</p>
+                  <p className="mt-2 text-sm text-slate-700">{email}</p>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                    You sign in with this address. It can&apos;t be changed
+                    here.
+                  </p>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+              </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Security</CardTitle>
-              <CardDescription>
-                Manage your password and current session.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => void handlePasswordReset()}
-                  disabled={resetState.kind === "saving"}
-                >
-                  <KeyRound />
-                  {resetState.kind === "saving"
-                    ? "Sending…"
-                    : "Send password reset email"}
-                </Button>
-                {resetState.kind === "saved" && (
-                  <span className="text-sm text-success">
-                    Sent. Check your inbox.
-                  </span>
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 px-5 py-4">
+                {profileState.kind === "error" ? (
+                  <p
+                    role="alert"
+                    className="mr-auto text-sm text-destructive-emphasis"
+                  >
+                    {profileState.message}
+                  </p>
+                ) : (
+                  nameChanged && (
+                    <p className="mr-auto text-sm text-slate-500">
+                      Unsaved changes
+                    </p>
+                  )
                 )}
-                {resetState.kind === "error" && (
-                  <span className="text-sm text-destructive">
+                <Button
+                  type="submit"
+                  disabled={!nameChanged || profileState.kind === "saving"}
+                >
+                  {profileState.kind === "saving" ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </SettingsSection>
+
+        <SettingsSection
+          id="security"
+          title="Sign-in and security"
+          description="Your password and this browser's session."
+        >
+          <Card className="gap-0 divide-y divide-slate-100 py-0">
+            <SettingsRow
+              title="Password"
+              description={
+                resetState.kind === "saved" ? (
+                  <span className="text-success-emphasis">
+                    Sent. Check your inbox at {email}.
+                  </span>
+                ) : resetState.kind === "error" ? (
+                  <span role="alert" className="text-destructive-emphasis">
                     {resetState.message}
                   </span>
-                )}
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => void handleSignOut()}>
-                  <LogOut />
-                  Sign out
-                </Button>
-                <p className="text-sm text-slate-500">
-                  Signs you out of this browser. Your data stays in your
-                  account.
-                </p>
-              </div>
-            </CardContent>
+                ) : (
+                  <>We email a link to set a new password to {email}.</>
+                )
+              }
+            >
+              <Button
+                variant="outline"
+                onClick={() => void handlePasswordReset()}
+                disabled={resetState.kind === "saving"}
+              >
+                <KeyRound />
+                {resetState.kind === "saving"
+                  ? "Sending…"
+                  : resetState.kind === "saved"
+                    ? "Send again"
+                    : "Email me a reset link"}
+              </Button>
+            </SettingsRow>
+            <SettingsRow
+              title="Sign out of this browser"
+              description="Your sessions and documents stay in your account."
+            >
+              <Button variant="outline" onClick={() => void handleSignOut()}>
+                <LogOut />
+                Sign out
+              </Button>
+            </SettingsRow>
           </Card>
-        </TabsContent>
+        </SettingsSection>
 
-        <TabsContent value="data" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Your data</CardTitle>
-              <CardDescription>
-                Export everything you&apos;ve created or wipe your interview
-                history.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => void handleExport()}
-                  disabled={exportState.kind === "saving"}
-                >
-                  <Download />
-                  {exportState.kind === "saving"
-                    ? "Preparing…"
-                    : "Export my data"}
-                </Button>
-                {exportState.kind === "saved" && (
-                  <span className="text-sm text-success">
-                    Download started.
-                  </span>
-                )}
-                {exportState.kind === "error" && (
-                  <span className="text-sm text-destructive">
+        <SettingsSection
+          id="data"
+          title="Your data"
+          description="A copy of everything you've made here."
+        >
+          <Card className="gap-0 py-0">
+            <SettingsRow
+              title="Download a copy"
+              description={
+                exportState.kind === "error" ? (
+                  <span role="alert" className="text-destructive-emphasis">
                     {exportState.message}
                   </span>
-                )}
-              </div>
-              <p className="text-sm text-slate-500">
-                Includes profile, sessions (with full transcripts), personas,
-                and job descriptions as a JSON file.
-              </p>
-
-              <Separator />
-
-              {/* Nothing in the product said any of this. Neither "OpenAI" nor
-                  "Azure" appeared in a single rendered string, on a tool whose
-                  first setup step invites you to upload your actual resume. */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-slate-900">
-                  Where your data goes
-                </h3>
-                <ul className="space-y-1.5 text-sm text-slate-500">
-                  <li>
-                    <span className="font-medium text-slate-700">
-                      Your answers, job descriptions and resume
-                    </span>{" "}
-                    are sent to OpenAI to generate questions, scores and
-                    coaching. They are not used to train their models under the
-                    API terms, but they do leave this app.
-                  </li>
-                  <li>
-                    <span className="font-medium text-slate-700">
-                      Your voice
-                    </span>{" "}
-                    is streamed to Microsoft Azure Speech for transcription
-                    during a voice interview, and the interviewer&apos;s replies
-                    are synthesised there. Audio is not stored by this app —
-                    only the transcript is.
-                  </li>
-                  <li>
-                    <span className="font-medium text-slate-700">
-                      Transcripts, scores and documents
-                    </span>{" "}
-                    are kept until you delete them. Deleting a session removes
-                    its transcript and scores; deleting a resume or job
-                    description removes that document.
-                  </li>
-                </ul>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2 rounded-xl border border-destructive-border bg-destructive-subtle/50 p-4">
-                <p className="font-semibold text-destructive-emphasis">
-                  Danger zone
-                </p>
-                <p className="text-sm text-destructive-emphasis/80">
-                  Permanently delete every interview session and its transcript.
-                  Personas and job descriptions are kept.
-                </p>
-                <Button
-                  variant="outline"
-                  className="border-destructive-border bg-white text-destructive-emphasis hover:bg-destructive-muted"
-                  onClick={() => setConfirmWipeOpen(true)}
-                >
-                  <Trash2 />
-                  Delete all sessions
-                </Button>
-              </div>
-            </CardContent>
+                ) : (
+                  "A JSON file with your profile, every session and its transcript, your personas and your job descriptions."
+                )
+              }
+            >
+              <Button
+                variant="outline"
+                onClick={() => void handleExport()}
+                disabled={exportState.kind === "saving"}
+              >
+                <Download />
+                {exportState.kind === "saving" ? "Preparing…" : "Download"}
+              </Button>
+            </SettingsRow>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </SettingsSection>
 
-      <Dialog open={confirmWipeOpen} onOpenChange={setConfirmWipeOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete all interview sessions?</DialogTitle>
-            <DialogDescription>
-              This permanently removes every session and its full transcript.
-              You can&apos;t undo this. Personas and job descriptions are kept.
-            </DialogDescription>
-          </DialogHeader>
-          {wipeState.kind === "error" && (
-            <div className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis">
-              {wipeState.message}
+        {/* Nothing in the product used to name either service, on a tool whose
+            first setup step invites you to upload your actual resume. */}
+        <SettingsSection
+          id="privacy"
+          title="Where your data goes"
+          description="What leaves this app, and what stays."
+        >
+          <Card className="gap-0 py-0">
+            <dl className="divide-y divide-slate-100">
+              <DataFlowRow term="OpenAI">
+                Receives your answers, job descriptions and resumes to write
+                questions, scores and coaching. Under the API terms it does not
+                train on them, but they do leave this app.
+              </DataFlowRow>
+              <DataFlowRow term="Microsoft Azure Speech">
+                Transcribes you when you answer out loud, and speaks the
+                interviewer&apos;s replies. This app keeps the transcript, never
+                the audio.
+              </DataFlowRow>
+              <DataFlowRow term="This app">
+                Keeps transcripts, scores and documents until you delete them.
+                Deleting a session removes its transcript and scores; deleting a
+                document removes the document.
+              </DataFlowRow>
+            </dl>
+          </Card>
+        </SettingsSection>
+
+        <SettingsSection
+          id="delete"
+          title="Delete sessions"
+          description="Permanent. There is no undo."
+        >
+          <Card className="gap-0 border-destructive-border py-0">
+            <SettingsRow
+              title="Delete all sessions"
+              description={
+                nothingToDelete
+                  ? "You have no sessions to delete."
+                  : `Deletes ${
+                      sessionsKnown
+                        ? `all ${sessionCount} ${sessionCount === 1 ? "session" : "sessions"}`
+                        : "every session"
+                    } with ${sessionCount === 1 ? "its transcript" : "their transcripts"} and scores. Personas, job descriptions and resumes are kept.`
+              }
+            >
+              <Button
+                variant="outline"
+                className="border-destructive-border text-destructive-emphasis hover:bg-destructive-subtle hover:text-destructive-emphasis"
+                onClick={() => setConfirmWipeOpen(true)}
+                disabled={nothingToDelete}
+              >
+                <Trash2 />
+                Delete all sessions
+              </Button>
+            </SettingsRow>
+          </Card>
+        </SettingsSection>
+      </div>
+
+      <ConfirmDeleteDialog
+        open={confirmWipeOpen}
+        onOpenChange={setConfirmWipeOpen}
+        title="Delete all interview sessions?"
+        description={`This permanently deletes ${
+          sessionsKnown
+            ? `all ${sessionCount} ${sessionCount === 1 ? "session" : "sessions"}`
+            : "every session"
+        } with ${sessionCount === 1 ? "its transcript" : "their transcripts"} and scores. You can't undo this. Personas, job descriptions and resumes are kept.`}
+        confirmLabel="Delete sessions"
+        onConfirm={handleWipeSessions}
+      />
+    </PageContainer>
+  );
+}
+
+/**
+ * A section: its name and a line on the left, its card on the right. Stacked
+ * below `lg`. The hairline between sections does what separate pages or tabs
+ * used to, without hiding anything.
+ */
+function SettingsSection({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: SectionId;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      id={`settings-${id}`}
+      aria-labelledby={`settings-${id}-title`}
+      className="grid scroll-mt-8 gap-4 border-t border-slate-200 py-8 first:border-t-0 first:pt-0 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10"
+    >
+      <div>
+        <h2
+          id={`settings-${id}-title`}
+          className="font-display text-lg font-semibold tracking-tight text-slate-900"
+        >
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">{description}</p>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
+/** What it is and what it does on the left, one action on the right. */
+function SettingsRow({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="min-w-0">
+        <p className="font-medium text-slate-900">{title}</p>
+        <p className="mt-0.5 text-sm text-slate-500">{description}</p>
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function DataFlowRow({
+  term,
+  children,
+}: {
+  term: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 px-5 py-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
+      <dt className="text-sm font-medium text-slate-900">{term}</dt>
+      <dd className="text-sm leading-relaxed text-slate-600">{children}</dd>
+    </div>
+  );
+}
+
+/** "3 Aug 2026", or null when the account date is missing or unreadable. */
+function formatJoined(createdAt: string | undefined): string | null {
+  if (!createdAt) return null;
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** The page's shape while the account loads, so nothing jumps when it lands. */
+function SettingsSkeleton() {
+  return (
+    <PageContainer>
+      <PageHeader title="Settings" description={PAGE_DESCRIPTION} />
+      <div>
+        {[0, 1].map((index) => (
+          <div
+            key={index}
+            className={cn(
+              "grid gap-4 py-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10",
+              index === 0 ? "pt-0" : "border-t border-slate-200",
+            )}
+          >
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
             </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConfirmWipeOpen(false)}
-              disabled={wipeState.kind === "saving"}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => void handleWipeSessions()}
-              disabled={wipeState.kind === "saving"}
-            >
-              {wipeState.kind === "saving" ? "Deleting…" : "Delete sessions"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <Skeleton className="h-44 rounded-xl" />
+          </div>
+        ))}
+      </div>
     </PageContainer>
   );
 }
@@ -555,13 +607,7 @@ function SettingsPageInner() {
  */
 export default function SettingsPage() {
   return (
-    <Suspense
-      fallback={
-        <PageContainer>
-          <Skeleton className="h-32 rounded-xl" />
-        </PageContainer>
-      }
-    >
+    <Suspense fallback={<SettingsSkeleton />}>
       <SettingsPageInner />
     </Suspense>
   );
