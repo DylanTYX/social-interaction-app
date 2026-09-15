@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { analyzeDelivery } from "@/lib/speech-metrics";
+import {
+  analyzeDelivery,
+  FILLER_BANDS,
+  FILLER_WORDS,
+  fillerLabelFor,
+  PACE_BANDS,
+  paceFromWpm,
+} from "@/lib/speech-metrics";
 
 const fillers = (text: string) => analyzeDelivery(text).fillerCount;
 
@@ -28,5 +35,33 @@ describe("filler detection", () => {
 
   it("does not count emphasis words at all", () => {
     expect(fillers("I actually shipped it and literally doubled throughput")).toBe(0);
+  });
+});
+
+// Tips & guides prints these constants as the rules. If a band moved without
+// the constant, the page would teach a threshold the readout does not use.
+describe("published thresholds", () => {
+  it("match the pace bands the readout applies", () => {
+    expect(paceFromWpm(PACE_BANDS.measured - 1)).toBe("slow");
+    expect(paceFromWpm(PACE_BANDS.measured)).toBe("measured");
+    expect(paceFromWpm(PACE_BANDS.conversational)).toBe("conversational");
+    expect(paceFromWpm(PACE_BANDS.fastAbove)).toBe("conversational");
+    expect(paceFromWpm(PACE_BANDS.fastAbove + 1)).toBe("fast");
+  });
+
+  it("match the filler bands the readout applies", () => {
+    expect(fillerLabelFor(FILLER_BANDS.cleanBelow - 0.1)).toBe("clean");
+    expect(fillerLabelFor(FILLER_BANDS.cleanBelow)).toBe("occasional");
+    expect(fillerLabelFor(FILLER_BANDS.frequentAbove)).toBe("occasional");
+    expect(fillerLabelFor(FILLER_BANDS.frequentAbove + 0.1)).toBe("frequent");
+  });
+
+  it("lists every counted filler, marking the ones that need a hesitation", () => {
+    const needsHesitation = FILLER_WORDS.filter((w) => w.onlyBesideHesitation);
+    expect(needsHesitation.map((w) => w.label)).toEqual(["like", "basically"]);
+    for (const { label, onlyBesideHesitation } of FILLER_WORDS) {
+      const alone = fillers(`and then ${label} it worked`);
+      expect(alone > 0).toBe(!onlyBesideHesitation);
+    }
   });
 });

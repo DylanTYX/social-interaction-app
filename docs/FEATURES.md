@@ -362,6 +362,13 @@ practised. It counts sessions you actually practised in, not ones you opened
 and closed. There are no streaks or badges: interview preparation is not a daily
 habit, and a badge for a high score rewards picking an easier interviewer.
 
+**Tips & guides** — how this app judges an answer. It walks the practice loop
+in order, shows what each round type is scored on and what a strong answer looks
+like under that rubric, lists the wording that makes the interviewer probe with
+what to say instead, and gives the voice delivery thresholds. The criteria,
+readings and thresholds are imported from the code that applies them, so the
+page cannot teach a rule the app does not use.
+
 **Settings** — one page in five sections: your profile, sign-in and security
 (password reset, sign-out), a download of your data as JSON, where your data
 goes (OpenAI for text, Azure Speech for voice, and what this app keeps), and

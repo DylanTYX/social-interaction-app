@@ -43,7 +43,12 @@ export const LONG_PAUSE_SECONDS = 1.5;
 // often emphasis than hesitation.
 const HESITATION_NEIGHBOUR = String.raw`(?:\b(?:um+|uh+|erm*)\b|,|\.\.\.)\s+`;
 
-const FILLER_PATTERNS: { label: string; regex: RegExp }[] = [
+const FILLER_PATTERNS: {
+  label: string;
+  regex: RegExp;
+  /** Counted only beside a hesitation, where it is genuinely filler. */
+  onlyBesideHesitation?: boolean;
+}[] = [
   { label: "um", regex: /\b(?:um+|umm+)\b/gi },
   { label: "uh", regex: /\b(?:uh+|err+|erm+)\b/gi },
   { label: "ah", regex: /\b(?:ah+|ahh+)\b/gi },
@@ -54,12 +59,37 @@ const FILLER_PATTERNS: { label: string; regex: RegExp }[] = [
   {
     label: "like",
     regex: new RegExp(String.raw`${HESITATION_NEIGHBOUR}like\b`, "gi"),
+    onlyBesideHesitation: true,
   },
   {
     label: "basically",
     regex: new RegExp(String.raw`${HESITATION_NEIGHBOUR}basically\b`, "gi"),
+    onlyBesideHesitation: true,
   },
 ];
+
+/** The counted filler words, for the Tips & guides page to list. */
+export const FILLER_WORDS: ReadonlyArray<{
+  label: string;
+  onlyBesideHesitation: boolean;
+}> = FILLER_PATTERNS.map(({ label, onlyBesideHesitation }) => ({
+  label,
+  onlyBesideHesitation: Boolean(onlyBesideHesitation),
+}));
+
+/**
+ * Where the pace bands start, in words a minute. Below `measured` is slow;
+ * above `fastAbove` is fast. Read by the Tips & guides page, so the advice
+ * there cannot drift from what the readout says.
+ */
+export const PACE_BANDS = {
+  measured: 110,
+  conversational: 150,
+  fastAbove: 185,
+} as const;
+
+/** Fillers per 100 words: under `cleanBelow` is clean, over `frequentAbove` frequent. */
+export const FILLER_BANDS = { cleanBelow: 2, frequentAbove: 5 } as const;
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -68,16 +98,16 @@ function countWords(text: string): number {
 /** The pace band for a words-per-minute figure. Shared with analytics. */
 export function paceFromWpm(wpm: number | null): PaceLabel | null {
   if (wpm === null) return null;
-  if (wpm < 110) return "slow";
-  if (wpm < 150) return "measured";
-  if (wpm <= 185) return "conversational";
+  if (wpm < PACE_BANDS.measured) return "slow";
+  if (wpm < PACE_BANDS.conversational) return "measured";
+  if (wpm <= PACE_BANDS.fastAbove) return "conversational";
   return "fast";
 }
 
 /** The filler band for fillers per 100 words. Shared with analytics. */
 export function fillerLabelFor(per100: number): FillerLabel {
-  if (per100 < 2) return "clean";
-  if (per100 <= 5) return "occasional";
+  if (per100 < FILLER_BANDS.cleanBelow) return "clean";
+  if (per100 <= FILLER_BANDS.frequentAbove) return "occasional";
   return "frequent";
 }
 
