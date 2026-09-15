@@ -28,16 +28,19 @@ export function CoachingRail({
   open,
   onOpenChange,
   turn,
+  trendNote,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   turn: InterviewTurnState;
+  /** One line on how the interview is trending, shown under the rail's title. */
+  trendNote?: string | null;
 }) {
   return (
     <div
       className={cn(
-        "relative hidden shrink-0 border-l border-slate-200/80 transition-[width] duration-300 ease-soft xl:block",
-        open ? "w-112 bg-transparent" : "w-12 bg-white/80 backdrop-blur",
+        "relative hidden shrink-0 border-l border-slate-200 transition-[width] duration-300 ease-soft xl:block",
+        open ? "w-112 bg-transparent" : "w-12 bg-white",
       )}
     >
       {/* The clip lives here rather than on the element above, which is the
@@ -64,6 +67,7 @@ export function CoachingRail({
             metrics={turn.metrics}
             analyses={turn.analyses}
             followupPrompt={turn.lastFollowupPrompt}
+            trendNote={trendNote}
           />
         </div>
       </div>
@@ -74,7 +78,7 @@ export function CoachingRail({
         variant="ghost"
         size="icon-sm"
         className={cn(
-          "absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white shadow-soft",
+          "absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white",
           "transition-[left] duration-300 ease-soft",
           open ? "left-0 -translate-x-1/2" : "left-1/2 -translate-x-1/2",
         )}

@@ -16,17 +16,17 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="nav"]',
     title: "Everything lives here",
-    body: "Start an interview, run quick drills, review sessions, and track analytics — all from the sidebar.",
+    body: "New interview, quick drills, sessions and analytics — all from the sidebar.",
   },
   {
     selector: '[data-tour="search"]',
     title: "Jump anywhere with ⌘K",
-    body: "Press ⌘K (or click here) to navigate or start practicing instantly, without clicking around.",
+    body: "Press ⌘K (or click here) to jump to a page or start a new interview, without clicking around.",
   },
   {
     selector: '[data-tour="goals"]',
-    title: "Build a streak",
-    body: "Set a weekly goal and keep your streak alive. Consistent reps are what move your scores.",
+    title: "Set a weekly goal",
+    body: "Choose how many sessions a week to aim for. The strip shows which days you practised.",
   },
 ];
 
@@ -159,7 +159,9 @@ export function OnboardingTour() {
         className="absolute rounded-xl border border-slate-200 bg-white p-4 shadow-soft-lg"
         style={{ top: tooltipTop, left: tooltipLeft, width: tooltipWidth }}
       >
-        <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+          {step.title}
+        </h2>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">
           {step.body}
         </p>

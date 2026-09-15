@@ -1,5 +1,3 @@
-import { Brain, Gauge, Layers3, Radar } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +35,11 @@ function normalizeConfidence(score: number | null): number {
   return Math.max(0, Math.min(100, score));
 }
 
+/**
+ * The interview engine's own view of the session, for the "Advanced system
+ * state" dialog. A debugging surface, so it is plain: a card, three tags, two
+ * meters split by a hairline, and the last decision's reason as a sentence.
+ */
 export function InterviewStatePanel({
   state,
   stageLabel,
@@ -54,54 +57,32 @@ export function InterviewStatePanel({
     : 0;
 
   return (
-    <Card className="border border-slate-200/80 bg-white/80 shadow-soft backdrop-blur-sm">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm font-semibold tracking-wide text-slate-900">
-            Interview State Engine
-          </CardTitle>
-          <Badge variant="secondary" className="text-xs">
-            {stageLabel}
-          </Badge>
-        </div>
+    <Card className="gap-4">
+      <CardHeader>
+        <CardTitle className="text-lg">Interview state</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70"
-          >
-            <Layers3 className="h-3.5 w-3.5" />
-            Stage {stageLabel}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70"
-          >
-            <Brain className="h-3.5 w-3.5" />
+          <Badge variant="outline">Stage {stageLabel}</Badge>
+          <Badge variant="outline">
             {lastStrategy
               ? STRATEGY_LABELS[lastStrategy]
               : "Strategy warming up"}
           </Badge>
-          <Badge
-            variant="outline"
-            className="gap-1 border-slate-300/80 bg-white/70"
-          >
-            <Radar className="h-3.5 w-3.5" />
+          <Badge variant="outline">
             {state.followupCount} adaptive follow-ups
           </Badge>
         </div>
 
         <p className="text-xs leading-5 text-slate-600">{stageGuidance}</p>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+        <div className="grid divide-y divide-slate-100 border-y border-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          <div className="py-3 sm:pr-4">
             <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1">
-                <Gauge className="h-3.5 w-3.5" />
-                Decision confidence
+              <span>Decision confidence</span>
+              <span className="font-medium text-slate-900 tabular-nums">
+                {Math.round(confidence)}%
               </span>
-              <span>{Math.round(confidence)}%</span>
             </div>
             <Progress
               value={confidence}
@@ -110,10 +91,12 @@ export function InterviewStatePanel({
             />
           </div>
 
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
+          <div className="py-3 sm:pl-4">
             <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
               <span>Communication signal</span>
-              <span>{Math.round(communication)}%</span>
+              <span className="font-medium text-slate-900 tabular-nums">
+                {Math.round(communication)}%
+              </span>
             </div>
             <Progress
               value={communication}
@@ -124,9 +107,7 @@ export function InterviewStatePanel({
         </div>
 
         {decisionReason && (
-          <div className="rounded-lg border border-slate-200/70 bg-white/70 px-3 py-2 text-xs text-slate-600">
-            {decisionReason}
-          </div>
+          <p className="text-xs leading-5 text-slate-600">{decisionReason}</p>
         )}
       </CardContent>
     </Card>

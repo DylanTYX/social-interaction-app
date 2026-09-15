@@ -44,10 +44,10 @@ describe("updateInterviewSetup", () => {
     storedWithDocuments();
 
     // What the interview screens actually send: everything except documents.
-    updateInterviewSetup({ practiceMode: "voice" });
+    updateInterviewSetup({ practiceMode: "text" });
 
     const stored = loadInterviewSetup();
-    expect(stored?.practiceMode).toBe("voice");
+    expect(stored?.practiceMode).toBe("text");
     expect(stored?.jobDescription.enabled).toBe(true);
     expect(stored?.jobDescription.savedId).toBe("jd-1");
     expect(stored?.resume.enabled).toBe(true);
@@ -137,11 +137,23 @@ describe("updateInterviewSetup", () => {
   });
 
   it("starts from defaults when nothing is stored yet", () => {
-    updateInterviewSetup({ practiceMode: "voice" });
+    updateInterviewSetup({ practiceMode: "text" });
 
     const stored = loadInterviewSetup();
-    expect(stored?.practiceMode).toBe("voice");
+    expect(stored?.practiceMode).toBe("text");
     expect(stored?.interviewLoop).toBeDefined();
+  });
+});
+
+describe("default mode", () => {
+  it("is voice, because an interview is spoken", () => {
+    const setup = createDefaultInterviewSetup();
+    expect(setup.practiceMode).toBe("voice");
+    expect(
+      setup.interviewLoop.rounds.every(
+        (round) => round.practiceMode === "voice",
+      ),
+    ).toBe(true);
   });
 });
 

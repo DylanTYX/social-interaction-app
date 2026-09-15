@@ -3,6 +3,7 @@
 import { CheckCircle2, CircleAlert, Quote } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { SIGNAL_READINGS } from "@/lib/report-insights";
 import { sanitizeNotes } from "@/lib/response-analyzer";
 import type { BehavioralSignalType } from "@/lib/text-metrics";
 
@@ -32,22 +33,12 @@ export interface TurnFeedback {
   languageNotes: { marker: string; reading: string }[];
 }
 
-/**
- * One phrase per signal type, in taxonomy priority order, three signals max.
- *
- * The full marker list lives in the stored analysis; this is a report footnote,
- * not a second transcript, and ten quoted hedges under one bubble reads as a
- * telling-off rather than feedback.
+/*
+ * Three signals max per answer. The full marker list lives in the stored
+ * analysis; this is a report footnote, not a second transcript, and ten quoted
+ * hedges under one bubble reads as a telling-off rather than feedback. The
+ * readings themselves live in `report-insights.ts`, shared with analytics.
  */
-const SIGNAL_READINGS: Record<BehavioralSignalType, string> = {
-  OWNERSHIP_AMBIGUOUS: "your personal role is unclear",
-  DECISION_OWNER_UNCLEAR: "who made the decision is unclear",
-  LEADERSHIP_CLAIM_UNVERIFIED: "a leadership claim without specifics",
-  EXTERNAL_ATTRIBUTION: "places the outcome outside your control",
-  IMPACT_UNQUANTIFIED: "impact claimed without a number",
-  TECHNICAL_CLAIM_UNVERIFIED: "a technical claim without the how",
-  LEARNING_UNVERIFIED: "a lesson without what changed",
-};
 
 /**
  * Pull the display fields out of the stored analysis blob.
@@ -68,8 +59,7 @@ export function toTurnFeedback(
   // `languageSignals`; render nothing rather than guessing.
   const languageNotes = (() => {
     const raw = source.languageSignals as
-      | { signals?: { type?: string; markers?: unknown[] }[] }
-      | undefined;
+      { signals?: { type?: string; markers?: unknown[] }[] } | undefined;
     if (!Array.isArray(raw?.signals)) return [];
     const notes: { marker: string; reading: string }[] = [];
     for (const signal of raw.signals) {
@@ -95,18 +85,13 @@ export function toTurnFeedback(
 }
 
 /**
- * Bands, not a gradient — a 2-point difference should not change the colour.
- *
- * Returns a `Badge` variant rather than a class triplet. The triplet it used to
- * return was one of about a dozen hand-written emerald/amber/red sets scattered
- * across the report, the transcript and the coaching rail, which is how the same
- * "needs attention" ended up as four different ambers. The meaning lives in
- * `badge.tsx` now; this function only decides which meaning applies.
+ * Two bands, not a gradient — a 2-point difference should not change the
+ * colour. Green means a strong answer; amber means one that needs attention.
+ * There is no red band: red is for errors, and a weak answer is not an error.
+ * See docs/DESIGN.md.
  */
-function scoreTone(score: number): "success" | "warning" | "danger" {
-  if (score >= 75) return "success";
-  if (score >= 55) return "warning";
-  return "danger";
+function scoreTone(score: number): "success" | "warning" {
+  return score >= 75 ? "success" : "warning";
 }
 
 export function TurnScore({ feedback }: { feedback: TurnFeedback }) {
@@ -128,14 +113,19 @@ export function TurnScore({ feedback }: { feedback: TurnFeedback }) {
     <div className="mt-2 flex max-w-2xl flex-col gap-2">
       {overallScore !== null && (
         <div className="flex items-center gap-2">
-          <Badge variant={scoreTone(overallScore)} className="font-semibold">
+          <Badge
+            variant={scoreTone(overallScore)}
+            className="font-semibold tabular-nums"
+          >
             {Math.round(overallScore)}%
           </Badge>
           <span className="text-xs text-muted-foreground">this answer</span>
         </div>
       )}
 
-      {(strengths.length > 0 || gaps.length > 0 || languageNotes.length > 0) && (
+      {(strengths.length > 0 ||
+        gaps.length > 0 ||
+        languageNotes.length > 0) && (
         <ul className="space-y-1 text-xs leading-relaxed">
           {strengths.map((note) => (
             <li key={note} className="flex gap-1.5 text-success-emphasis">

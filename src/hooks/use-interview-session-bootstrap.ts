@@ -18,7 +18,11 @@ import {
   normalizeVoiceConfig,
 } from "@/lib/interview-setup";
 import { getScenarioByValue } from "@/lib/scenarios";
-import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
+import {
+  parseDeliverySnapshots,
+  type DeliverySnapshot,
+  type SessionLaunchMeta,
+} from "@/lib/session-launch-meta";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 
 export type BootstrapStatus =
@@ -78,6 +82,12 @@ export interface ResumedTranscript {
   analyses: AnalysisResult[];
   /** The interviewer's most recent decision, or null for a fresh session. */
   lastDecision: LastTurnDecision | null;
+  /**
+   * Delivery figures saved for this session's spoken answers. Restored for the
+   * same reason as the analyses: metrics are replaced wholesale on save, so a
+   * resumed session that did not carry them would erase them on its next turn.
+   */
+  deliverySnapshots: DeliverySnapshot[];
 }
 
 export interface LastTurnDecision {
@@ -99,6 +109,7 @@ function readResumedTranscript(payload: {
     strategy?: string | null;
     confidence?: number | null;
   }>;
+  session?: { metrics?: Record<string, unknown> | null } | null;
 }): ResumedTranscript {
   return {
     messages: (payload.messages ?? []).map((row) => ({
@@ -118,6 +129,9 @@ function readResumedTranscript(payload: {
      * `analysis`. After a reload the state panel showed a blank decision
      * history on a session with six follow-ups behind it.
      */
+    deliverySnapshots: parseDeliverySnapshots(
+      payload.session?.metrics?.deliverySnapshots,
+    ),
     lastDecision: (() => {
       const last = (payload.turnAnalyses ?? []).at(-1);
       if (!last) return null;
@@ -359,7 +373,9 @@ export function useInterviewSessionBootstrap(
             { cache: "no-store" },
           );
           const payload = await readJson<{
-            session: Parameters<typeof sessionRowToLaunch>[0];
+            session: Parameters<typeof sessionRowToLaunch>[0] & {
+              metrics?: Record<string, unknown> | null;
+            };
             launch: SessionLaunchMeta | null;
             jobDescription: {
               id: string;

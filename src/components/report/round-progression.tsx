@@ -17,7 +17,7 @@ export function RoundProgression({ points }: { points: Point[] }) {
 
   if (scored.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+      <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
         No rounds scored yet.
       </div>
     );
@@ -42,18 +42,16 @@ export function RoundProgression({ points }: { points: Point[] }) {
             key={`${point.label}-${index}`}
             className="flex min-w-16 flex-1 flex-col items-center gap-1.5"
           >
-            <span className="text-sm font-semibold tabular-nums text-slate-700">
+            <span className="text-sm font-semibold text-slate-500 tabular-nums">
               {point.score ?? "—"}
             </span>
+            {/* Every bar in blue, like every chart in the app; the height is
+                the comparison. A three-colour ramp made the middle band blue
+                and the low band amber, which contradicted the two-band reading
+                the per-answer scores use. */}
             <div
               className={`w-full rounded-t-md ${
-                typeof point.score === "number"
-                  ? point.score >= 75
-                    ? "bg-success"
-                    : point.score >= 55
-                      ? "bg-primary"
-                      : "bg-warning"
-                  : "bg-slate-200"
+                typeof point.score === "number" ? "bg-primary" : "bg-slate-200"
               }`}
               style={{ height: `${height}px` }}
             />

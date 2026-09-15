@@ -1,68 +1,39 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Award, Check, Flame, Target } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import { cn } from "@/lib/utils";
 import type { InterviewSessionSummary } from "@/hooks/use-interview-history";
 import {
   WEEKLY_GOAL_OPTIONS,
-  computeBadges,
   computePracticeProgress,
   loadWeeklyGoal,
   saveWeeklyGoal,
 } from "@/lib/practice-goals";
 
-/** Small circular progress ring rendered with SVG (no chart dependency). */
-function ProgressRing({
-  value,
-  max,
-  children,
-}: {
-  value: number;
-  max: number;
-  children: React.ReactNode;
-}) {
-  const radius = 34;
-  const circumference = 2 * Math.PI * radius;
-  const ratio = max > 0 ? Math.min(1, value / max) : 0;
-  const offset = circumference * (1 - ratio);
-  const complete = value >= max && max > 0;
+const DAY_NAMES: Record<string, string> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+  Sat: "Saturday",
+  Sun: "Sunday",
+};
 
-  return (
-    <div className="relative h-24 w-24 shrink-0">
-      <svg className="h-24 w-24 -rotate-90" viewBox="0 0 80 80">
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          strokeWidth="8"
-          className="stroke-slate-200"
-        />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          strokeWidth="8"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className={cn(
-            "transition-[stroke-dashoffset] duration-700 ease-out",
-            complete ? "stroke-success" : "stroke-primary",
-          )}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        {children}
-      </div>
-    </div>
-  );
-}
-
+/**
+ * This week's practice against the goal you set.
+ *
+ * It used to be a progress ring, a daily streak and five badges. The streak
+ * rewarded a daily habit, which interview preparation is not, and the badges
+ * marked milestones that say nothing about readiness; "Scored 85+" rewarded
+ * choosing a supportive interviewer, which Analytics warns against. What is
+ * left answers one planning question: how many sessions this week, on which
+ * days, and how many are left.
+ */
 export function GoalsCard({
   sessions,
 }: {
@@ -78,126 +49,125 @@ export function GoalsCard({
   }, []);
 
   const progress = useMemo(() => computePracticeProgress(sessions), [sessions]);
-  const badges = useMemo(
-    () => computeBadges(sessions, progress),
-    [sessions, progress],
-  );
 
   // Render with a neutral default until the stored goal hydrates, to keep SSR
   // and the first client paint identical.
   const effectiveGoal = goal ?? 3;
   const complete = progress.thisWeek >= effectiveGoal;
+  const remaining = Math.max(0, effectiveGoal - progress.thisWeek);
+  const share = Math.min(1, progress.thisWeek / effectiveGoal);
 
   const handleGoalChange = (next: number) => {
     setGoal(next);
     saveWeeklyGoal(next);
   };
 
-  const remaining = effectiveGoal - progress.thisWeek;
-  const earnedCount = badges.filter((badge) => badge.earned).length;
-
   return (
-    <Card data-tour="goals" className="border border-slate-200/80 shadow-soft">
-      <CardContent className="p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              Your week
-            </h3>
-            <p className="text-sm text-slate-500">
-              Stay consistent — small reps add up.
-            </p>
-          </div>
-          {complete && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-success-border bg-success-subtle px-2.5 py-1 text-xs font-semibold text-success-emphasis">
-              <Check className="h-3 w-3" />
-              Goal hit
+    <Card data-tour="goals" className="gap-0 py-0">
+      <CardContent className="space-y-5 px-5 py-5">
+        <div>
+          <p className="font-display text-3xl leading-none font-bold tracking-tight text-navy tabular-nums">
+            {progress.thisWeek}
+            <span className="ml-1.5 font-sans text-base font-medium tracking-normal text-slate-500">
+              of {effectiveGoal} session{effectiveGoal === 1 ? "" : "s"}
             </span>
-          )}
+          </p>
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-600">
+            {complete ? (
+              <>
+                <Check className="h-4 w-4 text-success" aria-hidden />
+                Goal met this week
+              </>
+            ) : (
+              `${remaining} more to reach your goal this week`
+            )}
+          </p>
+          <div
+            className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={effectiveGoal}
+            aria-valuenow={Math.min(progress.thisWeek, effectiveGoal)}
+            aria-label="Sessions this week"
+          >
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-700 ease-soft",
+                // Green only once the goal is met: that is a good mark.
+                complete ? "bg-success" : "bg-primary",
+              )}
+              style={{ width: `${share * 100}%` }}
+            />
+          </div>
         </div>
 
-        <div className="grid gap-3">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-5 text-center">
-            <ProgressRing value={progress.thisWeek} max={effectiveGoal}>
-              <span className="text-xl font-bold text-slate-900">
-                {progress.thisWeek}
-                <span className="text-sm font-medium text-muted-foreground">
-                  /{effectiveGoal}
-                </span>
+        {/* Which days you practised. Past days you did not are quiet grey,
+            today is outlined, and days still to come are left open. */}
+        <ol className="grid grid-cols-7 gap-1.5" aria-label="This week by day">
+          {progress.days.map((day) => (
+            <li key={day.date} className="flex flex-col items-center gap-1.5">
+              <span
+                className={cn(
+                  "text-xs",
+                  day.isToday
+                    ? "font-semibold text-slate-900"
+                    : "text-slate-500",
+                )}
+                aria-hidden
+              >
+                {day.label.charAt(0)}
               </span>
-            </ProgressRing>
-            <div>
-              <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-900">
-                <Target className="h-4 w-4 text-primary" />
-                Weekly goal
-              </p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {complete
-                  ? "Nice work this week."
-                  : `${remaining} more session${remaining === 1 ? "" : "s"} to go`}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {WEEKLY_GOAL_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => handleGoalChange(option)}
-                  className={cn(
-                    "h-8 w-8 rounded-lg text-xs font-semibold transition-colors",
-                    effectiveGoal === option
-                      ? "bg-primary text-white shadow-soft"
-                      : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100",
-                  )}
-                  aria-label={`Set weekly goal to ${option}`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
+              <span
+                className={cn(
+                  "flex h-8 w-full items-center justify-center rounded-md text-xs font-semibold tabular-nums",
+                  day.sessions > 0
+                    ? "bg-primary text-white"
+                    : day.isFuture
+                      ? "border border-dashed border-slate-200"
+                      : "bg-slate-100",
+                  day.isToday &&
+                    day.sessions === 0 &&
+                    "ring-2 ring-primary-border",
+                )}
+                aria-label={`${DAY_NAMES[day.label]}${day.isToday ? ", today" : ""}: ${
+                  day.sessions === 0
+                    ? day.isFuture
+                      ? "still to come"
+                      : "no practice"
+                    : `${day.sessions} session${day.sessions === 1 ? "" : "s"}`
+                }`}
+              >
+                {day.sessions > 1 ? day.sessions : ""}
+              </span>
+            </li>
+          ))}
+        </ol>
 
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-5 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
-              <Flame className="h-7 w-7" />
-            </div>
-            <p className="text-3xl font-bold leading-none text-slate-900">
-              {progress.streakDays}
-              <span className="ml-1 text-base font-medium text-slate-500">
-                day{progress.streakDays === 1 ? "" : "s"}
-              </span>
-            </p>
-            <p className="text-xs text-slate-500">
-              Current streak · best {progress.bestStreak}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <Award className="h-3.5 w-3.5" />
-                Badges
-              </p>
-              <span className="text-xs font-medium text-muted-foreground">
-                {earnedCount}/{badges.length}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {badges.map((badge) => (
-                <span
-                  key={badge.id}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
-                    badge.earned
-                      ? "border-success-border bg-success-subtle text-success-emphasis"
-                      : "border-slate-200 bg-white text-muted-foreground",
-                  )}
-                  title={badge.earned ? "Earned" : "Not yet earned"}
-                >
-                  {badge.earned && <Check className="h-3 w-3" />}
-                  {badge.label}
-                </span>
-              ))}
-            </div>
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+          <span className={PANEL_LABEL}>Weekly goal</span>
+          <div
+            className="flex items-center gap-1"
+            role="group"
+            aria-label="Weekly goal"
+          >
+            {WEEKLY_GOAL_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => handleGoalChange(option)}
+                aria-pressed={effectiveGoal === option}
+                aria-label={`Set weekly goal to ${option} sessions`}
+                className={cn(
+                  "h-7 w-7 rounded-md text-xs font-semibold tabular-nums transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
+                  effectiveGoal === option
+                    ? "bg-primary text-white"
+                    : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+                )}
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </div>
       </CardContent>

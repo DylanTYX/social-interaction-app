@@ -72,7 +72,7 @@ export function TagEditor({
       {tags.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 py-0.5 pl-2 pr-1 text-xs font-medium text-purple-700"
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 text-slate-700 py-0.5 pl-2 pr-1 text-xs font-medium"
         >
           <Tag className="h-3 w-3" aria-hidden />
           {tag}
@@ -81,7 +81,7 @@ export function TagEditor({
             onClick={() => void save(removeTag(tags, tag))}
             disabled={saving}
             aria-label={`Remove tag ${tag}`}
-            className="rounded-full p-0.5 hover:bg-purple-100 disabled:opacity-50 print:hidden"
+            className="rounded p-0.5 hover:bg-slate-200 disabled:opacity-50 print:hidden"
           >
             <X className="h-3 w-3" />
           </button>
@@ -113,7 +113,7 @@ export function TagEditor({
                 setAdding(false);
               }
             }}
-            className="h-6 w-36 rounded-full border border-purple-300 bg-white px-2.5 text-xs text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
+            className="h-6 w-36 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-800 outline-none focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary-muted"
           />
           <datalist id={listId}>
             {unused.map((suggestion) => (
@@ -130,7 +130,7 @@ export function TagEditor({
               setAdding(true);
             }}
             disabled={saving}
-            className="inline-flex h-6 items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 text-xs text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700 print:hidden"
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-slate-300 px-2 text-xs text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700 print:hidden"
           >
             <Plus className="h-3 w-3" aria-hidden />
             {tags.length === 0 ? "Add tag" : "Tag"}

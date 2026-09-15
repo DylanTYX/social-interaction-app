@@ -71,12 +71,13 @@ export function ScoreComparison({
   if (!loaded || delta === null) return null;
 
   const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+  // A drop needs attention; it is not an error, so it is amber rather than red.
   const tone =
     delta > 0
-      ? "text-success"
+      ? "text-success-emphasis"
       : delta < 0
-        ? "text-destructive"
-        : "text-muted-foreground";
+        ? "text-warning-emphasis"
+        : "text-slate-500";
   const label =
     delta > 0
       ? `+${delta} vs last session`

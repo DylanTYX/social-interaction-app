@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Sparkles, X } from "lucide-react";
+import { Check, Eraser, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { readJson } from "@/lib/api/fetch-json";
@@ -134,8 +134,8 @@ export function TidyJobDescription({
           disabled={!canTidy}
           className="gap-1.5"
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          {status === "working" ? "Tidying up..." : "Tidy this up"}
+          <Eraser />
+          {status === "working" ? "Tidying up…" : "Tidy this up"}
         </Button>
         <p className="text-xs text-muted-foreground">
           {trimmedLength < 400

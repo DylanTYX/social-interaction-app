@@ -31,98 +31,87 @@ function startOfWeek(date: Date): Date {
  */
 export const MIN_TURNS_TO_PRACTISE = 3;
 
+export interface PracticeDay {
+  /** Local calendar date, `YYYY-MM-DD`. */
+  date: string;
+  /** "Mon" through "Sun". */
+  label: string;
+  /** Sessions practised that day. */
+  sessions: number;
+  isToday: boolean;
+  isFuture: boolean;
+}
+
 export interface PracticeProgress {
   /** Sessions *practised* this calendar week (Mon–Sun). */
   thisWeek: number;
-  /** Current consecutive-day streak (today or yesterday anchored). */
-  streakDays: number;
-  /** Longest streak ever recorded in the provided history. */
-  bestStreak: number;
+  /** Monday to Sunday of this week, with what was practised each day. */
+  days: PracticeDay[];
 }
 
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function localDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * This week's practice, by day.
+ *
+ * A streak and five badges used to sit here. The streak measured a daily habit,
+ * which interview preparation is not, and the badges rewarded milestones that
+ * say nothing about readiness; "Scored 85+" in particular rewarded picking a
+ * supportive interviewer. What is kept is the part worth planning around: how
+ * many sessions you have done this week against the number you chose, and on
+ * which days.
+ */
 export function computePracticeProgress(
   sessions: InterviewSessionSummary[],
+  now: Date = new Date(),
 ): PracticeProgress {
   /**
    * Sessions that represent actual practice, not merely a launch.
    *
    * The row is created at the end of the setup wizard, before a single word is
    * exchanged — so this counted opening the wizard and closing the tab. Three
-   * of those on a Monday read "3/3 · Goal hit", and one a day earned a
-   * three-day streak. A streak is a motivation device; one that rewards opening
-   * a page is worse than none.
+   * of those on a Monday read "3/3 · Goal hit". A goal that rewards opening a
+   * page is worse than none.
    *
    * The bar is deliberately lower than `MIN_TURNS_TO_SCORE`: a short session is
-   * still practice and should still keep a streak alive, it just should not
+   * still practice and should still count toward the week, it just should not
    * vote on how good you are. One exchange is enough to count as showing up.
    */
-  const timestamps = sessions
+  const practised = sessions
     .filter((entry) => entry.turnCount >= MIN_TURNS_TO_PRACTISE)
     .map((entry) => Date.parse(entry.createdAt))
-    .filter((ts) => !Number.isNaN(ts))
-    .sort((a, b) => b - a);
+    .filter((ts) => !Number.isNaN(ts));
 
-  const weekStart = startOfWeek(new Date()).getTime();
-  const thisWeek = timestamps.filter((ts) => ts >= weekStart).length;
-
-  // Unique day keys for streak math.
-  const dayKeys = new Set(timestamps.map((ts) => new Date(ts).toDateString()));
-
-  // Current streak: walk back from today (allowing a 1-day grace if the user
-  // hasn't practiced *today* yet but did yesterday).
-  let streakDays = 0;
-  const today = new Date();
-  for (let offset = 0; offset < 365; offset += 1) {
-    const probe = new Date(today);
-    probe.setDate(today.getDate() - offset);
-    if (dayKeys.has(probe.toDateString())) {
-      streakDays += 1;
-    } else if (offset > 0) {
-      break;
-    }
+  const weekStart = startOfWeek(now);
+  const counts = new Map<string, number>();
+  for (const ts of practised) {
+    if (ts < weekStart.getTime()) continue;
+    const key = localDateKey(new Date(ts));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  // Best streak across all recorded days.
-  const sortedDays = Array.from(dayKeys)
-    .map((key) => new Date(key).getTime())
-    .sort((a, b) => a - b);
-  let bestStreak = sortedDays.length > 0 ? 1 : 0;
-  let run = bestStreak;
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  for (let i = 1; i < sortedDays.length; i += 1) {
-    const gap = Math.round((sortedDays[i] - sortedDays[i - 1]) / DAY_MS);
-    if (gap === 1) {
-      run += 1;
-      bestStreak = Math.max(bestStreak, run);
-    } else if (gap > 1) {
-      run = 1;
-    }
-  }
+  const todayKey = localDateKey(now);
+  const days = DAY_LABELS.map((label, index) => {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + index);
+    const key = localDateKey(date);
+    return {
+      date: key,
+      label,
+      sessions: counts.get(key) ?? 0,
+      isToday: key === todayKey,
+      isFuture: key > todayKey,
+    };
+  });
 
-  return { thisWeek, streakDays, bestStreak };
-}
-
-export interface PracticeBadge {
-  id: string;
-  label: string;
-  earned: boolean;
-}
-
-export function computeBadges(
-  sessions: InterviewSessionSummary[],
-  progress: PracticeProgress,
-): PracticeBadge[] {
-  const completed = sessions.filter((s) => s.status === "completed").length;
-  const highScore = sessions.some(
-    (s) => typeof s.averageScore === "number" && s.averageScore >= 85,
-  );
-  const triedVoice = sessions.some((s) => s.practiceMode === "voice");
-
-  return [
-    { id: "first", label: "First session", earned: sessions.length >= 1 },
-    { id: "five", label: "5 sessions", earned: completed >= 5 },
-    { id: "streak3", label: "3-day streak", earned: progress.bestStreak >= 3 },
-    { id: "voice", label: "Tried voice", earned: triedVoice },
-    { id: "ace", label: "Scored 85+", earned: highScore },
-  ];
+  return {
+    thisWeek: days.reduce((sum, day) => sum + day.sessions, 0),
+    days,
+  };
 }

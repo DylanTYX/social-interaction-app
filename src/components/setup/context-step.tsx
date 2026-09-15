@@ -1,9 +1,15 @@
 "use client";
 
 import { ChoiceChip } from "@/components/ui/choice-chip";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/ui/field";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import { ModeCards } from "@/components/setup/mode-cards";
 import { JobDescriptionPicker } from "@/components/setup/job-description-picker";
 import { ResumePicker } from "@/components/setup/resume-picker";
@@ -21,12 +27,11 @@ import type { UseResumes } from "@/hooks/use-resumes";
  * "Suggest from job description" button — it needed a JD collected two steps
  * after it.
  *
- * Each section is now its own Card so every heading sits directly above the
- * controls it names. The previous version wrapped all three in one card under a
- * step-level title and description, which meant the step's question got asked
- * twice: once as a container label with nothing to type into, and again as the
- * heading above the actual textarea. The first one looked broken because it
- * was labelling a box, not asking anything.
+ * Each section is its own Card so every heading sits directly above the
+ * controls it names, and each card has exactly one heading. The brief's card
+ * used to be titled "Describe the role" over a field labelled "What are you
+ * preparing for?" — two headings for one textarea. The question is the title
+ * now, and the textarea carries it as its accessible name.
  *
  * The gap between cards lives on a root element here rather than being
  * inherited from the step container. This step used to return a fragment and
@@ -66,48 +71,40 @@ export function ContextStep({
 
   return (
     <div className="space-y-8">
-      <Card className="border border-border shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            How do you want to answer?
-          </CardTitle>
+          <CardTitle className="text-lg">How you&apos;ll answer</CardTitle>
         </CardHeader>
         <CardContent>
           <ModeCards value={setup.practiceMode} onChange={onModeChange} />
         </CardContent>
       </Card>
 
-      <Card className="border border-border shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Describe the role</CardTitle>
+          <CardTitle className="text-lg">What are you preparing for?</CardTitle>
+          <CardAction>
+            {/* The one hint that survives here: it states a bar you have to
+                clear, which nothing else on screen tells you. */}
+            <span className="text-xs text-slate-500 tabular-nums">
+              {charCount}/20 minimum
+            </span>
+          </CardAction>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Field
-            label="What are you preparing for?"
-            htmlFor="interview-brief"
-            aside={
-              // The one hint that survives here: it states a bar you have to
-              // clear, which nothing else on screen tells you.
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {charCount}/20 minimum
-              </span>
+          <Textarea
+            id="interview-brief"
+            aria-label="What are you preparing for?"
+            value={brief}
+            onChange={(event) =>
+              onUpdate({ customScenarioBrief: event.target.value })
             }
-          >
-            <Textarea
-              id="interview-brief"
-              value={brief}
-              onChange={(event) =>
-                onUpdate({ customScenarioBrief: event.target.value })
-              }
-              placeholder='e.g. "Senior data analyst at a mid-size SaaS company. Expecting questions on SQL, dashboards, stakeholder communication, and a behavioural round on cross-team conflict."'
-              className="min-h-32 resize-y leading-6"
-            />
-          </Field>
+            placeholder='e.g. "Senior data analyst at a mid-size SaaS company. Expecting questions on SQL, dashboards, stakeholder communication, and a behavioural round on cross-team conflict."'
+            className="min-h-32 resize-y leading-6"
+          />
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              Or start from a template
-            </p>
+            <p className={PANEL_LABEL}>Or start from a template</p>
             <div className="flex flex-wrap gap-2">
               {quickStarts.map((chip) => {
                 const isActive = brief.trim() === chip.template.trim();

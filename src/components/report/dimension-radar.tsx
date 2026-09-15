@@ -17,8 +17,9 @@
  *     geometry is never the only encoding — that is this chart's table view.
  *   - **One polarity.** Outward always means better; vagueness is inverted
  *     into "Specificity" rather than plotted raw.
- *   - **Single series, no legend** — the card title names it. A future overlay
- *     (previous same-type session) would add the legend with it.
+ *   - **Single series by default** — the card title names it. `earlier` adds a
+ *     dashed outline of an earlier period beneath it, and the caller adds the
+ *     legend that goes with it (analytics does; the report does not use it).
  */
 
 import type { AnalysisResult } from "@/lib/response-analyzer";
@@ -201,14 +202,33 @@ function polygonPoints(
   ).join(" ");
 }
 
-export function DimensionRadar({ axes }: { axes: RadarAxis[] }) {
+export function DimensionRadar({
+  axes,
+  earlier,
+  className,
+}: {
+  axes: RadarAxis[];
+  /**
+   * The same axes over an earlier period, aligned by index. Drawn as a dashed
+   * outline under the current shape, so growth reads as the gap between them.
+   * Ignored unless every axis has a value.
+   */
+  earlier?: ReadonlyArray<number | null> | null;
+  className?: string;
+}) {
   const total = axes.length;
   if (total < 3) return null;
+  const earlierValues =
+    earlier &&
+    earlier.length === total &&
+    earlier.every((value): value is number => typeof value === "number")
+      ? earlier
+      : null;
 
   return (
     <svg
       viewBox={`0 0 ${SIZE} ${SIZE}`}
-      className="mx-auto h-auto w-full max-w-sm"
+      className={className ?? "mx-auto h-auto w-full max-w-sm"}
       role="img"
       aria-label={`Dimension profile: ${axes
         .map((axis) => `${axis.label} ${axis.value.toFixed(1)} out of 10`)
@@ -238,6 +258,17 @@ export function DimensionRadar({ axes }: { axes: RadarAxis[] }) {
           />
         );
       })}
+
+      {earlierValues && (
+        <polygon
+          points={polygonPoints(total, (index) => earlierValues[index])}
+          fill="none"
+          className="stroke-slate-400"
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          strokeLinejoin="round"
+        />
+      )}
 
       {/* The data: 2px stroke, translucent fill, dots on the vertices. */}
       <polygon

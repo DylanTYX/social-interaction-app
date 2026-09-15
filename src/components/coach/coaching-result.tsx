@@ -1,5 +1,6 @@
-import { ChevronRight, ListChecks, Sparkles, Wand2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import { cn } from "@/lib/utils";
 import { CONTENT_ENTER } from "@/lib/motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,8 +27,7 @@ import type { SuggestedAnswerResult } from "@/lib/coach-contract";
  */
 
 const BODY = "whitespace-pre-line text-sm leading-relaxed";
-const LABEL =
-  "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide";
+const LABEL = cn("flex items-center gap-1.5", PANEL_LABEL);
 
 /**
  * Two columns once the *container* is wide, not the viewport.
@@ -64,7 +64,7 @@ function Diff({
       <div className={SPLIT}>
         {originalAnswer && (
           <div className="p-4">
-            <h3 className={cn(LABEL, "text-slate-400")}>Your answer</h3>
+            <h3 className={LABEL}>Your answer</h3>
             {/* Lighter than the rewrite beside it on purpose. You wrote this
                 and you are not here to re-read it — it is the reference the
                 other half is measured against. */}
@@ -73,13 +73,12 @@ function Diff({
         )}
         <div
           className={cn(
-            "bg-warning-subtle p-4",
+            "bg-slate-50 p-4",
             originalAnswer &&
-              "border-t border-warning-border/60 @3xl/coaching:border-l @3xl/coaching:border-t-0",
+              "border-t border-slate-200 @3xl/coaching:border-l @3xl/coaching:border-t-0",
           )}
         >
-          <h3 className={cn(LABEL, "text-warning-emphasis")}>
-            <Wand2 className="h-3.5 w-3.5" />
+          <h3 className={cn(LABEL, "text-slate-700")}>
             Your answer, tightened
           </h3>
           <p className="mt-1 text-xs text-slate-500">
@@ -104,20 +103,19 @@ function Diff({
  */
 function Exemplar({ text }: { text: string }) {
   return (
-    <details className="group/exemplar rounded-xl border border-success-border bg-success-subtle/60">
+    <details className="group/exemplar rounded-xl border border-slate-200 bg-white">
       <summary
         className={cn(
           LABEL,
-          "cursor-pointer list-none rounded-xl px-4 py-3 text-success-emphasis",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "cursor-pointer list-none rounded-xl px-4 py-3 text-slate-700",
+          "outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
           "[&::-webkit-details-marker]:hidden",
         )}
       >
-        <Sparkles className="h-3.5 w-3.5" />
         See a full example answer
         <ChevronRight className="ml-auto h-4 w-4 transition-transform group-open/exemplar:rotate-90 motion-reduce:transition-none" />
       </summary>
-      <div className="border-t border-success-border/60 px-4 pb-4 pt-3">
+      <div className="border-t border-slate-100 px-4 pb-4 pt-3">
         {/* Says the one thing a candidate has to know before reading it: the
             details are made up, so repeating them in an interview would be
             lying. Every attempt to say that in fewer words ("a yardstick, not
@@ -163,24 +161,20 @@ export function CoachingResult({
 
         {result.tips.length > 0 && (
           <section>
-            <h3 className={cn(LABEL, "text-slate-500")}>
-              <ListChecks className="h-3.5 w-3.5" />
-              What to improve
-            </h3>
+            <h3 className={LABEL}>What to improve</h3>
             {/* Unboxed, and two columns where there is room. Four short tips in
                 one narrow stack looked like an error log. */}
-            <ol className={cn(SPLIT, "mt-3 gap-x-8 gap-y-2.5")}>
+            <ol
+              className={cn(
+                SPLIT,
+                "mt-3 list-decimal gap-x-8 gap-y-2.5 pl-5 marker:text-slate-400",
+              )}
+            >
               {result.tips.map((tip, index) => (
                 <li
                   key={index}
-                  className="flex gap-2.5 text-sm leading-relaxed text-slate-700"
+                  className="pl-1 text-sm leading-relaxed text-slate-700"
                 >
-                  <span
-                    aria-hidden
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warning-muted text-[11px] font-semibold text-warning-emphasis"
-                  >
-                    {index + 1}
-                  </span>
                   {tip}
                 </li>
               ))}
@@ -219,9 +213,9 @@ export function CoachingResultSkeleton({
             )}
             <div
               className={cn(
-                "bg-warning-subtle p-4",
+                "bg-slate-50 p-4",
                 compare &&
-                  "border-t border-warning-border/60 @3xl/coaching:border-l @3xl/coaching:border-t-0",
+                  "border-t border-slate-200 @3xl/coaching:border-l @3xl/coaching:border-t-0",
               )}
             >
               <Skeleton className="h-3.5 w-36" />
@@ -245,7 +239,7 @@ export function CoachingResultSkeleton({
         </section>
 
         {/* The collapsed disclosure, at its collapsed height. */}
-        <div className="rounded-xl border border-success-border bg-success-subtle/60 px-4 py-3">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
           <Skeleton className="h-3.5 w-44" />
         </div>
       </div>

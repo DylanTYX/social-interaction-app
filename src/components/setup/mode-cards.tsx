@@ -1,73 +1,53 @@
 "use client";
 
-import { Check, MessageSquare, Mic } from "lucide-react";
+import { MessageSquare, Mic } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { TILE_COLORS, type TileColor } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
 import type { PracticeMode } from "@/lib/interview-setup";
 
 /**
- * Text or voice, as two cards.
+ * Voice or text, with voice first.
  *
- * This shape existed before and was cut in `3102d61` for good reasons: it was an
- * entire wizard step spent on a binary choice, wrapped in decorative gradients,
- * listing marketing-flavoured highlights. Collapsing it to a chip row fixed
- * that, but overcorrected — each mode was left with four words on a 32px pill.
+ * Voice is the primary way to practise: an interview is spoken, and a practice
+ * tool that defaults to typing trains the half of the skill nobody is assessed
+ * on. So the two are no longer equal cards side by side. Voice leads, says it
+ * is recommended, and says what it needs; text is the second row, for when you
+ * want time to think or cannot speak aloud.
  *
- * So the shape is back and the reasons it was cut are not.
- *
- * More to the point, the three lines under each mode are **consequences**, not
- * features, and every one of them is currently invisible in the UI:
- *
- *   - Voice opens a technical round on discussion rather than in the editor.
- *     It no longer *removes* the editor — that was the old behaviour, where
- *     `resolveAnswerFormat` returned `"prose"` before the round type was even
- *     consulted and `loop-step` hid the switch, so picking Voice silently cost
- *     you a capability you only noticed a step later.
- *   - Voice needs a microphone, and the mic check does not appear until the
- *     final step.
- *   - Voice rewrites `practiceMode` on every round in the loop.
- *
- * Saying so here costs one line each and prevents a wasted setup.
+ * Drawn as the same radio rows the document pickers use, so choosing how to
+ * answer looks like every other single choice in the wizard. The lines under
+ * each option are consequences you would otherwise discover later, not
+ * features.
  */
 
 interface ModeSpec {
   value: PracticeMode;
   title: string;
   description: string;
-  /** Facts about this mode. Deliberately not styled as pros or cons. */
-  points: string[];
+  detail: string;
   icon: typeof MessageSquare;
-  accent: TileColor;
+  recommended?: boolean;
 }
 
 const MODES: ModeSpec[] = [
-  {
-    value: "text",
-    title: "Text interview",
-    description:
-      "Type your answers and read the interviewer's replies. Easier to think before you commit.",
-    points: [
-      "Replies render as markdown, and you can re-read them",
-      "Technical rounds open straight into a code editor",
-      "Optional live streaming as the interviewer types",
-    ],
-    icon: MessageSquare,
-    accent: "blue",
-  },
   {
     value: "voice",
     title: "Voice interview",
     description:
       "Speak your answers and hear the interviewer reply. Closest to the real thing.",
-    points: [
-      "Needs a microphone — you check it on the last step",
-      "You pick the interviewer's voice before starting",
-      "Technical rounds still get a code editor — speak, then type the code",
-    ],
+    detail:
+      "You check your microphone before you start. Technical rounds still have a code editor for the code.",
     icon: Mic,
-    accent: "purple",
+    recommended: true,
+  },
+  {
+    value: "text",
+    title: "Text interview",
+    description:
+      "Type your answers and read the replies. More time to think before you commit.",
+    detail: "Technical rounds open straight into a code editor.",
+    icon: MessageSquare,
   },
 ];
 
@@ -79,14 +59,9 @@ export function ModeCards({
   onChange: (mode: PracticeMode) => void;
 }) {
   return (
-    // Two mutually exclusive options, so radio semantics rather than
-    // `ChoiceChip`'s `aria-pressed` — a pressed toggle does not tell a screen
-    // reader that choosing one unchooses the other.
-    <div
-      role="radiogroup"
-      aria-label="How do you want to answer?"
-      className="grid gap-4 sm:grid-cols-2"
-    >
+    // Radio semantics: choosing one unchooses the other, which a pressed
+    // toggle would not tell a screen reader.
+    <div role="radiogroup" aria-label="How you'll answer" className="space-y-2">
       {MODES.map((mode) => {
         const Icon = mode.icon;
         const isActive = value === mode.value;
@@ -99,55 +74,49 @@ export function ModeCards({
             aria-checked={isActive}
             onClick={() => onChange(mode.value)}
             className={cn(
-              "flex h-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors",
-              "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
+              "flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors duration-150",
+              "outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
               isActive
-                ? "border-primary bg-primary-subtle"
-                : "border-border bg-background hover:border-primary-border hover:bg-accent",
+                ? "border-primary-border bg-primary-subtle"
+                : "border-slate-200 bg-white hover:bg-slate-50",
             )}
           >
-            <div className="flex items-center justify-between gap-2">
-              <div
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg",
-                  TILE_COLORS[mode.accent],
-                )}
-                aria-hidden
-              >
-                <Icon className="h-4.5 w-4.5" />
-              </div>
-              {isActive && (
-                <Badge variant="default" className="gap-1">
-                  <Check className="h-3 w-3" />
-                  Selected
-                </Badge>
+            <span
+              aria-hidden
+              className={cn(
+                "mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150",
+                isActive
+                  ? "border-primary bg-primary"
+                  : "border-slate-300 bg-white",
               )}
-            </div>
-
-            <div className="space-y-1.5">
-              <p className="font-medium text-foreground">{mode.title}</p>
-              <p className="text-sm leading-6 text-muted-foreground">
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+            </span>
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <Icon
+                  className={cn(
+                    "h-4 w-4",
+                    isActive ? "text-primary" : "text-slate-500",
+                  )}
+                  aria-hidden
+                />
+                <span className="font-display font-semibold text-slate-900">
+                  {mode.title}
+                </span>
+                {mode.recommended && (
+                  <Badge variant="outline" className="bg-white">
+                    Recommended
+                  </Badge>
+                )}
+              </span>
+              <span className="block text-sm leading-6 text-slate-600">
                 {mode.description}
-              </p>
-            </div>
-
-            <ul className="space-y-1.5">
-              {mode.points.map((point) => (
-                <li
-                  key={point}
-                  className="flex gap-2 text-xs leading-5 text-muted-foreground"
-                >
-                  {/* A neutral dot, not a green tick. One of these lines is a
-                      limitation, and ticking all three would read as three
-                      benefits. */}
-                  <span
-                    className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60"
-                    aria-hidden
-                  />
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
+              </span>
+              <span className="block text-xs leading-5 text-slate-500">
+                {mode.detail}
+              </span>
+            </span>
           </button>
         );
       })}

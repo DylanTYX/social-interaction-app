@@ -1,23 +1,21 @@
-import { Activity, MessageCircleHeart, Timer, TrendingUp } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import type { InterviewMetrics } from "@/lib/interview-metrics";
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import { cn } from "@/lib/utils";
 
 type LiveFeedbackSidebarProps = {
   metrics: InterviewMetrics | null;
   analyses: AnalysisResult[];
   followupPrompt: string | null;
+  /** One line on how the interview is trending, from the page's metric read. */
+  trendNote?: string | null;
 };
 
 type MetricChip = {
   key: string;
   label: string;
   value: number | null;
-  tone: "emerald" | "blue" | "amber" | "violet";
   trend: number[];
-  icon: React.ComponentType<{ className?: string }>;
 };
 
 type CoachingItem = {
@@ -47,13 +45,6 @@ function buildSparklinePath(values: number[]): string {
       return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
-}
-
-function buildGridLines(width = 84, height = 26) {
-  return {
-    vertical: [0, width / 2, width],
-    horizontal: [0, height / 2, height],
-  };
 }
 
 function getMetricTrend(values: number[], maxPoints = 7): number[] {
@@ -173,9 +164,7 @@ function buildMetricChips(
         metrics && analyses.length > 0
           ? clamp(metrics.averageConfidenceScore * 10)
           : null,
-      tone: "blue",
       trend: getMetricTrend(confidenceSeries),
-      icon: MessageCircleHeart,
     },
     {
       key: "relevance",
@@ -184,17 +173,13 @@ function buildMetricChips(
         relevanceSeries.length > 0
           ? relevanceSeries[relevanceSeries.length - 1]
           : null,
-      tone: "emerald",
       trend: getMetricTrend(relevanceSeries),
-      icon: TrendingUp,
     },
     {
       key: "pace",
       label: "Speaking pace",
       value: paceSeries.length > 0 ? paceSeries[paceSeries.length - 1] : null,
-      tone: "amber",
       trend: getMetricTrend(paceSeries),
-      icon: Timer,
     },
     {
       key: "concise",
@@ -203,162 +188,121 @@ function buildMetricChips(
         conciseSeries.length > 0
           ? conciseSeries[conciseSeries.length - 1]
           : null,
-      tone: "violet",
       trend: getMetricTrend(conciseSeries),
-      icon: Activity,
     },
   ];
 }
 
-function toneStyles(tone: MetricChip["tone"]): string {
-  if (tone === "emerald") {
-    return "from-success/20 to-success/5 border-success-border/50 text-success-emphasis";
-  }
+/** Good is green, needs attention is amber, a focus is neutral. */
+const TONE_MARK: Record<CoachingItem["tone"], string> = {
+  good: "bg-success",
+  warn: "bg-warning",
+  focus: "bg-slate-300",
+};
 
-  if (tone === "amber") {
-    return "from-warning/20 to-warning/5 border-warning-border/50 text-warning-emphasis";
-  }
-
-  if (tone === "violet") {
-    return "from-primary/20 to-primary/5 border-primary-border/50 text-primary-emphasis";
-  }
-
-  return "from-primary/20 to-primary/5 border-primary-border/50 text-primary-emphasis";
-}
-
-function coachingToneStyle(tone: CoachingItem["tone"]): string {
-  if (tone === "warn") {
-    return "border-warning-border/60 bg-warning-subtle/70";
-  }
-
-  if (tone === "good") {
-    return "border-success-border/60 bg-success-subtle/70";
-  }
-
-  return "border-primary-border/60 bg-primary-subtle/70";
-}
-
+/**
+ * The live coaching rail: four measures with their recent trend, and up to
+ * four notes on the last answer.
+ *
+ * It used to be a frosted glass panel holding four gradient tiles, each in
+ * its own colour, over four tinted cards that slid in one after another. The
+ * colours told the metrics apart, which their labels already did, and the
+ * gradients and glass were the exact decoration the design rules out. Now it
+ * is one bordered panel: a hairline grid of measures, each drawn in blue like
+ * every chart in the app, and one hairline-divided list of notes. The only
+ * colour is the mark beside a note, and it means something: green is good,
+ * amber needs attention. See docs/DESIGN.md.
+ */
 export function LiveFeedbackSidebar({
   metrics,
   analyses,
   followupPrompt,
+  trendNote,
 }: LiveFeedbackSidebarProps) {
   const metricChips = buildMetricChips(metrics, analyses);
   const coachingItems = getCoachingItems(analyses, followupPrompt);
 
   return (
-    <aside className="flex max-h-full w-full shrink-0 flex-col overflow-y-auto rounded-2xl border border-slate-200/70 bg-white/65 p-4 shadow-soft-md backdrop-blur-xl xl:w-104">
-      <div className="mb-4 flex shrink-0 items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">
-            Live Coaching
-          </h2>
-          <p className="text-xs text-slate-500">
-            Real-time nudges during the interview
-          </p>
-        </div>
-        <Badge variant="secondary" className="animate-pulse">
-          Live
-        </Badge>
+    <aside className="flex max-h-full w-full shrink-0 flex-col overflow-y-auto rounded-xl border border-slate-200 bg-white xl:w-104">
+      <div className="border-b border-slate-100 px-4 py-3.5">
+        <h2 className="font-display text-base font-semibold tracking-tight text-slate-900">
+          Live coaching
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {trendNote ?? "Notes appear after each answer."}
+        </p>
       </div>
 
-      <div className="grid shrink-0 grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-px border-b border-slate-100 bg-slate-100">
         {metricChips.map((metric) => {
-          const Icon = metric.icon;
           const sparkPath = buildSparklinePath(metric.trend);
-          const grid = buildGridLines();
-
           return (
-            <Card
-              key={metric.key}
-              className={`border bg-linear-to-br shadow-soft transition-all duration-300 hover:-translate-y-0.5 ${toneStyles(metric.tone)}`}
-            >
-              <CardContent className="space-y-2 p-3">
-                <div className="flex items-center justify-between text-[11px] font-medium">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Icon className="h-3.5 w-3.5" />
-                    {metric.label}
-                  </span>
-                  <span>
-                    {metric.value === null
-                      ? "--"
-                      : `${Math.round(metric.value)}%`}
-                  </span>
-                </div>
-                {metric.value === null ? (
-                  <div className="flex h-7 items-center justify-center rounded-md border border-dashed border-slate-200/70 text-[10px] text-muted-foreground">
-                    No samples yet
-                  </div>
-                ) : (
-                  <svg
-                    viewBox="0 0 84 26"
-                    className="h-7 w-full"
-                    role="img"
-                    aria-label={`${metric.label} trend`}
-                  >
-                    {grid.vertical.map((x) => (
-                      <line
-                        key={`v-${x}`}
-                        x1={x}
-                        y1="0"
-                        x2={x}
-                        y2="26"
-                        stroke="currentColor"
-                        strokeOpacity="0.12"
-                        strokeWidth="0.8"
-                      />
-                    ))}
-                    {grid.horizontal.map((y) => (
-                      <line
-                        key={`h-${y}`}
-                        x1="0"
-                        y1={y}
-                        x2="84"
-                        y2={y}
-                        stroke="currentColor"
-                        strokeOpacity="0.12"
-                        strokeWidth="0.8"
-                      />
-                    ))}
-                    <path
-                      d={sparkPath}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
+            <div key={metric.key} className="bg-white p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs text-slate-500">{metric.label}</span>
+                <span className="font-display text-base font-semibold text-navy tabular-nums">
+                  {metric.value === null ? "—" : `${Math.round(metric.value)}%`}
+                </span>
+              </div>
+              {metric.value === null ? (
+                <p className="mt-2 h-7 text-[11px] leading-7 text-slate-400">
+                  No answers yet
+                </p>
+              ) : (
+                <svg
+                  viewBox="0 0 84 26"
+                  className="mt-2 h-7 w-full text-primary"
+                  role="img"
+                  aria-label={`${metric.label} trend`}
+                >
+                  {[0, 13, 26].map((y) => (
+                    <line
+                      key={y}
+                      x1="0"
+                      y1={y}
+                      x2="84"
+                      y2={y}
+                      className="stroke-slate-100"
+                      strokeWidth="1"
                     />
-                  </svg>
-                )}
-              </CardContent>
-            </Card>
+                  ))}
+                  <path
+                    d={sparkPath}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
           );
         })}
       </div>
 
-      <div className="mt-4 space-y-2.5 pb-2">
-        {coachingItems.map((item, index) => (
-          // The stagger was here already but had nothing to stagger: this set
-          // `animationDelay` on a card with no `animation` property, so the
-          // delay was inert and the cards all appeared at once. Adding the
-          // entrance makes the existing intent real. `fill-mode-both` is what
-          // keeps a delayed card hidden until its turn instead of flashing in
-          // and restarting.
-          <Card
-            key={item.id}
-            className={`gap-2 border shadow-soft transition-all duration-500 animate-in fade-in-0 slide-in-from-right-2 ease-soft fill-mode-both ${coachingToneStyle(item.tone)}`}
-            style={{ animationDelay: `${index * 80}ms` }}
-          >
-            <CardHeader className="pb-1.5">
-              <CardTitle className="text-sm font-semibold text-slate-900">
-                {item.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-xs leading-5 text-slate-600">{item.body}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="px-4 pt-3.5 pb-1">
+        <p className={PANEL_LABEL}>Notes on your last answer</p>
       </div>
+      <ul className="divide-y divide-slate-100">
+        {coachingItems.map((item) => (
+          <li key={item.id} className="px-4 py-3">
+            <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-[2px]",
+                  TONE_MARK[item.tone],
+                )}
+                aria-hidden
+              />
+              {item.title}
+            </p>
+            <p className="mt-1 pl-4 text-xs leading-5 text-slate-600">
+              {item.body}
+            </p>
+          </li>
+        ))}
+      </ul>
     </aside>
   );
 }

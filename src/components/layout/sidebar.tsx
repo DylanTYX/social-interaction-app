@@ -6,14 +6,11 @@ import { cn } from "@/lib/utils";
 import { isNavItemActive } from "@/lib/nav";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "./sidebar-context";
-import {
-  useCurrentUser,
-  getDisplayName,
-  getInitials,
-} from "@/hooks/use-current-user";
+import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import {
-  MessageSquare,
   LayoutDashboard,
   BarChart3,
   FileText,
@@ -35,12 +32,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 /**
- * Destinations only.
+ * Destinations only, in two groups, and only the second is labelled.
  *
  * "Interview practice" used to sit second here, which weighted the app's whole
  * purpose the same as Settings and made a verb look like a place. It is now a
  * pinned action above the list.
+ *
+ * The first group is the app itself: where you land, quick drills, your
+ * sessions and the analytics that summarise them. Analytics used to sit last,
+ * below Resumes, a whole library away from the Sessions it summarises.
+ *
+ * The second group is the material you prepare once and reuse in every interview.
+ * It is labelled "Library" because that is already the word the app uses when
+ * you save a persona ("Saved to your library"). The first group needs no label:
+ * a heading reading "Practice" over Dashboard would name nothing new.
  */
 const navigation = [
   {
@@ -59,6 +66,14 @@ const navigation = [
     icon: History,
   },
   {
+    name: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+];
+
+const libraryNavigation = [
+  {
     name: "Personas",
     href: "/dashboard/personas",
     icon: Users,
@@ -74,11 +89,6 @@ const navigation = [
     name: "Resumes",
     href: "/dashboard/resumes",
     icon: FileUser,
-  },
-  {
-    name: "Analytics",
-    href: "/dashboard/analytics",
-    icon: BarChart3,
   },
 ];
 
@@ -164,14 +174,11 @@ function NavItem({
         "transition-[gap,padding] duration-300 ease-soft",
         "text-sm font-medium",
         isCollapsed && "justify-center px-2",
-        isActive && [
-          "bg-primary-subtle text-primary-emphasis",
-          "shadow-soft border border-primary-muted",
-        ],
-        !isActive && [
-          "text-slate-600",
-          "hover:bg-slate-50 hover:text-slate-900",
-        ],
+        // A lighter band and white text mark where you are, with the icon in
+        // the wordmark's light blue. The light-blue tint used on a white
+        // sidebar disappears on navy. Still a tint, not a bordered chip.
+        isActive && "bg-white/10 text-white",
+        !isActive && ["text-slate-300", "hover:bg-white/5 hover:text-white"],
         "transition-all duration-150",
       )}
     >
@@ -179,7 +186,7 @@ function NavItem({
         className={cn(
           "h-5 w-5 shrink-0",
           "transition-colors duration-150",
-          isActive ? "text-primary" : "text-slate-500",
+          isActive ? "text-blue-300" : "text-slate-400",
         )}
         strokeWidth={isActive ? 2.25 : 1.75}
       />
@@ -228,7 +235,6 @@ export function Sidebar() {
     router.refresh();
   };
 
-  const initials = getInitials(user);
   const displayName = getDisplayName(user);
   const subline = user?.email ?? "Signed in";
 
@@ -242,7 +248,12 @@ export function Sidebar() {
       <aside
         className={cn(
           "relative hidden lg:flex h-full flex-col",
-          "bg-white border-r border-slate-200/80 shadow-soft",
+          // Navy, the brand's dark: the same surface as the sign-in panel and
+          // the landing page's closing band, so the app is framed by the
+          // colour you just walked through. It also gives an otherwise white
+          // screen one dark anchor, which keeps the content area reading as
+          // the work surface. Every state below is drawn for a dark ground.
+          "bg-navy",
           isCollapsed ? "w-16" : "w-64",
           "transition-[width] duration-300 ease-out",
         )}
@@ -250,37 +261,36 @@ export function Sidebar() {
       >
         <CollapseToggle isCollapsed={isCollapsed} onToggle={toggleSidebar} />
 
+        {/* The wordmark, set exactly as the landing page sets it. Collapsed,
+            it keeps its two colours as initials rather than turning into an
+            icon tile with a glow. */}
         <div
           className={cn(
-            "flex h-16 items-center overflow-hidden border-b border-slate-100",
+            "flex h-16 items-center overflow-hidden border-b border-white/10",
             "transition-all duration-300",
-            isCollapsed ? "justify-center gap-0 px-2" : "gap-3 px-4",
+            isCollapsed ? "justify-center px-2" : "px-5",
           )}
         >
-          <div
-            className={cn(
-              "flex items-center justify-center shrink-0",
-              "h-9 w-9 rounded-xl",
-              "bg-primary",
-              "shadow-lg shadow-primary/25",
-            )}
+          <Link
+            href="/dashboard"
+            aria-label="ConvoTrainer, go to dashboard"
+            className="font-display text-xl font-bold tracking-[-0.02em] whitespace-nowrap text-white"
           >
-            <MessageSquare className="h-5 w-5 text-white" strokeWidth={2.5} />
-          </div>
-          <span
-            className={cn(
-              "truncate text-lg font-bold text-slate-900",
-              "transition-[max-width,opacity] duration-300 ease-soft",
-              isCollapsed ? "max-w-0 opacity-0" : "max-w-48 opacity-100",
+            {isCollapsed ? (
+              <>
+                C<span className="text-blue-300">T</span>
+              </>
+            ) : (
+              <>
+                Convo<span className="text-blue-300">Trainer</span>
+              </>
             )}
-          >
-            ConvoTrainer
-          </span>
+          </Link>
         </div>
 
         {/* Things you do, separated from the places you go. Without the rule
             the search box reads as the first item of the nav list. */}
-        <div className="border-b border-slate-100 pb-3">
+        <div className="border-b border-white/10 pb-3">
           {/* The one thing this app is for.
 
               A sidebar lists places you go and return to with state; starting an
@@ -294,7 +304,14 @@ export function Sidebar() {
           <div className="p-2 pb-0">
             <Button
               asChild
-              className="w-full gap-2"
+              // No gap when collapsed. The label shrinks to zero width but a
+              // flex gap is still spent beside it, which pushed the plus 4px
+              // left of centre and left the button looking wider on the right.
+              // `NavItem` drops its gap the same way.
+              className={cn(
+                "w-full transition-[gap,background-color] duration-300 ease-soft",
+                isCollapsed ? "gap-0" : "gap-2",
+              )}
               size={isCollapsed ? "icon" : "default"}
             >
               <Link
@@ -323,8 +340,8 @@ export function Sidebar() {
                 window.dispatchEvent(new Event("open-command-palette"))
               }
               className={cn(
-                "flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-500",
-                "hover:bg-slate-100 hover:text-slate-700 transition-colors duration-150",
+                "flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400",
+                "hover:bg-white/10 hover:text-white transition-colors duration-150",
                 isCollapsed && "justify-center px-2",
               )}
               aria-label="Open command palette"
@@ -333,7 +350,7 @@ export function Sidebar() {
               {!isCollapsed && (
                 <>
                   <span className="flex-1 text-left">Search…</span>
-                  <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <kbd className="rounded border border-white/15 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
                     ⌘K
                   </kbd>
                 </>
@@ -343,18 +360,51 @@ export function Sidebar() {
         </div>
 
         <nav
-          className="flex-1 p-2 pt-3 space-y-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto p-2 pt-3"
           aria-label="Primary"
           data-tour="nav"
         >
-          {navigation.map((item) => (
-            <NavItem
-              key={item.href}
-              item={item}
-              isActive={isActive(item.href)}
-              isCollapsed={isCollapsed}
-            />
-          ))}
+          <div className="space-y-1">
+            {navigation.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+                isActive={isActive(item.href)}
+                isCollapsed={isCollapsed}
+              />
+            ))}
+          </div>
+
+          <div
+            role="group"
+            aria-labelledby="sidebar-library-label"
+            className={cn("space-y-1", isCollapsed ? "mt-3" : "mt-6")}
+          >
+            {/* Collapsed, the words cannot fit, so a hairline marks the
+                boundary instead. The label stays in the accessibility tree
+                either way, so the group keeps its name. */}
+            <p
+              id="sidebar-library-label"
+              className={cn(
+                PANEL_LABEL,
+                "px-3 pb-1 text-slate-400",
+                isCollapsed && "sr-only",
+              )}
+            >
+              Library
+            </p>
+            {isCollapsed && (
+              <div className="mx-2 mb-3 border-t border-white/10" aria-hidden />
+            )}
+            {libraryNavigation.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+                isActive={isActive(item.href)}
+                isCollapsed={isCollapsed}
+              />
+            ))}
+          </div>
         </nav>
 
         <div className="p-2 space-y-1" aria-label="Secondary">
@@ -368,7 +418,7 @@ export function Sidebar() {
           ))}
         </div>
 
-        <div className="border-t border-slate-100 p-2">
+        <div className="border-t border-white/10 p-2">
           <div
             className={cn(
               "flex items-center gap-3 rounded-lg p-2",
@@ -378,17 +428,18 @@ export function Sidebar() {
           >
             <Link
               href="/dashboard/settings"
-              className={cn(
-                "flex items-center justify-center shrink-0",
-                "h-8 w-8 rounded-lg",
-                "bg-primary",
-                "text-white text-xs font-semibold",
-                "shadow-md shadow-primary/25",
-                "hover:opacity-90 transition-opacity",
-              )}
+              className="shrink-0 rounded-full transition-opacity hover:opacity-90"
               aria-label="Account settings"
             >
-              {initials}
+              {/* Your avatar is navy everywhere else, which would vanish
+                  here, so on the sidebar it inverts to white with navy
+                  initials. */}
+              <InitialsAvatar
+                name={displayName}
+                size="sm"
+                tone="you"
+                className="bg-white text-navy"
+              />
             </Link>
             {!isCollapsed && (
               <>
@@ -396,10 +447,10 @@ export function Sidebar() {
                   href="/dashboard/settings"
                   className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
                 >
-                  <p className="text-sm font-medium text-slate-900 truncate">
+                  <p className="text-sm font-medium text-white truncate">
                     {displayName}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">{subline}</p>
+                  <p className="text-xs text-slate-400 truncate">{subline}</p>
                 </Link>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -408,7 +459,7 @@ export function Sidebar() {
                       onClick={() => void handleSignOut()}
                       className={cn(
                         "p-1.5 rounded-md",
-                        "text-muted-foreground hover:text-foreground hover:bg-slate-100",
+                        "text-slate-400 hover:text-white hover:bg-white/10",
                         "transition-colors duration-150",
                         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                       )}

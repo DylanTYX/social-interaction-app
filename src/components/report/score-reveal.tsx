@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Gauge } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Predict your score, then see it.
@@ -81,7 +81,7 @@ export function ScoreReveal({
 
   if (phase === "reading") {
     // Holds the space without flashing the scores the gate is about to hide.
-    return <div className="h-44 animate-pulse rounded-2xl bg-slate-100" aria-hidden />;
+    return <Skeleton className="h-44 rounded-xl" aria-hidden />;
   }
 
   if (phase === "asking") {
@@ -93,12 +93,9 @@ export function ScoreReveal({
     };
 
     return (
-      <Card className="border-primary-border bg-gradient-to-br from-primary-subtle via-white to-white">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Gauge className="h-4 w-4 text-primary" aria-hidden />
-            Before you see your score
-          </CardTitle>
+          <CardTitle className="text-lg">Before you see your score</CardTitle>
           <CardDescription>
             How do you think that went? Predict your overall score first —
             noticing the gap between how an interview felt and how it actually
@@ -109,7 +106,9 @@ export function ScoreReveal({
           <div>
             <div className="flex items-end justify-between">
               <span className="text-sm text-slate-600">Your prediction</span>
-              <span className="text-4xl font-bold tabular-nums text-primary-emphasis">{guess}%</span>
+              <span className="font-display text-4xl leading-none font-bold tracking-tight text-navy tabular-nums">
+                {guess}%
+              </span>
             </div>
             <input
               type="range"

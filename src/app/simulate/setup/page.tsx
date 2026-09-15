@@ -4,18 +4,6 @@ import { readJson } from "@/lib/api/fetch-json";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowRight,
-  CheckCircle2,
-  ChevronLeft,
-  FileText,
-  Sliders,
-  Rocket,
-  Sparkles,
-  GaugeCircle,
-} from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import {
   BRIEF_QUICK_STARTS,
   CUSTOM_SCENARIO_VALUE,
   resolveScenarioForLaunch,
@@ -45,9 +33,11 @@ import { useJobDescriptions } from "@/hooks/use-job-descriptions";
 import { useResumes } from "@/hooks/use-resumes";
 import { LoopStep } from "@/components/setup/loop-step";
 import { ContextStep } from "@/components/setup/context-step";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
+import { SetupSummary } from "@/components/setup/setup-summary";
 import { cn } from "@/lib/utils";
 import {
   buildRoundScenarioDescription,
@@ -59,37 +49,21 @@ type StepId = "context" | "rounds" | "persona" | "review";
 
 type StepDefinition = {
   id: StepId;
-  title: string;
-  shortLabel: string;
-  icon: React.ComponentType<{ className?: string }>;
+  /** The word in the stepper. Each step's content carries its own headings. */
+  label: string;
 };
 
 const STEPS: StepDefinition[] = [
-  {
-    id: "context",
-    title: "What are you preparing for?",
-    shortLabel: "Context",
-    icon: FileText,
-  },
-  {
-    id: "rounds",
-    title: "Build your interview",
-    shortLabel: "Rounds",
-    icon: GaugeCircle,
-  },
-  {
-    id: "persona",
-    title: "Shape the interviewer",
-    shortLabel: "Interviewer",
-    icon: Sliders,
-  },
-  {
-    id: "review",
-    title: "Review and launch",
-    shortLabel: "Review",
-    icon: Rocket,
-  },
+  { id: "context", label: "Brief" },
+  { id: "rounds", label: "Rounds" },
+  { id: "persona", label: "Interviewer" },
+  // What is left before you start. The review of your choices lives in the
+  // summary panel beside every step, not on a step of its own.
+  { id: "review", label: "Ready" },
 ];
+
+const PAGE_DESCRIPTION =
+  "Brief, rounds and interviewer, then a quick check and you are in the room.";
 
 export default function SetupPage() {
   return (
@@ -99,14 +73,17 @@ export default function SetupPage() {
   );
 }
 
+/** The same frame as the page it stands in for, so nothing shifts on load. */
 function SetupLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-        <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
-        Preparing setup...
+    <PageContainer>
+      <PageHeader title="New interview" description={PAGE_DESCRIPTION} />
+      <Skeleton className="h-8 w-80 max-w-full rounded-md" />
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Skeleton className="h-96 rounded-xl" />
+        <Skeleton className="h-96 rounded-xl" />
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -566,7 +543,7 @@ function SetupWizard() {
       stream.getTracks().forEach((track) => track.stop());
       setMicrophoneStatus("ready");
       setMicrophoneMessage(
-        "Microphone access verified — you're ready to record.",
+        "Microphone access verified. You're ready to answer out loud.",
       );
       setSetup((current) => ({
         ...current,
@@ -707,153 +684,131 @@ function SetupWizard() {
     return null;
   })();
 
-  const canProceedFromStep = blockedReason === null;
-
   return (
-    // No `min-h-screen` and no background: `AppShell`'s <main> owns the scroll
-    // container and the page background now, exactly as it does for every
-    // /dashboard page.
-    <div className="mx-auto max-w-5xl space-y-8 p-8">
-      <PageHeader
-        eyebrow="Practice"
-        title="Interview practice"
-        description="Four steps, then you are interviewing."
-        icon={<Sparkles className="h-6 w-6" />}
-        iconColor="blue"
-      />
+    // The shared page frame, like every /dashboard page: `AppShell`'s <main>
+    // owns the scroll container and the page background.
+    <PageContainer>
+      {/* Named as the sidebar's button and every "New interview" action
+          that leads here names it. */}
+      <PageHeader title="New interview" description={PAGE_DESCRIPTION} />
 
       <Stepper currentStepId={currentStep} onStepSelect={goToStep} />
 
-      {/* No CardHeader. The stepper already names the step, and every
-            section inside carries its own CardTitle sitting directly above its
-            controls — so a step-level title/description pair only restated
-            what was above it and what was below it. On the first step it
-            repeated the inner heading word for word. */}
-      <div className="space-y-6">
-        {/* Keyed on the step so React remounts this subtree and the entrance
-            animation actually replays — a class change alone would not restart
-            it. The direction is what makes the wizard feel like one surface you
-            are moving along rather than four unrelated screens; a 1rem slide
-            stays inside the container's `p-8`, so it cannot cause a horizontal
-            scrollbar mid-transition.
+      {/* The step on the left, the interview it is building on the right.
+          The panel holds the step buttons, so the way forward is always in
+          the same place however long a step is; below `lg` it follows the
+          step, where the buttons used to sit. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
+          {/* Keyed on the step so React remounts this subtree and the entrance
+              animation replays; the direction makes the wizard read as one
+              surface you move along rather than four unrelated screens. */}
+          <div
+            key={currentStep}
+            className={cn(
+              "animate-in fade-in-0 duration-300 ease-soft",
+              stepDirection === "forward"
+                ? "slide-in-from-right-4"
+                : "slide-in-from-left-4",
+            )}
+          >
+            {currentStep === "context" && (
+              <ContextStep
+                setup={setup}
+                jobDescriptionLibrary={jobDescriptions}
+                resumeLibrary={resumes}
+                quickStarts={BRIEF_QUICK_STARTS}
+                onModeChange={updateMode}
+                onUpdate={(partial) =>
+                  updateSetup(
+                    "customScenarioBrief" in partial
+                      ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
+                      : partial,
+                  )
+                }
+              />
+            )}
 
-            Note that this div sits between the `space-y-6` above and the step
-            components, so it — not they — is what that gap now spaces. Each
-            step therefore has to own the rhythm between its own cards, which
-            all four now do. `ContextStep` did not, and adding this wrapper
-            silently collapsed its four cards together. */}
-        <div
-          key={currentStep}
-          className={cn(
-            "animate-in fade-in-0 duration-300 ease-soft",
-            stepDirection === "forward"
-              ? "slide-in-from-right-4"
-              : "slide-in-from-left-4",
-          )}
-        >
-          {currentStep === "context" && (
-            <ContextStep
-              setup={setup}
-              jobDescriptionLibrary={jobDescriptions}
-              resumeLibrary={resumes}
-              quickStarts={BRIEF_QUICK_STARTS}
-              onModeChange={updateMode}
-              onUpdate={(partial) =>
-                updateSetup(
-                  "customScenarioBrief" in partial
-                    ? { ...partial, scenarioValue: CUSTOM_SCENARIO_VALUE }
-                    : partial,
-                )
-              }
-            />
-          )}
+            {currentStep === "rounds" && (
+              <LoopStep
+                value={setup.interviewLoop}
+                practiceMode={setup.practiceMode}
+                jobDescriptionText={jobDescriptionText}
+                personaLibrary={personaLibrary}
+                onChange={(interviewLoop) => updateSetup({ interviewLoop })}
+              />
+            )}
 
-          {currentStep === "rounds" && (
-            <LoopStep
-              value={setup.interviewLoop}
-              practiceMode={setup.practiceMode}
-              jobDescriptionText={jobDescriptionText}
-              personaLibrary={personaLibrary}
-              onChange={(interviewLoop) => updateSetup({ interviewLoop })}
-            />
-          )}
+            {currentStep === "persona" && (
+              <PersonaStep
+                value={setup.personaConfig}
+                activeLibraryId={setup.personaLibraryId}
+                library={personaLibrary}
+                status={personaLibraryStatus}
+                error={personaLibraryError}
+                onRetry={() => void refreshPersonaLibrary()}
+                onPatch={updatePersona}
+                onPick={handlePickPersona}
+                onRandomize={handleRandomizePersona}
+                onSaveAsNew={handleSavePersona}
+                onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
+                onDuplicate={handleDuplicatePersona}
+              />
+            )}
 
-          {currentStep === "persona" && (
-            <PersonaStep
-              value={setup.personaConfig}
-              activeLibraryId={setup.personaLibraryId}
-              library={personaLibrary}
-              status={personaLibraryStatus}
-              error={personaLibraryError}
-              onRetry={() => void refreshPersonaLibrary()}
-              onPatch={updatePersona}
-              onPick={handlePickPersona}
-              onRandomize={handleRandomizePersona}
-              onSaveAsNew={handleSavePersona}
-              onUpdateLibraryEntry={handleUpdatePersonaInLibrary}
-              onDuplicate={handleDuplicatePersona}
-            />
-          )}
+            {currentStep === "review" && (
+              <FinalizeStep
+                setup={reviewSetup}
+                onUpdate={updateSetup}
+                onModeChange={updateMode}
+                onMicCheck={checkMicrophone}
+                microphoneStatus={microphoneStatus}
+                microphoneMessage={microphoneMessage}
+              />
+            )}
+          </div>
 
-          {currentStep === "review" && (
-            <FinalizeStep
-              setup={reviewSetup}
-              onUpdate={updateSetup}
-              onMicCheck={checkMicrophone}
-              microphoneStatus={microphoneStatus}
-              microphoneMessage={microphoneMessage}
-            />
+          {(launchError || personaLibraryError) && (
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+            >
+              {launchError ?? personaLibraryError}
+            </div>
           )}
         </div>
 
-        {(launchError || personaLibraryError) && (
-          <div className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis">
-            {launchError ?? personaLibraryError}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            variant="ghost"
-            onClick={goBack}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {isFirstStep ? "Cancel" : "Back"}
-          </Button>
-
-          <div className="flex items-center gap-3">
-            {/* Previously the button just went disabled with no reason
-                    given, which on a step of mostly-optional fields is a dead
-                    end. */}
-            {canProceedFromStep
-              ? isLastStep && (
-                  <p className="text-xs text-muted-foreground">
-                    Saved automatically. You can come back any time.
-                  </p>
-                )
-              : blockedReason && (
-                  <p className="text-xs text-destructive">{blockedReason}</p>
-                )}
-            <Button
-              onClick={goNext}
-              disabled={!canProceedFromStep || isLaunching}
-              className="gap-2 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-            >
-              {isLastStep
-                ? isLaunching
-                  ? "Starting..."
-                  : "Begin interview"
-                : "Continue"}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="lg:sticky lg:top-8">
+          <SetupSummary
+            setup={reviewSetup}
+            microphoneStatus={microphoneStatus}
+            stepLabel={STEPS[stepIndex].label}
+            isFirstStep={isFirstStep}
+            isLastStep={isLastStep}
+            blockedReason={blockedReason}
+            isLaunching={isLaunching}
+            onBack={goBack}
+            onNext={goNext}
+          />
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
+/**
+ * Where you are in the four steps, across the full width of the page.
+ *
+ * It was a compact line of four text buttons clustered at the left, which
+ * lined up with nothing below it and read as a row of links rather than as
+ * progress. Now each step is an equal column with a bar on top: blue for the
+ * steps you have reached, grey for the ones ahead. The bar says how far along
+ * you are at a glance, and the columns share the page's edges.
+ *
+ * The rules are unchanged: the current step is emphasised, steps you have
+ * reached can be clicked to go back, and steps ahead cannot be jumped to.
+ * Passing a step is navigation, not an achievement, so nothing turns green.
+ */
 function Stepper({
   currentStepId,
   onStepSelect,
@@ -864,71 +819,51 @@ function Stepper({
   const currentIndex = STEPS.findIndex((step) => step.id === currentStepId);
 
   return (
-    <ol className="flex flex-col gap-2 rounded-xl border border-border bg-white p-3 shadow-soft sm:flex-row sm:items-center">
+    <ol className="grid grid-cols-4 gap-2 sm:gap-4" aria-label="Steps">
       {STEPS.map((step, index) => {
-        const Icon = step.icon;
         const isActive = step.id === currentStepId;
-        const isCompleted = index < currentIndex;
-        const isReachable = index <= currentIndex;
-
-        const isLast = index === STEPS.length - 1;
+        const isReached = index <= currentIndex;
         return (
-          <li key={step.id} className="flex flex-1 items-stretch gap-3">
+          <li key={step.id} className="min-w-0">
             <button
               type="button"
-              disabled={!isReachable}
-              onClick={() => isReachable && onStepSelect(step.id)}
-              className={`flex h-11 w-full items-center gap-2.5 rounded-lg border px-3 text-left transition-all duration-200 ${
-                isActive
-                  ? "border-primary-border bg-primary-subtle shadow-soft-md"
-                  : isCompleted
-                    ? "border-success-border bg-success-subtle hover:bg-success-muted"
-                    : "border-border bg-white text-muted-foreground cursor-default"
-              }`}
+              disabled={!isReached || isActive}
+              aria-current={isActive ? "step" : undefined}
+              onClick={() => onStepSelect(step.id)}
+              className={cn(
+                "group w-full rounded-md pb-1 text-left transition-colors duration-150",
+                "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
+                isReached && !isActive ? "cursor-pointer" : "cursor-default",
+              )}
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors duration-200 ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : isCompleted
-                      ? "bg-success text-white"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {/* Completing a step is the one moment in this wizard worth
-                    marking, so the tick pops rather than replacing the step
-                    icon between frames. Keyed so the swap is a mount. */}
-                {isCompleted ? (
-                  <CheckCircle2
-                    key="done"
-                    className="h-4 w-4 animate-in zoom-in-50 duration-200 ease-soft"
-                  />
-                ) : (
-                  <Icon key="pending" className="h-4 w-4" />
+                aria-hidden
+                className={cn(
+                  "block h-1 rounded-full transition-colors duration-300 ease-soft",
+                  isReached ? "bg-primary" : "bg-slate-200",
                 )}
-              </span>
-              <p
-                className={`min-w-0 truncate text-sm font-medium ${
+              />
+              <span
+                className={cn(
+                  "mt-2.5 flex min-w-0 items-baseline gap-2 text-sm",
                   isActive
-                    ? "text-foreground"
-                    : isCompleted
-                      ? "text-success-emphasis"
-                      : "text-muted-foreground"
-                }`}
+                    ? "font-semibold text-slate-900"
+                    : isReached
+                      ? "font-medium text-slate-600 group-hover:text-slate-900"
+                      : "font-medium text-slate-400",
+                )}
               >
-                {step.shortLabel}
-              </p>
+                <span
+                  className={cn(
+                    "text-xs tabular-nums",
+                    isActive ? "text-primary" : "text-slate-400",
+                  )}
+                >
+                  {index + 1}
+                </span>
+                <span className="truncate">{step.label}</span>
+              </span>
             </button>
-            <span
-              aria-hidden
-              className={`hidden h-px w-6 self-center sm:block ${
-                isLast
-                  ? "invisible"
-                  : index < currentIndex
-                    ? "bg-success-border"
-                    : "bg-slate-200"
-              }`}
-            />
           </li>
         );
       })}

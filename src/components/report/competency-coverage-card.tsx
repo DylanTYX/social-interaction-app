@@ -37,9 +37,9 @@ export function CompetencyCoverageCard({
   const percent = coveragePercent(coverage);
 
   return (
-    <Card className="border-slate-200/80 bg-white">
+    <Card>
       <CardHeader>
-        <CardTitle className="text-base">Competency coverage</CardTitle>
+        <CardTitle className="text-lg">Competency coverage</CardTitle>
         <CardDescription>
           {coveredCount} of {total} competencies were explored in this
           interview. The untouched ones are what to practise next.

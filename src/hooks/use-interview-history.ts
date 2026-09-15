@@ -3,6 +3,7 @@
 import { readJson } from "@/lib/api/fetch-json";
 import { useCallback, useRef, useEffect, useState } from "react";
 import type { ArchivedView, SessionSort } from "@/lib/session-organisation";
+import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
 
 export interface InterviewSessionSummary {
   id: string;
@@ -36,6 +37,17 @@ export interface InterviewSessionSummary {
    * the cross-session question the per-session report cannot.
    */
   competencyCoverage?: unknown;
+  /**
+   * The setup the session was launched with, which is where its round type
+   * lives. Already returned by the list endpoint; declared so analytics can
+   * separate scores by rubric instead of pooling them.
+   */
+  launchMeta?: SessionLaunchMeta | null;
+  /**
+   * The interviewer's dials. Only strictness and warmth are read here, to say
+   * how demanding the interviewer was next to each score.
+   */
+  personaConfig?: { strictness?: number; warmth?: number } | null;
   /** The candidate's own name for the session (migration 0018). */
   title?: string | null;
   tags?: string[];
@@ -97,14 +109,7 @@ export function useInterviewHistory(
 
   // Destructured so the callbacks depend on the values, not on an object
   // identity that changes every render.
-  const {
-    query,
-    mode,
-    status: statusFilter,
-    tag,
-    archived,
-    sort,
-  } = filters;
+  const { query, mode, status: statusFilter, tag, archived, sort } = filters;
 
   const buildUrl = useCallback(
     (offset: number) => {
@@ -213,7 +218,9 @@ export function useInterviewHistory(
   const patchLocal = useCallback(
     (id: string, patch: Partial<InterviewSessionSummary>) => {
       setSessions((current) =>
-        current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+        current.map((entry) =>
+          entry.id === id ? { ...entry, ...patch } : entry,
+        ),
       );
     },
     [],

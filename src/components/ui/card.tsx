@@ -7,7 +7,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-soft",
         className,
       )}
       {...props}
@@ -44,9 +44,13 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
  * heading, `h1` on the auth pages where this *is* the page title, `div` for the
  * few that are labels rather than headings.
  *
- * Visually a no-op — Tailwind's preflight resets `h1`–`h6` to `font-size:
- * inherit; font-weight: inherit`, so the call sites that pass flex layout or
- * explicit text sizes behave exactly as before.
+ * The tag is visually a no-op — Tailwind's preflight resets `h1`–`h6` to
+ * `font-size: inherit; font-weight: inherit`, so call sites that pass flex
+ * layout or explicit text sizes behave as before.
+ *
+ * The face is not: every card title is set in the display face, the same as
+ * page and section headings, so a heading reads as a heading on every screen.
+ * See docs/DESIGN.md.
  */
 function CardTitle({
   className,
@@ -56,7 +60,10 @@ function CardTitle({
   return (
     <Tag
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      className={cn(
+        "font-display leading-none font-semibold tracking-tight",
+        className,
+      )}
       {...props}
     />
   );

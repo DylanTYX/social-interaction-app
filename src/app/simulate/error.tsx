@@ -33,10 +33,11 @@ export default function SimulateError({
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
       <div className="max-w-md text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive-muted text-destructive">
-          <AlertTriangle className="h-6 w-6" />
-        </div>
-        <h1 className="mt-4 text-xl font-semibold text-slate-900">
+        <AlertTriangle
+          className="mx-auto h-6 w-6 text-destructive"
+          aria-hidden
+        />
+        <h1 className="mt-3 font-display text-2xl font-bold tracking-tight text-slate-900">
           Something went wrong here
         </h1>
         <p className="mt-2 text-sm text-slate-600">
@@ -54,7 +55,7 @@ export default function SimulateError({
             Try again
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/sessions">Go to my sessions</Link>
+            <Link href="/dashboard/sessions">Go to sessions</Link>
           </Button>
         </div>
       </div>

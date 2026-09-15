@@ -1,22 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { History, Search, Sparkles } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,8 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  PageContainer,
+  PageHeader,
+  PANEL_LABEL,
+} from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { SessionListSkeleton } from "@/components/dashboard/page-skeletons";
@@ -34,7 +29,7 @@ import {
   RenameSessionDialog,
   type RenameTarget,
 } from "@/components/sessions/rename-session-dialog";
-import { SessionRow } from "@/components/sessions/session-row";
+import { SESSION_GRID, SessionRow } from "@/components/sessions/session-row";
 import { TagsDialog, type TagsTarget } from "@/components/sessions/tags-dialog";
 import {
   useInterviewHistory,
@@ -42,6 +37,7 @@ import {
 } from "@/hooks/use-interview-history";
 import { useSessionTags } from "@/hooks/use-session-tags";
 import { CONTENT_ENTER } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import {
   bulkSessionsRequest,
   patchSessionRequest,
@@ -138,6 +134,16 @@ export default function SessionsLibraryPage() {
   const allShownSelected =
     sessions.length > 0 &&
     sessions.every((session) => selectedIds.includes(session.id));
+  const someShownSelected = !allShownSelected && visibleSelected.length > 0;
+
+  // "Some ticked" is a real third state for the heading checkbox, and only a
+  // property can express it.
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someShownSelected;
+    }
+  }, [someShownSelected]);
   const toggleSelectAllShown = () =>
     setSelectedIds((current) =>
       allShownSelected
@@ -229,6 +235,20 @@ export default function SessionsLibraryPage() {
     setShowArchived(false);
   };
 
+  // The toolbar's Clear leaves the tab alone: Archived is a place you chose,
+  // not a filter you forgot you set.
+  const clearNarrowing = () => {
+    setQuery("");
+    setModeFilter("all");
+    setStatusFilter("all");
+    setTagFilter("all");
+  };
+  const isNarrowed =
+    query.trim() !== "" ||
+    modeFilter !== "all" ||
+    statusFilter !== "all" ||
+    tagFilter !== "all";
+
   const hasFilters =
     debouncedQuery.trim() !== "" ||
     modeFilter !== "all" ||
@@ -239,67 +259,130 @@ export default function SessionsLibraryPage() {
   const isLoading = status === "loading" && sessions.length === 0;
 
   return (
-    <div className="p-8 space-y-6">
+    <PageContainer>
       <PageHeader
-        eyebrow="History"
-        title="Your interview sessions"
-        description="Every interview you've started. Rename, tag, pin or archive them, or tick two to compare attempts."
-        icon={<History className="h-6 w-6" />}
-        iconColor="indigo"
+        title="Sessions"
+        description="Every interview you've run. Open one for its report, or tick two to compare."
         actions={
           <Button asChild>
             <Link href="/simulate/setup">
-              <Sparkles className="mr-2 h-4 w-4" />
-              New session
+              <Plus />
+              New interview
             </Link>
           </Button>
         }
       />
 
-      <Card className="shadow-soft">
-        <CardContent className="py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by title, scenario or persona..."
-                className="pl-9"
-              />
-            </div>
+      <div className="space-y-4">
+        {/* Archived is a separate place, so it is a tab rather than a switch
+            among the filters. The underline is the landing header's. */}
+        <div
+          className="flex items-center gap-6 border-b border-slate-200"
+          aria-label="Which sessions"
+          role="group"
+        >
+          {[
+            { archived: false, label: "Active" },
+            { archived: true, label: "Archived" },
+          ].map((tab) => {
+            const current = showArchived === tab.archived;
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                aria-pressed={current}
+                onClick={() => setShowArchived(tab.archived)}
+                className={cn(
+                  "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
+                  current
+                    ? "border-primary text-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-900",
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-            <Select
-              value={modeFilter}
-              onValueChange={(value) => setModeFilter(value as ModeFilter)}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Mode" />
+        {/* No card around the controls: they act on the list below, and a
+            card of selects above a card of rows read as two separate things. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-72">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search title, scenario or persona…"
+              aria-label="Search sessions"
+              className="pl-9"
+            />
+          </div>
+
+          <Select
+            value={modeFilter}
+            onValueChange={(value) => setModeFilter(value as ModeFilter)}
+          >
+            <SelectTrigger className="w-auto min-w-32" aria-label="Mode">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All modes</SelectItem>
+              <SelectItem value="text">Text</SelectItem>
+              <SelectItem value="voice">Voice</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+          >
+            <SelectTrigger className="w-auto min-w-36" aria-label="Status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+              <SelectItem value="abandoned">Abandoned</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {tagCounts.length > 0 && (
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-auto min-w-32" aria-label="Tag">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All modes</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="voice">Voice</SelectItem>
+                <SelectItem value="all">All tags</SelectItem>
+                {tagCounts.map((entry) => (
+                  <SelectItem key={entry.tag} value={entry.tag}>
+                    {entry.tag} ({entry.count})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+          )}
 
+          {isNarrowed && (
+            <Button variant="ghost" size="sm" onClick={clearNarrowing}>
+              Clear
+            </Button>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden text-sm text-slate-500 sm:inline">
+              Sort
+            </span>
             <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+              value={sort}
+              onValueChange={(value) => setSort(value as SessionSort)}
             >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="in_progress">In progress</SelectItem>
-                <SelectItem value="abandoned">Abandoned</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={sort} onValueChange={(value) => setSort(value as SessionSort)}>
-              <SelectTrigger className="w-[160px]" aria-label="Sort">
+              <SelectTrigger className="w-auto min-w-36" aria-label="Sort">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -310,39 +393,17 @@ export default function SessionsLibraryPage() {
                 ))}
               </SelectContent>
             </Select>
-
-            {tagCounts.length > 0 && (
-              <Select value={tagFilter} onValueChange={setTagFilter}>
-                <SelectTrigger className="w-[160px]" aria-label="Tag">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All tags</SelectItem>
-                  {tagCounts.map((entry) => (
-                    <SelectItem key={entry.tag} value={entry.tag}>
-                      {entry.tag} ({entry.count})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <div className="ml-auto flex items-center gap-2">
-              <Switch
-                id="show-archived"
-                checked={showArchived}
-                onCheckedChange={setShowArchived}
-              />
-              <Label htmlFor="show-archived" className="text-sm text-slate-600">
-                Show archived
-              </Label>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {isLoading ? (
-        <SessionListSkeleton rows={5} />
+        <div className="rounded-xl border border-slate-200 bg-white shadow-soft">
+          <div className="h-11 border-b border-slate-200" />
+          <div className="p-2">
+            <SessionListSkeleton rows={5} />
+          </div>
+        </div>
       ) : status === "error" ? (
         // Before this branch existed, a failed load fell through to the empty
         // state and told the user they had never run a session.
@@ -357,135 +418,158 @@ export default function SessionsLibraryPage() {
         // Whether any filter is set is the honest signal.
         !hasFilters ? (
           <EmptyStateCard
-            icon={<History className="h-6 w-6" />}
             title="Your first session will show up here"
-            description="Run a 10-minute text or voice practice. We'll save the transcript, scores, and coaching notes so you can compare over time."
+            description="Run a voice or text interview. The transcript, scores and coaching are saved so you can compare attempts over time."
             primaryAction={{
-              label: "Start a text practice",
-              href: "/simulate/setup?mode=text",
+              label: "Start a voice interview",
+              href: "/simulate/setup?mode=voice",
             }}
             secondaryAction={{
-              label: "Try voice mode",
-              href: "/simulate/setup?mode=voice",
+              label: "Start a text interview",
+              href: "/simulate/setup?mode=text",
             }}
           />
         ) : (
-          <Card className="border-dashed">
-            <CardHeader className="items-center text-center">
-              <CardTitle className="text-lg">
-                {showArchived ? "No archived sessions here" : "No matching sessions"}
-              </CardTitle>
-              <CardDescription>
-                {showArchived
-                  ? "Archived sessions matching these filters would show up here."
-                  : "Nothing matches the filters you have set."}
-              </CardDescription>
-              <Button variant="outline" size="sm" className="mt-2" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            </CardHeader>
-          </Card>
+          <EmptyStateCard
+            title={
+              showArchived
+                ? "No archived sessions here"
+                : "No matching sessions"
+            }
+            description={
+              showArchived
+                ? "Archived sessions matching these filters would show up here."
+                : "Nothing matches the filters you have set."
+            }
+            primaryAction={{ label: "Clear filters", onClick: clearFilters }}
+          />
         )
       ) : (
-        <div className={`space-y-2 ${CONTENT_ENTER}`}>
-          <BulkActionBar
-            count={visibleSelected.length}
-            tagSuggestions={tagSuggestions}
-            showingArchived={showArchived}
-            busy={bulkBusy}
-            onClear={() => setSelectedIds([])}
-            onArchive={(archive) => void runBulk(archive ? "archive" : "unarchive")}
-            onPin={(pin) => void runBulk(pin ? "pin" : "unpin")}
-            onAddTag={(tag) => void runBulk("add_tag", { tag })}
-            onDelete={() => setPendingBulkDelete(true)}
-            onCompare={
-              visibleSelected.length === 2
-                ? () =>
-                    router.push(
-                      `/dashboard/sessions/compare?a=${visibleSelected[0]}&b=${visibleSelected[1]}`,
-                    )
-                : null
-            }
-          />
+        // One card holding one list: a heading row, hairline rows, and a
+        // footer that says how much of the result is on screen.
+        <div
+          className={cn(
+            "rounded-xl border border-slate-200 bg-white shadow-soft",
+            CONTENT_ENTER,
+          )}
+        >
+          <div
+            className={cn(
+              "sticky top-0 z-20 rounded-t-xl border-b border-slate-200 transition-colors duration-150",
+              visibleSelected.length > 0 ? "bg-primary-subtle" : "bg-white",
+            )}
+          >
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allShownSelected}
+              onChange={toggleSelectAllShown}
+              aria-label="Select all shown"
+              className="absolute top-1/2 left-5 z-10 h-4 w-4 -translate-y-1/2 cursor-pointer accent-primary"
+            />
+            {visibleSelected.length > 0 ? (
+              <BulkActionBar
+                count={visibleSelected.length}
+                tagSuggestions={tagSuggestions}
+                showingArchived={showArchived}
+                busy={bulkBusy}
+                onClear={() => setSelectedIds([])}
+                onArchive={(archive) =>
+                  void runBulk(archive ? "archive" : "unarchive")
+                }
+                onPin={(pin) => void runBulk(pin ? "pin" : "unpin")}
+                onAddTag={(tag) => void runBulk("add_tag", { tag })}
+                onDelete={() => setPendingBulkDelete(true)}
+                onCompare={
+                  visibleSelected.length === 2
+                    ? () =>
+                        router.push(
+                          `/dashboard/sessions/compare?a=${visibleSelected[0]}&b=${visibleSelected[1]}`,
+                        )
+                    : null
+                }
+              />
+            ) : (
+              <div className={cn(SESSION_GRID, "h-11")}>
+                <span className={PANEL_LABEL}>Session</span>
+                <span className={cn(PANEL_LABEL, "hidden md:block")}>Mode</span>
+                <span className={cn(PANEL_LABEL, "hidden md:block")}>Date</span>
+                <span className={cn(PANEL_LABEL, "text-right")}>Score</span>
+              </div>
+            )}
+          </div>
+
+          <ul className="divide-y divide-slate-100">
+            {sessions.map((session, index) => (
+              <SessionRow
+                key={session.id}
+                session={session}
+                index={index}
+                exiting={exitingId === session.id}
+                selected={selectedIds.includes(session.id)}
+                onToggleSelect={() => toggleSelect(session.id)}
+                onRename={() =>
+                  setRenameTarget({
+                    id: session.id,
+                    title: session.title ?? null,
+                    generatedTitle:
+                      session.scenarioTitle ?? session.scenarioValue,
+                  })
+                }
+                onEditTags={() =>
+                  setTagsTarget({
+                    id: session.id,
+                    title: displayTitle(session),
+                    tags: session.tags ?? [],
+                  })
+                }
+                onTogglePin={() =>
+                  void applyPatch(
+                    session,
+                    { pinned: !session.pinned },
+                    {
+                      message: session.pinned
+                        ? "Unpinned"
+                        : "Pinned to the top",
+                      refetch: true,
+                    },
+                  )
+                }
+                onToggleArchive={() =>
+                  void applyPatch(
+                    session,
+                    { archived: !session.archivedAt },
+                    {
+                      message: session.archivedAt
+                        ? "Moved back to your sessions"
+                        : "Archived. Find it under the Archived tab.",
+                      refetch: true,
+                    },
+                  )
+                }
+                onDelete={() => setPendingDelete(session)}
+              />
+            ))}
+          </ul>
 
           {/* Say how much of the result is on screen. The list used to cap at
               50 with no indication. */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3">
+            <p className="text-sm text-slate-500 tabular-nums">
               Showing {sessions.length} of {total}
               {hasFilters ? " matching" : ""} session{total === 1 ? "" : "s"}
-              {visibleSelected.length === 1 ? " · tick one more to compare" : ""}
             </p>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={allShownSelected}
-                onChange={toggleSelectAllShown}
-                className="h-4 w-4 accent-primary"
-              />
-              Select all shown
-            </label>
-          </div>
-
-          {sessions.map((session, index) => (
-            <SessionRow
-              key={session.id}
-              session={session}
-              index={index}
-              exiting={exitingId === session.id}
-              selected={selectedIds.includes(session.id)}
-              onToggleSelect={() => toggleSelect(session.id)}
-              onRename={() =>
-                setRenameTarget({
-                  id: session.id,
-                  title: session.title ?? null,
-                  generatedTitle: session.scenarioTitle ?? session.scenarioValue,
-                })
-              }
-              onEditTags={() =>
-                setTagsTarget({
-                  id: session.id,
-                  title: displayTitle(session),
-                  tags: session.tags ?? [],
-                })
-              }
-              onTogglePin={() =>
-                void applyPatch(
-                  session,
-                  { pinned: !session.pinned },
-                  {
-                    message: session.pinned ? "Unpinned" : "Pinned to the top",
-                    refetch: true,
-                  },
-                )
-              }
-              onToggleArchive={() =>
-                void applyPatch(
-                  session,
-                  { archived: !session.archivedAt },
-                  {
-                    message: session.archivedAt
-                      ? "Moved back to your sessions"
-                      : "Archived — turn on Show archived to find it",
-                    refetch: true,
-                  },
-                )
-              }
-              onDelete={() => setPendingDelete(session)}
-            />
-          ))}
-
-          {hasMore && (
-            <div className="pt-2 text-center">
+            {hasMore && (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => void loadMore()}
                 disabled={loadingMore}
               >
                 {loadingMore ? "Loading…" : `Load ${PAGE_SIZE} more`}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -545,6 +629,6 @@ export default function SessionsLibraryPage() {
           await runBulk("delete");
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

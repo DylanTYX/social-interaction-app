@@ -109,12 +109,18 @@ export function MarketingNav({ links }: MarketingNavProps) {
           })}
         </nav>
 
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" asChild className="max-[400px]:hidden">
+        {/* Two different doors, so they are named and weighted differently.
+            "Sign in" is for an account you already have and is the quiet one;
+            "Create account" is for a new one and is the filled one. The filled
+            button used to say "Get started", which never said it made an
+            account, so the pair read as two ways to do the same thing. The
+            words match the auth pages exactly. */}
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" asChild className="max-[400px]:hidden">
             <Link href="/auth/login">Sign in</Link>
           </Button>
           <Button asChild>
-            <Link href="/auth/register">Get started</Link>
+            <Link href="/auth/register">Create account</Link>
           </Button>
         </div>
       </div>

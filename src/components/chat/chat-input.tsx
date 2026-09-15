@@ -81,10 +81,10 @@ export function ChatInput({
           value={message}
           onChange={(e) => handleMessageChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type your message... (Press Enter to send)"
+          placeholder="Your answer…"
           disabled={disabled}
           aria-label="Your answer"
-          className="min-h-[60px] max-h-32 resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="max-h-32 min-h-15 resize-none"
           rows={2}
         />
         <Button
@@ -92,7 +92,7 @@ export function ChatInput({
           disabled={disabled || !message.trim()}
           size="icon"
           aria-label="Send answer"
-          className="h-[60px] w-[60px] shrink-0 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
+          className="size-15 shrink-0"
         >
           <Send className="h-5 w-5" />
         </Button>

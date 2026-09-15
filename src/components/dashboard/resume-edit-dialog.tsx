@@ -214,7 +214,7 @@ function EditForm({
           Cancel
         </Button>
         <Button onClick={() => void handleSave()} disabled={saving}>
-          {saving ? "Saving..." : "Save changes"}
+          {saving ? "Saving…" : "Save changes"}
         </Button>
       </DialogFooter>
     </>

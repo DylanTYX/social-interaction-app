@@ -80,10 +80,10 @@ export function PersonaCard({
           : undefined
       }
       className={cn(
-        "group relative shadow-soft transition-all duration-200",
+        "group relative transition-[transform,box-shadow,border-color] duration-200 ease-soft",
         interactive &&
-          "cursor-pointer hover:-translate-y-0.5 hover:shadow-soft-md motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        selected && "border-primary bg-primary-subtle ring-2 ring-primary/20",
+          "cursor-pointer hover:-translate-y-0.5 hover:shadow-soft-md motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
+        selected && "border-primary-border bg-primary-subtle",
         className,
       )}
       style={style}
@@ -113,20 +113,17 @@ export function PersonaCard({
               {config.seniority}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              <Badge
-                variant={entry.kind === "preset" ? "secondary" : "outline"}
-              >
-                {KIND_LABEL[entry.kind]}
-              </Badge>
               {/* The headline of how this interviewer conducts a round — the
-                  thing you would pick one for — so it sits by the name. */}
-              <Badge variant="outline" className="bg-slate-50/80">
+                  thing you would pick one for — so it sits by the name and
+                  carries the emphasis; whether it is a preset is secondary. */}
+              <Badge className="bg-primary-subtle text-primary hover:bg-primary-subtle">
                 {
                   QUESTIONING_STYLE_META[
                     config.questioningStyle ?? "conversational"
                   ].label
                 }
               </Badge>
+              <Badge variant="outline">{KIND_LABEL[entry.kind]}</Badge>
             </div>
           </div>
         </div>
@@ -179,18 +176,34 @@ export function PersonaCard({
         )}
 
         {/* All six, from the list both editors render — a dial that exists
-            cannot be missing from either card again. */}
-        <dl className="grid grid-cols-3 gap-x-2 gap-y-1 pt-1 text-xs tabular-nums">
-          {PERSONA_DIALS.map((dial) => (
-            <div key={dial.key} className="flex items-baseline gap-1 truncate">
-              <dt className="text-muted-foreground">
-                {DIAL_SHORT_LABEL[dial.key] ?? dial.label}
-              </dt>
-              <dd className="font-medium text-foreground">
-                {config[dial.key] ?? 5}
-              </dd>
-            </div>
-          ))}
+            cannot be missing from either card again. Drawn as bars rather than
+            listed as numbers, so a strict, deep-probing interviewer looks
+            different from a warm, conversational one at a glance. */}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-xs">
+          {PERSONA_DIALS.map((dial) => {
+            const value = config[dial.key] ?? 5;
+            return (
+              <div
+                key={dial.key}
+                className="grid grid-cols-[minmax(0,1fr)_44px_16px] items-center gap-2"
+              >
+                <dt className="truncate text-slate-500">
+                  {DIAL_SHORT_LABEL[dial.key] ?? dial.label}
+                </dt>
+                <dd className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <span
+                    className="block h-full rounded-full bg-primary"
+                    style={{
+                      width: `${Math.max(0, Math.min(10, value)) * 10}%`,
+                    }}
+                  />
+                </dd>
+                <dd className="text-right font-semibold text-slate-900 tabular-nums">
+                  {value}
+                </dd>
+              </div>
+            );
+          })}
         </dl>
       </CardContent>
     </Card>

@@ -1,13 +1,7 @@
 "use client";
 
 import { AlertTriangle, RotateCw } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 
 /**
@@ -18,9 +12,10 @@ import { Button } from "@/components/ui/button";
  * "Start practicing" button. Reporting failure as absence of data is worse than
  * showing nothing: it is confidently wrong.
  *
- * Shaped like `EmptyStateCard` so the two read as siblings, with one addition
- * that matters: a retry. Every one of these hooks already exposes `refresh`;
- * no page was calling it.
+ * Shaped like `EmptyStateCard` so the two read as siblings, and like it a box
+ * rather than a `Card`, so it nests inside a card cleanly. Red because this is
+ * an error, which is the one thing red is for. The icon stays, without a tile:
+ * here it carries meaning the colour alone should not have to.
  */
 export function ErrorStateCard({
   title = "Couldn't load this",
@@ -35,34 +30,32 @@ export function ErrorStateCard({
   retrying?: boolean;
 }) {
   return (
-    <Card
+    <div
       role="alert"
-      className="border-destructive-border bg-destructive-subtle/60 text-destructive-emphasis"
+      className="rounded-xl border border-destructive-border bg-destructive-subtle px-6 py-10 text-center text-destructive-emphasis"
     >
-      <CardHeader className="justify-items-center pt-8 pb-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-destructive-muted text-destructive">
-          <AlertTriangle className="h-6 w-6" />
-        </div>
-        <CardTitle className="pt-3 text-lg">{title}</CardTitle>
-        <CardDescription className="mx-auto max-w-md text-balance text-destructive-emphasis/80">
-          {description?.trim() ||
-            "Something went wrong fetching your data. Your work is safe — this is a display problem."}
-        </CardDescription>
-      </CardHeader>
+      <AlertTriangle className="mx-auto h-6 w-6 text-destructive" aria-hidden />
+      <h2 className="mt-3 font-display text-lg font-semibold tracking-tight">
+        {title}
+      </h2>
+      <p className="mx-auto mt-1.5 max-w-md text-sm text-balance text-destructive-emphasis/80">
+        {description?.trim() ||
+          "Something went wrong fetching your data. Your work is safe — this is a display problem."}
+      </p>
       {onRetry && (
-        <CardContent className="flex justify-center pb-8">
+        <div className="mt-5 flex justify-center">
           <Button
             type="button"
             variant="outline"
-            className="gap-1.5 border-destructive-border bg-white hover:bg-destructive-subtle"
+            className="border-destructive-border bg-white hover:bg-destructive-muted"
             onClick={onRetry}
             disabled={retrying}
           >
-            <RotateCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+            <RotateCw className={retrying ? "animate-spin" : undefined} />
             {retrying ? "Retrying…" : "Try again"}
           </Button>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

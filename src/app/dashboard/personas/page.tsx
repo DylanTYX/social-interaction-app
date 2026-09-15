@@ -2,14 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Dice5,
-  MoreHorizontal,
-  Plus,
-  RotateCcw,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Dice5, MoreHorizontal, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { LibraryToolbar } from "@/components/dashboard/library-toolbar";
@@ -215,18 +208,15 @@ export default function PersonasPage() {
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div className="p-8 space-y-8">
+    <PageContainer>
       <PageHeader
-        eyebrow="Library"
         title="Personas"
-        description="Tune the interviewer's culture, seniority, and style. Build them, edit them, save your favorites — your library is reused across all interviews."
-        icon={<Users className="h-6 w-6" />}
-        iconColor="purple"
+        description="The interviewers you practice with: their seniority, style and how hard they push. Your library is reused across every interview."
         actions={
           <Button asChild>
             <Link href="/simulate/setup">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Start an interview
+              <Plus />
+              New interview
             </Link>
           </Button>
         }
@@ -237,13 +227,13 @@ export default function PersonasPage() {
           search={{
             value: query,
             onChange: setQuery,
-            placeholder: "Search name, seniority, industry, or style...",
+            placeholder: "Search name, seniority, industry, or style…",
             ariaLabel: "Search personas",
           }}
           actions={
             <>
-              <Button onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button variant="outline" onClick={openCreate}>
+                <Plus />
                 New persona
               </Button>
               <Button
@@ -251,8 +241,8 @@ export default function PersonasPage() {
                 onClick={() => void handleRandom()}
                 disabled={busy === "random"}
               >
-                <Dice5 className="mr-2 h-4 w-4" />
-                {busy === "random" ? "Adding..." : "Random persona"}
+                <Dice5 />
+                {busy === "random" ? "Adding…" : "Random persona"}
               </Button>
               {/* Rare and library-wide, so it earns a menu rather than a
                   button that sits beside "New" forever. */}
@@ -271,7 +261,7 @@ export default function PersonasPage() {
                     disabled={busy === "reset"}
                     onSelect={() => setConfirmReset(true)}
                   >
-                    <RotateCcw className="mr-2 h-4 w-4" />
+                    <RotateCcw />
                     Restore presets
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -291,7 +281,6 @@ export default function PersonasPage() {
         />
       ) : sortedLibrary.length === 0 ? (
         <EmptyStateCard
-          icon={<Users className="h-6 w-6" />}
           title="Build your interviewer roster"
           description="Create an interviewer from scratch, or spin up a random one in a click and edit from there."
           primaryAction={{ label: "Create a persona", onClick: openCreate }}
@@ -302,7 +291,6 @@ export default function PersonasPage() {
         />
       ) : visibleLibrary.length === 0 ? (
         <EmptyStateCard
-          icon={<Users className="h-6 w-6" />}
           title="No personas match that search"
           description="Try a name, a seniority, an industry, or a questioning style."
           primaryAction={{ label: "Clear search", onClick: () => setQuery("") }}
@@ -351,7 +339,7 @@ export default function PersonasPage() {
                       onSelect={() => void handleDuplicate(entry)}
                     >
                       {duplicatingId === entry.id
-                        ? "Duplicating..."
+                        ? "Duplicating…"
                         : "Duplicate"}
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -404,7 +392,7 @@ export default function PersonasPage() {
               disabled={savingEdit || !canSave}
             >
               {savingEdit
-                ? "Saving..."
+                ? "Saving…"
                 : editor?.mode === "create"
                   ? "Create persona"
                   : "Save changes"}
@@ -434,7 +422,7 @@ export default function PersonasPage() {
               onClick={() => void handleReset()}
               disabled={busy === "reset"}
             >
-              {busy === "reset" ? "Restoring..." : "Restore presets"}
+              {busy === "reset" ? "Restoring…" : "Restore presets"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -452,6 +440,6 @@ export default function PersonasPage() {
           setPendingDelete(null);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

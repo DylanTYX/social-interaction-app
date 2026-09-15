@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
   RefreshCw,
   Save,
-  Users,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -125,12 +124,9 @@ export function PersonaStep({
 
   return (
     <div className="space-y-6">
-      <Card className="border border-border shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-            Pick an interviewer
-          </CardTitle>
+          <CardTitle className="text-lg">Pick an interviewer</CardTitle>
           <CardDescription>
             Your library, as it is on the personas page. Pick one to use as-is,
             or tweak it below for this session.
@@ -142,9 +138,8 @@ export function PersonaStep({
                 variant="outline"
                 size="sm"
                 onClick={onRandomize}
-                className="gap-1.5"
               >
-                <Dice5 className="h-3.5 w-3.5" />
+                <Dice5 />
                 Randomize
               </Button>
               {/* Delete and restore-presets live in the library. Keeping them
@@ -152,10 +147,10 @@ export function PersonaStep({
                   same link the job-description and resume pickers carry. */}
               <Link
                 href="/dashboard/personas"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
                 Manage in library
-                <ArrowUpRight className="h-3 w-3" />
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             </div>
           </CardAction>
@@ -171,7 +166,6 @@ export function PersonaStep({
             />
           ) : sortedLibrary.length === 0 ? (
             <EmptyStateCard
-              icon={<Users className="h-6 w-6" />}
               title="No personas yet"
               description="Randomize one to start from, or build your roster in the library."
               primaryAction={{ label: "Randomize one", onClick: onRandomize }}
@@ -181,8 +175,12 @@ export function PersonaStep({
               }}
             />
           ) : (
-            <div className="max-h-[52rem] overflow-y-auto pr-1">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              {/* The page scrolls; an inner scroller inside the page scroller
+                  was two scrollbars for one list. */}
+              {/* Two across: the step shares its width with the summary
+                  panel, and a persona card needs room for its dials. */}
+              <div className="grid gap-4 sm:grid-cols-2">
                 {sortedLibrary.map((entry) => (
                   <PersonaCard
                     key={entry.id}
@@ -227,9 +225,9 @@ export function PersonaStep({
         </CardContent>
       </Card>
 
-      <Card className="border border-border shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-lg">
             Customise this interviewer
             {isModified && (
               <Badge
@@ -250,25 +248,23 @@ export function PersonaStep({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="gap-1.5"
                   disabled={!canSave}
                   onClick={() => onUpdateLibraryEntry(activeEntry.id)}
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw />
                   Update saved
                 </Button>
               )}
               <Button
                 type="button"
-                variant="default"
+                variant="outline"
                 size="sm"
-                className="gap-1.5"
                 onClick={() => {
                   setRenameDraft(value.name);
                   setShowSaveAsNew((current) => !current);
                 }}
               >
-                <Save className="h-3.5 w-3.5" />
+                <Save />
                 {showSaveAsNew ? "Cancel" : "Save as new"}
               </Button>
             </div>
@@ -276,11 +272,9 @@ export function PersonaStep({
         </CardHeader>
         <CardContent className="space-y-6">
           {showSaveAsNew && (
-            <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-muted p-3">
-              <div className="min-w-[200px] flex-1 space-y-2">
-                <Label htmlFor="persona-save-name" className="text-xs">
-                  Name your persona
-                </Label>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-50 flex-1 space-y-2">
+                <Label htmlFor="persona-save-name">Name your persona</Label>
                 <Input
                   id="persona-save-name"
                   value={renameDraft}
@@ -292,15 +286,12 @@ export function PersonaStep({
                   without its four identity fields, so refuse here. */}
               <Button
                 type="button"
-                size="sm"
-                className="gap-1.5"
                 onClick={() => {
                   onSaveAsNew(renameDraft);
                   setShowSaveAsNew(false);
                 }}
                 disabled={renameDraft.trim().length === 0 || !canSave}
               >
-                <Save className="h-3.5 w-3.5" />
                 Save
               </Button>
             </div>
@@ -311,8 +302,8 @@ export function PersonaStep({
               and every section, control and hint is the library's — the same
               component, not a lookalike. The summary keeps the collapsed
               state honest by showing what it hides. */}
-          <details className="group rounded-lg border border-border bg-muted p-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-foreground">
+          <details className="group border-t border-slate-100 pt-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-slate-900">
               <span className="min-w-0">
                 Edit details
                 <span className="ml-2 truncate text-xs font-normal text-muted-foreground">

@@ -33,6 +33,11 @@ import { normalizeTag } from "@/lib/session-organisation";
 
 /**
  * What to do with the sessions ticked on the list. Compare needs exactly two.
+ *
+ * It takes the place of the list's column headings while anything is ticked,
+ * so the actions appear where the eye already is and the rows below do not
+ * move. It used to be a separate tinted bar that pushed the whole list down by
+ * its own height the moment the first box was ticked.
  */
 export function BulkActionBar({
   count,
@@ -65,27 +70,37 @@ export function BulkActionBar({
 
   return (
     <>
-      <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-primary-border bg-primary-subtle/95 px-3 py-2 shadow-soft-md backdrop-blur">
-        <span className="px-1 text-sm font-medium text-primary-emphasis">
+      <div className="flex min-h-11 flex-wrap items-center gap-2 py-1.5 pr-3 pl-12">
+        <span className="text-sm font-medium text-primary-emphasis">
           {count} selected
         </span>
+        {count === 1 && (
+          <span className="hidden text-sm text-slate-500 sm:inline">
+            Tick one more to compare
+          </span>
+        )}
 
         {onCompare && (
-          <Button size="sm" className="gap-1.5" onClick={onCompare} disabled={busy}>
-            <GitCompareArrows className="h-4 w-4" />
+          <Button size="sm" onClick={onCompare} disabled={busy}>
+            <GitCompareArrows />
             Compare
           </Button>
         )}
 
-        <Button size="sm" variant="outline" className="gap-1.5 bg-white" onClick={() => setTagging(true)} disabled={busy}>
-          <Tag className="h-4 w-4" />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setTagging(true)}
+          disabled={busy}
+        >
+          <Tag />
           Add tag
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1.5 bg-white" disabled={busy}>
-              <Pin className="h-4 w-4" />
+            <Button size="sm" variant="outline" disabled={busy}>
+              <Pin />
               Pin
             </Button>
           </DropdownMenuTrigger>
@@ -102,21 +117,32 @@ export function BulkActionBar({
         <Button
           size="sm"
           variant="outline"
-          className="gap-1.5 bg-white"
           onClick={() => onArchive(!showingArchived)}
           disabled={busy}
         >
-          {showingArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+          {showingArchived ? <ArchiveRestore /> : <Archive />}
           {showingArchived ? "Unarchive" : "Archive"}
         </Button>
 
-        <Button size="sm" variant="outline" className="gap-1.5 bg-white text-destructive hover:text-destructive" onClick={onDelete} disabled={busy}>
-          <Trash2 className="h-4 w-4" />
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+          disabled={busy}
+        >
+          <Trash2 />
           Delete
         </Button>
 
-        <Button size="sm" variant="ghost" className="ml-auto gap-1" onClick={onClear} aria-label="Clear selection">
-          <X className="h-4 w-4" />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto"
+          onClick={onClear}
+          aria-label="Clear selection"
+        >
+          <X />
           Clear
         </Button>
       </div>
@@ -134,8 +160,12 @@ export function BulkActionBar({
             }}
           >
             <DialogHeader>
-              <DialogTitle>Add a tag to {count} session{count === 1 ? "" : "s"}</DialogTitle>
-              <DialogDescription>Sessions that already have it are left as they are.</DialogDescription>
+              <DialogTitle>
+                Add a tag to {count} session{count === 1 ? "" : "s"}
+              </DialogTitle>
+              <DialogDescription>
+                Sessions that already have it are left as they are.
+              </DialogDescription>
             </DialogHeader>
             <Input
               autoFocus
@@ -153,7 +183,7 @@ export function BulkActionBar({
                     key={suggestion}
                     type="button"
                     onClick={() => setTagDraft(suggestion)}
-                    className="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs text-purple-700 hover:bg-purple-100"
+                    className="inline-flex h-6 items-center rounded-md border border-slate-200 bg-slate-50 px-2 text-xs text-slate-700 hover:bg-slate-100"
                   >
                     {suggestion}
                   </button>

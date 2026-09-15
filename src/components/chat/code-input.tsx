@@ -10,6 +10,7 @@ import { sql } from "@codemirror/lang-sql";
 import { Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useAnswerTimer } from "@/hooks/use-answer-timer";
 import { AnswerCountdown } from "@/components/chat/answer-countdown";
 import {
@@ -145,7 +146,7 @@ export function CodeInput({
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200">
+      <div className="overflow-hidden rounded-xl border border-slate-200">
         <CodeMirror
           value={code}
           height="240px"
@@ -161,23 +162,23 @@ export function CodeInput({
         />
       </div>
 
-      <textarea
+      <Textarea
         value={note}
         onChange={(event) => setNote(event.target.value)}
         disabled={disabled}
         rows={2}
         placeholder="Optional: talk through your approach, assumptions, or complexity…"
         aria-label="Notes on your approach"
-        className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 text-sm outline-none transition-colors focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-muted"
+        className="resize-none"
       />
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           Reviewed by the interviewer, not executed.
         </p>
-        <Button onClick={handleSend} disabled={!canSend} className="gap-2">
+        <Button onClick={handleSend} disabled={!canSend}>
           Submit answer
-          <Send className="h-4 w-4" />
+          <Send />
         </Button>
       </div>
     </div>

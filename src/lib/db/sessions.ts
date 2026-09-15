@@ -6,6 +6,7 @@ import type {
 } from "@/lib/session-launch-meta";
 import type { CompetencyCoverage } from "@/lib/competencies";
 import type { ArchivedView, SessionSort } from "@/lib/session-organisation";
+import type { AnswerScoreRow } from "@/lib/progress-insights";
 
 export type PracticeMode = "text" | "voice";
 export type SessionStatus = "in_progress" | "completed" | "abandoned";
@@ -820,6 +821,55 @@ export async function listTurnAnalyses(
 
   if (error) throw error;
   return (data ?? []).map((row) => rowToTurnAnalysis(row as TurnAnalysisRow));
+}
+
+/**
+ * The newest answers a user's analytics are drawn from. Well past a practising
+ * candidate's history, and a hard ceiling on one read.
+ */
+export const MAX_ANSWER_SCORES = 500;
+
+/**
+ * Rubric scores and the analyzer's judgements for the user's most recent
+ * answers, newest first, across every session. Powers the analytics page's
+ * per-round-type breakdown.
+ *
+ * Reads named paths out of the analysis blob rather than the blob itself: the
+ * stored analysis carries the analyzer's raw text, which is most of its size
+ * and none of what this needs. Row-level security limits it to the caller's
+ * own sessions, as it does every read of this table.
+ */
+export async function listRecentAnswerScores(
+  supabase: SupabaseClient,
+): Promise<AnswerScoreRow[]> {
+  const { data, error } = await supabase
+    .from("interview_turn_analyses")
+    .select(
+      "round_type, star:analysis->starAnalysis, technical:analysis->technicalScores, specificity:analysis->specificityMetrics, quality:analysis->responseQuality, omitted:analysis->omittedFields, notes:analysis->gaps",
+    )
+    .order("created_at", { ascending: false })
+    .limit(MAX_ANSWER_SCORES);
+
+  if (error) throw error;
+  return (
+    (data ?? []) as Array<{
+      round_type: string | null;
+      star: unknown;
+      technical: unknown;
+      specificity: unknown;
+      quality: unknown;
+      omitted: unknown;
+      notes: unknown;
+    }>
+  ).map((row) => ({
+    roundType: row.round_type,
+    star: row.star,
+    technical: row.technical,
+    specificity: row.specificity,
+    quality: row.quality,
+    omitted: row.omitted,
+    notes: row.notes,
+  }));
 }
 
 export interface PreviousTurnSignal {

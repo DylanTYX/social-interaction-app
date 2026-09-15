@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/input-limits";
 import type { AnalysisResult, TechnicalScores } from "@/lib/response-analyzer";
 import type { CompetencyCoverage } from "@/lib/competencies";
+import type { DeliveryMetrics } from "@/lib/speech-metrics";
 
 /**
  * Lightweight launch metadata stored on `interview_sessions.metrics` so a
@@ -54,7 +55,83 @@ export interface SessionMetricsPayload {
    */
   competencyCoverage?: CompetencyCoverage;
   dimensionSnapshots?: DimensionSnapshot[];
+  /** One per scored spoken answer. See `DeliverySnapshot`. */
+  deliverySnapshots?: DeliverySnapshot[];
   [key: string]: unknown;
+}
+
+/**
+ * How one spoken answer was delivered: the figures `analyzeDelivery` computes
+ * in the browser from the recognizer's phrase timings.
+ *
+ * These used to be shown under the answer and then discarded, so pace and
+ * filler words, the one thing text practice cannot measure, had no history.
+ * Saved in the session's client-owned metrics beside the skill snapshots, so
+ * no new column or endpoint is involved. The counts are kept rather than only
+ * the rates, so a later reader can pool answers of different lengths
+ * correctly.
+ */
+export interface DeliverySnapshot {
+  /** Null when the answer was too short to judge pace. */
+  wpm: number | null;
+  wordCount: number;
+  durationSeconds: number;
+  fillerCount: number;
+  longPauseCount: number;
+  recordedAt: string;
+}
+
+/** The same cap as the skill snapshots, per session. */
+export const MAX_DELIVERY_SNAPSHOTS = 30;
+
+export function deliverySnapshotFromMetrics(
+  metrics: DeliveryMetrics,
+): DeliverySnapshot {
+  return {
+    wpm: metrics.wpm,
+    wordCount: metrics.wordCount,
+    durationSeconds: metrics.durationSeconds,
+    fillerCount: metrics.fillerCount,
+    longPauseCount: metrics.longPauseCount,
+    recordedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Read stored delivery snapshots, dropping anything malformed. Client-written
+ * JSON, so nothing about its shape is trusted.
+ */
+export function parseDeliverySnapshots(value: unknown): DeliverySnapshot[] {
+  if (!Array.isArray(value)) return [];
+  const count = (raw: unknown) =>
+    typeof raw === "number" && Number.isFinite(raw) && raw >= 0 ? raw : null;
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const row = entry as Record<string, unknown>;
+    const wordCount = count(row.wordCount);
+    const durationSeconds = count(row.durationSeconds);
+    const fillerCount = count(row.fillerCount);
+    const longPauseCount = count(row.longPauseCount);
+    if (
+      wordCount === null ||
+      durationSeconds === null ||
+      fillerCount === null ||
+      longPauseCount === null ||
+      typeof row.recordedAt !== "string"
+    ) {
+      return [];
+    }
+    return [
+      {
+        wpm: count(row.wpm),
+        wordCount,
+        durationSeconds,
+        fillerCount,
+        longPauseCount,
+        recordedAt: row.recordedAt,
+      },
+    ];
+  });
 }
 
 export interface DimensionSnapshot {

@@ -41,8 +41,8 @@ export function getSuggestedNextSession(
       id: "first-session",
       title: "Start your first practice interview",
       description:
-        "Write a quick brief, pick an interviewer, and start — text mode is the fastest way in.",
-      href: "/simulate/setup?mode=text",
+        "Write a quick brief, pick an interviewer, and answer out loud, the way a real interview runs.",
+      href: "/simulate/setup?mode=voice",
       reason: "You have not completed a session yet.",
       accent: "blue",
     };
@@ -197,7 +197,7 @@ export function getSuggestedNextSession(
 
   return {
     id: "new-session",
-    title: "Start a fresh practice session",
+    title: "Start a new interview",
     description: "Try a new scenario or persona to broaden your preparation.",
     href: "/simulate/setup",
     reason: "Keep your practice streak going.",

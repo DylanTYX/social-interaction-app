@@ -43,7 +43,8 @@ export function AnswerCountdown({
    * instead of holding, remount with a `key`.
    */
   paused?: boolean;
-  label?: string;
+  /** Pass `null` to show the digits alone, where the layout labels them. */
+  label?: string | null;
   /** Trailing note, e.g. "starts when the interviewer finishes". */
   suffix?: React.ReactNode;
   className?: string;
@@ -77,11 +78,13 @@ export function AnswerCountdown({
     <div
       className={cn(
         "text-xs font-medium transition-colors duration-150",
-        warning ? "text-destructive" : "text-slate-500",
+        // Amber, not red: a low clock needs attention, it is not an error.
+        warning ? "text-warning-emphasis" : "text-slate-500",
         className,
       )}
     >
-      {label}: {formatRemainingTime(remainingSeconds)}
+      {label !== null && <>{label}: </>}
+      {formatRemainingTime(remainingSeconds)}
       {suffix}
     </div>
   );

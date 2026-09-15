@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Mic } from "lucide-react";
 
 import { useCountUp } from "@/hooks/use-count-up";
-import { TILE_COLORS } from "@/lib/tile-colors";
+import { TILE_ACCENT, TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
+
+/** The interviewer in the demo, whose initials and colour come from this. */
+const INTERVIEWER = "Maya Kim";
 
 type DemoTurn = {
   role: "ai" | "user";
@@ -258,8 +261,10 @@ function DemoBubble({ turn, typing }: { turn: DemoTurn; typing?: boolean }) {
       >
         <span
           className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white",
-            isUser ? "bg-primary" : "bg-navy",
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-[11px] font-semibold text-white",
+            // The interviewer wears their identity colour, as every person
+            // does inside the app; the candidate is blue, matching the bubble.
+            isUser ? "bg-primary" : TILE_ACCENT[tileColorForKey(INTERVIEWER)],
           )}
           aria-hidden="true"
         >

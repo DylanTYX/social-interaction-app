@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import type { DeliverySnapshot } from "@/lib/session-launch-meta";
 import type {
   InterviewBootstrap,
   LastTurnDecision,
@@ -41,10 +42,13 @@ export interface ResumedSession {
   analyses: AnalysisResult[];
   /** The interviewer's last decision before the reload, or null if fresh. */
   lastDecision: LastTurnDecision | null;
+  /** Delivery figures already saved for this session's spoken answers. */
+  deliverySnapshots: DeliverySnapshot[];
 }
 
 const EMPTY: ResumedMessage[] = [];
 const NO_ANALYSES: AnalysisResult[] = [];
+const NO_DELIVERY: DeliverySnapshot[] = [];
 
 export function useResumedSession(
   bootstrap: InterviewBootstrap,
@@ -56,6 +60,7 @@ export function useResumedSession(
         messages: EMPTY,
         analyses: NO_ANALYSES,
         lastDecision: null,
+        deliverySnapshots: NO_DELIVERY,
       };
     }
 
@@ -68,6 +73,7 @@ export function useResumedSession(
         messages: EMPTY,
         analyses: NO_ANALYSES,
         lastDecision: null,
+        deliverySnapshots: NO_DELIVERY,
       };
     }
 
@@ -76,6 +82,7 @@ export function useResumedSession(
       messages: bootstrap.resumed.messages,
       analyses: bootstrap.resumed.analyses,
       lastDecision: bootstrap.resumed.lastDecision,
+      deliverySnapshots: bootstrap.resumed.deliverySnapshots,
     };
   }, [bootstrap.status, bootstrap.resumed]);
 }

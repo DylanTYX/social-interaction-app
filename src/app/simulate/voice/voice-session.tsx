@@ -1,13 +1,14 @@
 "use client";
 
+import type { DeliveryMetrics } from "@/lib/speech-metrics";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Settings2,
-  AlertCircle,
   Code2,
+  Loader2,
   Mic,
   Volume2,
 } from "lucide-react";
@@ -33,7 +34,8 @@ import {
 } from "@/lib/interview-stage-labels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
   Dialog,
   DialogContent,
@@ -181,6 +183,7 @@ function VoiceSimulateInner() {
     targetTurns: targetTurnsForRound(activeRound),
     initialAnalyses: resumed.analyses,
     initialDecision: resumed.lastDecision,
+    initialDeliverySnapshots: resumed.deliverySnapshots,
   });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -263,9 +266,9 @@ function VoiceSimulateInner() {
       bootstrap.jobDescriptionTitle ?? "",
       activeScenario.title,
     ],
-    onComplete: async ({ transcript, deliveryNote, reason }) => {
+    onComplete: async ({ transcript, delivery, deliveryNote, reason }) => {
       if (transcript) {
-        await handleSubmitTranscript(transcript, deliveryNote);
+        await handleSubmitTranscript(transcript, deliveryNote, delivery);
         return;
       }
       /**
@@ -867,18 +870,21 @@ function VoiceSimulateInner() {
   const handleSubmitTranscript = async (
     transcript: string,
     deliveryNote?: string | null,
+    delivery?: DeliveryMetrics | null,
   ) => {
     if (!transcript.trim()) {
       setRecordingError("No speech detected. Please try again.");
       return;
     }
 
-    await handleSend(transcript, deliveryNote);
+    await handleSend(transcript, deliveryNote, delivery);
   };
 
   const handleSend = async (
     userMessage: string,
     deliveryNote?: string | null,
+    /** How the answer was spoken; saved with the turn if it is scored. */
+    delivery?: DeliveryMetrics | null,
   ) => {
     if (isSending) return;
 
@@ -1142,7 +1148,7 @@ function VoiceSimulateInner() {
        * nothing is lost; it just arrives when feedback would.
        */
 
-      const applied = turn.applyTurn(result);
+      const applied = turn.applyTurn(result, { delivery });
       if (!applied) return;
 
       if (applied.isComplete) {
@@ -1198,22 +1204,19 @@ function VoiceSimulateInner() {
   if (bootstrap.status === "error") {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
-        <Card className="max-w-md border-destructive-border bg-destructive-subtle">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive-emphasis">
-              <AlertCircle className="h-5 w-5" />
-              Could not open session
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-destructive-emphasis">
-              {bootstrap.error ?? "This session could not be resumed."}
-            </p>
-            <Link href="/simulate/setup?mode=voice">
-              <Button variant="outline">Return to setup</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md space-y-4">
+          <ErrorStateCard
+            title="Couldn't open this interview"
+            description={
+              bootstrap.error ?? "This interview could not be resumed."
+            }
+          />
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link href="/simulate/setup?mode=voice">Return to setup</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1224,23 +1227,18 @@ function VoiceSimulateInner() {
 
   if (setupError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <Card className="w-96 border-destructive-border bg-destructive-subtle">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive-emphasis">
-              <AlertCircle className="h-5 w-5" />
-              Setup error
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-destructive-emphasis">
-              {setupError}
-            </p>
-            <Link href="/simulate/setup?mode=voice">
-              <Button variant="outline">Return to setup</Button>
-            </Link>
-          </CardContent>
-        </Card>
+      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
+        <div className="w-full max-w-md space-y-4">
+          <ErrorStateCard
+            title="Couldn't set up voice"
+            description={setupError}
+          />
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link href="/simulate/setup?mode=voice">Return to setup</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1275,13 +1273,11 @@ function VoiceSimulateInner() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      <div className="h-16 bg-white border-b border-slate-200/80 flex items-center px-6 gap-4 shadow-soft">
-        <Button
-          variant="ghost"
-          size="icon"
-          asChild
-          className="hover:bg-slate-100 transition-colors duration-150"
-        >
+      {/* One header, as on the text screen. Speaking and recording states
+          live in the microphone control that already reports them, not in a
+          second band of badges up here. */}
+      <div className="flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-6">
+        <Button variant="ghost" size="icon" asChild>
           <Link
             href="/dashboard"
             onClick={handleNavigateAway}
@@ -1290,23 +1286,31 @@ function VoiceSimulateInner() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">Voice practice</h1>
-          <p className="text-sm text-slate-500 truncate">
-            {activeScenario.title} • {activePersonaConfig.name} •{" "}
-            {voiceConfig.ttsEnabled ? "TTS on" : "TTS off"}
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+            Voice interview
+          </h1>
+          <p className="truncate text-sm text-slate-500">
+            {activeScenario.title} · {activePersonaConfig.name}
+            {voiceConfig.ttsEnabled ? "" : " · Interviewer text only"}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className="hidden tabular-nums sm:inline-flex"
+          >
+            Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of ~
+            {turn.targetTurns}
+          </Badge>
           <JobDescriptionChip
             title={bootstrap.jobDescriptionTitle}
             missing={bootstrap.jobDescriptionMissing}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="shadow-soft">
-                <Settings2 className="h-4 w-4" />
-                <span className="sr-only">Open settings</span>
+              <Button variant="outline" size="icon" aria-label="Open settings">
+                <Settings2 />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
@@ -1329,9 +1333,8 @@ function VoiceSimulateInner() {
             onClick={() => setIsEndDialogOpen(true)}
             // Held shut while a turn is streaming; see `handleEndSession`.
             disabled={isSending || isEnding}
-            className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
           >
-            End session
+            End interview
           </Button>
         </div>
       </div>
@@ -1344,12 +1347,11 @@ function VoiceSimulateInner() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>End this session?</DialogTitle>
+            <DialogTitle>End this interview?</DialogTitle>
             <DialogDescription>
-              We&apos;ll stop the interviewer voice, finalize the transcript,
-              and generate the feedback report. Once a session is ended you
-              can&apos;t resume it — start a fresh practice when you&apos;re
-              ready.
+              We&apos;ll stop the interviewer&apos;s voice, finalize the
+              transcript and generate the report. Once an interview is ended you
+              can&apos;t resume it — start a new one when you&apos;re ready.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -1358,84 +1360,21 @@ function VoiceSimulateInner() {
               onClick={() => setIsEndDialogOpen(false)}
               disabled={isEnding}
             >
-              Keep practicing
+              Keep going
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleEndSession()}
               disabled={isEnding}
             >
-              {isEnding ? "Ending..." : "End and view report"}
+              {isEnding ? "Ending…" : "End and view report"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-primary-subtle/60">
+      <div className="flex flex-1 overflow-hidden bg-slate-50">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-primary-subtle/50 px-6 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  Voice interview
-                </div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  Adaptive session in progress
-                </h2>
-              </div>
-              {/* The group is right-anchored by the parent's `justify-between`,
-                  so these transient badges grow the group leftwards and the
-                  two stable badges below keep their position. All they need is
-                  to arrive rather than appear — a fade and a slight scale,
-                  with no directional slide, since which way they enter from
-                  depends on how much is already in the row. */}
-              <div className="flex items-center gap-2">
-                {isSpeakingTts && (
-                  <>
-                    <Badge
-                      variant="secondary"
-                      className="h-8 gap-1.5 px-3 text-primary-emphasis bg-primary-muted animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
-                    >
-                      <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
-                      Interviewer speaking
-                    </Badge>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
-                      onClick={() => void stopTts()}
-                    >
-                      Stop voice
-                    </Button>
-                  </>
-                )}
-                {speech.isRecording && (
-                  <Badge
-                    variant="destructive"
-                    className="h-8 gap-1.5 px-3 animate-in fade-in-0 zoom-in-95 duration-200 ease-soft"
-                  >
-                    <span className="relative flex h-2 w-2 items-center justify-center">
-                      {/* The ping is decoration on top of a red badge that
-                          already says "Recording", so losing it under reduced
-                          motion costs no information. */}
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                    </span>
-                    Recording
-                  </Badge>
-                )}
-                <Badge variant="outline" className="h-8 px-3 tabular-nums">
-                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of
-                  ~{turn.targetTurns}
-                </Badge>
-                <Badge variant="outline" className="h-8 px-3">
-                  {metricTone}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-4">
               {/* The opening takes a model call — several seconds on a cold
@@ -1446,7 +1385,10 @@ function VoiceSimulateInner() {
                 !error &&
                 !blockedAudioMessage && (
                   <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-primary"
+                      aria-hidden
+                    />
                     {activePersonaConfig.name} is joining the interview…
                   </div>
                 )}
@@ -1464,29 +1406,23 @@ function VoiceSimulateInner() {
               ))}
 
               {error && (
-                <Card className="border-warning-border bg-warning-subtle/80">
-                  <CardHeader className="pb-2">
-                    {/* This is the session's error slot, and it was titled
-                        "Coaching note" — so a failed request read as feedback
-                        on the candidate's answer. Say what it is. */}
-                    <CardTitle className="text-sm text-warning-emphasis">
-                      Something went wrong
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-warning-emphasis">{error}</p>
-                  </CardContent>
-                </Card>
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+                >
+                  <p className="font-medium">Something went wrong</p>
+                  <p className="mt-0.5">{error}</p>
+                </div>
               )}
 
               {blockedAudioMessage && (
-                <Card className="border-primary-border bg-primary-subtle/80">
+                <Card className="py-0">
                   <CardContent className="flex flex-wrap items-center gap-3 py-4">
                     <Volume2
-                      className="size-5 shrink-0 text-primary-emphasis"
+                      className="size-5 shrink-0 text-slate-500"
                       aria-hidden
                     />
-                    <p className="min-w-48 flex-1 text-sm text-primary-emphasis">
+                    <p className="min-w-48 flex-1 text-sm text-slate-700">
                       Your browser blocked the interviewer&rsquo;s audio until
                       you interact with the page.
                     </p>
@@ -1503,8 +1439,11 @@ function VoiceSimulateInner() {
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
-                  Generating interviewer response...
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-primary"
+                    aria-hidden
+                  />
+                  {activePersonaConfig.name} is thinking…
                 </div>
               )}
 
@@ -1512,7 +1451,7 @@ function VoiceSimulateInner() {
             </div>
           </div>
 
-          <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
+          <div className="border-t border-slate-200 bg-white p-4">
             {/* Only where the round type has an editor at all — `technical_swe`
                 today. A behavioural round in voice mode shows the microphone
                 and nothing else, exactly as before. */}
@@ -1569,11 +1508,12 @@ function VoiceSimulateInner() {
           open={showLiveCoaching}
           onOpenChange={setShowLiveCoaching}
           turn={turn}
+          trendNote={metricTone}
         />
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>
-        <DialogContent className="max-w-3xl border-slate-200 bg-white/95 backdrop-blur">
+        <DialogContent className="max-w-3xl">
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>

@@ -1,28 +1,19 @@
 import { initialsFromName } from "@/lib/format";
-import { TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
+import { TILE_ACCENT, tileColorForKey } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
 
 /**
- * Someone's initials, in a colour derived from their name.
+ * Someone's initials, in their identity colour.
  *
- * There were six independent implementations of this — the personas page, the
- * sessions page, the dashboard home, the chat transcript, the setup wizard and
- * the sidebar — at three sizes (h-10 / h-11 / h-14), two radii, and with **two
- * different ideas about what the colour means**:
+ * There were six independent implementations of this at three sizes and two
+ * radii; this is the one. The colour is derived from the name, so Sarah Chen
+ * is the same colour on the personas page, in a session row, in the picker and
+ * in a transcript, and you can pick her out of a grid without reading. It is a
+ * solid circle with white initials, which is what tells a person apart from a
+ * round's tinted chip in the same hue. See docs/DESIGN.md, "Colour".
  *
- *   - The wizard derived it from the name, so Sarah Chen was always the same
- *     colour and you could pick her out of six cards without reading.
- *   - Everywhere else used one fixed gradient for every avatar, so six personas
- *     were six identical purple squares and every session row was the same
- *     blue. The colour was decoration wearing identity's clothes.
- *
- * The name-derived version wins because it does a job: the same interviewer is
- * recognisable on the personas page, in a session row and in the picker, and
- * that only works if all three agree.
- *
- * `tileColorForKey` is deterministic, so the colour survives a re-sort and a
- * reload. Two names can collide, which is fine — this is a recognition aid, not
- * an identifier.
+ * `tone="you"` is for the signed-in user's own avatar: navy, the brand's dark,
+ * rather than a hue. You are not one of the interviewers.
  */
 
 const SIZES = {
@@ -34,22 +25,24 @@ const SIZES = {
 export function InitialsAvatar({
   name,
   size = "md",
-  /** Rounded-full for people in a list; rounded-xl for a card's header tile. */
+  /** Rounded-full for people in a list; rounded-xl for a card's header. */
   shape = "circle",
+  tone = "identity",
   className,
 }: {
   name: string;
   size?: keyof typeof SIZES;
   shape?: "circle" | "square";
+  tone?: "identity" | "you";
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center font-semibold",
+        "flex shrink-0 items-center justify-center font-display font-semibold text-white",
         shape === "circle" ? "rounded-full" : "rounded-xl",
         SIZES[size],
-        TILE_COLORS[tileColorForKey(name)],
+        tone === "you" ? "bg-navy" : TILE_ACCENT[tileColorForKey(name)],
         className,
       )}
       // The initials are a visual shorthand for a name that is always rendered

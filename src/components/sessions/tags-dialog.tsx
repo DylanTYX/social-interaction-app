@@ -31,7 +31,7 @@ export function TagsDialog({
     <Dialog open={target !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tags</DialogTitle>
+          <DialogTitle>Edit tags</DialogTitle>
           <DialogDescription className="truncate">{target?.title}</DialogDescription>
         </DialogHeader>
         {target && (

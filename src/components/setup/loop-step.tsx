@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, MoreHorizontal, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 
 import {
   Card,
@@ -21,7 +21,8 @@ import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Field, FieldSection } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import {
   Select,
   SelectContent,
@@ -79,7 +80,7 @@ interface Preset {
 const PRESETS: Preset[] = [
   {
     id: "single",
-    label: "Quick practice",
+    label: "One round",
     build: (mode) => createLoopFromTemplate("single", mode),
   },
   {
@@ -154,16 +155,13 @@ export function LoopStep({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">
-          Start from
-        </span>
+        <span className={PANEL_LABEL}>Start from</span>
         {PRESETS.map((preset) => (
           <Button
             key={preset.id}
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 rounded-full text-xs"
             onClick={() => applyPreset(preset.build(practiceMode))}
           >
             {preset.label}
@@ -174,14 +172,12 @@ export function LoopStep({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 rounded-full text-xs"
             onClick={() =>
               applyPreset(
                 suggestLoopFromJobDescription(jobDescriptionText, practiceMode),
               )
             }
           >
-            <Sparkles className="h-3.5 w-3.5" />
             Suggest from job description
           </Button>
         )}
@@ -203,38 +199,31 @@ export function LoopStep({
 
       {/* The shape of the interview day, above the cards that configure it.
           A three-round loop was three stacked cards you had to scroll and read
-          to see what you had built; this says it in one line, and the accents
-          match the card headers below. */}
+          to see what you had built; this says it in one line. Each round is
+          its tag, in its round colour, the same chain the landing page draws. */}
       {isLoop && (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-muted/40 p-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-y border-slate-100 py-3">
           {rounds.map((round, index) => {
             const spec = roundTypeSpec(round.type);
-            const Icon = spec.icon;
             return (
               <div key={round.id} className="flex items-center gap-1.5">
                 {index > 0 && (
                   <ChevronRight
-                    className="h-3.5 w-3.5 text-muted-foreground"
+                    className="h-3.5 w-3.5 text-slate-400"
                     aria-hidden
                   />
                 )}
-                <div className="flex items-center gap-1.5 rounded-full bg-background px-2.5 py-1 shadow-soft">
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 items-center justify-center rounded-full",
-                      TILE_COLORS[spec.accent],
-                    )}
-                    aria-hidden
-                  >
-                    <Icon className="h-3 w-3" />
-                  </span>
-                  <span className="text-xs font-medium text-foreground">
-                    {spec.label}
-                  </span>
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                <span
+                  className={cn(
+                    "inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-semibold",
+                    TILE_COLORS[spec.accent],
+                  )}
+                >
+                  {spec.label}
+                  <span className="font-medium opacity-70 tabular-nums">
                     {round.durationMinutes}m
                   </span>
-                </div>
+                </span>
               </div>
             );
           })}
@@ -262,10 +251,9 @@ export function LoopStep({
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5"
           onClick={() => onChange(appendRoundToLoop(value, practiceMode))}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus />
           Add round
         </Button>
       </div>
@@ -290,7 +278,6 @@ function RoundCard({
 }) {
   const isLoop = total > 1;
   const spec = roundTypeSpec(round.type);
-  const TypeIcon = spec.icon;
   // Seeded by position so each round in a loop shows a different example, and
   // so the example does not reshuffle on every keystroke in a controlled form.
   const example = exampleQuestionForRoundType(round.type, index);
@@ -306,25 +293,20 @@ function RoundCard({
   };
 
   return (
-    <Card className="border border-border shadow-soft">
+    <Card>
       <CardHeader>
-        {/* The accent tile is the same shape the dashboard's `PageHeader` uses
-            per section, so the wizard finally participates in a system the rest
-            of the app already runs on. Three rounds in a loop used to render as
-            three identical white cards; now the type is legible before you read
-            a word. */}
-        <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-lg",
-            TILE_COLORS[spec.accent],
-          )}
-          aria-hidden
-        >
-          <TypeIcon className="h-4.5 w-4.5" />
-        </div>
-        <CardTitle className="text-base">
-          {isLoop ? `Round ${index + 1} of ${total}` : "Your session"}
-          <span className="ml-2 font-normal text-muted-foreground">
+        {/* The round's tag, in its round colour, beside the title. Three
+            rounds in a loop used to render as three identical white cards;
+            the tag makes the type legible before you read a word, and it is
+            the same chip the landing page and the loop chain above use. */}
+        <CardTitle className="flex flex-wrap items-center gap-2.5 text-lg">
+          {isLoop ? `Round ${index + 1} of ${total}` : "Your round"}
+          <span
+            className={cn(
+              "inline-flex h-6 items-center rounded-md px-2 font-sans text-xs font-semibold tracking-normal",
+              TILE_COLORS[spec.accent],
+            )}
+          >
             {spec.label}
           </span>
         </CardTitle>
@@ -353,102 +335,56 @@ function RoundCard({
         )}
       </CardHeader>
 
-      {/* Grouped by concern rather than laid out in one flat grid. Previously
-          identity (type, title) was split across three non-adjacent cells with
-          shape (length) wedged between, and because it was a single
-          `sm:grid-cols-2`, Title sat beside Type on desktop but beside Length
-          on mobile — the grouping was a side-effect of the column count. */}
-      <CardContent className="space-y-8">
-        <FieldSection title="What kind of round">
-          <div className="grid gap-6 sm:grid-cols-2">
-            <Field
-              label="Type"
-              htmlFor={ids.type}
-              hint={
-                // The rubric was one grey comma-joined sentence, which read as
-                // filler. The same words as chips are scannable, and they are
-                // the actual criteria the analyzer scores against. As the
-                <div className="flex flex-wrap gap-1.5">
-                  {rubricCriteria(round.type).map((criterion) => (
-                    <Badge
-                      key={criterion}
-                      variant="secondary"
-                      className="font-normal"
-                    >
-                      {criterion}
-                    </Badge>
-                  ))}
-                </div>
+      {/* The decisions first, the reference last. Type and length decide what
+          the round is and how long it runs, so they share the first row;
+          focus and title are what you type; the example question and the
+          interviewer's instructions are there to read, so they fold away.
+          This was three titled sections and a permanently open reference
+          block, which made one round card taller than the screen. */}
+      <CardContent className="space-y-6">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Field
+            label="Type"
+            htmlFor={ids.type}
+            hint={
+              // The criteria the analyzer actually scores this round on.
+              <div className="flex flex-wrap gap-1.5">
+                {rubricCriteria(round.type).map((criterion) => (
+                  <Badge
+                    key={criterion}
+                    variant="secondary"
+                    className="font-normal"
+                  >
+                    {criterion}
+                  </Badge>
+                ))}
+              </div>
+            }
+          >
+            <Select
+              value={round.type}
+              onValueChange={(next) =>
+                onChange(applyRoundType(round, next as InterviewRoundType))
               }
             >
-              <Select
-                value={round.type}
-                onValueChange={(next) =>
-                  onChange(applyRoundType(round, next as InterviewRoundType))
-                }
-              >
-                <SelectTrigger id={ids.type} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
-                    <SelectItem key={type} value={type}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+              <SelectTrigger id={ids.type} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROUND_TYPE_LABELS).map(([type, label]) => (
+                  <SelectItem key={type} value={type}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
-            <Field label="Title" htmlFor={ids.title}>
-              <Input
-                id={ids.title}
-                value={round.title}
-                onChange={(event) => onChange({ title: event.target.value })}
-              />
-            </Field>
-          </div>
-
-          {/* What the round is actually like.
-              Picking a type used to change one grey sentence, which made the
-              most consequential decision in the flow feel abstract — you chose
-              "System design" and nothing on screen told you what that meant.
-              Both halves are existing data: the question comes from the drill
-              bank, and the second line is verbatim the instruction this round's
-              playbook gives the interviewer, so the preview cannot drift from
-              what the session does. */}
-          {(example || playbook) && (
-            <div className="space-y-4 rounded-lg border border-border bg-muted/40 p-4">
-              {example && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    A question this round might ask
-                  </p>
-                  <p className="text-sm leading-6 text-foreground">
-                    &ldquo;{example}&rdquo;
-                  </p>
-                </div>
-              )}
-              {playbook && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    How the interviewer runs it
-                  </p>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {playbook.content}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </FieldSection>
-
-        <FieldSection title="Shape">
           <Field
             label="Length"
             htmlFor={ids.length}
             aside={
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span className="text-xs text-slate-500 tabular-nums">
                 {describeRoundLength(round.durationMinutes)}
               </span>
             }
@@ -468,34 +404,9 @@ function RoundCard({
               />
             </div>
           </Field>
+        </div>
 
-          {/* Gated on the round type alone. It also required `practiceMode ===
-              "text"`, so choosing Voice at the mode step silently removed the
-              capability — you found out a step later, when a control you were
-              expecting was simply absent. A voice technical round can now take
-              typed code; it just opens on discussion. */}
-          {supportsCodeEditor(round.type) && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-              <div>
-                <Label htmlFor={ids.code}>Answer in a code editor</Label>
-                {round.practiceMode === "voice" && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    You still speak; the editor is there for the code.
-                  </p>
-                )}
-              </div>
-              <Switch
-                id={ids.code}
-                checked={resolveAnswerFormat(round) === "code"}
-                onCheckedChange={(checked) =>
-                  onChange({ answerFormat: checked ? "code" : "prose" })
-                }
-              />
-            </div>
-          )}
-        </FieldSection>
-
-        <FieldSection title="Content">
+        <div className="grid gap-6 sm:grid-cols-2">
           <Field label="Focus" htmlFor={ids.focus}>
             <Input
               id={ids.focus}
@@ -504,34 +415,97 @@ function RoundCard({
               placeholder="What this round should dig into"
             />
           </Field>
+          <Field label="Title" htmlFor={ids.title}>
+            <Input
+              id={ids.title}
+              value={round.title}
+              onChange={(event) => onChange({ title: event.target.value })}
+            />
+          </Field>
+        </div>
 
-          {/* A different interviewer per round is only a concept in a loop — a
-              single round already has the Interviewer step. */}
-          {isLoop && (
-            <Field label="Asked by" htmlFor={ids.persona}>
-              <Select
-                value={round.personaLibraryId ?? "default"}
-                onValueChange={(next) =>
-                  onChange({
-                    personaLibraryId: next === "default" ? undefined : next,
-                  })
-                }
-              >
-                <SelectTrigger id={ids.persona} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Same as default</SelectItem>
-                  {personaLibrary.map((entry) => (
-                    <SelectItem key={entry.id} value={entry.id}>
-                      {entry.config.name} · {entry.config.seniority}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          )}
-        </FieldSection>
+        {/* A different interviewer per round is only a concept in a loop — a
+            single round already has the Interviewer step. */}
+        {isLoop && (
+          <Field label="Asked by" htmlFor={ids.persona}>
+            <Select
+              value={round.personaLibraryId ?? "default"}
+              onValueChange={(next) =>
+                onChange({
+                  personaLibraryId: next === "default" ? undefined : next,
+                })
+              }
+            >
+              <SelectTrigger id={ids.persona} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Same as default</SelectItem>
+                {personaLibrary.map((entry) => (
+                  <SelectItem key={entry.id} value={entry.id}>
+                    {entry.config.name} · {entry.config.seniority}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
+
+        {/* Gated on the round type alone. A voice technical round can take
+            typed code; it just opens on discussion. */}
+        {supportsCodeEditor(round.type) && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+            <div>
+              <Label htmlFor={ids.code}>Answer in a code editor</Label>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {round.practiceMode === "voice"
+                  ? "You still speak; the editor is there for the code."
+                  : "Technical answers open in the editor."}
+              </p>
+            </div>
+            <Switch
+              id={ids.code}
+              checked={resolveAnswerFormat(round) === "code"}
+              onCheckedChange={(checked) =>
+                onChange({ answerFormat: checked ? "code" : "prose" })
+              }
+            />
+          </div>
+        )}
+
+        {/* What the round is actually like, from existing data: the question
+            comes from the drill bank, and the instruction is verbatim what
+            this round's playbook tells the interviewer, so the preview cannot
+            drift from what the session does. */}
+        {(example || playbook) && (
+          <details className="group border-t border-slate-100 pt-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-slate-900 [&::-webkit-details-marker]:hidden">
+              What this round is like
+              <ChevronDown
+                className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                aria-hidden
+              />
+            </summary>
+            <div className="mt-2 space-y-4">
+              {example && (
+                <div className="space-y-1">
+                  <p className={PANEL_LABEL}>A question it might ask</p>
+                  <p className="text-sm leading-6 text-slate-900">
+                    &ldquo;{example}&rdquo;
+                  </p>
+                </div>
+              )}
+              {playbook && (
+                <div className="space-y-1">
+                  <p className={PANEL_LABEL}>How the interviewer runs it</p>
+                  <p className="text-sm leading-6 text-slate-600">
+                    {playbook.content}
+                  </p>
+                </div>
+              )}
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   );

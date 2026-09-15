@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, GitCompareArrows, MessageSquare, Mic } from "lucide-react";
+import { ArrowLeft, MessageSquare, Mic } from "lucide-react";
 
-import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  PageContainer,
+  PageHeader,
+  PANEL_LABEL,
+} from "@/components/dashboard/page-header";
 import {
   buildRadarAxes,
   DimensionRadar,
@@ -20,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import { readJson } from "@/lib/api/fetch-json";
 import { getCurrentRound } from "@/lib/interview-rounds";
 import { starDetail, technicalDetail } from "@/lib/report-insights";
@@ -85,8 +90,10 @@ function Delta({ from, to, unit, higherIsBetter = true }: { from: number | null;
   const diff = Math.round(to - from);
   if (diff === 0) return <span className="text-slate-500">no change</span>;
   const good = higherIsBetter ? diff > 0 : diff < 0;
+  // Better is green and worse is amber: a regression needs attention, it is
+  // not an error. Red is kept for errors. See docs/DESIGN.md.
   return (
-    <span className={cn("font-semibold tabular-nums", good ? "text-success-emphasis" : "text-destructive")}>
+    <span className={cn("font-semibold tabular-nums", good ? "text-success-emphasis" : "text-warning-emphasis")}>
       {diff > 0 ? "+" : ""}
       {diff}
       {unit}
@@ -136,32 +143,30 @@ export function CompareSessions() {
 
   if (!a || !b) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Compare two sessions" description="Tick two sessions on your sessions list, then choose Compare." actions={back} />
-      </div>
+      <PageContainer>
+        <PageHeader title="Compare sessions" description="Tick two sessions on your sessions list, then choose Compare." actions={back} />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Compare two sessions" actions={back} />
-        <Card className="border-destructive-border bg-destructive-subtle">
-          <CardContent className="py-6 text-sm text-destructive-emphasis">{error}</CardContent>
-        </Card>
-      </div>
+      <PageContainer>
+        <PageHeader title="Compare sessions" actions={back} />
+        <ErrorStateCard title="Couldn't load those sessions" description={error} />
+      </PageContainer>
     );
   }
 
   if (!pair) {
     return (
-      <div className="space-y-6">
-        <PageHeader title="Compare two sessions" actions={back} />
+      <PageContainer>
+        <PageHeader title="Compare sessions" actions={back} />
         <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -179,9 +184,9 @@ export function CompareSessions() {
     const ModeIcon = entry.session.practiceMode === "voice" ? Mic : MessageSquare;
     const axes = buildRadarAxes(entry.analyses as Partial<AnalysisResult>[], entry.technical);
     return (
-      <Card className="border-slate-200/80 bg-white">
+      <Card>
         <CardHeader>
-          <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
+          <p className={PANEL_LABEL}>{label}</p>
           <CardTitle className="text-lg [overflow-wrap:anywhere]">{displayTitle(entry.session)}</CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="gap-1">
@@ -194,7 +199,7 @@ export function CompareSessions() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-4xl font-bold tabular-nums text-slate-900">{fmt(entry.overall, "%")}</p>
+          <p className="font-display text-4xl leading-none font-bold tracking-tight text-navy tabular-nums">{fmt(entry.overall, "%")}</p>
           <p className="text-sm text-slate-600">{entry.technical ? technicalDetail(entry.analyses) : starDetail(entry.analyses)}</p>
           {axes && <DimensionRadar axes={axes} />}
           <Link href={`/simulate/report/${entry.session.id}`} className="text-sm font-medium text-primary hover:underline">
@@ -206,18 +211,16 @@ export function CompareSessions() {
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer>
       <PageHeader
-        eyebrow="Sessions"
-        icon={<GitCompareArrows className="h-5 w-5" />}
-        title="Compare two sessions"
+        title="Compare sessions"
         description="What changed between two attempts, measured the same way each report measures it."
         actions={back}
       />
 
-      <Card className="border-slate-200/80 bg-white">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">At a glance</CardTitle>
+          <CardTitle className="text-lg">At a glance</CardTitle>
           {first.technical !== second.technical && (
             <CardDescription>
               These rounds were scored on different rubrics, so the rubric row compares different things.
@@ -227,11 +230,11 @@ export function CompareSessions() {
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="py-2 pr-4 font-medium">Measure</th>
-                <th className="py-2 pr-4 font-medium">First</th>
-                <th className="py-2 pr-4 font-medium">Second</th>
-                <th className="py-2 font-medium">Change</th>
+              <tr className={cn("text-left", PANEL_LABEL)}>
+                <th className="py-2 pr-4">Measure</th>
+                <th className="py-2 pr-4">First</th>
+                <th className="py-2 pr-4">Second</th>
+                <th className="py-2">Change</th>
               </tr>
             </thead>
             <tbody>
@@ -254,6 +257,6 @@ export function CompareSessions() {
         {column(first, "First")}
         {column(second, "Second")}
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  CheckCircle2,
-  FileText,
-  Mic,
-  MessageSquare,
-  TrendingUp,
-  Volume2,
-} from "lucide-react";
+import { CheckCircle2, Mic } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,17 +16,18 @@ import {
   describeResolvedVoice,
   resolveVoiceForPersona,
 } from "@/lib/persona-voice";
-import { getCurrentRound, ROUND_TYPE_LABELS } from "@/lib/interview-rounds";
-import { getScenarioByValue } from "@/lib/scenarios";
-import {
-  describeRoundLength,
-  targetTurnsForRound,
-} from "@/lib/interview-progress";
-import type { InterviewSetupState } from "@/lib/interview-setup";
+import type { InterviewSetupState, PracticeMode } from "@/lib/interview-setup";
+import { cn } from "@/lib/utils";
 
 /**
- * Final step of the setup wizard: review the session, check the microphone if
- * this is a voice interview, and launch.
+ * Final step of the setup wizard, "Ready": only what is left to act on before
+ * you start. For a voice interview, the microphone check first; then the
+ * in-interview settings.
+ *
+ * A "What happens next" card used to sit here. Half of it repeated the summary
+ * panel beside this step (questions, minutes, mode, rounds), and as a card of
+ * reading material it competed with the controls you act on. Its two facts
+ * worth keeping now sit in the panel, just above Start interview.
  *
  * Extracted from `setup/page.tsx` alongside `PersonaStep`. It reads the whole
  * setup object and reports patches back, so the seam is the object itself
@@ -43,229 +37,117 @@ import type { InterviewSetupState } from "@/lib/interview-setup";
  * first step, where they belong — they are context, not final tuning, and
  * collecting them last meant the round builder's "Suggest from job
  * description" button could never fire on a first pass.
+ *
+ * Every toggle and status here is a row in a hairline-divided list inside its
+ * card. They used to be white boxes inside white cards, two borders saying one
+ * thing, and the microphone status sat in a dashed blue panel that made a
+ * status row look like an empty state.
  */
 
 export function FinalizeStep({
   setup,
   onUpdate,
+  onModeChange,
   onMicCheck,
   microphoneStatus,
   microphoneMessage,
 }: {
   setup: InterviewSetupState;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
+  /** Offered from a text setup, so switching to voice is one click from here. */
+  onModeChange: (mode: PracticeMode) => void;
   onMicCheck: () => void;
   microphoneStatus: "idle" | "checking" | "ready" | "failed";
   microphoneMessage: string | null;
 }) {
-  const activeScenario = getScenarioByValue(
-    setup.scenarioValue,
-    setup.customScenarioBrief,
-  );
-  const activeRound = getCurrentRound(setup.interviewLoop);
+  const voice = setup.practiceMode === "voice";
 
-  // What you are about to sit through, counted rather than described. Both
-  // numbers come from the same helper the live session uses to decide when a
-  // round is over, so the estimate cannot drift from the real thing.
-  const rounds = setup.interviewLoop.enabled
-    ? setup.interviewLoop.rounds
-    : [activeRound];
-  const totalQuestions = rounds.reduce(
-    (sum, round) => sum + targetTurnsForRound(round),
-    0,
-  );
-  const totalMinutes = rounds.reduce(
-    (sum, round) => sum + round.durationMinutes,
-    0,
-  );
+  const micReady =
+    microphoneStatus === "ready" ||
+    (microphoneStatus !== "failed" && setup.voiceConfig.microphoneChecked);
 
   return (
     <div className="space-y-6">
-      <Card className="border border-border shadow-soft">
-        <CardHeader>
-          <CardTitle className="text-base">Your session</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <SummaryRow
-            label="Mode"
-            value={
-              setup.practiceMode === "voice"
-                ? "Voice interview"
-                : "Text interview"
-            }
-          />
-          <SummaryRow label="Brief" value={activeScenario.title} />
-          <SummaryRow
-            label={setup.interviewLoop.enabled ? "Rounds" : "Session"}
-            value={
-              setup.interviewLoop.enabled
-                ? `${setup.interviewLoop.rounds.length} rounds · starting with ${ROUND_TYPE_LABELS[activeRound.type]}`
-                : `${ROUND_TYPE_LABELS[activeRound.type]} · ${describeRoundLength(activeRound.durationMinutes)}`
-            }
-          />
-          <SummaryRow label="Interviewer" value={setup.personaConfig.name} />
-          <SummaryRow
-            label="Style"
-            value={`${setup.personaConfig.communicationStyle} • Strict ${setup.personaConfig.strictness} • Pace ${setup.personaConfig.pace ?? 5} • Pushback ${setup.personaConfig.pushback ?? 5}`}
-          />
-          <SummaryRow
-            label="Job description"
-            // Names the document or says there isn't one. It used to branch on
-            // `mode`, which meant clicking "From library" without picking
-            // anything reported "Selected" — a review step asserting a choice
-            // that had not been made.
-            value={
-              setup.jobDescription.enabled
-                ? (setup.jobDescription.savedTitle ?? "None chosen")
-                : "Not used"
-            }
-          />
-          <SummaryRow
-            label="Resume"
-            // Same rule as the row above, and it had the same defect: this
-            // branched on `mode` and reported "Selected" for a library tab
-            // nothing had been picked from, or "Pasted text (n chars)" for a
-            // paste that no longer becomes anything — the picker saves to the
-            // library now, so a resume in play always has a title.
-            value={
-              setup.resume.enabled
-                ? (setup.resume.savedTitle ?? "None chosen")
-                : "Not used"
-            }
-          />
-        </CardContent>
-      </Card>
-
-      {/* The adaptive loop is what this project actually does differently, and
-          until now nothing in the flow said so — you pressed Start and found
-          out. Static copy would have been marketing; every line here is
-          derived from the config you just built. */}
-      <Card className="border border-border shadow-soft">
-        <CardHeader>
-          <CardTitle className="text-base">What happens next</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-6 sm:grid-cols-2">
-          <NextStep
-            icon={MessageSquare}
-            title={`~${totalQuestions} questions over about ${totalMinutes} minutes`}
-            detail={
-              setup.practiceMode === "voice"
-                ? "You speak your answers; the interviewer replies out loud."
-                : "You type your answers; the interviewer replies in the chat."
-            }
-          />
-          <NextStep
-            icon={TrendingUp}
-            title="Each answer is scored, then the next question adapts"
-            detail="Strong answers earn harder follow-ups. Vague ones get pushed on for a specific example or number."
-          />
-          <NextStep
-            icon={CheckCircle2}
-            title={
-              setup.interviewLoop.enabled
-                ? `${rounds.length} rounds run back to back, with a short break between each`
-                : "One round, run start to finish"
-            }
-            detail={rounds
-              .map((round) => ROUND_TYPE_LABELS[round.type])
-              .join(" → ")}
-          />
-          <NextStep
-            icon={FileText}
-            title="A full report at the end"
-            detail="Transcript, per-answer scores, strengths and gaps, and a suggested answer for any question you want to compare against."
-          />
-        </CardContent>
-      </Card>
-
-      {/* Two identical single-toggle panels became one card. The dashboard's
-          settings page groups its switches the same way. */}
-      <Card className="border border-border shadow-soft">
-        <CardHeader>
-          <CardTitle className="text-base">During the interview</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
-            {/* `space-y-1`: these two were previously wrapped in a bare
-                `<div>` with no spacing class of any kind, so the gap was the
-                browser's default `<p>` margin — the only unmanaged spacing in
-                the wizard. `text-sm font-medium` on the Label is also already
-                the `Label` default. */}
-            <div className="space-y-1">
-              <Label htmlFor="stream-responses">Live response streaming</Label>
-              <p className="text-xs leading-5 text-muted-foreground">
-                Stream the interviewer&apos;s reply token-by-token as it&apos;s
-                generated.
-              </p>
-            </div>
-            <Switch
-              id="stream-responses"
-              checked={setup.streamResponses}
-              onCheckedChange={(checked) =>
-                onUpdate({ streamResponses: checked })
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white p-3">
-            {/* `space-y-1`: these two were previously wrapped in a bare
-                `<div>` with no spacing class of any kind, so the gap was the
-                browser's default `<p>` margin — the only unmanaged spacing in
-                the wizard. `text-sm font-medium` on the Label is also already
-                the `Label` default. */}
-            <div className="space-y-1">
-              <Label htmlFor="live-coaching">Live coaching tips</Label>
-              <p className="text-xs leading-5 text-muted-foreground">
-                Show short notes after each answer, including what you did well.
-              </p>
-            </div>
-            <Switch
-              id="live-coaching"
-              checked={setup.liveCoachingEnabled}
-              onCheckedChange={(checked) =>
-                onUpdate({ liveCoachingEnabled: checked })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {setup.practiceMode === "voice" && (
-        <Card className="border border-border shadow-soft">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Mic className="h-4 w-4 text-primary" />
-              Voice readiness
-            </CardTitle>
+      {/* The summary of what you built is the panel beside this step, which
+          has been there all along; this step is only what is left to do
+          before you start. For a voice interview that begins with the one
+          thing that can stop it: the microphone. */}
+      {voice ? (
+        <Card className="gap-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Voice check</CardTitle>
             <CardDescription>
-              Confirm the interviewer can talk to you and you can talk back.
+              The interviewer speaks, and you answer out loud.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-white p-3">
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Volume2 className="h-4 w-4 text-primary" />
-                  Text-to-speech
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    Hear interviewer prompts aloud.
-                  </p>
-                  <Switch
-                    checked={setup.voiceConfig.ttsEnabled}
-                    onCheckedChange={(checked) =>
-                      onUpdate({
-                        voiceConfig: {
-                          ...setup.voiceConfig,
-                          ttsEnabled: checked,
-                        },
-                      })
-                    }
-                  />
-                </div>
+          <CardContent className="divide-y divide-slate-100">
+            <div className="flex flex-wrap items-center gap-4 py-4">
+              {/* A status icon at text size, not a tile: green once the
+                  microphone works, amber while it does not. */}
+              {micReady ? (
+                <CheckCircle2
+                  className="h-5 w-5 shrink-0 text-success"
+                  aria-hidden
+                />
+              ) : (
+                <Mic
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    microphoneStatus === "failed"
+                      ? "text-warning-emphasis"
+                      : "text-slate-400",
+                  )}
+                  aria-hidden
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-slate-900">
+                  {micReady
+                    ? "Microphone ready"
+                    : microphoneStatus === "failed"
+                      ? "The microphone is not working yet"
+                      : "Check your microphone"}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 text-sm",
+                    microphoneStatus === "failed"
+                      ? "text-warning-emphasis"
+                      : "text-slate-500",
+                  )}
+                  role={microphoneStatus === "failed" ? "alert" : undefined}
+                >
+                  {microphoneMessage ??
+                    (micReady
+                      ? "Checked earlier on this browser."
+                      : "Your browser asks for permission once. Nothing is recorded yet.")}
+                </p>
               </div>
+              <Button
+                variant={micReady ? "outline" : "default"}
+                onClick={onMicCheck}
+                disabled={microphoneStatus === "checking"}
+              >
+                <Mic />
+                {microphoneStatus === "checking"
+                  ? "Checking…"
+                  : micReady
+                    ? "Check again"
+                    : "Check microphone"}
+              </Button>
             </div>
+
+            <ToggleRow
+              id="tts-enabled"
+              label="Hear the interviewer"
+              hint="The interviewer's questions are read aloud. Turn off to read them instead."
+              checked={setup.voiceConfig.ttsEnabled}
+              onCheckedChange={(checked) =>
+                onUpdate({
+                  voiceConfig: { ...setup.voiceConfig, ttsEnabled: checked },
+                })
+              }
+            />
 
             {/*
               This was a six-voice dropdown. It is gone because a session-level
@@ -275,120 +157,117 @@ export function FinalizeStep({
               now comes from each interviewer's own nationality, so the only
               session-level control left is whether accents apply at all.
             */}
-            <div className="rounded-xl border border-border bg-white p-3">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                <Volume2 className="h-4 w-4 text-primary" />
-                Interviewer accents
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
+            <ToggleRow
+              id="accents-enabled"
+              label="Interviewer accents"
+              hint={
+                <>
                   Each interviewer speaks English with the accent their
-                  nationality suggests. Turn off for neutral English throughout.
-                </p>
-                <Switch
-                  checked={setup.voiceConfig.accentsEnabled}
-                  onCheckedChange={(checked) =>
-                    onUpdate({
-                      voiceConfig: {
-                        ...setup.voiceConfig,
-                        accentsEnabled: checked,
-                      },
-                    })
-                  }
-                />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {describeResolvedVoice(
-                  resolveVoiceForPersona({
-                    nationality: setup.personaConfig.nationality,
-                    voiceGender: setup.personaConfig.voiceGender,
-                    accentsEnabled: setup.voiceConfig.accentsEnabled,
-                  }),
-                  setup.personaConfig.name,
-                  setup.personaConfig.nationality,
-                )}
-                {setup.interviewLoop.enabled &&
-                  setup.interviewLoop.rounds.some(
-                    (round) => round.personaLibraryId,
-                  ) &&
-                  " Rounds with their own interviewer use that interviewer's accent."}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-dashed border-primary-border bg-primary-subtle/40 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-foreground">
-                  <CheckCircle2
-                    className={`h-4 w-4 ${
-                      microphoneStatus === "ready"
-                        ? "text-success"
-                        : "text-muted-foreground"
-                    }`}
-                  />
-                  {microphoneStatus === "ready"
-                    ? "Microphone access verified"
-                    : setup.voiceConfig.microphoneChecked
-                      ? "Microphone was checked previously"
-                      : "Microphone has not been checked yet"}
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={onMicCheck}
-                  disabled={microphoneStatus === "checking"}
-                >
-                  {microphoneStatus === "checking"
-                    ? "Checking..."
-                    : "Check mic"}
-                </Button>
-              </div>
-              {microphoneMessage && (
-                <p
-                  className={`mt-2 text-xs ${
-                    microphoneStatus === "failed"
-                      ? "text-destructive"
-                      : "text-success-emphasis"
-                  }`}
-                >
-                  {microphoneMessage}
-                </p>
-              )}
-            </div>
+                  nationality suggests. Turn off for neutral English throughout.{" "}
+                  {describeResolvedVoice(
+                    resolveVoiceForPersona({
+                      nationality: setup.personaConfig.nationality,
+                      voiceGender: setup.personaConfig.voiceGender,
+                      accentsEnabled: setup.voiceConfig.accentsEnabled,
+                    }),
+                    setup.personaConfig.name,
+                    setup.personaConfig.nationality,
+                  )}
+                  {setup.interviewLoop.enabled &&
+                    setup.interviewLoop.rounds.some(
+                      (round) => round.personaLibraryId,
+                    ) &&
+                    " Rounds with their own interviewer use that interviewer's accent."}
+                </>
+              }
+              checked={setup.voiceConfig.accentsEnabled}
+              onCheckedChange={(checked) =>
+                onUpdate({
+                  voiceConfig: {
+                    ...setup.voiceConfig,
+                    accentsEnabled: checked,
+                  },
+                })
+              }
+            />
           </CardContent>
         </Card>
+      ) : (
+        // A text setup still offers the primary mode, in one line, the way
+        // Quick drills offers speaking.
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-500">
+          <span>Interviews are spoken.</span>
+          <button
+            type="button"
+            onClick={() => onModeChange("voice")}
+            className="inline-flex items-center gap-1.5 rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted"
+          >
+            <Mic className="h-3.5 w-3.5" aria-hidden />
+            Switch to a voice interview
+          </button>
+        </p>
       )}
+
+      {/* Two identical single-toggle panels became one card. The dashboard's
+          settings page groups its switches the same way. */}
+      <Card className="gap-0">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">During the interview</CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y divide-slate-100">
+          <ToggleRow
+            id="stream-responses"
+            label="Stream replies as they are written"
+            hint={
+              voice
+                ? "The interviewer starts speaking before the whole reply is ready, which cuts the pause."
+                : "Show the interviewer's reply as it is written rather than all at once."
+            }
+            checked={setup.streamResponses}
+            onCheckedChange={(checked) =>
+              onUpdate({ streamResponses: checked })
+            }
+          />
+          <ToggleRow
+            id="live-coaching"
+            label="Live coaching tips"
+            hint="Short notes after each answer, including what you did well."
+            checked={setup.liveCoachingEnabled}
+            onCheckedChange={(checked) =>
+              onUpdate({ liveCoachingEnabled: checked })
+            }
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border px-3 py-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="text-sm font-medium text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function NextStep({
-  icon: Icon,
-  title,
-  detail,
+function ToggleRow({
+  id,
+  label,
+  hint,
+  checked,
+  onCheckedChange,
 }: {
-  icon: typeof MessageSquare;
-  title: string;
-  detail: string;
+  id: string;
+  label: string;
+  hint: React.ReactNode;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-muted text-primary">
-        <Icon className="h-4 w-4" />
-      </div>
+    <div className="flex items-start justify-between gap-6 py-4">
       <div className="space-y-1">
-        <p className="text-sm font-medium leading-5 text-foreground">{title}</p>
-        <p className="text-xs leading-5 text-muted-foreground">{detail}</p>
+        <Label htmlFor={id}>{label}</Label>
+        <p className="text-xs leading-5 text-slate-500">{hint}</p>
       </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className="mt-0.5"
+      />
     </div>
   );
 }

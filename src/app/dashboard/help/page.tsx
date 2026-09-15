@@ -1,17 +1,8 @@
 import Link from "next/link";
-import {
-  BarChart3,
-  BookOpen,
-  ClipboardList,
-  Command,
-  Lightbulb,
-  Mic,
-  SlidersHorizontal,
-  Target,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -24,9 +15,11 @@ export const metadata = {
   title: "Tips & guides · ConvoTrainer",
 };
 
+/**
+ * A guide is a title, a line and a list. Each one used to lead with an icon in
+ * a tinted tile, six tiles saying nothing the title did not.
+ */
 interface Guide {
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
   title: string;
   description: string;
   points: { label: string; body: string }[];
@@ -43,8 +36,6 @@ interface Guide {
  */
 const GUIDES: Guide[] = [
   {
-    icon: SlidersHorizontal,
-    color: "bg-primary-muted text-primary",
     title: "Before you start",
     description: "A few setup choices change what the practice feels like.",
     points: [
@@ -67,8 +58,6 @@ const GUIDES: Guide[] = [
     ],
   },
   {
-    icon: Target,
-    color: "bg-primary-muted text-primary",
     title: "The STAR method",
     description:
       "The structure behavioral interviewers look for. Use it for any 'tell me about a time…' question.",
@@ -92,8 +81,6 @@ const GUIDES: Guide[] = [
     ],
   },
   {
-    icon: BarChart3,
-    color: "bg-primary-muted text-primary",
     title: "How scoring works",
     description:
       "Every answer is scored on the dimensions a real interviewer weighs.",
@@ -121,8 +108,6 @@ const GUIDES: Guide[] = [
     ],
   },
   {
-    icon: Lightbulb,
-    color: "bg-primary-muted text-primary",
     title: "Technical & system design",
     description:
       "Technical rounds aren't scored on STAR — they're scored on how you think.",
@@ -150,8 +135,6 @@ const GUIDES: Guide[] = [
     ],
   },
   {
-    icon: Mic,
-    color: "bg-primary-muted text-primary",
     title: "Voice delivery",
     description:
       "Voice mode also tells you how you sounded. Delivery is feedback — your score comes from what you said.",
@@ -175,8 +158,6 @@ const GUIDES: Guide[] = [
     ],
   },
   {
-    icon: ClipboardList,
-    color: "bg-primary-muted text-primary",
     title: "After the interview",
     description: "The report is where the practice turns into progress.",
     points: [
@@ -202,79 +183,65 @@ const GUIDES: Guide[] = [
 
 export default function HelpPage() {
   return (
-    <div className="space-y-8 p-8">
-      {/* Was a hand-rolled copy of PageHeader's exact eyebrow and h1 classes,
-          minus `leading-relaxed` on the description and with the icon crammed
-          into the eyebrow instead of its own tile. The only dashboard page not
-          using the shared header. */}
+    <PageContainer>
       <PageHeader
-        eyebrow="Tips & guides"
-        title="Interview better, faster"
-        description="The frameworks behind the feedback. Skim these before a session to get more out of every answer."
-        icon={<BookOpen className="h-6 w-6" />}
-        iconColor="teal"
+        title="Tips & guides"
+        description="The frameworks behind the feedback. Skim these before an interview to get more out of every answer."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {GUIDES.map((guide) => {
-          const Icon = guide.icon;
-          return (
-            <Card key={guide.title} className="border-slate-200/80">
-              <CardHeader>
-                <div
-                  className={`mb-3 flex h-11 w-11 items-center justify-center rounded-lg ${guide.color}`}
-                >
-                  <Icon className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-lg">{guide.title}</CardTitle>
-                <CardDescription>{guide.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <dl className="space-y-3">
-                  {guide.points.map((point) => (
-                    <div key={point.label} className="flex gap-3">
-                      <dt className="w-28 shrink-0 text-sm font-semibold text-slate-900">
-                        {point.label}
-                      </dt>
-                      <dd className="flex-1 text-sm leading-relaxed text-slate-600">
-                        {point.body}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {GUIDES.map((guide) => (
+          <Card key={guide.title}>
+            <CardHeader>
+              <CardTitle className="text-lg">{guide.title}</CardTitle>
+              <CardDescription>{guide.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-3">
+                {guide.points.map((point) => (
+                  <div key={point.label} className="flex gap-3">
+                    <dt className="w-28 shrink-0 text-sm font-semibold text-slate-900">
+                      {point.label}
+                    </dt>
+                    <dd className="flex-1 text-sm leading-relaxed text-slate-600">
+                      {point.body}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="shadow-soft bg-linear-to-br from-primary-subtle via-white to-primary-subtle/40">
-        <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 shadow-soft">
-              <Command className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">Pro tip: ⌘K</p>
-              <p className="text-sm text-slate-600">
-                Press{" "}
-                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium">
-                  ⌘K
-                </kbd>{" "}
-                (
-                <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-medium">
-                  Ctrl K
-                </kbd>{" "}
-                on Windows) anywhere to jump to a page or start practicing
-                instantly.
-              </p>
-            </div>
+      {/* A plain card: the gradient ground and the icon tile it had were the
+          last two decorations on this page. */}
+      <Card>
+        <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle as="h2" className="text-lg">
+              Keyboard shortcut
+            </CardTitle>
+            <p className="mt-1.5 text-sm text-slate-600">
+              Press{" "}
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium">
+                ⌘K
+              </kbd>{" "}
+              (
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium">
+                Ctrl K
+              </kbd>{" "}
+              on Windows) anywhere to jump to a page or start an interview.
+            </p>
           </div>
           <Button asChild>
-            <Link href="/simulate/setup">Start a session</Link>
+            <Link href="/simulate/setup">
+              <Plus />
+              New interview
+            </Link>
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

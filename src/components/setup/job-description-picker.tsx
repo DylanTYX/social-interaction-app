@@ -2,19 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  AlertCircle,
-  ArrowUpRight,
-  Eye,
-  FileText,
-  Plus,
-  Search,
-} from "lucide-react";
+import { AlertCircle, ArrowUpRight, Eye, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -33,12 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { describeTruncationBadge } from "@/lib/document-truncation";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
+import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
   DRAFT_WORTH_KEEPING_CHARS,
@@ -189,12 +177,14 @@ export function JobDescriptionPicker({
   };
 
   return (
-    <Card className="border border-border shadow-soft">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <Label htmlFor="use-jd">Job description</Label>
-          <Badge variant="outline" className="font-normal">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          Job description
+          <Badge
+            variant="outline"
+            className="font-sans font-normal tracking-normal"
+          >
             Optional
           </Badge>
         </CardTitle>
@@ -204,6 +194,7 @@ export function JobDescriptionPicker({
         <CardAction>
           <Switch
             id="use-jd"
+            aria-label={`Use a job description`}
             checked={value.enabled}
             onCheckedChange={(checked) =>
               onChange({ ...value, enabled: checked })
@@ -215,7 +206,7 @@ export function JobDescriptionPicker({
       {value.enabled && (
         <CardContent className="space-y-4">
           {selectionMissing && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle/70 p-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle p-3">
               <AlertCircle className="h-5 w-5 shrink-0 text-warning" />
               <p className="flex-1 text-xs text-warning-emphasis">
                 The job description you had chosen is no longer in your library.
@@ -245,7 +236,7 @@ export function JobDescriptionPicker({
           ) : status === "loading" && items.length === 0 ? (
             <div className="space-y-2">
               {[0, 1].map((index) => (
-                <Skeleton key={index} className="h-14 bg-muted" />
+                <Skeleton key={index} className="h-14 rounded-xl" />
               ))}
             </div>
           ) : (
@@ -264,11 +255,11 @@ export function JobDescriptionPicker({
                 library pages apply to their own toolbars. */}
               {items.length > 5 && (
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <Input
                     value={listQuery}
                     onChange={(event) => setListQuery(event.target.value)}
-                    placeholder="Search title, role, or company..."
+                    placeholder="Search title, role, or company…"
                     aria-label="Search saved job descriptions"
                     className="pl-9"
                   />
@@ -293,10 +284,10 @@ export function JobDescriptionPicker({
                     <div
                       key={item.id}
                       className={cn(
-                        "group flex items-center gap-3 rounded-lg border p-3 transition-colors duration-150",
+                        "group flex items-center gap-3 rounded-xl border p-3 transition-colors duration-150",
                         isActive
-                          ? "border-primary bg-primary-subtle"
-                          : "border-border bg-white hover:bg-accent",
+                          ? "border-primary-border bg-primary-subtle"
+                          : "border-slate-200 bg-white hover:bg-slate-50",
                       )}
                     >
                       <button
@@ -367,55 +358,35 @@ export function JobDescriptionPicker({
                 )}
 
                 {items.length === 0 && (
-                  /* The message and the way out of it, together and centred.
-                   An empty box that only *describes* the emptiness makes you
-                   hunt elsewhere for the fix. (The resume picker used to do
-                   that; both now offer the way out in place.) */
-                  <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-6 py-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No saved job descriptions yet
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      onClick={() => setAdding(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add a job description
-                    </Button>
-                  </div>
+                  <EmptyStateCard
+                    title="No saved job descriptions yet"
+                    primaryAction={{
+                      label: "Add a job description",
+                      onClick: () => setAdding(true),
+                    }}
+                  />
                 )}
               </div>
             </>
           )}
 
-          <div className="flex items-center justify-between gap-3">
-            {/* Once the list speaks for itself the label is redundant, so this
-                shrinks to an icon. Never conditional on *selection* though —
-                that is what made the card resize as you chose. It changes only
-                when the library goes from empty to not, which happens once.
-
-                Labelled through the tooltip and `aria-label` rather than left
-                to be guessed: a bare glyph is only honest when the surrounding
-                context already says what it adds, and it still has to say so to
-                a screen reader. */}
+          {/* Adding is offered here, beside the list it adds to, because
+              people start setup holding the posting they want to practise
+              for; sending them to the library mid-setup broke that. Editing
+              and deleting stay in the library. A labelled outline button, like
+              "Add round": it does something here. The text link beside it goes
+              somewhere else. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
             {items.length > 0 ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setAdding(true)}
-                    aria-label="Add a job description"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Add a job description</TooltipContent>
-              </Tooltip>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAdding(true)}
+              >
+                <Plus />
+                Add a job description
+              </Button>
             ) : (
               <span />
             )}
@@ -424,10 +395,10 @@ export function JobDescriptionPicker({
                 them out of here is what lets this card be one list. */}
             <Link
               href="/dashboard/job-descriptions"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors duration-150 hover:text-foreground"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               Manage in library
-              <ArrowUpRight className="h-3 w-3" />
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
 

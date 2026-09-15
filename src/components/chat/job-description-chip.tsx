@@ -2,6 +2,8 @@
 
 import { AlertCircle, FileText } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+
 /**
  * The "this interview is grounded on a job description" badge in the interview
  * top bar.
@@ -29,25 +31,27 @@ export function JobDescriptionChip({
 }) {
   if (missing) {
     return (
-      <span
-        className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-warning-border bg-warning-subtle px-2.5 py-1 text-xs font-medium text-warning-emphasis"
-        title="The job description this session was set up with has been deleted. The interviewer is no longer drawing on it, and answers from here on are scored without it."
+      <Badge
+        variant="warning"
+        className="hidden h-6 sm:inline-flex"
+        title="The job description this interview was set up with has been deleted. The interviewer is no longer drawing on it, and answers from here on are scored without it."
       >
-        <AlertCircle className="h-3.5 w-3.5" />
+        <AlertCircle />
         <span className="max-w-40 truncate">Job description unavailable</span>
-      </span>
+      </Badge>
     );
   }
 
   if (!title) return null;
 
   return (
-    <span
-      className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-primary-border bg-primary-subtle px-2.5 py-1 text-xs font-medium text-primary-emphasis"
+    <Badge
+      variant="outline"
+      className="hidden h-6 sm:inline-flex"
       title={title}
     >
-      <FileText className="h-3.5 w-3.5" />
+      <FileText />
       <span className="max-w-40 truncate">{title}</span>
-    </span>
+    </Badge>
   );
 }

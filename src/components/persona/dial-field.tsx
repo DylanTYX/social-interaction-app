@@ -52,7 +52,7 @@ export function DialField({
               <button
                 type="button"
                 aria-label={`What does ${label.toLowerCase()} do?`}
-                className="text-muted-foreground hover:text-muted-foreground"
+                className="text-slate-400 transition-colors hover:text-slate-600"
               >
                 <HelpCircle className="h-3.5 w-3.5" />
               </button>
@@ -60,7 +60,7 @@ export function DialField({
             <TooltipContent className="max-w-56">{helper}</TooltipContent>
           </Tooltip>
         </div>
-        <Badge variant="secondary" className="text-xs px-2 py-0.5">
+        <Badge variant="secondary" className="tabular-nums">
           {value}/10
         </Badge>
       </div>

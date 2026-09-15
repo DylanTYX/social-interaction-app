@@ -24,9 +24,13 @@ import {
 } from "@/lib/response-analyzer";
 import {
   appendDimensionSnapshot,
+  deliverySnapshotFromMetrics,
   dimensionSnapshotFromAnalysis,
+  MAX_DELIVERY_SNAPSHOTS,
+  type DeliverySnapshot,
   type DimensionSnapshot,
 } from "@/lib/session-launch-meta";
+import type { DeliveryMetrics } from "@/lib/speech-metrics";
 import { useActiveSessionTime } from "@/hooks/use-active-session-time";
 
 /**
@@ -66,8 +70,15 @@ export interface InterviewTurnState {
   /**
    * Fold a scored turn in. Returns null for turns with no analysis — opening
    * turns and trivial answers — so callers can skip their own bookkeeping.
+   *
+   * `delivery` is how the answer was spoken, when it was. It is saved only if
+   * the turn was scored, so the delivery history and the score history cover
+   * the same answers.
    */
-  applyTurn: (turn: ChatTurnResponse) => AppliedTurn | null;
+  applyTurn: (
+    turn: ChatTurnResponse,
+    extras?: { delivery?: DeliveryMetrics | null },
+  ) => AppliedTurn | null;
 
   /** Mark complete and persist final metrics. Returns the average score. */
   endSession: () => Promise<number | null>;
@@ -86,6 +97,7 @@ async function persistTurn(
   input: {
     metrics: InterviewMetrics;
     snapshots: DimensionSnapshot[];
+    deliverySnapshots: DeliverySnapshot[];
     /** Non-null marks the session finished, and adds status and endedAt. */
     completedAt: InterviewSessionState | null;
     /**
@@ -100,7 +112,15 @@ async function persistTurn(
     averageScore: Number.isFinite(input.metrics.averageOverallScore)
       ? Math.round(input.metrics.averageOverallScore)
       : null,
-    metrics: { ...input.metrics, dimensionSnapshots: input.snapshots },
+    metrics: {
+      ...input.metrics,
+      dimensionSnapshots: input.snapshots,
+      // Only sessions with spoken answers carry the key, so a text session's
+      // metrics are exactly what they were before this existed.
+      ...(input.deliverySnapshots.length > 0
+        ? { deliverySnapshots: input.deliverySnapshots }
+        : {}),
+    },
   };
 
   if (input.completedAt) {
@@ -132,6 +152,12 @@ export function useInterviewTurnState(input: {
   targetTurns?: number;
   /** Restored from `interview_turn_analyses` when resuming. */
   initialAnalyses?: AnalysisResult[];
+  /**
+   * Delivery figures saved before a reload. Metrics are replaced wholesale on
+   * save, so without these the first spoken answer after a resume would erase
+   * every earlier one.
+   */
+  initialDeliverySnapshots?: DeliverySnapshot[];
   /**
    * The interviewer's last decision before a reload. Persisted per turn all
    * along; the client simply never read it back.
@@ -196,6 +222,9 @@ export function useInterviewTurnState(input: {
   );
   const [metrics, setMetrics] = useState<InterviewMetrics | null>(null);
   const [snapshots, setSnapshots] = useState<DimensionSnapshot[]>([]);
+  const [deliverySnapshots, setDeliverySnapshots] = useState<
+    DeliverySnapshot[] | null
+  >(null);
   const [lastFollowupPrompt, setLastFollowupPrompt] = useState<string | null>(
     null,
   );
@@ -240,8 +269,20 @@ export function useInterviewTurnState(input: {
     [snapshots, effectiveAnalyses],
   );
 
+  // Our own list once we have started one, otherwise whatever was restored.
+  // `null` rather than empty for "not started", because a session can
+  // legitimately have restored snapshots and no new ones yet.
+  const restoredDelivery = input.initialDeliverySnapshots;
+  const effectiveDelivery = useMemo(
+    () => deliverySnapshots ?? restoredDelivery ?? [],
+    [deliverySnapshots, restoredDelivery],
+  );
+
   const applyTurn = useCallback(
-    (turn: ChatTurnResponse) => {
+    (
+      turn: ChatTurnResponse,
+      extras?: { delivery?: DeliveryMetrics | null },
+    ) => {
       if (!turn.analysis || !turn.strategy) return null;
 
       const analysis = turn.analysis;
@@ -284,6 +325,13 @@ export function useInterviewTurnState(input: {
       setAnalyses(nextAnalyses);
       setMetrics(nextMetrics);
       setSnapshots(nextSnapshots);
+      const nextDelivery = extras?.delivery
+        ? [
+            ...effectiveDelivery,
+            deliverySnapshotFromMetrics(extras.delivery),
+          ].slice(-MAX_DELIVERY_SNAPSHOTS)
+        : effectiveDelivery;
+      if (extras?.delivery) setDeliverySnapshots(nextDelivery);
       setLastFollowupPrompt(turn.followupSummary);
       setLastDecisionReason(turn.decisionReason);
       setLastStrategy(strategy);
@@ -305,6 +353,7 @@ export function useInterviewTurnState(input: {
         void persistTurn(sessionId, {
           metrics: nextMetrics,
           snapshots: nextSnapshots,
+          deliverySnapshots: nextDelivery,
           completedAt: complete ? nextState : null,
           flushActiveTime,
         });
@@ -315,6 +364,7 @@ export function useInterviewTurnState(input: {
     [
       effectiveAnalyses,
       effectiveSnapshots,
+      effectiveDelivery,
       restoredTurns,
       sessionId,
       identifiedState,
@@ -349,6 +399,7 @@ export function useInterviewTurnState(input: {
       await persistTurn(sessionId, {
         metrics: finalMetrics,
         snapshots: effectiveSnapshots,
+        deliverySnapshots: effectiveDelivery,
         completedAt: completedState,
         flushActiveTime,
       });
@@ -358,6 +409,7 @@ export function useInterviewTurnState(input: {
   }, [
     effectiveAnalyses,
     effectiveSnapshots,
+    effectiveDelivery,
     sessionId,
     identifiedState,
     restoredTurns,

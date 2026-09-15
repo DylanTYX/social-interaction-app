@@ -202,16 +202,9 @@ export function VoiceInput({
       */}
       <div className="flex flex-col items-center gap-2 pt-1">
         <div className="relative p-2">
-          {state === "recording" && (
-            <span
-              className="pointer-events-none absolute inset-1 animate-breathe rounded-full ring-4 ring-destructive/40"
-              aria-hidden="true"
-            />
-          )}
           <Button
             onClick={state === "recording" ? onStop : onStart}
             disabled={state === "processing"}
-            variant={state === "recording" ? "destructive" : "default"}
             size="icon"
             aria-label={
               state === "recording"
@@ -220,7 +213,13 @@ export function VoiceInput({
                   ? "Interrupt and answer now"
                   : "Start answering"
             }
-            className="relative size-14 rounded-full shadow-soft-md transition-all duration-200 hover:shadow-soft-lg"
+            // Blue in every state. Recording used to turn the button red,
+            // but red means an error here, and recording is the thing going
+            // right. A static halo marks the open microphone instead.
+            className={cn(
+              "relative size-14 rounded-full",
+              state === "recording" && "ring-4 ring-primary-muted",
+            )}
           >
             {state === "processing" ? (
               <Loader2 className="size-6 animate-spin" />

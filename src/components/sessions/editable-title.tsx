@@ -90,7 +90,7 @@ export function EditableTitle({
               setEditing(false);
             }
           }}
-          className="w-full rounded-lg border border-primary-border bg-white px-2 py-1 text-2xl font-semibold text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="w-full rounded-lg border border-primary bg-white px-2 py-1 font-display text-3xl font-bold tracking-tight text-slate-900 outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted"
         />
         <p className="text-xs text-slate-500">
           Enter to save · Esc to cancel · clear it to use the generated title
@@ -100,12 +100,17 @@ export function EditableTitle({
   }
 
   return (
-    <h1 className={cn("text-2xl font-semibold text-slate-900", className)}>
+    <h1
+      className={cn(
+        "font-display text-3xl font-bold tracking-tight text-balance text-slate-900",
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={start}
         title="Rename this session"
-        className="group inline-flex max-w-full items-start gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="group inline-flex max-w-full items-start gap-2 rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted"
       >
         <span className="break-words">{shown}</span>
         <Pencil

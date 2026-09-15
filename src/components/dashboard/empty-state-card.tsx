@@ -1,76 +1,72 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 
-interface EmptyStateCardProps {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  primaryAction?: {
-    label: string;
-    href?: string;
-    onClick?: () => void;
-  };
-  secondaryAction?: {
-    label: string;
-    href?: string;
-    onClick?: () => void;
-  };
+interface Action {
+  label: string;
+  href?: string;
+  onClick?: () => void;
 }
 
+/**
+ * Nothing here yet, or nothing matches.
+ *
+ * A dashed box rather than a `Card`, so it sits correctly both on a page and
+ * inside a card — the library pages render it inside their "Saved" card, and
+ * a card inside a card is two borders saying the same thing. The icon tile it
+ * used to lead with went for the same reason every icon tile went: it carried
+ * no information the title did not. See docs/DESIGN.md.
+ */
 export function EmptyStateCard({
-  icon,
   title,
   description,
   primaryAction,
   secondaryAction,
-}: EmptyStateCardProps) {
+}: {
+  title: string;
+  description?: string;
+  primaryAction?: Action;
+  secondaryAction?: Action;
+}) {
   return (
-    <Card className="border-dashed border-slate-300/80 bg-white/80">
-      <CardHeader className="justify-items-center pt-8 pb-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-subtle text-primary">
-          {icon}
-        </div>
-        <CardTitle className="pt-3 text-lg">{title}</CardTitle>
-        <CardDescription className="mx-auto max-w-md text-balance">
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+        {title}
+      </h2>
+      {description && (
+        <p className="mx-auto mt-1.5 max-w-md text-sm text-balance text-slate-500">
           {description}
-        </CardDescription>
-      </CardHeader>
-      {(primaryAction || secondaryAction) && (
-        <CardContent className="flex flex-wrap items-center justify-center gap-2 pb-8">
-          {primaryAction &&
-            (primaryAction.href ? (
-              <Button asChild>
-                <Link href={primaryAction.href}>{primaryAction.label}</Link>
-              </Button>
-            ) : (
-              <Button type="button" onClick={primaryAction.onClick}>
-                {primaryAction.label}
-              </Button>
-            ))}
-          {secondaryAction &&
-            (secondaryAction.href ? (
-              <Button variant="outline" asChild>
-                <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={secondaryAction.onClick}
-              >
-                {secondaryAction.label}
-              </Button>
-            ))}
-        </CardContent>
+        </p>
       )}
-    </Card>
+      {(primaryAction || secondaryAction) && (
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          {primaryAction && <ActionButton action={primaryAction} />}
+          {secondaryAction && (
+            <ActionButton action={secondaryAction} variant="outline" />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionButton({
+  action,
+  variant = "default",
+}: {
+  action: Action;
+  variant?: "default" | "outline";
+}) {
+  if (action.href) {
+    return (
+      <Button variant={variant} asChild>
+        <Link href={action.href}>{action.label}</Link>
+      </Button>
+    );
+  }
+  return (
+    <Button type="button" variant={variant} onClick={action.onClick}>
+      {action.label}
+    </Button>
   );
 }

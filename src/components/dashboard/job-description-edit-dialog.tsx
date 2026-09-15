@@ -193,7 +193,7 @@ function EditForm({
             inputMode="url"
             value={sourceUrl}
             onChange={(event) => setSourceUrl(event.target.value)}
-            placeholder="https://..."
+            placeholder="https://…"
           />
         </div>
 
@@ -243,7 +243,7 @@ function EditForm({
           Cancel
         </Button>
         <Button onClick={() => void handleSave()} disabled={saving}>
-          {saving ? "Saving..." : "Save changes"}
+          {saving ? "Saving…" : "Save changes"}
         </Button>
       </DialogFooter>
     </>

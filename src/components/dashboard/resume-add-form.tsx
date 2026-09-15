@@ -4,11 +4,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { ChoiceChip } from "@/components/ui/choice-chip";
-import { Field } from "@/components/ui/field";
+import { DocumentInput } from "@/components/ui/document-input";
+import { Field, fieldHintId } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
-import { Textarea } from "@/components/ui/textarea";
 import { describeTruncation } from "@/lib/document-truncation";
 import { MIN_RESUME_CHARS } from "@/lib/api/input-limits";
 import type { ResumeSummary } from "@/hooks/use-resumes";
@@ -17,13 +15,12 @@ import type { ResumeSummary } from "@/hooks/use-resumes";
 export const DRAFT_WORTH_KEEPING_CHARS = 40;
 
 export interface ResumeDraft {
-  method: "paste" | "upload";
   label: string;
   text: string;
 }
 
 export function emptyResumeDraft(): ResumeDraft {
-  return { method: "paste", label: "", text: "" };
+  return { label: "", text: "" };
 }
 
 /**
@@ -46,10 +43,8 @@ export function emptyResumeDraft(): ResumeDraft {
  * boilerplate off a posting copied from a careers page; a resume is the user's own
  * document and every line of it is content.
  *
- * The draft is lifted to the caller for the same reason as the job
- * description's: both hosts need to know whether there is unsaved work in it —
- * the library page to clear it after a save, the wizard's dialog to warn before
- * discarding it.
+ * Paste and upload share one box (`DocumentInput`); there is no method to
+ * choose first.
  */
 export function ResumeAddForm({
   draft,
@@ -70,30 +65,17 @@ export function ResumeAddForm({
 }) {
   const patch = (part: Partial<ResumeDraft>) =>
     onDraftChange({ ...draft, ...part });
+  const [rejection, setRejection] = useState<string | null>(null);
+
+  const length = draft.text.trim().length;
+  const message = rejection ?? error;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <ChoiceChip
-          selected={draft.method === "paste"}
-          onClick={() => patch({ method: "paste" })}
-        >
-          Paste text
-        </ChoiceChip>
-        <ChoiceChip
-          selected={draft.method === "upload"}
-          onClick={() => patch({ method: "upload" })}
-        >
-          Upload PDF
-        </ChoiceChip>
-      </div>
-
+    <div className="space-y-6">
       {/* Writes `variant`, the field the edit dialog calls Version and the
           library search claims to cover. It used to be sent as `title`, which
           destroyed the guessed name, left the version column empty, and made
-          `variant` unreachable from any add surface — the placeholder even
-          matched the edit dialog's Version field while feeding a different
-          column. */}
+          `variant` unreachable from any add surface. */}
       <Field
         label="Version label (optional)"
         htmlFor="resume-label"
@@ -107,42 +89,48 @@ export function ResumeAddForm({
         />
       </Field>
 
-      {draft.method === "paste" ? (
-        <div className="space-y-4">
-          <Field
-            label="Resume text"
-            htmlFor="resume-paste-text"
-            aside={
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {draft.text.trim().length} chars
-              </span>
-            }
-          >
-            <Textarea
-              id="resume-paste-text"
-              placeholder="Paste your experience, skills, education, and projects..."
-              value={draft.text}
-              onChange={(event) => patch({ text: event.target.value })}
-              className="min-h-40 resize-y"
-            />
-          </Field>
-
-          <Button type="button" onClick={onSubmitText} disabled={busy}>
-            {busy ? "Saving..." : submitLabel}
-          </Button>
-        </div>
-      ) : (
-        <PdfDropZone
-          onSelect={onSubmitFile}
+      <Field
+        label="Resume"
+        htmlFor="resume-text"
+        hint="Paste it, or upload it as a PDF. Scanned or image-only PDFs won't work; only PDFs with selectable text can be read."
+        aside={
+          <span className="text-xs text-slate-500 tabular-nums">
+            {length.toLocaleString()} chars
+          </span>
+        }
+      >
+        <DocumentInput
+          id="resume-text"
+          aria-describedby={fieldHintId("resume-text")}
+          value={draft.text}
+          onChange={(text) => {
+            setRejection(null);
+            patch({ text });
+          }}
+          placeholder="Paste your experience, skills, education and projects…"
           busy={busy}
-          label="Upload a PDF resume"
-          hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
+          onFile={(file) => {
+            setRejection(null);
+            onSubmitFile(file);
+          }}
+          onReject={setRejection}
+          footer={<span>Paste text, or drop a PDF here</span>}
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              onClick={onSubmitText}
+              disabled={busy || length < MIN_RESUME_CHARS}
+            >
+              {busy ? "Saving…" : submitLabel}
+            </Button>
+          }
         />
-      )}
+      </Field>
 
-      {error && (
+      {message && (
         <p className="text-sm text-destructive" role="alert">
-          {error}
+          {message}
         </p>
       )}
     </div>

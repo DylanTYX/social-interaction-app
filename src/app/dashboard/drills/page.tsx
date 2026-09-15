@@ -2,17 +2,14 @@
 
 import { readJson } from "@/lib/api/fetch-json";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Dumbbell,
-  Gauge,
-  Mic,
-  PenLine,
-  RefreshCw,
-  Send,
-  Shuffle,
-  Sparkles,
-} from "lucide-react";
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { ArrowRight, Loader2, Mic, PenLine, Shuffle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,7 +32,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DRILL_CATEGORIES,
   DRILL_GROUPS,
@@ -44,12 +41,18 @@ import {
   type DrillCategory,
   type DrillQuestion,
 } from "@/lib/question-bank";
-import { PageHeader } from "@/components/dashboard/page-header";
+import {
+  PageContainer,
+  PageHeader,
+  PANEL_LABEL,
+} from "@/components/dashboard/page-header";
 import {
   CoachingResult,
   CoachingResultSkeleton,
 } from "@/components/coach/coaching-result";
+import { DeliveryReadout } from "@/components/coach/delivery-readout";
 import type { SpeechAnswerCompletion } from "@/hooks/use-speech-answer";
+import type { DeliveryMetrics } from "@/lib/speech-metrics";
 import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
 
 /**
@@ -68,9 +71,23 @@ const DrillSpeakInput = dynamic(
     ),
   {
     ssr: false,
+    // The recorder's own frame at its own height, so nothing moves when the
+    // real one arrives.
     loading: () => (
-      <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">
-        Getting the microphone ready…
+      <div
+        aria-busy="true"
+        className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+      >
+        <div className="flex items-center gap-4 px-4 py-4 sm:px-5">
+          <Skeleton className="size-14 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-slate-900">
+              Getting the microphone ready…
+            </p>
+            <Skeleton className="mt-1.5 h-3.5 w-64 max-w-full" />
+          </div>
+        </div>
+        <div className="h-35 border-t border-slate-100 bg-slate-50/60" />
       </div>
     ),
   },
@@ -125,7 +142,26 @@ function pickRandom(
   return next;
 }
 
+const subscribeToNothing = () => () => {};
+
+/**
+ * False while the server render is being hydrated, true from then on.
+ *
+ * The first question is a random draw, so the server and the browser each drew
+ * a different one and React threw a hydration mismatch on every page load. The
+ * question is now drawn in both places but only shown once this is true. On a
+ * client-side navigation there is no hydration, so it is true immediately.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+}
+
 export default function DrillsPage() {
+  const hydrated = useHydrated();
   const [category, setCategory] = useState<DrillCategory | "all">("all");
   const pool = useMemo(() => getQuestionsForCategory(category), [category]);
   const [question, setQuestion] = useState<DrillQuestion>(() =>
@@ -162,9 +198,10 @@ export default function DrillsPage() {
    * Held beside the coaching rather than inside it because it is measured here
    * — `analyzeDelivery` runs in the browser off the recognizer's own phrase
    * timings — and costs no tokens. It is also the only feedback on this page
-   * that a typed answer genuinely cannot have.
+   * that a typed answer genuinely cannot have. The full measurements rather
+   * than the one-line summary, so the readout can show each one.
    */
-  const [deliveryNote, setDeliveryNote] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryMetrics | null>(null);
 
   const [pendingSwitch, setPendingSwitch] = useState<{
     category?: DrillCategory | "all";
@@ -173,6 +210,8 @@ export default function DrillsPage() {
 
   const answerRef = useRef<HTMLTextAreaElement>(null);
   const coachingRef = useRef<HTMLDivElement>(null);
+  /** Set by "Revise this answer" so the textarea is focused once it exists. */
+  const focusAnswerOnMount = useRef(false);
 
   const meta = getCategoryMeta(question.category);
   const clearAnswer = () => {
@@ -180,7 +219,7 @@ export default function DrillsPage() {
     setSubmittedAnswer("");
     setResult(null);
     setError(null);
-    setDeliveryNote(null);
+    setDelivery(null);
   };
 
   const nextQuestion = (nextCategory?: DrillCategory | "all") => {
@@ -251,7 +290,7 @@ export default function DrillsPage() {
      * claiming three fillers about text that contains none. The same class of
      * lie `submittedAnswer` exists to prevent.
      */
-    if (submitMode !== "speak") setDeliveryNote(null);
+    if (submitMode !== "speak") setDelivery(null);
     try {
       /**
        * The topic's rubric, read from the topic itself.
@@ -302,10 +341,27 @@ export default function DrillsPage() {
     // Revising means editing words, which only the textarea can do — so this
     // also drops out of speak mode, carrying the transcript into the box
     // rather than discarding it the way an ordinary mode switch does.
+    if (mode === "type") {
+      focusAnswer();
+      return;
+    }
+    // From speak mode the textarea does not exist until the next render, so
+    // focusing it here found nothing and the page never scrolled back up.
+    focusAnswerOnMount.current = true;
     setMode("type");
+  };
+
+  function focusAnswer() {
     answerRef.current?.focus({ preventScroll: true });
     answerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  }
+
+  useEffect(() => {
+    if (mode === "type" && focusAnswerOnMount.current) {
+      focusAnswerOnMount.current = false;
+      focusAnswer();
+    }
+  }, [mode]);
 
   /**
    * A spoken answer, finished.
@@ -318,9 +374,9 @@ export default function DrillsPage() {
    */
   const handleSpoken = ({
     transcript,
-    deliveryNote,
+    delivery: measured,
   }: SpeechAnswerCompletion) => {
-    setDeliveryNote(deliveryNote);
+    setDelivery(measured);
     setAnswer(transcript);
 
     if (transcript.trim().length < 10) {
@@ -358,267 +414,247 @@ export default function DrillsPage() {
   const hasCoaching = loading || error !== null || result !== null;
   const answerEdited = result !== null && answer.trim() !== submittedAnswer;
 
+  const typedWords = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+  const SWITCH_LINK =
+    "inline-flex items-center gap-1.5 rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted";
+
   return (
-    <div className="space-y-6 p-8">
-      {/* Full width, like every other dashboard page.
-          A `max-w-5xl` reading column was tried here and removed: the readability
-          problem it solved is already solved one level down, where the prose
-          blocks inside `CoachingResult` carry `max-w-prose`. Capping the page as
-          well only made drills the one dashboard route with its own width rule. */}
+    <PageContainer>
       <PageHeader
-        eyebrow="Quick Drills"
-        title="One question. Instant feedback."
-        description="No setup, no full session - answer a single question and get it rewritten in your own words, with targeted tips and a full example answer, in seconds."
-        icon={<Dumbbell className="h-6 w-6" />}
-        iconColor="pink"
+        title="Quick drills"
+        description="One question, answered out loud, coached in seconds."
       />
 
-      {/* Answer above, coaching below, both full width.
+      {/* The question card is a stage: a thin toolbar for the occasional
+          choices, the question set large, then the answer surface.
 
-          This was `lg:grid-cols-2`, and grid stretches: the coaching card runs
-          300-400px taller than this one, so the answer card grew that much dead
-          whitespace beneath an 8-row textarea. `Card` is `flex flex-col gap-6`
-          with no `flex-1` anywhere, so the slack pooled at the bottom rather
-          than being absorbed. Matched heights and that whitespace were the same
-          fact, and only one of them could be kept.
-
-          The split's one real benefit was the candidate's own answer sitting
-          beside the tightened rewrite. That comparison moved *inside* the
-          coaching block, where the two halves are the same text twice and so
-          cannot reproduce the mismatch that made this layout wrong.
-
-          `persona-step.tsx` made the same call for the same reason. */}
-      <Card className="shadow-soft">
-        <CardHeader>
-          {/* The topic picker lives here, where the topic is displayed.
-              It used to be sixteen chips in three labelled rows above the card
-              — the first thing on the page, and a wall of chrome in front of
-              the one thing you came to read. Choosing a topic is occasional:
-              you pick once and then drill several questions against it. So it
-              collapses into the control that was already showing which topic
-              you were on, and the question becomes the first thing you see.
-
-              A grouped `Select` rather than a flat one: the three groups are
-              the CS Core / specialisation line, and a fifteen-item list with no
-              structure is the same wall in a smaller box. */}
-          <div className="flex items-center justify-between gap-2">
-            <Select
-              value={category}
-              onValueChange={(next) =>
-                handleCategory(next as DrillCategory | "all")
-              }
+          Answer above, coaching below, both full width. This was
+          `lg:grid-cols-2`, and grid stretches: the coaching card runs 300-400px
+          taller than this one, so the answer card grew that much dead
+          whitespace. The split's one real benefit, your answer beside the
+          tightened rewrite, lives inside the coaching block instead. */}
+      <Card className="gap-0 py-0">
+        {/* The topic picker lives with the question it chooses. Choosing a
+            topic is occasional: you pick once and drill several questions
+            against it, so it is a menu, not a wall of chips. A grouped
+            `Select`, because the three groups are the CS Core /
+            specialisation line and a flat fifteen-item list hides that. */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-6">
+          <Select
+            value={category}
+            onValueChange={(next) =>
+              handleCategory(next as DrillCategory | "all")
+            }
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Drill topic"
+              className="w-auto min-w-56 font-medium"
             >
-              <SelectTrigger
-                size="sm"
-                aria-label="Drill topic"
-                className="w-auto min-w-56 gap-2 font-medium"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Topics</SelectItem>
-                {/* A rule before each group, so the headings sit between
-                    blocks rather than inside one long list. With type
-                    treatment alone the labels still read as list items —
-                    the separator is what makes the grouping structural. */}
-                {DRILL_GROUPS.map((group) => (
-                  <SelectGroup key={group.id}>
-                    <SelectSeparator />
-                    <SelectLabel>{group.label}</SelectLabel>
-                    {DRILL_CATEGORIES.filter(
-                      (cat) => cat.group === group.id,
-                    ).map((cat) => (
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All topics</SelectItem>
+              {/* A rule before each group, so the headings sit between blocks
+                  rather than reading as list items. */}
+              {DRILL_GROUPS.map((group) => (
+                <SelectGroup key={group.id}>
+                  <SelectSeparator />
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {DRILL_CATEGORIES.filter((cat) => cat.group === group.id).map(
+                    (cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.label}
                       </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => requestNewQuestion()}
-              className="gap-1.5 text-slate-500"
-            >
-              <Shuffle className="h-3.5 w-3.5" />
-              New Question
-            </Button>
-          </div>
-          <CardTitle className="pt-2 text-xl leading-snug">
-            {question.prompt}
-          </CardTitle>
-          {/* Names the topic while browsing everything.
-              The badge this replaced was the only thing saying which topic a
-              question came from, and on "All Topics" that is exactly when you
-              cannot infer it from the picker. Redundant once a single topic is
-              selected, so it is only shown when it is not. */}
-          <CardDescription>
-            {category === "all" ? `${meta.label} — ${meta.blurb}` : meta.blurb}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Speaking first, and the default, because that is what the product
-              is for — an interview is spoken, and a drill that only ever takes
-              typing trains the half of the skill nobody is assessed on. Typing
-              stays because a transcript is not always what you want to work on,
-              because the microphone can fail, and because "Revise this answer"
-              lands here with the transcript already in the box. */}
-          <div
-            role="group"
-            aria-label="How to answer"
-            className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5"
-          >
-            {(
-              [
-                { id: "speak", label: "Speak", icon: Mic },
-                { id: "type", label: "Type", icon: PenLine },
-              ] as { id: DrillInputMode; label: string; icon: typeof Mic }[]
-            ).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={mode === id}
-                onClick={() => requestMode(id)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  mode === id
-                    ? "bg-white text-slate-900 shadow-soft"
-                    : "text-slate-500 hover:text-slate-800",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {mode === "speak" ? (
-            <DrillSpeakInput
-              timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
-              // The question itself, so the recognizer is biased toward the
-              // nouns it is about to hear.
-              phraseList={[question.prompt]}
-              disabled={loading}
-              onComplete={handleSpoken}
-            />
-          ) : (
-            <>
-              {/* Eight rows, to land near the height of the speaking surface.
-                  This was cut to six when the textarea gained the full width of
-                  the card, and that reasoning still holds on its own — but it
-                  predates there being a second answer mode. Switching between
-                  Speak and Type now resizes the card, and a control that moves
-                  when you change your mind about how to answer is worse than a
-                  slightly tall empty box. `field-sizing-content` still grows it
-                  from there as you type. */}
-              <Textarea
-                ref={answerRef}
-                aria-label="Your answer"
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                placeholder="Type your answer out loud, as if you were in the room…"
-                rows={8}
-                className="resize-none"
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  {answer.trim().length < 10
-                    ? "Write a bit more to get feedback"
-                    : `${answer.trim().split(/\s+/).length} words`}
-                </span>
-                <Button
-                  onClick={() => void handleSubmit()}
-                  disabled={answer.trim().length < 10 || loading}
-                  className="gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Reviewing…
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      Get Feedback
-                    </>
+                    ),
                   )}
-                </Button>
-              </div>
-            </>
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => requestNewQuestion()}
+            className="text-slate-600"
+          >
+            <Shuffle />
+            New question
+          </Button>
+        </div>
+
+        <div className="space-y-6 px-4 py-6 sm:px-6">
+          {/* Full width, like the answer surface under it. Questions are
+              short (72 characters at the median, 122 at most), so a
+              reading-width cap only broke most of them into two short lines
+              that left the right half of the card empty. `text-pretty`
+              rather than `text-balance` for the same reason: balance evens
+              the lines out and pulls them away from the edge; pretty fills
+              the line and only stops a lone last word. */}
+          {hydrated ? (
+            <div className="space-y-2">
+              {/* Names the topic while browsing everything, which is exactly
+                  when the picker cannot. Redundant once one topic is chosen. */}
+              {category === "all" && (
+                <p className={PANEL_LABEL}>{meta.label}</p>
+              )}
+              <h2 className="font-display text-2xl leading-snug font-semibold tracking-tight text-pretty text-slate-900">
+                {question.prompt}
+              </h2>
+              <p className="text-sm text-slate-500">{meta.blurb}</p>
+            </div>
+          ) : (
+            <div className="space-y-2" aria-hidden>
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-8 w-full max-w-4xl" />
+              <Skeleton className="h-4 w-64 max-w-full" />
+            </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Absent entirely until there is something in it.
-
-          Side by side, an empty state filled a column that existed anyway. Full
-          width and below the fold, a dashed placeholder would be a large box
-          promising something the user has not asked for yet — and its copy was
-          already carried by the page description above and by a button that
-          says "Get feedback". */}
-      {hasCoaching && (
-        <Card
-          ref={coachingRef}
-          className={cn("scroll-mt-8 shadow-soft", CONTENT_ENTER)}
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-warning" />
-              Coaching
-            </CardTitle>
-            <CardDescription>
-              {answerEdited
-                ? "You have edited your answer since this feedback — get feedback again to refresh it."
-                : "Your answer tightened, what to fix, and a full example answer if you want the ceiling."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Above the coaching, not inside it: this is measured in the
-                browser from the recognizer's own phrase timings, costs no
-                tokens, and is the one thing on this page a typed answer cannot
-                have. `CoachingResult` is shared with the report, which shows
-                delivery on the message bubble instead. */}
-            {deliveryNote && (
-              <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <Gauge className="h-3.5 w-3.5 text-slate-400" />
-                <span className="font-semibold uppercase tracking-wide text-slate-400">
-                  Delivery
-                </span>
-                {deliveryNote}
-              </p>
-            )}
-            {loading && <CoachingResultSkeleton />}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {result && (
-              <>
-                <CoachingResult
-                  result={result}
-                  originalAnswer={submittedAnswer}
+          <div className="space-y-3">
+            {mode === "speak" ? (
+              <DrillSpeakInput
+                timeLimitSeconds={SPOKEN_ANSWER_SECONDS}
+                // The question itself, so the recognizer is biased toward the
+                // nouns it is about to hear.
+                phraseList={[question.prompt]}
+                disabled={loading}
+                lastAnswer={answer}
+                onComplete={handleSpoken}
+              />
+            ) : (
+              // One box, like the job description and resume inputs: the text
+              // area, and a footer with the count and the action. Its resting
+              // height is the recorder's, so switching modes does not move
+              // the page.
+              <div className="rounded-xl border border-slate-200 bg-white transition-[border-color,box-shadow] duration-150 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary-muted">
+                <textarea
+                  ref={answerRef}
+                  aria-label="Your answer"
+                  value={answer}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  placeholder="Write it the way you would say it in the room…"
+                  rows={8}
+                  className="block field-sizing-content min-h-45 w-full resize-none rounded-t-xl bg-transparent px-4 py-4 text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 sm:px-5"
                 />
-                <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
+                  <span className="pl-1 text-xs text-slate-500 tabular-nums sm:pl-2">
+                    {answer.trim().length < 10
+                      ? "Write a bit more to get feedback"
+                      : `${typedWords} words`}
+                  </span>
                   <Button
-                    variant="ghost"
-                    onClick={handleRevise}
-                    className="gap-2 text-slate-500"
+                    size="sm"
+                    onClick={() => void handleSubmit()}
+                    disabled={answer.trim().length < 10 || loading}
                   >
-                    <PenLine className="h-4 w-4" />
-                    Revise This Answer
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => nextQuestion()}
-                    className="gap-2"
-                  >
-                    <Shuffle className="h-4 w-4" />
-                    Next Question
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" />
+                        Reviewing…
+                      </>
+                    ) : (
+                      <>
+                        Get feedback
+                        <ArrowRight />
+                      </>
+                    )}
                   </Button>
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Speaking first, and the default, because an interview is
+                spoken. Typing stays, for when a transcript is not what you
+                want to work on, when the microphone fails, and because
+                "Revise this answer" lands here. It is offered as one line
+                rather than a segmented toggle so the default reads as the
+                default. */}
+            {/* A flex row, not a button inside a sentence. Inline, the button's
+                baseline came from its icon, which has none, so the icon's
+                bottom edge sat on the text baseline and lifted the link above
+                the words beside it. */}
+            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-slate-500">
+              {mode === "speak" ? (
+                <>
+                  <span>Rather write it?</span>
+                  <button
+                    type="button"
+                    onClick={() => requestMode("type")}
+                    className={SWITCH_LINK}
+                  >
+                    <PenLine className="h-3.5 w-3.5" aria-hidden />
+                    Type your answer
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>Interviews are spoken.</span>
+                  <button
+                    type="button"
+                    onClick={() => requestMode("speak")}
+                    className={SWITCH_LINK}
+                  >
+                    <Mic className="h-3.5 w-3.5" aria-hidden />
+                    Answer out loud instead
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Absent entirely until there is something in it. A dashed placeholder
+          below the fold would promise something the user has not asked for. */}
+      {hasCoaching && (
+        <Card ref={coachingRef} className={cn("scroll-mt-8", CONTENT_ENTER)}>
+          <CardHeader>
+            <CardTitle className="text-lg">Coaching</CardTitle>
+            <CardDescription>
+              {answerEdited
+                ? "You have edited your answer since this feedback. Get feedback again to refresh it."
+                : delivery
+                  ? "How it sounded, then your answer tightened, what to fix, and an example answer."
+                  : "Your answer tightened, what to fix, and a full example answer if you want the ceiling."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* First, because it is ready first: measured in the browser the
+                moment you stop, while the coach is still reading. */}
+            {delivery && <DeliveryReadout metrics={delivery} />}
+            {loading && <CoachingResultSkeleton />}
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+              >
+                {error}
+              </p>
+            )}
+            {result && (
+              <CoachingResult
+                result={result}
+                originalAnswer={submittedAnswer}
+              />
             )}
           </CardContent>
+          {result && (
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-6 pt-5">
+              <Button
+                variant="ghost"
+                onClick={handleRevise}
+                className="text-slate-600"
+              >
+                <PenLine />
+                Revise this answer
+              </Button>
+              <Button onClick={() => nextQuestion()}>
+                Next question
+                <ArrowRight />
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 
@@ -627,13 +663,13 @@ export default function DrillsPage() {
         onOpenChange={(open) => {
           if (!open) setPendingSwitch(null);
         }}
-        title="Discard Your Answer?"
+        title="Discard your answer?"
         description={
           pendingSwitch?.mode
             ? "Changing how you answer clears what you have written. Get feedback first if you want to keep it."
             : "Moving to a new question clears what you have written. Get feedback first if you want to keep it."
         }
-        confirmLabel="Discard and Continue"
+        confirmLabel="Discard and continue"
         onConfirm={() => {
           // A mode switch keeps the question — you are answering the same thing
           // a different way — so it clears the answer without drawing a new one.
@@ -650,6 +686,6 @@ export default function DrillsPage() {
           setPendingSwitch(null);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

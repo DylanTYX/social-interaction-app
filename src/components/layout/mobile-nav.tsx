@@ -5,18 +5,24 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   History,
-  Sparkles,
+  Plus,
   BarChart3,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isNavItemActive } from "@/lib/nav";
 
+/**
+ * The same destinations, labels and icons as the sidebar, so a page is called
+ * one thing at every width. This bar used to say Home, Practice and Stats where
+ * the sidebar said Dashboard, New interview and Analytics, with a sparkle for
+ * the one action.
+ */
 const ITEMS = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/sessions", label: "Sessions", icon: History },
-  { href: "/simulate/setup", label: "Practice", icon: Sparkles },
-  { href: "/dashboard/analytics", label: "Stats", icon: BarChart3 },
+  { href: "/simulate/setup", label: "New interview", icon: Plus },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
@@ -25,7 +31,7 @@ export function MobileNav() {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200/80 bg-white/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
       aria-label="Mobile navigation"
     >
       <div className="flex items-stretch justify-around">
@@ -39,7 +45,7 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors",
+                "flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-center text-[10px] leading-tight font-medium transition-colors",
                 active ? "text-primary" : "text-slate-500",
               )}
             >

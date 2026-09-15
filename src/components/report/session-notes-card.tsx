@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { StickyNote } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -56,12 +55,9 @@ export function SessionNotesCard({
   };
 
   return (
-    <Card className="border-slate-200/80 bg-white print:break-inside-avoid">
+    <Card className="print:break-inside-avoid">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <StickyNote className="h-4 w-4 text-slate-500" aria-hidden />
-          Your takeaways
-        </CardTitle>
+        <CardTitle className="text-lg">Your takeaways</CardTitle>
         <CardDescription>
           What will you do differently next time? Only you can see this.
         </CardDescription>

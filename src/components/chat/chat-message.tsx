@@ -3,9 +3,12 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
+import { Loader2, Mic } from "lucide-react";
+
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
+import { TILE_ACCENT, tileColorForKey } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
 import { initialsFromName } from "@/lib/format";
-import { TILE_COLORS, tileColorForKey } from "@/lib/tile-colors";
 
 interface ChatMessageProps {
   role: "user" | "ai";
@@ -39,22 +42,22 @@ const FEEDBACK_TONE_CLASS: Record<
  */
 const markdownComponents = {
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="mb-4 text-xl font-semibold tracking-tight text-slate-950 last:mb-0">
+    <h1 className="mb-4 font-display text-xl font-semibold tracking-tight text-slate-950 last:mb-0">
       {children}
     </h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="mb-3.5 text-lg font-semibold tracking-tight text-slate-950 last:mb-0">
+    <h2 className="mb-3.5 font-display text-lg font-semibold tracking-tight text-slate-950 last:mb-0">
       {children}
     </h2>
   ),
   h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 className="mb-3 text-base font-semibold text-slate-950 last:mb-0">
+    <h3 className="mb-3 font-display text-base font-semibold tracking-tight text-slate-950 last:mb-0">
       {children}
     </h3>
   ),
   h4: ({ children }: { children?: React.ReactNode }) => (
-    <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700 last:mb-0">
+    <h4 className="mb-2 text-sm font-semibold text-slate-800 last:mb-0">
       {children}
     </h4>
   ),
@@ -64,9 +67,7 @@ const markdownComponents = {
     </h5>
   ),
   h6: ({ children }: { children?: React.ReactNode }) => (
-    <h6 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600 last:mb-0">
-      {children}
-    </h6>
+    <h6 className={cn(PANEL_LABEL, "mb-2 last:mb-0")}>{children}</h6>
   ),
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>
@@ -143,7 +144,7 @@ export const ChatMessage = memo(function ChatMessage({
   role,
   content,
   timestamp,
-  personaName = "AI Assistant",
+  personaName = "Interviewer",
   feedbackHint,
   feedbackTone = "neutral",
   feedbackLoading = false,
@@ -170,16 +171,12 @@ export const ChatMessage = memo(function ChatMessage({
           The interviewer's is keyed to their *name*, the same way
           `InitialsAvatar` does it on the personas page, in the session list and
           in the picker — so Sarah Chen is the same colour in the transcript as
-          everywhere else. It used to be hardcoded purple, which made every
-          interviewer look identical here and unrelated to their own colour one
-          screen away. The candidate stays primary: that is the app speaking as
-          you, not a persona. */}
+          everywhere else. The candidate is blue: that is the app speaking as
+          you, matching your message bubbles. See docs/DESIGN.md. */}
       <div
         className={cn(
-          "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold",
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : TILE_COLORS[tileColorForKey(personaName)],
+          "h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-display text-xs font-semibold text-white",
+          isUser ? "bg-primary" : TILE_ACCENT[tileColorForKey(personaName)],
         )}
       >
         {initials}
@@ -205,10 +202,10 @@ export const ChatMessage = memo(function ChatMessage({
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5 shadow-soft",
+            "rounded-xl px-4 py-2.5",
             isUser
-              ? "bg-primary text-white rounded-tr-sm"
-              : "bg-white text-slate-900 border border-slate-200/80 rounded-tl-sm",
+              ? "rounded-tr-sm bg-primary text-white"
+              : "rounded-tl-sm border border-slate-200 bg-white text-slate-900",
           )}
         >
           {isUser ? (
@@ -237,23 +234,30 @@ export const ChatMessage = memo(function ChatMessage({
             className={cn(
               "mt-1.5 max-w-full rounded-lg border px-3 py-1.5 text-xs leading-relaxed",
               feedbackLoading
-                ? // `animate-breathe` and `animate-in` both write the
-                  // `animation` shorthand, so they cannot be combined — the
-                  // placeholder breathes, the settled chip fades in.
-                  "animate-breathe border-slate-200 bg-slate-50 text-slate-500"
+                ? "border-slate-200 bg-slate-50 text-slate-500"
                 : cn(
                     "animate-in fade-in-0 slide-in-from-top-1 duration-200",
                     FEEDBACK_TONE_CLASS[feedbackTone ?? "neutral"],
                   ),
             )}
           >
-            {feedbackLoading ? "Coach is reviewing your answer…" : feedbackHint}
+            {feedbackLoading ? (
+              <>
+                <Loader2
+                  className="mr-1.5 inline h-3 w-3 animate-spin text-primary"
+                  aria-hidden
+                />
+                Coach is reviewing your answer…
+              </>
+            ) : (
+              feedbackHint
+            )}
           </p>
         )}
 
         {isUser && deliveryNote && (
           <p className="mt-1.5 flex animate-in items-center gap-1.5 rounded-lg border border-primary-border bg-primary-subtle px-3 py-1.5 text-xs font-medium text-primary-emphasis fade-in-0 slide-in-from-top-1 duration-200">
-            <span aria-hidden="true">🎙️</span>
+            <Mic className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {deliveryNote}
           </p>
         )}

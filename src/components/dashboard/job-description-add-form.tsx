@@ -4,11 +4,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { ChoiceChip } from "@/components/ui/choice-chip";
-import { Field } from "@/components/ui/field";
+import { DocumentInput } from "@/components/ui/document-input";
+import { Field, fieldHintId } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { PdfDropZone } from "@/components/ui/pdf-drop-zone";
-import { Textarea } from "@/components/ui/textarea";
 import { TidyJobDescription } from "@/components/setup/tidy-job-description";
 import { describeTruncation } from "@/lib/document-truncation";
 import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
@@ -16,8 +14,10 @@ import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
 /** Enough text to be worth a confirmation before throwing it away. */
 export const DRAFT_WORTH_KEEPING_CHARS = 40;
 
+/** The least a pasted posting can be and still be a posting. */
+export const MIN_JOB_DESCRIPTION_CHARS = 80;
+
 export interface JobDescriptionDraft {
-  method: "paste" | "upload";
   company: string;
   roleTitle: string;
   sourceUrl: string;
@@ -25,13 +25,7 @@ export interface JobDescriptionDraft {
 }
 
 export function emptyDraft(): JobDescriptionDraft {
-  return {
-    method: "paste",
-    company: "",
-    roleTitle: "",
-    sourceUrl: "",
-    text: "",
-  };
+  return { company: "", roleTitle: "", sourceUrl: "", text: "" };
 }
 
 /**
@@ -49,6 +43,9 @@ export function emptyDraft(): JobDescriptionDraft {
  * whether there is unsaved work in it — the library page to clear it after a
  * save, the wizard's dialog to warn before discarding it — and state hidden in
  * here would leave them guessing.
+ *
+ * Paste and upload share one box (`DocumentInput`); there is no longer a
+ * method to choose first. The draft's `method` field went with the toggle.
  */
 export function JobDescriptionAddForm({
   draft,
@@ -69,27 +66,16 @@ export function JobDescriptionAddForm({
 }) {
   const patch = (part: Partial<JobDescriptionDraft>) =>
     onDraftChange({ ...draft, ...part });
+  const [rejection, setRejection] = useState<string | null>(null);
+
+  const length = draft.text.trim().length;
+  const message = rejection ?? error;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <ChoiceChip
-          selected={draft.method === "paste"}
-          onClick={() => patch({ method: "paste" })}
-        >
-          Paste text
-        </ChoiceChip>
-        <ChoiceChip
-          selected={draft.method === "upload"}
-          onClick={() => patch({ method: "upload" })}
-        >
-          Upload PDF
-        </ChoiceChip>
-      </div>
-
+    <div className="space-y-6">
       {/* Company first: it is the field that makes a library of more than a few
           postings navigable, and the one the title falls back to. */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Company (optional)" htmlFor="jd-company">
           <Input
             id="jd-company"
@@ -113,61 +99,67 @@ export function JobDescriptionAddForm({
           id="jd-source-url"
           type="url"
           inputMode="url"
-          placeholder="https://..."
+          placeholder="https://…"
           value={draft.sourceUrl}
           onChange={(event) => patch({ sourceUrl: event.target.value })}
         />
       </Field>
 
-      {draft.method === "paste" ? (
-        <div className="space-y-4">
-          <Field
-            label="Job description text"
-            htmlFor="jd-paste-text"
-            aside={
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {draft.text.trim().length} chars
-              </span>
-            }
-          >
-            <Textarea
-              id="jd-paste-text"
-              placeholder="Paste responsibilities, requirements, and context..."
-              value={draft.text}
-              onChange={(event) => patch({ text: event.target.value })}
-              className="min-h-40 resize-y"
-            />
-          </Field>
-
-          <TidyJobDescription
-            rawText={draft.text}
-            onApply={(result) =>
-              patch({
-                text: result.cleanedText,
-                // Filled in only, never overwritten: what the user typed beats
-                // what was inferred from the page.
-                company: draft.company || (result.company ?? ""),
-                roleTitle: draft.roleTitle || (result.roleTitle ?? ""),
-              })
-            }
-          />
-
-          <Button type="button" onClick={onSubmitText} disabled={busy}>
-            {busy ? "Saving..." : submitLabel}
-          </Button>
-        </div>
-      ) : (
-        <PdfDropZone
-          onSelect={onSubmitFile}
+      <Field
+        label="Job description"
+        htmlFor="jd-text"
+        hint="Paste the posting, or upload it as a PDF. Scanned or image-only PDFs won't work; only PDFs with selectable text can be read."
+        aside={
+          <span className="text-xs text-slate-500 tabular-nums">
+            {length.toLocaleString()} chars
+          </span>
+        }
+      >
+        <DocumentInput
+          id="jd-text"
+          aria-describedby={fieldHintId("jd-text")}
+          value={draft.text}
+          onChange={(text) => {
+            setRejection(null);
+            patch({ text });
+          }}
+          placeholder="Paste the responsibilities, requirements and context…"
           busy={busy}
-          label="Upload a PDF job description"
-          hint="Scanned or image-only PDFs won't work — we can only read PDFs with selectable text."
+          onFile={(file) => {
+            setRejection(null);
+            onSubmitFile(file);
+          }}
+          onReject={setRejection}
+          footer={<span>Paste text, or drop a PDF here</span>}
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              onClick={onSubmitText}
+              disabled={busy || length < MIN_JOB_DESCRIPTION_CHARS}
+            >
+              {busy ? "Saving…" : submitLabel}
+            </Button>
+          }
         />
-      )}
+      </Field>
 
-      {error && (
+      <TidyJobDescription
+        rawText={draft.text}
+        onApply={(result) =>
+          patch({
+            text: result.cleanedText,
+            // Filled in only, never overwritten: what the user typed beats
+            // what was inferred from the page.
+            company: draft.company || (result.company ?? ""),
+            roleTitle: draft.roleTitle || (result.roleTitle ?? ""),
+          })
+        }
+      />
+
+      {message && (
         <p className="text-sm text-destructive" role="alert">
-          {error}
+          {message}
         </p>
       )}
     </div>
@@ -225,8 +217,10 @@ export function useJobDescriptionCreator({
 
   const submitText = async (draft: JobDescriptionDraft) => {
     setError(null);
-    if (draft.text.trim().length < 80) {
-      setError("Paste at least 80 characters of job description text.");
+    if (draft.text.trim().length < MIN_JOB_DESCRIPTION_CHARS) {
+      setError(
+        `Paste at least ${MIN_JOB_DESCRIPTION_CHARS} characters of job description text.`,
+      );
       return null;
     }
     setBusy(true);

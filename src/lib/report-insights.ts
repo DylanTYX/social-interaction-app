@@ -12,6 +12,8 @@
  * simply does not contribute.
  */
 
+import type { BehavioralSignalType } from "@/lib/text-metrics";
+
 type Json = Record<string, unknown>;
 
 function asObject(value: unknown): Json | null {
@@ -19,7 +21,9 @@ function asObject(value: unknown): Json | null {
 }
 
 function mean(values: number[]): number | null {
-  return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+  return values.length
+    ? values.reduce((sum, v) => sum + v, 0) / values.length
+    : null;
 }
 
 function numberAt(source: Json | null, key: string): number | null {
@@ -29,18 +33,33 @@ function numberAt(source: Json | null, key: string): number | null {
 
 export type StarPart = "Situation" | "Task" | "Action" | "Result";
 
-const STAR_KEYS: Array<[StarPart, string]> = [
+export const STAR_KEYS: Array<[StarPart, string]> = [
   ["Situation", "situation"],
   ["Task", "task"],
   ["Action", "action"],
   ["Result", "result"],
 ];
 
-const STAR_ADVICE: Record<StarPart, string> = {
+export const STAR_ADVICE: Record<StarPart, string> = {
   Situation: "set the scene in a sentence or two",
   Task: "say what you personally were responsible for",
   Action: "say what you did, not what the team did",
   Result: "end on what changed, with a number if you can",
+};
+
+/**
+ * One plain reading per evidence-gap signal, in taxonomy priority order.
+ * Shared by the report's per-answer notes and the analytics page, so both
+ * describe the same gap in the same words.
+ */
+export const SIGNAL_READINGS: Record<BehavioralSignalType, string> = {
+  OWNERSHIP_AMBIGUOUS: "your personal role is unclear",
+  DECISION_OWNER_UNCLEAR: "who made the decision is unclear",
+  LEADERSHIP_CLAIM_UNVERIFIED: "a leadership claim without specifics",
+  EXTERNAL_ATTRIBUTION: "places the outcome outside your control",
+  IMPACT_UNQUANTIFIED: "impact claimed without a number",
+  TECHNICAL_CLAIM_UNVERIFIED: "a technical claim without the how",
+  LEARNING_UNVERIFIED: "a lesson without what changed",
 };
 
 export function starWeakestPart(
@@ -50,7 +69,10 @@ export function starWeakestPart(
   for (const [part, key] of STAR_KEYS) {
     const average = mean(
       analyses.flatMap((analysis) => {
-        const quality = numberAt(asObject(asObject(asObject(analysis)?.starAnalysis)?.[key]), "quality");
+        const quality = numberAt(
+          asObject(asObject(asObject(analysis)?.starAnalysis)?.[key]),
+          "quality",
+        );
         return quality === null ? [] : [quality];
       }),
     );
@@ -68,8 +90,12 @@ export function starDetail(analyses: readonly unknown[]): string {
     : "No STAR answers were scored in this session.";
 }
 
-const TECHNICAL_AREAS: Array<[string, string, string]> = [
-  ["problemFraming", "Framing", "restate the problem and its constraints first"],
+export const TECHNICAL_AREAS: Array<[string, string, string]> = [
+  [
+    "problemFraming",
+    "Framing",
+    "restate the problem and its constraints first",
+  ],
   ["approach", "Approach", "compare two options before committing to one"],
   ["correctness", "Correctness", "walk an example through your solution"],
   ["complexity", "Complexity", "state time and space cost as you go"],
@@ -85,7 +111,10 @@ export function technicalWeakestArea(
   for (const [key, area, advice] of TECHNICAL_AREAS) {
     const average = mean(
       analyses.flatMap((analysis) => {
-        const score = numberAt(asObject(asObject(analysis)?.technicalScores), key);
+        const score = numberAt(
+          asObject(asObject(analysis)?.technicalScores),
+          key,
+        );
         return score === null ? [] : [score];
       }),
     );
@@ -121,7 +150,10 @@ export function communicationDetail(
         : "Hesitant — hedging crept into your answers";
   const hedges = mean(
     analyses.flatMap((analysis) => {
-      const count = numberAt(asObject(asObject(analysis)?.confidenceIndicators), "hesitationMarkers");
+      const count = numberAt(
+        asObject(asObject(analysis)?.confidenceIndicators),
+        "hesitationMarkers",
+      );
       return count === null ? [] : [count];
     }),
   );
@@ -138,7 +170,8 @@ export function durationDetail(
   const answers = `${scoredAnswers} scored answer${scoredAnswers === 1 ? "" : "s"}`;
   if (durationMinutes === null || durationMinutes <= 0) return `${answers}.`;
   const per = durationMinutes / scoredAnswers;
-  const perText = per < 10 ? per.toFixed(1).replace(/\.0$/, "") : String(Math.round(per));
+  const perText =
+    per < 10 ? per.toFixed(1).replace(/\.0$/, "") : String(Math.round(per));
   return `${answers} · about ${perText} min each.`;
 }
 

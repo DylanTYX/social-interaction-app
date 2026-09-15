@@ -6,22 +6,17 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Code2,
   FileText,
-  Gauge,
   Lightbulb,
   Link2,
-  ListChecks,
+  Loader2,
   MessageSquare,
-  MessagesSquare,
   Mic,
   MoreHorizontal,
   Pin,
   PinOff,
   Printer,
   RotateCcw,
-  Sparkles,
-  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -65,7 +60,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { InsightCard } from "@/components/report/insight-card";
+import { StatTile } from "@/components/dashboard/stat-tile";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import {
+  PageContainer,
+  PANEL_LABEL,
+} from "@/components/dashboard/page-header";
 import { ScoreReveal } from "@/components/report/score-reveal";
 import { SessionNotesCard } from "@/components/report/session-notes-card";
 import { EditableTitle } from "@/components/sessions/editable-title";
@@ -77,7 +77,6 @@ import {
   technicalDetail,
 } from "@/lib/report-insights";
 import { patchSessionRequest } from "@/lib/session-actions";
-import { TILE_COLORS } from "@/lib/tile-colors";
 import {
   buildRadarAxes,
   DimensionRadar,
@@ -241,33 +240,29 @@ export default function SessionReportPage({
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-slate-50 px-6 py-8">
-        <div className="mx-auto max-w-5xl space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-72" />
-        </div>
-      </div>
+      <PageContainer>
+        <Skeleton className="h-9 w-72 max-w-full rounded-md" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-72 rounded-xl" />
+      </PageContainer>
     );
   }
 
   if (status === "error" || !data) {
     return (
-      <div className="min-h-screen bg-slate-50 px-6 py-8">
-        <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200/80 bg-white p-8 text-center shadow-soft-md">
-          <h2 className="text-xl font-semibold text-slate-900">
-            We couldn&apos;t load that session
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {error ?? "It may have been deleted or you may not have access."}
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <Link href="/dashboard">
-              <Button variant="outline">Back to dashboard</Button>
-            </Link>
-          </div>
+      <PageContainer>
+        <ErrorStateCard
+          title="Couldn't load that session"
+          description={
+            error ?? "It may have been deleted or you may not have access."
+          }
+        />
+        <div className="flex justify-center">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/sessions">Go to sessions</Link>
+          </Button>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -399,20 +394,18 @@ export default function SessionReportPage({
     // is gone with it — the sidebar is the way out, which is the whole reason
     // this page needed chrome: you land here after every session and had one
     // exit.
-    <div className={cn("mx-auto max-w-5xl space-y-6 p-8", CONTENT_ENTER)}>
+    <PageContainer className={CONTENT_ENTER}>
       {/*
         What the session was on the left, what to do next on the right. The
         report is for reading: tags and the rest of the organising live on the
         Sessions page, so the header carries a title you can click to rename,
         one line of facts, and the job it was practice for. "Practise again" is
         the one thing most people do next, so it is the only button; pinning and
-        sharing sit behind one menu.
+        sharing sit behind one menu. The title is the page's `h1`, in the
+        display face like every page title.
       */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-            Session report
-          </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-2">
           <EditableTitle
             sessionId={session.id}
             title={session.title ?? null}
@@ -451,19 +444,14 @@ export default function SessionReportPage({
         </div>
 
         <div className="flex items-center gap-2 print:hidden">
-          <Button className="gap-1.5" onClick={handlePractiseAgain}>
-            <RotateCcw className="h-4 w-4" />
+          <Button onClick={handlePractiseAgain}>
+            <RotateCcw />
             Practise again
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                aria-label="More actions"
-              >
-                <MoreHorizontal className="h-4 w-4" />
+              <Button variant="outline" size="icon" aria-label="More actions">
+                <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -487,7 +475,7 @@ export default function SessionReportPage({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </header>
 
       <ScoreReveal sessionId={session.id} actualScore={displayedScore}>
         {(prediction, justRevealed) => (
@@ -501,26 +489,14 @@ export default function SessionReportPage({
             <div className="grid gap-4 sm:grid-cols-3">
               {/* Full width, so the score has room for what qualifies it — the
                   change since last time, your prediction, and how hard this
-                  interviewer was — without squeezing the three cards below.
-                  Card, tile and type follow the analytics page's stat cards. */}
-              <Card className="shadow-soft sm:col-span-3">
-                <CardContent className="p-5">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-slate-600">
-                      Overall score
-                    </p>
-                    <div
-                      className={cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                        TILE_COLORS.blue,
-                      )}
-                    >
-                      <Gauge className="h-5 w-5" aria-hidden />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  interviewer was — without squeezing the three tiles below.
+                  The number is set like every large number in the app. */}
+              <Card className="py-5 sm:col-span-3">
+                <CardContent className="px-5">
+                  <p className="text-sm text-slate-500">Overall score</p>
+                  <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div className="space-y-1">
-                      <p className="text-4xl font-bold tabular-nums text-slate-900">
+                      <p className="font-display text-5xl leading-none font-bold tracking-tight text-navy tabular-nums">
                         {formatScore(displayedScore)}
                       </p>
                       <ScoreComparison
@@ -558,34 +534,30 @@ export default function SessionReportPage({
                 </CardContent>
               </Card>
 
-              <InsightCard
-                color="teal"
-                icon={MessagesSquare}
+              {/* The same tile as the dashboard and Analytics, with the one
+                  sentence to act on as its caption. */}
+              <StatTile
                 label="Communication"
                 value={
                   confidenceScore === null
                     ? "—"
                     : `${Math.round(confidenceScore * 10)}%`
                 }
-                detail={communicationDetail(confidenceScore, analyses)}
+                caption={communicationDetail(confidenceScore, analyses)}
               />
-              <InsightCard
-                color={usesTechnicalRubric ? "indigo" : "purple"}
-                icon={usesTechnicalRubric ? Code2 : ListChecks}
+              <StatTile
                 label={usesTechnicalRubric ? "Technical rubric" : "STAR average"}
                 value={starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
-                detail={
+                caption={
                   usesTechnicalRubric
                     ? technicalDetail(analyses)
                     : starDetail(analyses)
                 }
               />
-              <InsightCard
-                color="orange"
-                icon={Timer}
+              <StatTile
                 label="Duration"
                 value={formatDuration(session.durationMinutes)}
-                detail={durationDetail(session.durationMinutes, scoredAnswers)}
+                caption={durationDetail(session.durationMinutes, scoredAnswers)}
               />
             </div>
 
@@ -603,9 +575,9 @@ export default function SessionReportPage({
               );
               if (!axes) return null;
               return (
-                <Card className="border-slate-200/80 bg-white">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Dimension profile</CardTitle>
+                    <CardTitle className="text-lg">Dimension profile</CardTitle>
                     <CardDescription>
                       {usesTechnicalRubric
                         ? "Averaged across this round's scored answers, on the technical rubric."
@@ -622,10 +594,12 @@ export default function SessionReportPage({
         )}
       </ScoreReveal>
 
+      {/* The one tinted card on the page: it holds the one action that moves
+          the loop forward. */}
       {loop?.enabled && currentRound && (
-        <Card className="border-primary-border/80 bg-primary-subtle/40">
+        <Card className="border-primary-border bg-primary-subtle">
           <CardHeader>
-            <CardTitle className="text-base">
+            <CardTitle className="text-lg">
               Round {loop.currentRoundIndex + 1} of {loop.rounds.length}{" "}
               complete
             </CardTitle>
@@ -644,10 +618,8 @@ export default function SessionReportPage({
               <Button
                 onClick={() => void handleStartNextRound()}
                 disabled={isStartingNextRound}
-                className="gap-2"
               >
-                <Sparkles className="h-4 w-4" />
-                {isStartingNextRound ? "Starting..." : "Start next round"}
+                {isStartingNextRound ? "Starting…" : "Start next round"}
               </Button>
               <p className="w-full text-xs text-slate-500">
                 Your next interviewer will see a short summary of this round.
@@ -661,15 +633,14 @@ export default function SessionReportPage({
           ) : (
             <CardContent className="space-y-3">
               <p className="text-sm text-slate-700">
-                You finished the full loop. Nice work.
+                All {loop.rounds.length} rounds complete.
               </p>
               {loopId && (
-                <Link href={`/simulate/loop/${loopId}`}>
-                  <Button variant="outline" className="gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    View combined loop report
-                  </Button>
-                </Link>
+                <Button variant="outline" asChild>
+                  <Link href={`/simulate/loop/${loopId}`}>
+                    View the loop report
+                  </Link>
+                </Button>
               )}
             </CardContent>
           )}
@@ -689,9 +660,9 @@ export default function SessionReportPage({
       <CompetencyCoverageCard coverage={coverage} />
 
       {session.summary && (
-        <Card className="border-slate-200/80 bg-white">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">Session summary</CardTitle>
+            <CardTitle className="text-lg">Session summary</CardTitle>
             <CardDescription>
               Auto-generated rolling summary used during the interview.
             </CardDescription>
@@ -704,9 +675,9 @@ export default function SessionReportPage({
         </Card>
       )}
 
-      <Card className="border-slate-200/80 bg-white">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Transcript</CardTitle>
+          <CardTitle className="text-lg">Transcript</CardTitle>
           <CardDescription>
             {messages.length} messages · {formatTimestamp(session.startedAt)}
             {session.endedAt ? ` → ${formatTimestamp(session.endedAt)}` : ""}
@@ -745,13 +716,14 @@ export default function SessionReportPage({
                     }`}
                   >
                     <div
-                      className={`max-w-2xl rounded-2xl border px-4 py-3 ${
+                      className={cn(
+                        "max-w-2xl rounded-xl border px-4 py-3",
                         isUser
                           ? "border-primary-border bg-primary-subtle text-slate-900"
-                          : "border-slate-200 bg-white text-slate-800"
-                      }`}
+                          : "border-slate-200 bg-white text-slate-800",
+                      )}
                     >
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      <p className={PANEL_LABEL}>
                         {isUser ? "You" : session.personaName}
                       </p>
                       <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
@@ -794,7 +766,7 @@ export default function SessionReportPage({
         notes={session.notes ?? null}
         onSaved={(notes) => updateReportSession({ notes })}
       />
-    </div>
+    </PageContainer>
   );
 }
 
@@ -879,21 +851,19 @@ function TurnCoaching({
         variant="ghost"
         size="sm"
         onClick={() => void handleToggle()}
-        className="h-7 gap-1.5 text-xs text-warning-emphasis hover:bg-warning-subtle hover:text-warning-emphasis"
+        className="h-7 text-xs"
       >
-        <Lightbulb className="h-3.5 w-3.5" />
+        <Lightbulb />
         {open ? "Hide coaching" : "See a stronger answer"}
       </Button>
 
       {open && (
-        // White, not the amber wash it used to be. `CoachingResult` now colours
-        // its own panels, and an amber rewrite panel on an amber ground was the
-        // one place that stopped reading as a panel at all. The amber border
-        // keeps the coaching identity the disclosure button sets up.
-        <div className="mt-2 space-y-3 rounded-xl border border-warning-border bg-white p-4">
+        // A hairline and some air, not a box: this already sits inside the
+        // transcript card, and `CoachingResult` draws its own panels.
+        <div className="mt-2 space-y-3 border-t border-slate-100 pt-3">
           {loading && (
-            <p className="flex items-center gap-2 text-xs text-warning-emphasis">
-              <span className="h-2 w-2 animate-breathe rounded-full bg-warning" />
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
               Coaching this answer…
             </p>
           )}

@@ -107,7 +107,9 @@ export const SINGLE_ROUND: InterviewRoundConfig = {
   title: "Practice round",
   type: "behavioral",
   durationMinutes: 15,
-  practiceMode: "text",
+  // Voice by default: an interview is spoken, and practising it by typing
+  // trains the half of the skill nobody is assessed on.
+  practiceMode: "voice",
   focus: "A focused interview practice round using the selected scenario.",
 };
 
@@ -139,7 +141,7 @@ export const INTERVIEW_LOOP_TEMPLATES: InterviewLoopTemplate[] = [
   {
     id: "single",
     title: "Single round",
-    description: "One focused practice session — the simplest setup.",
+    description: "One focused interview — the simplest setup.",
     rounds: [SINGLE_ROUND],
   },
   {
@@ -151,13 +153,15 @@ export const INTERVIEW_LOOP_TEMPLATES: InterviewLoopTemplate[] = [
   },
 ];
 
-export function createDefaultInterviewLoop(): InterviewLoopConfig {
+export function createDefaultInterviewLoop(
+  practiceMode: PracticeMode = "voice",
+): InterviewLoopConfig {
   return {
     enabled: false,
     templateId: "single",
     breakMinutes: 5,
     currentRoundIndex: 0,
-    rounds: [SINGLE_ROUND],
+    rounds: [{ ...SINGLE_ROUND, practiceMode }],
   };
 }
 
@@ -303,7 +307,7 @@ export function normalizeInterviewLoop(
   input: Partial<InterviewLoopConfig> | undefined,
   practiceMode: PracticeMode,
 ): InterviewLoopConfig {
-  const defaults = createDefaultInterviewLoop();
+  const defaults = createDefaultInterviewLoop(practiceMode);
   const rounds =
     Array.isArray(input?.rounds) && input.rounds.length > 0
       ? input.rounds.map((round, index) => ({

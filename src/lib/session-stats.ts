@@ -84,20 +84,30 @@ export const MIN_TURNS_TO_SCORE = 6;
  */
 export const MIN_SCORED_TURNS = 3;
 
+/**
+ * Whether one session's score counts: finished, and long enough to be more
+ * than a sample. Exported so the analytics trend applies exactly the rule the
+ * headline average does, rather than a looser one of its own.
+ */
+export function isScoredSession(
+  entry: InterviewSessionSummary,
+): entry is InterviewSessionSummary & { averageScore: number } {
+  return (
+    typeof entry.averageScore === "number" &&
+    // Finished, not merely in progress. `persistTurn` writes `averageScore`
+    // on every turn, so an abandoned session already carries one and used to
+    // be counted here.
+    entry.status === "completed" &&
+    (typeof entry.scoredTurnCount === "number"
+      ? entry.scoredTurnCount >= MIN_SCORED_TURNS
+      : entry.turnCount >= MIN_TURNS_TO_SCORE)
+  );
+}
+
 function scoredOnly(
   sessions: readonly InterviewSessionSummary[],
 ): Array<InterviewSessionSummary & { averageScore: number }> {
-  return sessions.filter(
-    (entry): entry is InterviewSessionSummary & { averageScore: number } =>
-      typeof entry.averageScore === "number" &&
-      // Finished, not merely in progress. `persistTurn` writes `averageScore`
-      // on every turn, so an abandoned session already carries one and used to
-      // be counted here.
-      entry.status === "completed" &&
-      (typeof entry.scoredTurnCount === "number"
-        ? entry.scoredTurnCount >= MIN_SCORED_TURNS
-        : entry.turnCount >= MIN_TURNS_TO_SCORE),
-  );
+  return sessions.filter(isScoredSession);
 }
 
 export function computeSessionStats(

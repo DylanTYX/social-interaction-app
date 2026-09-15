@@ -69,7 +69,7 @@ export function ResumePreviewDialog({
         </div>
 
         {item?.notes && (
-          <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+          <p className="border-t border-slate-100 pt-3 text-xs text-slate-500">
             {item.notes}
           </p>
         )}

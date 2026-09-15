@@ -29,7 +29,7 @@ const GOALS: Array<{
   {
     id: "job-interview",
     title: "Job interview prep",
-    description: "Practice structured answers for role-specific questions.",
+    description: "Rehearse structured answers for role-specific questions.",
   },
   {
     id: "feedback",
@@ -44,7 +44,7 @@ const GOALS: Array<{
   {
     id: "presentation",
     title: "Presenting ideas",
-    description: "Practice stakeholder updates and pitches.",
+    description: "Rehearse stakeholder updates and pitches.",
   },
   {
     id: "custom",
@@ -91,7 +91,7 @@ export function OnboardingDialog() {
         <DialogHeader>
           <DialogTitle>What are you preparing for?</DialogTitle>
           <DialogDescription>
-            We&apos;ll seed your first practice session. You can change
+            We&apos;ll set up your first interview from it. You can change
             everything in the setup wizard.
           </DialogDescription>
         </DialogHeader>

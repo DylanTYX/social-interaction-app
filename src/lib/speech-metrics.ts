@@ -29,7 +29,8 @@ export interface DeliveryMetrics {
   fillerLabel: FillerLabel;
 }
 
-const LONG_PAUSE_SECONDS = 1.5;
+/** A gap between phrases at least this long counts as a long pause. */
+export const LONG_PAUSE_SECONDS = 1.5;
 
 // Curated filler set. We deliberately avoid words that are usually legitimate,
 // to keep counts trustworthy.
@@ -64,7 +65,8 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-function paceFromWpm(wpm: number | null): PaceLabel | null {
+/** The pace band for a words-per-minute figure. Shared with analytics. */
+export function paceFromWpm(wpm: number | null): PaceLabel | null {
   if (wpm === null) return null;
   if (wpm < 110) return "slow";
   if (wpm < 150) return "measured";
@@ -72,7 +74,8 @@ function paceFromWpm(wpm: number | null): PaceLabel | null {
   return "fast";
 }
 
-function fillerLabelFor(per100: number): FillerLabel {
+/** The filler band for fillers per 100 words. Shared with analytics. */
+export function fillerLabelFor(per100: number): FillerLabel {
   if (per100 < 2) return "clean";
   if (per100 <= 5) return "occasional";
   return "frequent";
@@ -95,8 +98,7 @@ export function analyzeDelivery(
   }
   fillerBreakdown.sort((a, b) => b.count - a.count);
 
-  const fillerPer100Words =
-    wordCount > 0 ? (fillerCount / wordCount) * 100 : 0;
+  const fillerPer100Words = wordCount > 0 ? (fillerCount / wordCount) * 100 : 0;
 
   // Speaking span and pauses from per-phrase timing.
   let durationSeconds = 0;

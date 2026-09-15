@@ -3,7 +3,13 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Code2, MessageSquare, Settings2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Code2,
+  Loader2,
+  MessageSquare,
+  Settings2,
+} from "lucide-react";
 
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChoiceChip } from "@/components/ui/choice-chip";
@@ -14,7 +20,7 @@ import { ChatMessage } from "@/components/chat/chat-message";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorStateCard } from "@/components/dashboard/error-state-card";
 import {
   Dialog,
   DialogContent,
@@ -95,7 +101,7 @@ function buildWelcomeMessage(
     // and `scenario.description`, which for a custom brief are the same text at
     // two lengths — so the opening message read "Welcome to <brief truncated
     // mid-word>… practice with <persona>. <the same brief again>."
-    content: `You're practising with ${personaLabel}. ${scenario.description} Start with your opening response whenever you're ready.`,
+    content: `You're interviewing with ${personaLabel}. ${scenario.description} Start with your opening response whenever you're ready.`,
     timestamp: formatMessageTime(),
   };
 }
@@ -112,8 +118,8 @@ function ChatLoadingFallback() {
   return (
     <div className="flex h-screen items-center justify-center bg-slate-50">
       <div className="flex items-center gap-3 text-sm text-slate-500">
-        <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
-        Preparing chat session...
+        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
+        Preparing your interview…
       </div>
     </div>
   );
@@ -580,54 +586,61 @@ function ChatSimulateInner() {
   if (bootstrap.status === "error") {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Could not open session</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-slate-600">{bootstrap.error}</p>
-            <Link href="/dashboard/sessions">
-              <Button>Back to sessions</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-md space-y-4">
+          <ErrorStateCard
+            title="Couldn't open this interview"
+            description={bootstrap.error}
+          />
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/sessions">Go to sessions</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      <div className="h-16 bg-white border-b border-slate-200/80 flex items-center px-6 gap-4 shadow-soft">
+      {/* One header. It names the interview and who is asking, and carries
+          the question counter, the settings and the way out. A second band
+          under it used to repeat "Adaptive session in progress" with three
+          badges of equal weight; the counter is the only one that told you
+          anything, so it lives here now. */}
+      <div className="flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-6">
         {/* `asChild` so this renders one <a>, not a <button> nested inside
             one. The nesting was invalid HTML and left the link with no
             accessible name at all, since the only content was an icon. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          asChild
-          className="hover:bg-slate-100 transition-colors duration-150"
-        >
+        <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard" aria-label="Back to dashboard">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold">Chat practice</h1>
-          <p className="text-sm text-slate-500 truncate">
-            {activeScenario.title} • {activePersonaConfig.name} •{" "}
-            {streamResponses ? "Streaming enabled" : "Standard mode"}
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+            Text interview
+          </h1>
+          <p className="truncate text-sm text-slate-500">
+            {activeScenario.title} · {activePersonaConfig.name}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className="hidden tabular-nums sm:inline-flex"
+          >
+            Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of ~
+            {turn.targetTurns}
+          </Badge>
           <JobDescriptionChip
             title={initialState.jobDescriptionTitle}
             missing={initialState.jobDescriptionMissing}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="shadow-soft">
-                <Settings2 className="h-4 w-4" />
-                <span className="sr-only">Open settings</span>
+              <Button variant="outline" size="icon" aria-label="Open settings">
+                <Settings2 />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
@@ -660,9 +673,8 @@ function ChatSimulateInner() {
             onClick={() => setIsEndDialogOpen(true)}
             // Held shut while a turn is streaming; see `handleEndSession`.
             disabled={isSending || isEnding}
-            className="shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
           >
-            End session
+            End interview
           </Button>
         </div>
       </div>
@@ -675,11 +687,11 @@ function ChatSimulateInner() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>End this session?</DialogTitle>
+            <DialogTitle>End this interview?</DialogTitle>
             <DialogDescription>
-              We&apos;ll generate the feedback report from the conversation so
-              far. Once a session is ended you can&apos;t resume it — start a
-              fresh practice when you&apos;re ready.
+              We&apos;ll generate the report from the conversation so far. Once
+              an interview is ended you can&apos;t resume it — start a new one
+              when you&apos;re ready.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -688,46 +700,21 @@ function ChatSimulateInner() {
               onClick={() => setIsEndDialogOpen(false)}
               disabled={isEnding}
             >
-              Keep practicing
+              Keep going
             </Button>
             <Button
               variant="destructive"
               onClick={() => void handleEndSession()}
               disabled={isEnding}
             >
-              {isEnding ? "Ending..." : "End and view report"}
+              {isEnding ? "Ending…" : "End and view report"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-1 overflow-hidden bg-linear-to-br from-slate-50 via-white to-primary-subtle/60">
+      <div className="flex flex-1 overflow-hidden bg-slate-50">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="border-b border-slate-200/70 bg-linear-to-r from-white via-slate-50 to-primary-subtle/50 px-6 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  Interview room
-                </div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  Adaptive session in progress
-                </h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="h-8 px-3 tabular-nums">
-                  Question {Math.min(turn.scoredTurns + 1, turn.targetTurns)} of
-                  ~{turn.targetTurns}
-                </Badge>
-                <Badge variant="secondary" className="h-8 px-3">
-                  {streamResponses ? "Streaming on" : "Streaming off"}
-                </Badge>
-                <Badge variant="outline" className="h-8 px-3">
-                  {metricTone}
-                </Badge>
-              </div>
-            </div>
-          </div>
-
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-4">
               {messages.map((msg) => (
@@ -744,25 +731,22 @@ function ChatSimulateInner() {
               ))}
 
               {error && (
-                <Card className="border-warning-border bg-warning-subtle/80">
-                  <CardHeader className="pb-2">
-                    {/* This is the session's error slot, and it was titled
-                        "Coaching note" — so a failed request read as feedback
-                        on the candidate's answer. Say what it is. */}
-                    <CardTitle className="text-sm text-warning-emphasis">
-                      Something went wrong
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-warning-emphasis">{error}</p>
-                  </CardContent>
-                </Card>
+                <div
+                  role="alert"
+                  className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+                >
+                  <p className="font-medium">Something went wrong</p>
+                  <p className="mt-0.5">{error}</p>
+                </div>
               )}
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="h-2 w-2 animate-breathe rounded-full bg-primary" />
-                  Generating interviewer response...
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-primary"
+                    aria-hidden
+                  />
+                  {activePersonaConfig.name} is thinking…
                 </div>
               )}
 
@@ -770,7 +754,7 @@ function ChatSimulateInner() {
             </div>
           </div>
 
-          <div className="border-t border-slate-200/70 bg-white/80 p-4 backdrop-blur">
+          <div className="border-t border-slate-200 bg-white p-4">
             {canSwitchFormat && (
               <div className="mb-3 flex items-center gap-2">
                 <ChoiceChip
@@ -815,11 +799,12 @@ function ChatSimulateInner() {
           open={showLiveCoaching}
           onOpenChange={setSidebarOverride}
           turn={turn}
+          trendNote={metricTone}
         />
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>
-        <DialogContent className="max-w-3xl border-slate-200 bg-white/95 backdrop-blur">
+        <DialogContent className="max-w-3xl">
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>

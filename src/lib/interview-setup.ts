@@ -282,8 +282,10 @@ function normalizeSetup(
       ...baseConfig,
       name: "Adaptive Interviewer",
     },
-    practiceMode: "text",
-    interviewLoop: createDefaultInterviewLoop(),
+    // Voice is the primary way to practise. A saved setup keeps whichever mode
+    // the candidate last chose, and `?mode=text` still opens a text setup.
+    practiceMode: "voice",
+    interviewLoop: createDefaultInterviewLoop("voice"),
     voiceConfig: createDefaultVoiceConfig(),
     jobDescription: createDefaultJobDescriptionConfig(),
     resume: createDefaultResumeConfig(),
@@ -306,10 +308,12 @@ function normalizeSetup(
       setup.liveCoachingEnabled === undefined
         ? defaultSetup.liveCoachingEnabled
         : Boolean(setup.liveCoachingEnabled),
-    practiceMode: setup.practiceMode === "voice" ? "voice" : "text",
+    // Only an explicit "text" is text; anything missing falls back to the
+    // voice default.
+    practiceMode: setup.practiceMode === "text" ? "text" : "voice",
     interviewLoop: normalizeInterviewLoop(
       setup.interviewLoop,
-      setup.practiceMode === "voice" ? "voice" : "text",
+      setup.practiceMode === "text" ? "text" : "voice",
     ),
     voiceConfig: normalizeVoiceConfig(setup.voiceConfig),
     jobDescription: normalizeJobDescriptionConfig(setup.jobDescription),

@@ -2,14 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ExternalLink,
-  Eye,
-  FileText,
-  Pencil,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { ExternalLink, Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import {
@@ -19,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { LibraryToolbar } from "@/components/dashboard/library-toolbar";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
@@ -50,7 +43,6 @@ import { cn } from "@/lib/utils";
 import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { describeJobDescriptionDelete } from "@/lib/job-description-copy";
 import { describeTruncationBadge } from "@/lib/document-truncation";
-import { JOB_DESCRIPTION_ACCENT } from "@/lib/document-accents";
 
 export default function JobDescriptionsPage() {
   const [query, setQuery] = useState("");
@@ -152,34 +144,23 @@ export default function JobDescriptionsPage() {
   );
 
   return (
-    <div className="p-8 space-y-8">
+    <PageContainer>
       <PageHeader
-        eyebrow="Library"
         title="Job descriptions"
         description="Save the postings you're preparing for, and reuse them across interviews. The interviewer draws its questions from the one you pick."
-        icon={<FileText className="h-6 w-6" />}
-        iconColor={JOB_DESCRIPTION_ACCENT}
         actions={
           <Button asChild>
             <Link href="/simulate/setup">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Start an interview
+              <Plus />
+              New interview
             </Link>
           </Button>
         }
       />
 
-      <Card className="shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            {/* Blue, not the page accent. The accent identifies this page once,
-                in the header tile above; repeating it here made the upload card
-                read as a green *feature* rather than as the action on this
-                page — and made the resume page's identical card look like a
-                different one because it was teal. */}
-            <FileText className="h-4 w-4 text-primary" />
-            Add a job description
-          </CardTitle>
+          <CardTitle className="text-lg">Add a job description</CardTitle>
           <CardDescription>
             Paste the posting or upload it as a PDF. The text is sent to OpenAI
             to generate questions, so don&apos;t include anything you
@@ -204,9 +185,9 @@ export default function JobDescriptionsPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-soft">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">Saved job descriptions</CardTitle>
+          <CardTitle className="text-lg">Saved job descriptions</CardTitle>
           <CardDescription>
             Pick any of these inside the interview setup wizard.
           </CardDescription>
@@ -219,7 +200,7 @@ export default function JobDescriptionsPage() {
               search={{
                 value: query,
                 onChange: setQuery,
-                placeholder: "Search title, role, or company...",
+                placeholder: "Search title, role, or company…",
                 ariaLabel: "Search job descriptions",
               }}
               filters={
@@ -264,22 +245,16 @@ export default function JobDescriptionsPage() {
             // A distinct state from an empty library: telling someone who has
             // twenty saved postings to "add their first one" because they typed
             // a typo would be nonsense.
-            <div className="rounded-xl border border-dashed border-border p-6 text-center">
-              <p className="text-sm font-medium text-slate-800">
-                No job descriptions match those filters
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => {
+            <EmptyStateCard
+              title="No job descriptions match those filters"
+              primaryAction={{
+                label: "Clear filters",
+                onClick: () => {
                   setQuery("");
                   setCompanyFilter("all");
-                }}
-              >
-                Clear filters
-              </Button>
-            </div>
+                },
+              }}
+            />
           ) : sortedItems.length === 0 ? (
             /**
              * Describes the state; it does not issue instructions.
@@ -296,7 +271,6 @@ export default function JobDescriptionsPage() {
              * how a page ends up feeling cluttered.
              */
             <EmptyStateCard
-              icon={<FileText className="h-6 w-6" />}
               title="No saved job descriptions yet"
               description="Anything you add above is saved here, ready to reuse in any interview."
             />
@@ -307,14 +281,11 @@ export default function JobDescriptionsPage() {
                 <div
                   key={item.id}
                   className={cn(
-                    "group flex items-center gap-3 rounded-xl border border-border p-3 transition-colors duration-150 hover:bg-accent",
+                    "group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors duration-150 hover:bg-slate-50",
                     isExiting ? ROW_EXIT : ROW_ENTER,
                   )}
                   style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-muted text-primary shrink-0">
-                    <FileText className="h-4 w-4" />
-                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 truncate">
                       {item.title}
@@ -416,6 +387,6 @@ export default function JobDescriptionsPage() {
           if (!ok) setExitingId(null);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

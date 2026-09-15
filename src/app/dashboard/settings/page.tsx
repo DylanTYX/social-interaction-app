@@ -24,16 +24,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Settings as SettingsIcon,
   ShieldCheck,
   Database,
   Download,
   LogOut,
-  LogIn,
   Trash2,
   KeyRound,
 } from "lucide-react";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { useCurrentUser, getDisplayName } from "@/hooks/use-current-user";
@@ -249,9 +247,9 @@ function SettingsPageInner() {
 
   if (status === "loading") {
     return (
-      <div className="p-8">
+      <PageContainer>
         <Skeleton className="h-32 rounded-xl" />
-      </div>
+      </PageContainer>
     );
   }
 
@@ -260,9 +258,8 @@ function SettingsPageInner() {
   // still loading are different states and need different screens.
   if (!user) {
     return (
-      <div className="p-8">
+      <PageContainer>
         <EmptyStateCard
-          icon={<LogIn className="h-6 w-6" />}
           title={
             authError ? "We couldn't verify your session" : "You're signed out"
           }
@@ -272,22 +269,19 @@ function SettingsPageInner() {
           }
           primaryAction={{ label: "Sign in", href: "/auth/login" }}
         />
-      </div>
+      </PageContainer>
     );
   }
 
   const displayName = getDisplayName(user);
 
   return (
-    // The shared dashboard wrapper. This was the one dashboard page without
-    // the gradient, which made Settings read as a different app.
-    <div className="p-8 space-y-8 bg-linear-to-br from-slate-50 via-white to-slate-50/50">
+    // The shared page frame, with no background of its own: the shell owns
+    // the page ground on every dashboard route.
+    <PageContainer>
       <PageHeader
-        eyebrow="Account"
         title="Settings"
         description="Manage your account and your data. Interview preferences live in the setup wizard."
-        icon={<SettingsIcon className="h-6 w-6" />}
-        iconColor="blue"
       />
 
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-6">
@@ -303,9 +297,9 @@ function SettingsPageInner() {
         </TabsList>
 
         <TabsContent value="account" className="space-y-6">
-          <Card className="shadow-soft">
+          <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
+              <CardTitle className="text-lg">Profile</CardTitle>
               <CardDescription>
                 Shown in the navbar and used to greet you in the app.
               </CardDescription>
@@ -367,7 +361,7 @@ function SettingsPageInner() {
                     disabled={profileState.kind === "saving"}
                   >
                     {profileState.kind === "saving"
-                      ? "Saving..."
+                      ? "Saving…"
                       : "Save profile"}
                   </Button>
                   {profileState.kind === "error" && (
@@ -380,9 +374,9 @@ function SettingsPageInner() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
+          <Card>
             <CardHeader>
-              <CardTitle>Security</CardTitle>
+              <CardTitle className="text-lg">Security</CardTitle>
               <CardDescription>
                 Manage your password and current session.
               </CardDescription>
@@ -394,9 +388,9 @@ function SettingsPageInner() {
                   onClick={() => void handlePasswordReset()}
                   disabled={resetState.kind === "saving"}
                 >
-                  <KeyRound className="mr-2 h-4 w-4" />
+                  <KeyRound />
                   {resetState.kind === "saving"
-                    ? "Sending..."
+                    ? "Sending…"
                     : "Send password reset email"}
                 </Button>
                 {resetState.kind === "saved" && (
@@ -414,12 +408,8 @@ function SettingsPageInner() {
               <Separator />
 
               <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => void handleSignOut()}
-                  className="gap-2"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={() => void handleSignOut()}>
+                  <LogOut />
                   Sign out
                 </Button>
                 <p className="text-sm text-slate-500">
@@ -432,9 +422,9 @@ function SettingsPageInner() {
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">
-          <Card className="shadow-soft">
+          <Card>
             <CardHeader>
-              <CardTitle>Your data</CardTitle>
+              <CardTitle className="text-lg">Your data</CardTitle>
               <CardDescription>
                 Export everything you&apos;ve created or wipe your interview
                 history.
@@ -447,9 +437,9 @@ function SettingsPageInner() {
                   onClick={() => void handleExport()}
                   disabled={exportState.kind === "saving"}
                 >
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download />
                   {exportState.kind === "saving"
-                    ? "Preparing..."
+                    ? "Preparing…"
                     : "Export my data"}
                 </Button>
                 {exportState.kind === "saved" && (
@@ -521,7 +511,7 @@ function SettingsPageInner() {
                   className="border-destructive-border bg-white text-destructive-emphasis hover:bg-destructive-muted"
                   onClick={() => setConfirmWipeOpen(true)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 />
                   Delete all sessions
                 </Button>
               </div>
@@ -553,17 +543,16 @@ function SettingsPageInner() {
               Cancel
             </Button>
             <Button
-              variant="outline"
-              className="border-destructive-border bg-destructive text-white hover:bg-destructive-emphasis"
+              variant="destructive"
               onClick={() => void handleWipeSessions()}
               disabled={wipeState.kind === "saving"}
             >
-              {wipeState.kind === "saving" ? "Deleting..." : "Delete sessions"}
+              {wipeState.kind === "saving" ? "Deleting…" : "Delete sessions"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -576,9 +565,9 @@ export default function SettingsPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-8">
+        <PageContainer>
           <Skeleton className="h-32 rounded-xl" />
-        </div>
+        </PageContainer>
       }
     >
       <SettingsPageInner />

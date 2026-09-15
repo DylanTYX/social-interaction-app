@@ -6,13 +6,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { PasswordInput } from "@/components/auth/password-input";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -80,111 +73,111 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card className="w-full max-w-md border border-slate-200/80 shadow-soft-lg bg-white">
-      <CardHeader className="space-y-2">
-        <CardTitle as="h1" className="text-2xl font-bold">
-          Create account
-        </CardTitle>
-        <CardDescription className="text-base">
-          Sign up to start practicing.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First name</Label>
-              <Input
-                id="firstName"
-                type="text"
-                autoComplete="given-name"
-                placeholder="First name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last name</Label>
-              <Input
-                id="lastName"
-                type="text"
-                autoComplete="family-name"
-                placeholder="Last name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-                className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              />
-            </div>
-          </div>
+    <div>
+      <h1 className="font-display text-3xl font-bold tracking-tight text-slate-900">
+        Create account
+      </h1>
+      <p className="mt-2 text-base text-slate-600">
+        Then set up your first mock interview.
+      </p>
 
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="firstName">First name</Label>
             <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="firstName"
+              type="text"
+              autoComplete="given-name"
+              placeholder="First name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               required
-              className="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="h-11"
             />
           </div>
-
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <PasswordInput
-              id="password"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+            <Label htmlFor="lastName">Last name</Label>
+            <Input
+              id="lastName"
+              type="text"
+              autoComplete="family-name"
+              placeholder="Last name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               required
-              minLength={8}
-              inputClassName="h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 pr-10"
+              className="h-11"
             />
-            <p className="text-xs text-slate-500">
-              Must be at least 8 characters.
-            </p>
           </div>
-
-          {errorMessage && (
-            <div
-              role="alert"
-              className="rounded-md border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
-            >
-              {errorMessage}
-            </div>
-          )}
-          {infoMessage && (
-            <div className="rounded-md border border-success-border bg-success-subtle px-3 py-2 text-sm text-success-emphasis">
-              {infoMessage}
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full h-11 shadow-soft-md hover:shadow-soft-lg transition-all duration-200"
-            size="lg"
-          >
-            {isSubmitting ? "Creating account..." : "Create account"}
-          </Button>
-        </form>
-
-        <div className="text-center text-sm text-slate-600">
-          Already have an account?{" "}
-          <Link
-            href="/auth/login"
-            className="text-primary hover:text-primary-emphasis font-semibold"
-          >
-            Sign in
-          </Link>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-11"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            inputClassName="h-11 pr-10"
+          />
+          <p className="text-xs text-slate-500">
+            Must be at least 8 characters.
+          </p>
+        </div>
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+          >
+            {errorMessage}
+          </div>
+        )}
+        {infoMessage && (
+          <div
+            role="status"
+            className="rounded-lg border border-success-border bg-success-subtle px-3 py-2 text-sm text-success-emphasis"
+          >
+            {infoMessage}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="h-11 w-full text-[15px]"
+          size="lg"
+        >
+          {isSubmitting ? "Creating account…" : "Create account"}
+        </Button>
+      </form>
+
+      <p className="mt-8 text-center text-sm text-slate-600">
+        Already have an account?{" "}
+        <Link
+          href="/auth/login"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
+    </div>
   );
 }
