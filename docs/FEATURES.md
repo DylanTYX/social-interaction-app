@@ -155,8 +155,9 @@ Save your edits as a new persona, or update the one you started from.
 ### 4. Review
 
 Your session at a glance, the two in-interview toggles (response streaming and
-live coaching tips), a microphone check if you picked Voice, and the button that
-starts it.
+live coaching tips), and the button that starts it. For a voice interview,
+pressing Start interview checks the microphone first. If it does not work,
+nothing launches, the step says why, and it offers a text interview instead.
 
 ## During the interview
 
@@ -417,9 +418,8 @@ Worth knowing up front:
   and `docs/artifacts/voice-audition-explore.md`.
 - **Voice needs HTTPS.** Browsers only allow microphone access on a secure
   connection, so voice won't work over a plain `http://` address on your local
-  network. The setup wizard now requires the microphone check to pass before a
-  voice interview can start, so this fails before the interview rather than
-  during it.
+  network. Start interview checks the microphone before a voice interview
+  launches, so this fails before the interview rather than during it.
 - **Scores are not directly comparable across interviewers.** The rubric never
   sees the persona, but question difficulty scales with strictness — so a
   supportive interviewer asks easier questions and those answers score higher.

@@ -37,7 +37,7 @@ const MODES: ModeSpec[] = [
     description:
       "Speak your answers and hear the interviewer reply. Closest to the real thing.",
     detail:
-      "You check your microphone before you start. Technical rounds still have a code editor for the code.",
+      "Your microphone is checked when you start. Technical rounds still have a code editor for the code.",
     icon: Mic,
     recommended: true,
   },

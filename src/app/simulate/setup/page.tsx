@@ -358,7 +358,7 @@ function SetupWizard() {
 
   const goNext = () => {
     if (isLastStep) {
-      void launchInterview();
+      void startInterview();
       return;
     }
     goToStep(STEPS[stepIndex + 1].id);
@@ -513,13 +513,17 @@ function SetupWizard() {
     }
   };
 
-  const checkMicrophone = async () => {
+  /**
+   * Asks for the microphone and releases it straight away. Resolves to whether
+   * it works, so Start interview can stop before the interviewer speaks.
+   */
+  const checkMicrophone = async (): Promise<boolean> => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       setMicrophoneStatus("failed");
       setMicrophoneMessage(
         "Microphone API is not available in this environment.",
       );
-      return;
+      return false;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -527,7 +531,7 @@ function SetupWizard() {
       setMicrophoneMessage(
         "Your browser does not expose microphone APIs. Try a recent Chrome, Edge, or Safari over HTTPS.",
       );
-      return;
+      return false;
     }
 
     setMicrophoneStatus("checking");
@@ -542,16 +546,7 @@ function SetupWizard() {
       });
       stream.getTracks().forEach((track) => track.stop());
       setMicrophoneStatus("ready");
-      setMicrophoneMessage(
-        "Microphone access verified. You're ready to answer out loud.",
-      );
-      setSetup((current) => ({
-        ...current,
-        voiceConfig: {
-          ...current.voiceConfig,
-          microphoneChecked: true,
-        },
-      }));
+      return true;
     } catch (error) {
       let helpfulMessage = "Microphone access was denied or unavailable.";
 
@@ -570,14 +565,30 @@ function SetupWizard() {
 
       setMicrophoneStatus("failed");
       setMicrophoneMessage(helpfulMessage);
-      setSetup((current) => ({
-        ...current,
-        voiceConfig: {
-          ...current.voiceConfig,
-          microphoneChecked: false,
-        },
-      }));
+      return false;
     }
+  };
+
+  /**
+   * Start interview, for a voice interview, checks the microphone first.
+   *
+   * The check used to be its own button that had to be pressed before Start
+   * would enable, which was a step to discover rather than a step to take. Now
+   * pressing Start is the check. It runs again on every press until it passes
+   * on this visit, because a permission granted last week can have been
+   * revoked since. If it fails, nothing launches and the Ready step says why;
+   * pressing Start again retries.
+   */
+  const startInterview = async () => {
+    const launchesVoice =
+      setup.practiceMode === "voice" ||
+      (setup.interviewLoop.enabled &&
+        getCurrentRound(setup.interviewLoop).practiceMode === "voice");
+    if (launchesVoice && microphoneStatus !== "ready") {
+      const works = await checkMicrophone();
+      if (!works) return;
+    }
+    await launchInterview();
   };
 
   /**
@@ -666,21 +677,8 @@ function SetupWizard() {
         return `Give the interviewer ${missing.map(([, label]) => label).join(", ")}.`;
       }
     }
-    /**
-     * A voice interview may not start on an unverified microphone.
-     *
-     * `microphoneChecked` existed but only ever rendered a label — it gated
-     * nothing — and `requestMicrophoneAccess()` was written and never called.
-     * So the launch button was live with the panel reading "Microphone has not
-     * been checked yet", and the failure surfaced *after* the interviewer had
-     * already greeted the candidate out loud. The check itself is one click and
-     * already implemented; it just was not required.
-     */
-    if (currentStep === "review" && setup.practiceMode === "voice") {
-      if (!setup.voiceConfig.microphoneChecked) {
-        return "Run the microphone check before starting a voice interview.";
-      }
-    }
+    // No microphone gate here: Start interview checks the microphone itself
+    // before it launches a voice interview. See `startInterview`.
     return null;
   })();
 
@@ -761,7 +759,6 @@ function SetupWizard() {
                 setup={reviewSetup}
                 onUpdate={updateSetup}
                 onModeChange={updateMode}
-                onMicCheck={checkMicrophone}
                 microphoneStatus={microphoneStatus}
                 microphoneMessage={microphoneMessage}
               />

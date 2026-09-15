@@ -1,8 +1,7 @@
 "use client";
 
-import { CheckCircle2, Mic } from "lucide-react";
+import { CheckCircle2, Loader2, MessageSquare, Mic } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,8 +20,12 @@ import { cn } from "@/lib/utils";
 
 /**
  * Final step of the setup wizard, "Ready": only what is left to act on before
- * you start. For a voice interview, the microphone check first; then the
+ * you start. For a voice interview, the microphone status first; then the
  * in-interview settings.
+ *
+ * The microphone has no button of its own. Start interview checks it, so this
+ * row only reports: what will happen, that it is checking, that it works, or
+ * why it does not and what to do instead.
  *
  * A "What happens next" card used to sit here. Half of it repeated the summary
  * panel beside this step (questions, minutes, mode, rounds), and as a card of
@@ -48,23 +51,22 @@ export function FinalizeStep({
   setup,
   onUpdate,
   onModeChange,
-  onMicCheck,
   microphoneStatus,
   microphoneMessage,
 }: {
   setup: InterviewSetupState;
   onUpdate: (partial: Partial<InterviewSetupState>) => void;
-  /** Offered from a text setup, so switching to voice is one click from here. */
+  /**
+   * Switching mode is one click from here: to voice from a text setup, and to
+   * text when the microphone does not work.
+   */
   onModeChange: (mode: PracticeMode) => void;
-  onMicCheck: () => void;
   microphoneStatus: "idle" | "checking" | "ready" | "failed";
   microphoneMessage: string | null;
 }) {
   const voice = setup.practiceMode === "voice";
-
-  const micReady =
-    microphoneStatus === "ready" ||
-    (microphoneStatus !== "failed" && setup.voiceConfig.microphoneChecked);
+  const micReady = microphoneStatus === "ready";
+  const micFailed = microphoneStatus === "failed";
 
   return (
     <div className="space-y-6">
@@ -75,66 +77,71 @@ export function FinalizeStep({
       {voice ? (
         <Card className="gap-0">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Voice check</CardTitle>
+            <CardTitle className="text-lg">Voice</CardTitle>
             <CardDescription>
               The interviewer speaks, and you answer out loud.
             </CardDescription>
           </CardHeader>
           <CardContent className="divide-y divide-slate-100">
-            <div className="flex flex-wrap items-center gap-4 py-4">
+            <div className="flex items-start gap-4 py-4">
               {/* A status icon at text size, not a tile: green once the
                   microphone works, amber while it does not. */}
               {micReady ? (
                 <CheckCircle2
-                  className="h-5 w-5 shrink-0 text-success"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-success"
+                  aria-hidden
+                />
+              ) : microphoneStatus === "checking" ? (
+                <Loader2
+                  className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary"
                   aria-hidden
                 />
               ) : (
                 <Mic
                   className={cn(
-                    "h-5 w-5 shrink-0",
-                    microphoneStatus === "failed"
-                      ? "text-warning-emphasis"
-                      : "text-slate-400",
+                    "mt-0.5 h-5 w-5 shrink-0",
+                    micFailed ? "text-warning-emphasis" : "text-slate-400",
                   )}
                   aria-hidden
                 />
               )}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1" aria-live="polite">
                 <p className="font-medium text-slate-900">
                   {micReady
-                    ? "Microphone ready"
-                    : microphoneStatus === "failed"
+                    ? "Microphone working"
+                    : micFailed
                       ? "The microphone is not working yet"
-                      : "Check your microphone"}
+                      : microphoneStatus === "checking"
+                        ? "Checking your microphone…"
+                        : "Microphone"}
                 </p>
                 <p
                   className={cn(
                     "mt-0.5 text-sm",
-                    microphoneStatus === "failed"
-                      ? "text-warning-emphasis"
-                      : "text-slate-500",
+                    micFailed ? "text-warning-emphasis" : "text-slate-500",
                   )}
-                  role={microphoneStatus === "failed" ? "alert" : undefined}
+                  role={micFailed ? "alert" : undefined}
                 >
-                  {microphoneMessage ??
-                    (micReady
-                      ? "Checked earlier on this browser."
-                      : "Your browser asks for permission once. Nothing is recorded yet.")}
+                  {micFailed
+                    ? (microphoneMessage ??
+                      "Microphone access was denied or unavailable.")
+                    : micReady
+                      ? "You're ready to answer out loud."
+                      : microphoneStatus === "checking"
+                        ? "Allow access if your browser asks."
+                        : "Checked when you press Start interview. Your browser asks for permission the first time, and nothing is recorded until the interview begins."}
                 </p>
+                {micFailed && (
+                  <button
+                    type="button"
+                    onClick={() => onModeChange("text")}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                    Switch to a text interview
+                  </button>
+                )}
               </div>
-              <Button
-                variant={micReady ? "outline" : "default"}
-                onClick={onMicCheck}
-                disabled={microphoneStatus === "checking"}
-              >
-                <Mic />
-                {microphoneStatus === "checking"
-                  ? "Checking…"
-                  : micReady
-                    ? "Check again"
-                    : "Check microphone"}
-              </Button>
             </div>
 
             <ToggleRow

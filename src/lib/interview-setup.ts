@@ -8,10 +8,10 @@ import {
 export type PracticeMode = "text" | "voice";
 
 export interface VoiceSetupConfig {
-  microphoneChecked: boolean;
-  // `sttEnabled` was removed: it was set in two UIs and read by nothing — the
-  // voice session opens the microphone regardless. A stored record carrying
-  // the old key parses fine; the literal below simply doesn't copy it.
+  // Stored records may still carry `sttEnabled` or `microphoneChecked`. Both
+  // were removed, and the literal below simply doesn't copy them. The
+  // microphone is checked when Start interview is pressed, so a flag saved
+  // from an earlier visit would only say what was true then.
   ttsEnabled: boolean;
   /**
    * Whether interviewers speak with the accent their nationality selects.
@@ -126,7 +126,6 @@ const LAUNCH_STORAGE_KEY = "social-interaction-app.interviewLaunch";
 
 function createDefaultVoiceConfig(): VoiceSetupConfig {
   return {
-    microphoneChecked: false,
     ttsEnabled: true,
     accentsEnabled: true,
   };
@@ -182,7 +181,6 @@ export function normalizeVoiceConfig(
   const defaults = createDefaultVoiceConfig();
 
   return {
-    microphoneChecked: Boolean(voiceConfig?.microphoneChecked),
     ttsEnabled:
       voiceConfig?.ttsEnabled === undefined
         ? defaults.ttsEnabled

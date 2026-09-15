@@ -142,9 +142,9 @@ _One tester, one fresh account._
 
 | ID  | Test                | Steps                                                                   | Expected                                                                             | Pass? | Notes |
 | --- | ------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----- | ----- |
-| V0  | Mic check required  | On Review, try to start a voice interview without running the mic check | Launch is blocked with "Run the microphone check before starting a voice interview." | ☐     |       |
-| V1  | Mic permission      | Run the mic check, allow microphone                                     | Check passes; launch becomes available; recording UI active                          | ☐     |       |
-| V2  | Deny mic            | Run the mic check, block microphone                                     | Clear message naming the problem, before the interview starts                        | ☐     |       |
+| V0  | Mic checked on start | On Ready, press Start interview for a voice interview                  | Button reads "Checking microphone…"; the browser asks for permission the first time  | ☐     |       |
+| V1  | Mic permission      | Press Start interview, allow microphone                                 | Check passes and the interview launches; recording UI active                         | ☐     |       |
+| V2  | Deny mic            | Press Start interview, block microphone                                 | Nothing launches; clear message naming the problem; offers a text interview          | ☐     |       |
 | V2b | Unsupported browser | Attempt voice in Firefox                                                | Fails with an explanation rather than a silent interview                             | ☐     |       |
 | V3  | Speak answer        | One spoken answer                                                       | Transcription + AI response                                                          | ☐     |       |
 | V4  | End voice session   | Complete session                                                        | Report loads with voice-appropriate metrics if shown                                 | ☐     |       |

@@ -31,8 +31,7 @@ export type MicrophoneStatus = "idle" | "checking" | "ready" | "failed";
  * you had just done. This panel says it all the way through and updates as
  * you go: the mode and how long it runs, the brief, the rounds as their tags,
  * the interviewer and how demanding they are, the documents, and for a voice
- * interview whether the microphone has been checked, which is what gates the
- * start.
+ * interview the microphone, which Start interview checks before it launches.
  *
  * Every number comes from the helpers the live session uses, so the estimate
  * cannot drift from the interview you get.
@@ -74,9 +73,8 @@ export function SetupSummary({
     setup.personaConfig.strictness,
     setup.personaConfig.warmth,
   );
-  const micReady =
-    microphoneStatus === "ready" ||
-    (microphoneStatus !== "failed" && setup.voiceConfig.microphoneChecked);
+  const micChecking = microphoneStatus === "checking";
+  const micFailed = microphoneStatus === "failed";
   const canProceed = blockedReason === null;
 
   return (
@@ -170,29 +168,29 @@ export function SetupSummary({
                 aria-hidden
                 className={cn(
                   "h-2 w-2 shrink-0 rounded-[2px]",
-                  micReady
+                  microphoneStatus === "ready"
                     ? "bg-success"
-                    : microphoneStatus === "failed"
+                    : micFailed
                       ? "bg-warning"
                       : "bg-slate-300",
                 )}
               />
               <span
                 className={cn(
-                  micReady
+                  microphoneStatus === "ready"
                     ? "text-slate-900"
-                    : microphoneStatus === "failed"
+                    : micFailed
                       ? "text-warning-emphasis"
                       : "text-slate-500",
                 )}
               >
-                {micReady
-                  ? "Checked"
-                  : microphoneStatus === "failed"
+                {microphoneStatus === "ready"
+                  ? "Working"
+                  : micFailed
                     ? "Not working yet"
-                    : microphoneStatus === "checking"
+                    : micChecking
                       ? "Checking…"
-                      : "Checked on the Ready step"}
+                      : "Checked when you start"}
               </span>
             </span>
           </Row>
@@ -213,15 +211,25 @@ export function SetupSummary({
             {blockedReason}
           </p>
         )}
+        {isLastStep && voice && micFailed && (
+          <p className="text-xs leading-5 text-warning-emphasis" role="status">
+            Your microphone isn&apos;t working. Fix it and press Start interview
+            again, or switch to a text interview.
+          </p>
+        )}
         <Button
           className="w-full"
           onClick={onNext}
-          disabled={!canProceed || isLaunching}
+          disabled={!canProceed || isLaunching || micChecking}
         >
           {isLastStep ? (
             <>
               {voice && <Mic />}
-              {isLaunching ? "Starting…" : "Start interview"}
+              {micChecking
+                ? "Checking microphone…"
+                : isLaunching
+                  ? "Starting…"
+                  : "Start interview"}
             </>
           ) : (
             <>
