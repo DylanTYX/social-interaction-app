@@ -43,9 +43,9 @@ const securityHeaders = [
  */
 const allowedDevOrigins = [
   "10.66.83.168",
-  "172.20.10.2",
-  "172.20.10.4",
-  "192.168.0.29",
+  "172.20.3.189",
+  "192.168.0.3",
+  "10.91.26.229",
   ...(process.env.NEXT_DEV_ORIGINS?.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean) ?? []),
