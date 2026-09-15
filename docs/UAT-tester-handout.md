@@ -12,9 +12,9 @@ ConvoTrainer helps people **practice job interviews** with an AI interviewer and
 1. Open the link: _________________________ (facilitator fills in)
 2. On the home page, click **“See it in action”** — you should scroll to **“See your score in 10 seconds”**.
 3. Type a short answer to the sample question and read the feedback.
-4. Click **Get started** and create an account (use a real email you can access).
+4. Click **Create account** and create an account (use a real email you can access).
 5. On the dashboard, pick a goal or tap **Skip for now**.
-6. Start **Interview practice** → follow the steps → do a **text** interview (typing is fine).
+6. Click **New interview** → follow the steps → do a **text** interview (typing is fine).
 7. Answer at least **2 questions**, then **end** the session and read your **report**.
 8. Tell us:
    - What was confusing?

@@ -76,9 +76,9 @@ _One tester, one fresh account._
 | S1  | Landing loads           | Open `/`                                                                      | Page loads; hero + animated demo visible                                             | ☐     |       |
 | S2  | Scroll to demo          | Click **See it in action** or nav **Demo**                                    | Smooth scroll to **“See your score in 10 seconds”**; heading not hidden under header | ☐     |       |
 | S3  | Try question (no login) | Type a short answer → submit feedback                                         | Score + tips appear; no crash                                                        | ☐     |       |
-| S4  | Register                | **Get started** → register with email/password                                | Lands on dashboard; no error toast                                                   | ☐     |       |
+| S4  | Register                | **Create account** → register with email/password                             | Lands on dashboard; no error toast                                                   | ☐     |       |
 | S5  | Goal picker             | On first dashboard visit, pick any goal (or Skip)                             | Dialog closes; not stuck                                                             | ☐     |       |
-| S6  | Start text practice     | Dashboard → **Interview practice** (or quick action) → complete setup → start | Chat opens; AI asks a question                                                       | ☐     |       |
+| S6  | Start text practice     | Dashboard → **New interview** (or Start interview) → complete setup → start   | Chat opens; AI asks a question                                                       | ☐     |       |
 | S7  | One answer + feedback   | Send one answer; wait for reply                                               | AI responds; if live coaching on, sidebar/panel updates                              | ☐     |       |
 | S8  | End session             | End/finish session                                                            | Report page opens with scores/summary                                                | ☐     |       |
 | S9  | Sign out / sign in      | Settings or logout → login again                                              | Session list still shows completed session                                           | ☐     |       |
@@ -105,7 +105,7 @@ _One tester, one fresh account._
 | D2  | Goal picker      | New account: pick “Job interview prep”                                              | Redirects toward setup with sensible defaults                                             | ☐     |       |
 | D3  | Skip goal picker | New account: **Skip for now**                                                       | Dashboard usable; no repeat every refresh                                                 | ☐     |       |
 | D4  | Walkthrough tour | Desktop, onboarding complete, clear `convotrainer.tourDone` in localStorage, reload | 3-step spotlight: sidebar → ⌘K → goals; Skip/Next work; last step scrolls goals into view | ☐     |       |
-| D5  | Weekly goals     | Complete a session; check goals card                                                | Progress/streak updates (may need same week)                                              | ☐     |       |
+| D5  | Weekly goal      | Complete a session; check the This week card                                         | Count and today's cell update; changing the goal updates what is left                     | ☐     |       |
 | D6  | Command palette  | Press `⌘K` / `Ctrl+K`                                                               | Search opens; navigate to Drills / Setup                                                  | ☐     |       |
 | D7  | Mobile nav       | Phone: open dashboard                                                               | Bottom tabs work; no horizontal overflow                                                  | ☐     |       |
 

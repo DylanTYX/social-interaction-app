@@ -175,7 +175,9 @@ starts it.
 - **Streaming** shows the interviewer's reply as it's written. In voice mode it
   starts speaking before the sentence is finished, which cuts the pause.
 - **Voice mode** transcribes as you speak and reports your delivery under each
-  answer: speaking pace, filler words, and long pauses.
+  answer: speaking pace, filler words, and long pauses. Each scored spoken
+  answer's figures are saved with the session, so Analytics can show them over
+  time.
 - **Speak, then type the code.** A technical round in voice mode gives you both:
   talk through your approach, then switch to **Write code** for the part you
   cannot dictate. The microphone stops while the editor is open, so nothing is
@@ -243,16 +245,21 @@ across the day, recurring strengths, and recurring gaps.
 **Dashboard** — your recent sessions, average score, time practised, and a
 suggestion for what to work on next.
 
-**Analytics** — score trend over time, four skill dimensions tracked
-separately, a breakdown by scenario, and **competency coverage across every
-session**: which of the twelve competencies have come up, how often, and which
-you have never been asked about. The per-session report answers "did this
-interview touch delegation?"; this answers "what have I still never practised?"
+**Analytics** — progress **by round type**, because each round type has its own
+rubric: a score trend per round type with each point marked by how demanding its
+interviewer was; a radar and a list of each rubric part's average, with the
+weakest named and, once there are enough answers, how each part has changed;
+and what your answers most often lacked, counted from the judgements the AI made
+while scoring them, with its latest notes. Then **voice delivery** across your
+voice interviews (pace, filler words per 100 words, long pauses, compared with
+your earlier answers), a suggestion for what to practise next, and the
+competencies no interview has asked you about yet. A short note says what the
+page does not track.
 
-Trends deliberately stay blank until there is enough data to mean something —
-four scored sessions for a line, two sessions in a scenario before it is called
-a weakness. A single session is shown as its own score rather than as an
-"average".
+Claims stay blank until there is enough data to support them: four scored
+sessions of a round type for a chart, eight before it says whether you are
+improving, and four answers with one clearly lowest part before a weakest part
+is named.
 
 **Drills** — single questions to practise against without setting up a full
 interview. You get **coaching, not a score**: tips, your own answer rewritten
@@ -349,8 +356,10 @@ The same reasoning is why deleting is warned about rather than silently allowed,
 and why a document deleted mid-interview makes the session say so instead of
 carrying on as though nothing changed.
 
-**Weekly goal** — set a target number of sessions and track your streak. Both
-count sessions you actually practised in, not ones you opened and closed.
+**This week** — set a weekly target of sessions and see which days you
+practised. It counts sessions you actually practised in, not ones you opened
+and closed. There are no streaks or badges: interview preparation is not a daily
+habit, and a badge for a high score rewards picking an easier interviewer.
 
 **Settings** — two tabs. _Account_ holds your profile, password reset and
 sign-out. _Data_ exports everything as JSON, states plainly where your data
@@ -369,7 +378,7 @@ The **Sessions** page keeps a growing history usable:
 - **Rename** a session (the generated title is replaced only in lists and the
   report — the interview itself is untouched), **tag** it, and **pin** it to the top.
 - **Archive** — hide a session without deleting it. Archived sessions still
-  count in your dashboard and analytics; turn on **Show archived** to see them.
+  count in your dashboard and analytics; open the **Archived** tab to see them.
 - **Sort and filter** by newest, oldest or score, and narrow the list by
   text or voice, status, or tag. Search covers the title, scenario and
   interviewer.
@@ -384,8 +393,10 @@ Worth knowing up front:
 - **Code is reviewed, not run.** Technical rounds give you a real editor and the
   interviewer critiques your solution, but nothing executes it or runs tests
   against it.
-- **Delivery metrics aren't saved.** Pace, fillers and pauses appear under your
-  answer during a voice session but don't reach the report.
+- **Delivery is saved from now on, not retroactively.** Pace, fillers and pauses
+  are saved with each scored spoken answer and appear on Analytics, but voice
+  interviews from before this was added have none, drill answers are never
+  saved, and the session report does not show them yet.
 - **No hire/no-hire verdict.** You get scores and feedback, not a decision.
 - **Drill coaching has not been validated end to end.** The rubric behind it is
   measured (`npm run eval:coach`), but whether the coaching actually makes you
@@ -412,7 +423,7 @@ Worth knowing up front:
 - **Scores are not directly comparable across interviewers.** The rubric never
   sees the persona, but question difficulty scales with strictness — so a
   supportive interviewer asks easier questions and those answers score higher.
-  The report names the difficulty band; the analytics trend does not yet
-  separate by persona.
+  The report names the difficulty band, and each analytics trend point shows it;
+  scores themselves are not adjusted for it.
 - **The interview screen assumes a desktop browser.** It works on a laptop; on a
   phone the composer and the coaching rail have no small-screen layout.

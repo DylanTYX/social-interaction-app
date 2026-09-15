@@ -128,6 +128,7 @@ npm run dev
 | `npm run eval:persona` | **Persona differentiation harness** — free and offline by default; `--live` makes billed calls |
 | `npm run eval:coach` | **Coaching quality harness** — free and offline by default; `--live` makes billed calls |
 | `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
+| `npm run seed:demo` | **Seeds the demo account** — dry run by default; `-- --confirm` writes; needs `SUPABASE_SERVICE_ROLE_KEY`. Seeded, not measured: see docs/DEMO.md |
 
 `npm test` currently runs 426 tests, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint

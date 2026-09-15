@@ -92,7 +92,7 @@ a case ID in [UAT.md](UAT.md).
 | F19 | On-demand coaching: a suggested answer, a rewrite, targeted tips          | `api/coach/suggested-answer`                    | `route.test.ts`, **`npm run eval:coach`** |
 | F20 | Competency coverage — what the interview explored and what it did not | `competencies.ts`                           | `competencies.test.ts`                    |
 | F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R7                                    |
-| F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `recommendations.ts` | `session-stats.test.ts`                   |
+| F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `progress-insights.ts`, `api/analytics/rubric`, `recommendations.ts` | `session-stats.test.ts`, `progress-insights.test.ts`, `api/analytics/rubric/route.test.ts` |
 | F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank/`, UAT D1-D3               |
 | F24 | Drills answered by speaking or typing, coached as what they are      | `dashboard/drills`, `use-speech-answer.ts`  | `coach-prompt.test.ts`, `route.test.ts`   |
 | F25 | Drill topics scoped to Computer Science, with a rubric behind each   | `question-bank/categories.ts`, `coach-rubric.ts` | `question-bank.test.ts`, **`docs/DRILLS.md`** |

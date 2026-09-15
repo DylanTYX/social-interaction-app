@@ -192,6 +192,8 @@ scriptable, and its output can be committed.
 | 7   | App starts                           | `npm run dev`                                                                 | loads at `localhost:3000`                                                          |
 | 8   | **Full dry run**                     | everything below, end to end                                                  | on the machine and network you will present from                                   |
 | 9   | Commit the artifacts                 | `npm run eval:persona > docs/artifacts/persona.txt` etc.                      | so every number has a fallback                                                     |
+| 10  | **Seed the demo account**            | `npm run seed:demo`, then `npm run seed:demo -- --confirm`                    | 23 sessions seeded, and the sign-in details printed. See "The seeded demo account" |
+| 11  | Prepare the demo account             | Sign in as the demo account in the browser you will present from              | Welcome dialog dismissed; a job description added in the app                       |
 
 ---
 
@@ -350,6 +352,43 @@ a `UsageCollector`, so every eval run was billed and recorded nothing — the on
 tool built to measure the analyzer could not measure itself. Fixture traffic is
 deliberately **not** flushed to `llm_usage`, so it never contaminates the real
 per-session figures.
+
+---
+
+## The seeded demo account
+
+A fresh account shows the analytics page's empty states, by design: a chart
+needs four scored sessions of a round type, a direction needs eight, and voice
+delivery needs spoken answers. Building that live would take hours of interviews
+and real spend, so the demo runs on a seeded account.
+
+```bash
+npm run seed:demo               # dry run: shows what it would write, touches nothing
+npm run seed:demo -- --confirm  # creates or refreshes demo@convotrainer.dev
+```
+
+It needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`. Set `DEMO_EMAIL` or
+`DEMO_PASSWORD` to override the defaults; a new account without a password gets
+one generated and printed once. It refuses to touch any account it did not
+create, and a re-run replaces only the sessions and the seeded resume.
+
+What it writes: about five weeks of practice. Behavioural rounds that improve,
+with dips under a demanding interviewer; technical rounds short of the eight a
+direction needs, so the page's restraint shows; voice sessions whose pace and
+filler words settle; one three-round loop; a resume. Every answer is written
+text whose quality matches its score, and the numbers the product computes from
+text are computed by the same functions (`src/eval/demo-seed.ts`).
+`src/eval/demo-seed.test.ts` runs it through the app's own readers.
+
+**Two rules, not negotiable:**
+
+1. **Say it is seeded** when you show the dashboard, Sessions or Analytics:
+   "this account has five weeks of seeded history so every screen has something
+   in it."
+2. **Never quote a number from it as a result.** Evaluation figures come from
+   the commands above, never from this account.
+
+Then do Part 4 on the same account, so the system itself is shown working.
 
 ---
 
