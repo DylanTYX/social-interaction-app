@@ -1,4 +1,13 @@
 const ONBOARDING_KEY = "convotrainer.onboardingComplete";
+
+/**
+ * Fired to start the dashboard tour when the dashboard is already open. Kept
+ * here rather than in the tour component so server pages can import it.
+ */
+export const START_TOUR_EVENT = "start-onboarding-tour";
+
+/** Opens the dashboard with the tour running. */
+export const TOUR_HREF = "/dashboard?tour=1";
 const ONBOARDING_GOAL_KEY = "convotrainer.onboardingGoal";
 
 export type OnboardingGoal =

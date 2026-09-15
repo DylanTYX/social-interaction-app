@@ -14,6 +14,7 @@ import {
   defaultsForGoal,
   isOnboardingComplete,
   markOnboardingComplete,
+  START_TOUR_EVENT,
   type OnboardingGoal,
 } from "@/lib/onboarding";
 import {
@@ -115,6 +116,9 @@ export function OnboardingDialog() {
           onClick={() => {
             markOnboardingComplete();
             setOpen(false);
+            // Skipping leaves you on the dashboard, so show it now rather
+            // than on your next visit.
+            window.dispatchEvent(new Event(START_TOUR_EVENT));
           }}
         >
           Skip for now

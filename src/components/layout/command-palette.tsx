@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart3,
+  Compass,
   Dumbbell,
   FileText,
   History,
@@ -22,6 +23,7 @@ import {
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { PANEL_LABEL } from "@/components/dashboard/page-header";
+import { START_TOUR_EVENT, TOUR_HREF } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 
 type CommandGroup = "start" | "pages" | "library" | "help";
@@ -32,6 +34,8 @@ interface Command {
   hint?: string;
   icon: React.ComponentType<{ className?: string }>;
   href: string;
+  /** Also fired on run, for a page that is already open and needs a nudge. */
+  event?: string;
   group: CommandGroup;
   keywords?: string;
 }
@@ -148,6 +152,17 @@ const COMMANDS: Command[] = [
     href: "/dashboard/help",
     group: "help",
     keywords: "guides star framework learn",
+  },
+  {
+    id: "tour",
+    label: "Take the tour",
+    icon: Compass,
+    href: TOUR_HREF,
+    // Navigating to the dashboard runs the tour when it mounts. When the
+    // dashboard is already open nothing remounts, so the event starts it.
+    event: START_TOUR_EVENT,
+    group: "help",
+    keywords: "walkthrough onboarding introduction help getting started",
   },
   {
     id: "settings",
@@ -282,6 +297,7 @@ export function CommandPalette() {
     if (!command) return;
     setOpen(false);
     router.push(command.href);
+    if (command.event) window.dispatchEvent(new Event(command.event));
   };
 
   const onListKeyDown = (event: React.KeyboardEvent) => {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Compass, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TOUR_HREF } from "@/lib/onboarding";
 
 export const metadata = {
   title: "Tips & guides · ConvoTrainer",
@@ -213,6 +214,26 @@ export default function HelpPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardContent className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle as="h2" className="text-lg">
+              Take the tour
+            </CardTitle>
+            <p className="mt-1.5 text-sm text-slate-600">
+              A short walk around the dashboard: where to start, how to track
+              your progress and where your documents live.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href={TOUR_HREF}>
+              <Compass />
+              Take the tour
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* A plain card: the gradient ground and the icon tile it had were the
           last two decorations on this page. */}

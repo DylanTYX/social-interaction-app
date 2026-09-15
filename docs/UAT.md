@@ -103,8 +103,8 @@ _One tester, one fresh account._
 | --- | ---------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----- | ----- |
 | D1  | Dashboard layout | Open `/dashboard`                                                                   | Stats, quick actions, recent sessions, goals card visible                                 | ☐     |       |
 | D2  | Goal picker      | New account: pick “Job interview prep”                                              | Redirects toward setup with sensible defaults                                             | ☐     |       |
-| D3  | Skip goal picker | New account: **Skip for now**                                                       | Dashboard usable; no repeat every refresh                                                 | ☐     |       |
-| D4  | Walkthrough tour | Desktop, onboarding complete, clear `convotrainer.tourDone` in localStorage, reload | 3-step spotlight: sidebar → ⌘K → goals; Skip/Next work; last step scrolls goals into view | ☐     |       |
+| D3  | Skip goal picker | New account: **Skip for now**                                                       | Dashboard usable; the tour starts; no repeat every refresh                                | ☐     |       |
+| D4  | Walkthrough tour | Desktop: Tips & guides → **Take the tour**                                          | 7 steps: New interview → next step → progress → This week → Quick drills → Library → ⌘K. Each target has a white and blue outline, including on the sidebar. Back, Next, Skip tour, arrow keys and Esc work | ☐     |       |
 | D5  | Weekly goal      | Complete a session; check the This week card                                         | Count and today's cell update; changing the goal updates what is left                     | ☐     |       |
 | D6  | Command palette  | Press `⌘K` / `Ctrl+K`                                                               | Search opens; navigate to Drills / Setup                                                  | ☐     |       |
 | D7  | Mobile nav       | Phone: open dashboard                                                               | Bottom tabs work; no horizontal overflow                                                  | ☐     |       |
@@ -307,13 +307,7 @@ UAT is **passed** when:
 
 ## 9. Facilitator: replay onboarding tour
 
-For testers who already finished onboarding:
-
-```js
-localStorage.removeItem("convotrainer.tourDone");
-localStorage.setItem("convotrainer.onboardingComplete", "1");
-location.reload();
-```
+Open **Tips & guides** and press **Take the tour**, or press ⌘K and choose **Take the tour**. Either one opens the dashboard with the tour running.
 
 Use a **desktop** window (≥1024px wide).
 

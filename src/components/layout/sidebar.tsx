@@ -59,6 +59,7 @@ const navigation = [
     name: "Quick drills",
     href: "/dashboard/drills",
     icon: Dumbbell,
+    tour: "drills",
   },
   {
     name: "Sessions",
@@ -159,6 +160,8 @@ function NavItem({
     name: string;
     href: string;
     icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+    /** Marks the link as a stop in the dashboard tour. */
+    tour?: string;
   };
   isActive: boolean;
   isCollapsed: boolean;
@@ -168,6 +171,7 @@ function NavItem({
   const linkContent = (
     <Link
       href={item.href}
+      data-tour={item.tour}
       className={cn(
         "flex items-center rounded-lg px-3 py-2.5 overflow-hidden",
         isCollapsed ? "gap-0" : "gap-3",
@@ -304,6 +308,7 @@ export function Sidebar() {
           <div className="p-2 pb-0">
             <Button
               asChild
+              data-tour="new-interview"
               // No gap when collapsed. The label shrinks to zero width but a
               // flex gap is still spent beside it, which pushed the plus 4px
               // left of centre and left the button looking wider on the right.
@@ -359,11 +364,7 @@ export function Sidebar() {
           </div>
         </div>
 
-        <nav
-          className="flex-1 overflow-y-auto p-2 pt-3"
-          aria-label="Primary"
-          data-tour="nav"
-        >
+        <nav className="flex-1 overflow-y-auto p-2 pt-3" aria-label="Primary">
           <div className="space-y-1">
             {navigation.map((item) => (
               <NavItem
@@ -378,6 +379,7 @@ export function Sidebar() {
           <div
             role="group"
             aria-labelledby="sidebar-library-label"
+            data-tour="library"
             className={cn("space-y-1", isCollapsed ? "mt-3" : "mt-6")}
           >
             {/* Collapsed, the words cannot fit, so a hairline marks the

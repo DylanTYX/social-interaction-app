@@ -125,7 +125,10 @@ export default function DashboardPage() {
           The one card on this page with a tinted ground, because it holds the
           one action the page exists for. The recommendation is the label on
           that action rather than a separate surface competing with it. */}
-      <Card className="border-primary-border bg-primary-subtle py-5">
+      <Card
+        data-tour="next-step"
+        className="border-primary-border bg-primary-subtle py-5"
+      >
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">
@@ -161,7 +164,7 @@ export default function DashboardPage() {
       {/* 2. Am I improving?
           From `computeSessionStats`, the same function Analytics uses. The
           section links to the page that owns these numbers. */}
-      <section className="space-y-4">
+      <section className="space-y-4" data-tour="progress">
         <SectionHeader
           title="Your progress"
           link={{ label: "View analytics", href: "/dashboard/analytics" }}
