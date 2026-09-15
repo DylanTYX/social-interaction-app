@@ -9,15 +9,9 @@
  * page's bundle and out of the server-render graph entirely. Keep this file
  * free of SDK imports.
  *
- * Two lists, because they answer different questions:
- *
- *   - `ACCENT_VOICES` is what an interviewer *speaks with*, chosen from their
- *     nationality by `persona-voice.ts`. Not user-pickable — a 54-item dropdown
- *     is a worse picker than no picker.
- *   - `AZURE_VOICE_OPTIONS` is the legacy hand-picked six. Nothing selects from
- *     it any more (see `finalize-step.tsx`), but sessions launched before
- *     accents shipped carry one of these URIs in `launch_meta`, so the names
- *     still have to resolve.
+ * `ACCENT_VOICES` is what an interviewer *speaks with*, chosen from their
+ * nationality by `persona-voice.ts`. Not user-pickable — a 54-item dropdown is
+ * a worse picker than no picker.
  *
  * Every entry was checked against the live catalogue for the configured region
  * and is recorded in `docs/artifacts/azure-voices-southeastasia.json`. All are
@@ -56,21 +50,6 @@ export interface SpeechVoiceOption {
  * read back out of an old session's `launch_meta`.
  */
 export const DEFAULT_VOICE_URI = "en-US-AriaNeural";
-
-/**
- * Legacy: the six voices the setup wizard used to offer as a dropdown.
- *
- * Retained only so a URI stored in an older session still resolves through
- * `isKnownVoiceUri`. All six also appear in `ACCENT_VOICES`.
- */
-export const AZURE_VOICE_OPTIONS: readonly SpeechVoiceOption[] = [
-  { name: "Aria — US Female (warm)", uri: "en-US-AriaNeural", locale: "en-US", gender: "female" },
-  { name: "Jenny — US Female (friendly)", uri: "en-US-JennyNeural", locale: "en-US", gender: "female" },
-  { name: "Guy — US Male (confident)", uri: "en-US-GuyNeural", locale: "en-US", gender: "male" },
-  { name: "Davis — US Male (calm)", uri: "en-US-DavisNeural", locale: "en-US", gender: "male" },
-  { name: "Sonia — UK Female (clear)", uri: "en-GB-SoniaNeural", locale: "en-GB", gender: "female" },
-  { name: "Ryan — UK Male (steady)", uri: "en-GB-RyanNeural", locale: "en-GB", gender: "male" },
-] as const;
 
 export interface AccentVoice extends SpeechVoiceOption {
   /**
@@ -305,41 +284,22 @@ function r(
   };
 }
 
-
-/**
- * Legacy first, accents second: a Map keeps the last write, so the six voices
- * that appear in both lists resolve to their accent-table label. Otherwise the
- * same URI carried two different names depending on whether it was reached by
- * nationality or by fallback — `en-US-AriaNeural` was both "Aria — American"
- * and "Aria — US Female (warm)".
- */
 const BY_URI: ReadonlyMap<string, SpeechVoiceOption> = new Map(
-  [...AZURE_VOICE_OPTIONS, ...ACCENT_VOICES].map((voice) => [voice.uri, voice]),
+  ACCENT_VOICES.map((voice) => [voice.uri, voice]),
 );
 
 export function findVoiceByUri(uri: string | null | undefined): SpeechVoiceOption | null {
   return (uri && BY_URI.get(uri)) || null;
 }
 
-export function isKnownVoiceUri(uri: string | null | undefined): boolean {
-  return findVoiceByUri(uri) !== null;
-}
-
 /**
- * Coerce an arbitrary voice URI to one this app actually knows.
+ * The known voice for a URI, always non-null; falls back to the default voice.
  *
- * The security half of the accent work. `normalizeVoiceConfig` only type-checks
- * `selectedVoiceUri` and truncates it to 120 characters — it was never compared
- * against any list — and the value reaches both `speechSynthesisVoiceName` and,
- * unescaped, the SSML `<voice name="…">` attribute. A crafted `launch_meta`
- * could therefore close that attribute and inject elements. Resolving through
- * the catalogue means an unrecognised URI degrades to the default voice instead.
+ * The URI reaches both `speechSynthesisVoiceName` and, unescaped, the SSML
+ * `<voice name="…">` attribute, so it is never used verbatim. Resolving through
+ * the catalogue means an unrecognised or crafted URI degrades to the default
+ * voice instead of reaching Azure.
  */
-export function resolveKnownVoiceUri(uri: string | null | undefined): string {
-  return findVoiceByUri(uri)?.uri ?? DEFAULT_VOICE_URI;
-}
-
-/** The known voice for a URI, always non-null; falls back to the default voice. */
 export function resolveKnownVoice(uri: string | null | undefined): SpeechVoiceOption {
   return findVoiceByUri(uri) ?? findVoiceByUri(DEFAULT_VOICE_URI)!;
 }

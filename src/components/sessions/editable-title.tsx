@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { MAX_SESSION_TITLE_CHARS } from "@/lib/api/input-limits";
 import { patchSessionRequest } from "@/lib/session-actions";
-import { cn } from "@/lib/utils";
 
 /**
  * A session title renamed by clicking it.
@@ -22,14 +21,12 @@ export function EditableTitle({
   title,
   generatedTitle,
   onRenamed,
-  className,
 }: {
   sessionId: string;
   /** The candidate's own title, or null. */
   title: string | null;
   generatedTitle: string;
   onRenamed: (title: string | null) => void;
-  className?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -69,7 +66,7 @@ export function EditableTitle({
   if (editing) {
     return (
       <form
-        className={cn("space-y-1", className)}
+        className="space-y-1"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
@@ -100,12 +97,7 @@ export function EditableTitle({
   }
 
   return (
-    <h1
-      className={cn(
-        "font-display text-3xl font-bold tracking-tight text-balance text-slate-900",
-        className,
-      )}
-    >
+    <h1 className="font-display text-3xl font-bold tracking-tight text-balance text-slate-900">
       <button
         type="button"
         onClick={start}

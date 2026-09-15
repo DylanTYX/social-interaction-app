@@ -21,13 +21,11 @@ export function ErrorStateCard({
   title = "Couldn't load this",
   description,
   onRetry,
-  retrying = false,
 }: {
   title?: string;
   /** The server's message when there is one; a generic line otherwise. */
   description?: string | null;
   onRetry?: () => void;
-  retrying?: boolean;
 }) {
   return (
     <div
@@ -49,10 +47,9 @@ export function ErrorStateCard({
             variant="outline"
             className="border-destructive-border bg-white hover:bg-destructive-muted"
             onClick={onRetry}
-            disabled={retrying}
           >
-            <RotateCw className={retrying ? "animate-spin" : undefined} />
-            {retrying ? "Retrying…" : "Try again"}
+            <RotateCw />
+            Try again
           </Button>
         </div>
       )}

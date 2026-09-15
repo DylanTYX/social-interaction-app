@@ -248,11 +248,10 @@ describe("SSML: accent, content language, and the voice-name attribute", () => {
   });
 
   it("refuses a voice name that is not in the catalogue", async () => {
-    // `normalizeVoiceConfig` only type-checked and truncated `selectedVoiceUri`
-    // to 120 chars, and the value was interpolated unescaped into the SSML
-    // `<voice name="…">` attribute. A crafted launch_meta could therefore close
-    // the attribute and inject elements. Unknown URIs now resolve to the
-    // default voice before they reach either the SDK or the SSML.
+    // The voice name is interpolated into the SSML `<voice name="…">`
+    // attribute, so a crafted value could close it and inject elements.
+    // Unknown URIs resolve to the default voice before they reach either the
+    // SDK or the SSML.
     const speech = service();
     void speech.speakQueued(
       "Tell me about the project.",

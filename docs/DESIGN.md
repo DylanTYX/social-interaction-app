@@ -36,7 +36,7 @@ colour answers a question.**
 | Auth page title | `font-display` | 700 | `text-3xl`, `tracking-tight` |
 | App section heading | `font-display` | 600 | `text-xl`, `tracking-tight` (`SectionHeader`) |
 | Card and dialog title | `font-display` | 600 | `text-lg` on app pages; built into `CardTitle` and `DialogTitle` |
-| Large number | `font-display` | 700 | Navy, `tabular-nums`: stats, scores, streaks |
+| Large number | `font-display` | 700 | Navy, `tabular-nums`: stats and scores |
 | Landing eyebrow | Geist (`font-sans`) | 600 | 13.5px, primary blue, sentence case |
 | Panel label | Geist | 600 | `text-xs uppercase tracking-wide text-slate-500` (`PANEL_LABEL`) |
 | Lede / description | Geist | 400 | 16–18px, `text-slate-600`, max ~60ch |

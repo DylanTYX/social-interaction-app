@@ -56,7 +56,7 @@ import {
  *   1. What do I do now?      → one card, one primary button
  *   2. Am I improving?        → four numbers, linking to Analytics
  *   3. What have I done?      → five rows, linking to Sessions
- *   4. Am I being consistent? → streak and goal, which live nowhere else
+ *   4. Am I being consistent? → this week's goal, which lives nowhere else
  *
  * Every section has its heading outside its card, so the four read as one
  * system. See docs/DESIGN.md, "App screens".

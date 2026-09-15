@@ -30,12 +30,6 @@ import { ROW_ENTER, ROW_EXIT, staggerDelay } from "@/lib/motion";
 import { displayTitle } from "@/lib/session-organisation";
 import { cn } from "@/lib/utils";
 
-export const STATUS_LABEL: Record<InterviewSessionSummary["status"], string> = {
-  in_progress: "In progress",
-  completed: "Completed",
-  abandoned: "Abandoned",
-};
-
 /**
  * The column template, shared with the list's heading row so the headings sit
  * over their columns. Below `md` the row keeps only the session and the score,

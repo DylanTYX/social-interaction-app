@@ -1,4 +1,4 @@
-import { getPersonaConfig, type PersonaConfig } from "./persona-engine";
+import { PRESET_PERSONAS, type PersonaConfig } from "./persona-engine";
 import {
   createDefaultInterviewLoop,
   normalizeInterviewLoop,
@@ -22,17 +22,6 @@ export interface VoiceSetupConfig {
    * to edit every persona in their library to get it.
    */
   accentsEnabled: boolean;
-  /**
-   * Legacy. The setup wizard used to offer a six-voice dropdown, and these hold
-   * what it chose. Nothing reads them for playback any more: the voice comes
-   * from the persona, because a session-level choice silently flattened every
-   * interviewer in a multi-round loop to one voice.
-   *
-   * Retained, not deleted, so `launch_meta` written before accents shipped
-   * still parses. Do not reintroduce a read path.
-   */
-  selectedVoiceName: string;
-  selectedVoiceUri: string;
 }
 
 export type JobDescriptionSetupMode = "paste" | "upload" | "saved";
@@ -135,19 +124,11 @@ export interface InterviewLaunchPayload extends InterviewSetupState {
 const SETUP_STORAGE_KEY = "social-interaction-app.interviewSetup";
 const LAUNCH_STORAGE_KEY = "social-interaction-app.interviewLaunch";
 
-/** Storage migration: the original implementation kept setup in sessionStorage too. */
-const LEGACY_SESSION_SETUP_KEY = "social-interaction-app.interviewSetup";
-
-/** An Azure voice name is ~30 characters; this is generous headroom. */
-const MAX_VOICE_FIELD_CHARS = 120;
-
 function createDefaultVoiceConfig(): VoiceSetupConfig {
   return {
     microphoneChecked: false,
     ttsEnabled: true,
     accentsEnabled: true,
-    selectedVoiceName: "",
-    selectedVoiceUri: "",
   };
 }
 
@@ -210,18 +191,6 @@ export function normalizeVoiceConfig(
       voiceConfig?.accentsEnabled === undefined
         ? defaults.accentsEnabled
         : Boolean(voiceConfig.accentsEnabled),
-    // Bounded and type-checked: these two reach the server via `launch_meta`
-    // and are handed to the Azure SDK as a voice name. `sanitizeLaunchMeta`
-    // used to cast the whole object through with `as`, so neither the types
-    // nor the lengths were ever actually checked on the server side.
-    selectedVoiceName:
-      typeof voiceConfig?.selectedVoiceName === "string"
-        ? voiceConfig.selectedVoiceName.slice(0, MAX_VOICE_FIELD_CHARS)
-        : defaults.selectedVoiceName,
-    selectedVoiceUri:
-      typeof voiceConfig?.selectedVoiceUri === "string"
-        ? voiceConfig.selectedVoiceUri.slice(0, MAX_VOICE_FIELD_CHARS)
-        : defaults.selectedVoiceUri,
   };
 }
 
@@ -267,11 +236,7 @@ function normalizeJobDescriptionConfig(
 function normalizeSetup(
   setup: Partial<InterviewSetupState> | null | undefined,
 ): InterviewSetupState {
-  const baseConfig = getPersonaConfig("sarah chen");
-
-  if (!baseConfig) {
-    throw new Error("Default persona configuration is missing.");
-  }
+  const baseConfig = PRESET_PERSONAS["sarah chen"];
 
   const defaultSetup: InterviewSetupState = {
     scenarioValue: "custom",
@@ -424,32 +389,6 @@ export function loadInterviewSetup(): InterviewSetupState | null {
     raw = local.getItem(SETUP_STORAGE_KEY);
   } catch {
     raw = null;
-  }
-
-  // One-time migration from the previous sessionStorage location, so users
-  // upgrading from an earlier build do not lose their last setup.
-  if (!raw) {
-    const session = getSession();
-    if (isStorageAvailable(session)) {
-      try {
-        const legacy = session.getItem(LEGACY_SESSION_SETUP_KEY);
-        if (legacy) {
-          raw = legacy;
-          try {
-            local.setItem(SETUP_STORAGE_KEY, legacy);
-          } catch {
-            // ignore
-          }
-          try {
-            session.removeItem(LEGACY_SESSION_SETUP_KEY);
-          } catch {
-            // ignore
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
   }
 
   if (!raw) return null;

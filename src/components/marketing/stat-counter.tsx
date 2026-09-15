@@ -7,8 +7,6 @@ import { useCountUp } from "@/hooks/use-count-up";
 interface StatCounterProps {
   value: number;
   label: string;
-  suffix?: string;
-  durationMs?: number;
 }
 
 /**
@@ -19,15 +17,10 @@ interface StatCounterProps {
  * The number is set in the display face in navy, the same treatment as every
  * large figure on the landing page; see docs/DESIGN.md.
  */
-export function StatCounter({
-  value,
-  label,
-  suffix = "",
-  durationMs = 1200,
-}: StatCounterProps) {
+export function StatCounter({ value, label }: StatCounterProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const startedRef = useRef(false);
-  const { value: display, start } = useCountUp(durationMs);
+  const { value: display, start } = useCountUp();
 
   useEffect(() => {
     const node = ref.current;
@@ -63,7 +56,6 @@ export function StatCounter({
     <div ref={ref} className="flex flex-col items-center gap-1.5 text-center">
       <p className="font-display text-[clamp(1.9rem,2.6vw,2.4rem)] font-bold leading-none tracking-[-0.03em] text-navy tabular-nums">
         {display}
-        {suffix}
       </p>
       <p className="text-[14.5px] text-slate-600">{label}</p>
     </div>

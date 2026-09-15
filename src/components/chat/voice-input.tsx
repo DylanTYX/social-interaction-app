@@ -25,21 +25,6 @@ interface VoiceInputProps {
   silenceStartedAtMs?: number | null;
   /** When true, recording is started by the page after the interviewer speaks. */
   autoStartRecording?: boolean;
-  /**
-   * Render the transcript slot even before there is anything to put in it.
-   *
-   * The interview leaves this off: its composer sits under a scrolling message
-   * list, and an empty box there is dead weight. A drill is the opposite — the
-   * answer surface is the whole card, so reserving the space stops the card
-   * growing under the candidate the instant they press record.
-   */
-  keepTranscriptMounted?: boolean;
-  /**
-   * Sizing for the transcript slot. The default is a chat composer's: small,
-   * capped, secondary to the conversation above it. A surface where speaking is
-   * the only thing happening wants it bigger and readable.
-   */
-  transcriptClassName?: string;
   onStart: () => void;
   onStop: () => void;
   onStopTts?: () => void;
@@ -75,8 +60,6 @@ export function VoiceInput({
   deadlineMs,
   silenceStartedAtMs = null,
   autoStartRecording = false,
-  keepTranscriptMounted = false,
-  transcriptClassName,
   onStart,
   onStop,
   onStopTts,
@@ -115,20 +98,11 @@ export function VoiceInput({
 
   /**
    * The transcript slot stays mounted for the whole answer so the composer does
-   * not shrink under the candidate mid-sentence.
-   *
-   * That was only ever half of it: the slot still *appeared* when recording
-   * began, so pressing record grew the surface by the height of the box. On a
-   * chat composer under a scrolling list that is barely visible; on a drill,
-   * where this is the entire card, it is a jump at the exact moment attention
-   * moves to the microphone. `keepTranscriptMounted` reserves the space up
-   * front instead.
+   * not shrink under the candidate mid-sentence. Before recording starts there
+   * is nothing to show, and an empty box under the message list is dead weight.
    */
   const showTranscriptSlot =
-    keepTranscriptMounted ||
-    isRecording ||
-    Boolean(livePreview) ||
-    Boolean(recordingError);
+    isRecording || Boolean(livePreview) || Boolean(recordingError);
 
   return (
     <div className="space-y-2">
@@ -169,7 +143,6 @@ export function VoiceInput({
             recordingError
               ? "border-destructive-border bg-destructive-subtle/70 text-destructive-emphasis"
               : "border-slate-200 bg-slate-50/70 text-slate-600",
-            transcriptClassName,
           )}
         >
           {recordingError ? (

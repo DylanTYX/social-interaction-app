@@ -200,7 +200,7 @@ export function getSuggestedNextSession(
     title: "Start a new interview",
     description: "Try a new scenario or persona to broaden your preparation.",
     href: "/simulate/setup",
-    reason: "Keep your practice streak going.",
+    reason: "Regular practice keeps your answers sharp.",
     accent: "blue",
   };
 }

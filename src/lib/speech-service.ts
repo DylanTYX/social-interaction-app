@@ -1,7 +1,6 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
 import {
-  AZURE_VOICE_OPTIONS,
   resolveKnownVoice,
   ssmlLangForVoice,
   type SpeechVoiceOption,
@@ -683,14 +682,9 @@ export class SpeechService {
   private ensureQueuePlayback(
     voiceUri: string | undefined,
   ): NonNullable<typeof this.queuePlayback> {
-    // Was `voiceUri || "en-US-AriaNeural"`. `voiceUri` originates in
-    // `launch_meta.voiceConfig.selectedVoiceUri`, which `normalizeVoiceConfig`
-    // only type-checks and truncates to 120 characters — it was never compared
-    // against the voice list on either side. That string reached
-    // `speechSynthesisVoiceName` and, unescaped, the SSML `<voice name="…">`
-    // attribute, so a crafted value could close the attribute and inject
-    // elements. Resolving through the catalogue means an unrecognised URI now
-    // degrades to the default voice instead of reaching Azure verbatim.
+    // Never trust the URI verbatim: it reaches `speechSynthesisVoiceName` and,
+    // unescaped, the SSML `<voice name="…">` attribute. Resolving through the
+    // catalogue means an unrecognised URI degrades to the default voice.
     const voice = resolveKnownVoice(voiceUri);
     const voiceName = voice.uri;
 
@@ -1152,17 +1146,6 @@ export class SpeechService {
     this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
   }
 
-  /**
-   * Curated set of voice options to surface in the setup wizard.
-   *
-   * The list itself lives in `@/lib/speech-voices` so callers that only need
-   * the catalogue can read it without importing this module — and with it, the
-   * Azure SDK. Kept here as a convenience for code that already holds a
-   * service instance.
-   */
-  getAvailableVoices(): SpeechVoiceOption[] {
-    return [...AZURE_VOICE_OPTIONS];
-  }
 }
 
 export function getSpeechService(): SpeechService {

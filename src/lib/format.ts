@@ -47,9 +47,8 @@ export function formatDateTime(iso: string): string {
 /**
  * Up to two initials from a display name.
  *
- * `getInitials` in `use-current-user.ts` is the account-holder flavour of this
- * and delegates here; this one takes a bare name so it also works for personas
- * and interviewers, who are not users.
+ * Takes a bare name rather than a user, so it works for personas and
+ * interviewers as well as the account holder.
  */
 export function initialsFromName(name: string): string {
   const parts = (name ?? "")

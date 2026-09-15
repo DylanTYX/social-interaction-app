@@ -8,7 +8,6 @@ interface RevealProps {
   className?: string;
   /** Delay (ms) before the reveal transition starts, for staggered groups. */
   delay?: number;
-  as?: "div" | "section" | "li";
 }
 
 /**
@@ -17,13 +16,8 @@ interface RevealProps {
  * after the first reveal so it never re-hides. Falls back to visible if
  * IntersectionObserver is unavailable.
  */
-export function Reveal({
-  children,
-  className,
-  delay = 0,
-  as: Tag = "div",
-}: RevealProps) {
-  const ref = useRef<HTMLElement | null>(null);
+export function Reveal({ children, className, delay = 0 }: RevealProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -54,8 +48,8 @@ export function Reveal({
   }, []);
 
   return (
-    <Tag
-      ref={ref as React.Ref<HTMLDivElement & HTMLLIElement>}
+    <div
+      ref={ref}
       className={cn(
         // The old `.reveal` / `.reveal-visible` pair, as utilities. Every
         // declaration it carried has an equivalent: the 0.6s duration and the
@@ -71,6 +65,6 @@ export function Reveal({
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
-    </Tag>
+    </div>
   );
 }

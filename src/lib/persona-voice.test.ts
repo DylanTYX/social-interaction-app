@@ -25,7 +25,7 @@ import { readFileSync } from "node:fs";
 import {
   ACCENT_VOICES,
   DEFAULT_VOICE_URI,
-  isKnownVoiceUri,
+  findVoiceByUri,
   ssmlLangForVoice,
 } from "@/lib/speech-voices";
 import {
@@ -89,7 +89,7 @@ describe("every nationality the app can produce resolves", () => {
   // production, which is the whole reason that pool is exported.
   it.each(ALL_NATIONALITIES)("%s resolves to a known voice", (nationality) => {
     const resolved = resolveVoiceForPersona({ nationality });
-    expect(isKnownVoiceUri(resolved.uri)).toBe(true);
+    expect(findVoiceByUri(resolved.uri)).not.toBeNull();
   });
 
   it.each(SUPPORTED_NATIONALITIES)("%s maps to a locale", (nationality) => {

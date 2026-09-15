@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
@@ -13,25 +12,16 @@ const badgeVariants = cva(
           "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
         secondary:
           "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         /**
-         * Meaning, not brand. These three exist because there was no variant
-         * that meant "good" or "needs attention", so every score band, feedback
-         * chip and status pill in the app hand-wrote its own emerald or amber
-         * triplet on `variant="outline"` — which is how the same "warning" ended
-         * up as three slightly different ambers. Soft-filled rather than solid
-         * so they sit beside body copy without shouting the way `destructive`
-         * does.
+         * Meaning, not brand: "good" and "needs attention", soft-filled so they
+         * sit beside body copy without shouting.
          */
         success:
           "border-success-border bg-success-subtle text-success-emphasis",
         warning:
           "border-warning-border bg-warning-subtle text-warning-emphasis",
-        danger:
-          "border-destructive-border bg-destructive-subtle text-destructive-emphasis",
       },
     },
     defaultVariants: {
@@ -43,14 +33,10 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant,
-  asChild = false,
   ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot : "span";
-
+}: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
   return (
-    <Comp
+    <span
       data-slot="badge"
       className={cn(badgeVariants({ variant }), className)}
       {...props}

@@ -209,9 +209,9 @@ Checked and found sound, recorded so the next review does not re-litigate them:
   `persona-engine.ts` does not import `persona-voice.ts`, and tests assert the
   prompt is byte-identical across voice settings. See DESIGN-DECISIONS §5a.
 - **Voice names are resolved against a catalogue** before reaching Azure
-  (`resolveKnownVoiceUri`). Previously `launch_meta.voiceConfig.selectedVoiceUri`
-  was only length-capped and was interpolated unescaped into the SSML
-  `<voice name="…">` attribute, so a crafted value could inject elements.
+  (`resolveKnownVoice` in `speech-voices.ts`). An unrecognised voice name falls
+  back to the default voice, so nothing unescaped reaches the SSML
+  `<voice name="…">` attribute.
 
 ---
 

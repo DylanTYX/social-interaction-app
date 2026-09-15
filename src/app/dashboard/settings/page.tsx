@@ -59,14 +59,6 @@ type SaveState =
 const SETTINGS_TABS = ["account", "data"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-/** Old deep links keep working: retired tab names land on Account. */
-const LEGACY_TAB_ALIASES: Record<string, SettingsTab> = {
-  profile: "account",
-  defaults: "account",
-  voice: "account",
-  interview: "account",
-};
-
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,15 +67,15 @@ function SettingsPageInner() {
   /**
    * Which tab is open, mirrored in `?tab=` so the sidebar, the command palette
    * and the back button can address a specific tab. Read against an allowlist
-   * (plus the legacy aliases) so an unrecognised value falls back rather than
-   * rendering an empty tab.
+   * so an unrecognised value, including a retired tab name, falls back to
+   * Account rather than rendering an empty tab.
    */
   const [tab, setTab] = useState<SettingsTab>(() => {
     const requested = searchParams.get("tab") ?? "";
     if (SETTINGS_TABS.includes(requested as SettingsTab)) {
       return requested as SettingsTab;
     }
-    return LEGACY_TAB_ALIASES[requested] ?? "account";
+    return "account";
   });
 
   const handleTabChange = (next: string) => {

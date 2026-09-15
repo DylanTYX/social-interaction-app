@@ -123,5 +123,3 @@ export const PERSONA_DIALS = [
       "Higher means more curveballs — topic pivots and what-if twists on your own scenario.",
   },
 ] as const;
-
-export type PersonaDialKey = (typeof PERSONA_DIALS)[number]["key"];

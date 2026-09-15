@@ -51,9 +51,3 @@ export interface ChatTurnResponse {
   /** One-line coaching hint, derived from the analysis above. */
   microFeedback: MicroFeedbackResult | null;
 }
-
-/** Error shape the route returns on failure. */
-export interface ChatTurnError {
-  error?: string;
-  details?: string;
-}

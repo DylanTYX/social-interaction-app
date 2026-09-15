@@ -1,7 +1,6 @@
 /**
  * Dynamic Persona Generation Engine
  * Generates system prompts from structured persona configurations
- * Supports backward compatibility with hardcoded personas
  */
 
 export type CommunicationStyle =
@@ -373,9 +372,8 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
 }
 
 /**
- * Preset configurations for existing personas (backward compatibility)
- */
-/**
+ * The built-in interviewers, seeded into each user's persona library.
+ *
  * `voiceGender` is set on every preset, and it is authored, not inferred: these
  * are written characters, so choosing their voice is part of writing them. It
  * used to be absent on all six, and an absent preference takes the locale's
@@ -557,31 +555,3 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     ],
   },
 };
-
-/**
- * Get persona config by name (supports aliases like "sarah" → "sarah chen")
- */
-export function getPersonaConfig(nameOrAlias: string): PersonaConfig | null {
-  const normalized = nameOrAlias.toLowerCase().trim();
-
-  if (normalized in PRESET_PERSONAS) {
-    return PRESET_PERSONAS[normalized as keyof typeof PRESET_PERSONAS];
-  }
-
-  // Alias matching (e.g., "sarah" → "sarah chen")
-  const aliasMap: Record<string, string> = {
-    sarah: "sarah chen",
-    marcus: "marcus johnson",
-    aisyah: "aisyah rahman",
-    priya: "priya sharma",
-    lars: "lars petersen",
-    isabella: "isabella rodriguez",
-  };
-
-  if (normalized in aliasMap) {
-    const fullName = aliasMap[normalized as keyof typeof aliasMap];
-    return PRESET_PERSONAS[fullName as keyof typeof PRESET_PERSONAS];
-  }
-
-  return null;
-}

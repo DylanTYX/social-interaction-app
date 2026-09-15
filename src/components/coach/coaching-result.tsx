@@ -133,7 +133,6 @@ function Exemplar({ text }: { text: string }) {
 export function CoachingResult({
   result,
   originalAnswer,
-  className,
 }: {
   result: SuggestedAnswerResult;
   /**
@@ -148,13 +147,12 @@ export function CoachingResult({
    * nothing to compare" cannot be expressed.
    */
   originalAnswer?: string;
-  className?: string;
 }) {
   const original = originalAnswer?.trim() ? originalAnswer : undefined;
 
   return (
     <div className="@container/coaching">
-      <div className={cn("space-y-5", CONTENT_ENTER, className)}>
+      <div className={cn("space-y-5", CONTENT_ENTER)}>
         {result.rewrite && (
           <Diff originalAnswer={original} rewrite={result.rewrite} />
         )}
@@ -193,31 +191,17 @@ export function CoachingResult({
  * bars this replaces looked nothing like what arrived, so every swap reflowed
  * the page.
  */
-export function CoachingResultSkeleton({
-  compare = true,
-  className,
-}: {
-  compare?: boolean;
-  className?: string;
-}) {
+export function CoachingResultSkeleton() {
   return (
     <div className="@container/coaching">
-      <div className={cn("space-y-5", className)}>
+      <div className="space-y-5">
         <div className="overflow-hidden rounded-xl border border-slate-200">
           <div className={SPLIT}>
-            {compare && (
-              <div className="p-4">
-                <Skeleton className="h-3.5 w-24" />
-                <Skeleton className="mt-3 h-28" />
-              </div>
-            )}
-            <div
-              className={cn(
-                "bg-slate-50 p-4",
-                compare &&
-                  "border-t border-slate-200 @3xl/coaching:border-l @3xl/coaching:border-t-0",
-              )}
-            >
+            <div className="p-4">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="mt-3 h-28" />
+            </div>
+            <div className="border-t border-slate-200 bg-slate-50 p-4 @3xl/coaching:border-t-0 @3xl/coaching:border-l">
               <Skeleton className="h-3.5 w-36" />
               {/* The hint line under the label. A skeleton a row shorter than
                   what replaces it reflows the page at the moment the user

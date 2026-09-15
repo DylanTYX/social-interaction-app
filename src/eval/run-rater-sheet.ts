@@ -37,11 +37,6 @@ import { presentationOrder } from "@/eval/blind-order";
 import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 import { readFileSync } from "node:fs";
 
-// `bandForScore` moved to `fixtures.ts` and `presentationOrder` to
-// `blind-order.ts` when the coach harness needed both. Re-exported so anything
-// that imported them from here still resolves.
-export { bandForScore, presentationOrder };
-
 function printSheet(): void {
   const ordered = presentationOrder(FIXTURES);
 

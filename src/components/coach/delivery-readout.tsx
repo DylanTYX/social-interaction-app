@@ -59,13 +59,7 @@ type Measure = {
  * number carries a judgement the code actually makes; pauses and speaking time
  * are facts, so they have none. See docs/DESIGN.md.
  */
-export function DeliveryReadout({
-  metrics,
-  className,
-}: {
-  metrics: DeliveryMetrics;
-  className?: string;
-}) {
+export function DeliveryReadout({ metrics }: { metrics: DeliveryMetrics }) {
   const pace = metrics.paceLabel ? PACE[metrics.paceLabel] : null;
   const fillers = FILLERS[metrics.fillerLabel];
   const topFillers = metrics.fillerBreakdown
@@ -106,7 +100,7 @@ export function DeliveryReadout({
   ];
 
   return (
-    <section className={className}>
+    <section>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h3 className={PANEL_LABEL}>Delivery</h3>
         <p className="text-xs text-slate-500">Measured from your recording</p>

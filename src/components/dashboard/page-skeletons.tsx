@@ -91,10 +91,10 @@ function DocumentRowSkeleton() {
 }
 
 /** Three document rows, the count both list pages were already hard-coding. */
-export function DocumentListSkeleton({ rows = 3 }: { rows?: number }) {
+export function DocumentListSkeleton() {
   return (
     <div className="space-y-2">
-      {Array.from({ length: rows }).map((_, index) => (
+      {Array.from({ length: 3 }).map((_, index) => (
         <DocumentRowSkeleton key={index} />
       ))}
     </div>

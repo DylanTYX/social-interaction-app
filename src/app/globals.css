@@ -10,14 +10,6 @@
   --font-display: var(--font-bricolage);
   /* The brand's dark: headline numbers and the closing band. Not a text colour. */
   --color-navy: var(--navy);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -64,7 +56,7 @@
 
 /* Custom scale values, declared to Tailwind rather than hand-written as CSS.
    `--shadow-*` and `--animate-*` are theme namespaces, so Tailwind generates
-   `shadow-soft`, `animate-aurora-drift` and friends as first-class utilities —
+   `shadow-soft`, `animate-caret` and friends as first-class utilities —
    which means they compose with variants (`hover:`, `print:`, `motion-reduce:`)
    the way any other utility does. Hand-written classes never could. */
 @theme {
@@ -81,30 +73,10 @@
      Declared here so it becomes `ease-soft` and composes like any utility. */
   --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --animate-aurora-drift: aurora-drift 18s ease-in-out infinite;
-
   /* Named `caret`, not `caret-blink`: tw-animate-css ships its own
      `--animate-caret-blink`, and the two were resolving purely by import
      order. A distinct name means neither shadows the other. */
   --animate-caret: caret 1s steps(2) infinite;
-
-  /* For status dots that mean "something is happening right now". Tailwind's
-     `animate-pulse` is tuned for large skeleton blocks and reads as a harsh
-     strobe at 2px; this bottoms out at 0.45 instead of 0.5-of-nothing. */
-  --animate-breathe: breathe 2.2s ease-in-out infinite;
-
-  @keyframes aurora-drift {
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(40px, -30px) scale(1.1);
-    }
-    66% {
-      transform: translate(-30px, 20px) scale(0.95);
-    }
-  }
 
   @keyframes caret {
     0%,
@@ -114,16 +86,6 @@
     50.01%,
     100% {
       opacity: 0;
-    }
-  }
-
-  @keyframes breathe {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.45;
     }
   }
 }
@@ -196,14 +158,6 @@
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.546 0.245 262.881);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
 }
 
 @layer base {
@@ -225,7 +179,7 @@
    decoration" — it does not mean "remove the only signal that the app is
    working". A frozen spinner reads as a hung request and a frozen skeleton reads
    as broken content, so both are slowed rather than stopped. Everything else,
-   including the aurora blobs and every enter animation, is effectively off.
+   including every enter animation, is effectively off.
 
    JS-driven motion (the rAF count-ups, the demo typewriter) can't be reached
    from CSS and checks matchMedia itself — see use-count-up.ts. */

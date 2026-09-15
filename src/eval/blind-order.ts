@@ -25,12 +25,3 @@ export function presentationOrder<T extends { id: string }>(
 ): T[] {
   return [...items].sort((a, b) => stableHash(a.id) - stableHash(b.id));
 }
-
-/**
- * Whether the two arms of a blind A/B swap for this item. Derived from the id,
- * so `--score` can recover which arm was which without the sheet carrying that
- * anywhere a rater could see it.
- */
-export function blindSwap(id: string): boolean {
-  return stableHash(`swap:${id}`) % 2 === 1;
-}

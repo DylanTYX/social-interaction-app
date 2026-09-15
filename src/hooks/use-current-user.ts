@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { initialsFromName } from "@/lib/format";
 
 export interface CurrentUserState {
   user: User | null;
@@ -87,8 +86,4 @@ export function getDisplayName(user: User | null): string {
 
   if (user.email) return user.email.split("@")[0] ?? user.email;
   return "You";
-}
-
-export function getInitials(user: User | null): string {
-  return initialsFromName(getDisplayName(user));
 }
