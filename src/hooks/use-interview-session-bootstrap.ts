@@ -1,7 +1,7 @@
 "use client";
 
 import { readJson } from "@/lib/api/fetch-json";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import type { PersonaConfig } from "@/lib/persona-engine";
 import {
@@ -31,6 +31,8 @@ export type BootstrapStatus =
 export interface InterviewBootstrap {
   status: BootstrapStatus;
   error: string | null;
+  /** Load the session again after a failure, without reloading the page. */
+  retry: () => void;
   personaConfig: PersonaConfig;
   scenarioValue: string;
   customScenarioBrief: string;
@@ -144,11 +146,14 @@ function readResumedTranscript(payload: {
   };
 }
 
+/** Everything but `retry`, which only the hook can supply. */
+type BootstrapState = Omit<InterviewBootstrap, "retry">;
+
 function launchToBootstrap(
   launch: InterviewLaunchPayload,
   searchParams: ReadonlyURLSearchParams,
   jobDescriptionMissing = false,
-): InterviewBootstrap {
+): BootstrapState {
   const scenarioOverride = searchParams.get("scenario");
   const streamOverride = searchParams.get("stream");
 
@@ -343,7 +348,11 @@ export function useInterviewSessionBootstrap(
   searchParams: ReadonlyURLSearchParams,
   expectedMode: "text" | "voice",
 ): InterviewBootstrap {
-  const [bootstrap, setBootstrap] = useState<InterviewBootstrap>(() => ({
+  /** Bumped by `retry`, which is the only way to re-run the load below. */
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((count) => count + 1), []);
+
+  const [bootstrap, setBootstrap] = useState<BootstrapState>(() => ({
     status: "loading",
     error: null,
     personaConfig: DEFAULT.personaConfig,
@@ -489,9 +498,9 @@ export function useInterviewSessionBootstrap(
     return () => {
       cancelled = true;
     };
-  }, [searchParams, expectedMode]);
+  }, [searchParams, expectedMode, attempt]);
 
-  return bootstrap;
+  return { ...bootstrap, retry };
 }
 
 export function scenarioFromBootstrap(bootstrap: InterviewBootstrap) {

@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
+import { describeSpeechError } from "@/lib/speech-errors";
 import {
   Dialog,
   DialogContent,
@@ -188,6 +189,18 @@ function VoiceSimulateInner() {
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Set while the opening greeting is being fetched again after a failure.
+   *
+   * Separate from `error` on purpose. The first request for the opening line
+   * fails often enough to notice — a dropped connection reads as "Failed to
+   * fetch" before the request reaches the server — and the retry below fixes
+   * it within seconds. Showing that as a red "Something went wrong" alarms the
+   * candidate about a state the app is already recovering from, seconds before
+   * the interviewer speaks. Red is for a failure that stands; this is a quiet
+   * line until the retries are spent, and then it becomes the error.
+   */
+  const [retryingOpening, setRetryingOpening] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const [isSpeakingTts, setIsSpeakingTts] = useState(false);
@@ -703,6 +716,7 @@ function VoiceSimulateInner() {
       // card; a recovery that then succeeds must take it down, or the user
       // reads a live error over a working interview.
       setError(null);
+      setRetryingOpening(false);
 
       if (!aiMessage.trim()) {
         // Presenting an empty greeting would "speak" nothing, report heard,
@@ -808,7 +822,8 @@ function VoiceSimulateInner() {
         const willRetry = openingAttempt < MAX_OPENING_ATTEMPTS;
         const reason =
           err instanceof Error ? err.message : "Could not start the interview.";
-        setError(willRetry ? `${reason} Retrying…` : reason);
+        setRetryingOpening(willRetry);
+        setError(willRetry ? null : reason);
         /**
          * Spaced, not immediate. Every attempt used to fire the moment the
          * last one failed, so a transient cold-start failure spent all the
@@ -1229,9 +1244,16 @@ function VoiceSimulateInner() {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
         <div className="w-full max-w-md space-y-4">
+          {/* Try again before Return to setup: both failures here are usually a
+              dropped request, and sending the user back to rebuild an interview
+              they already configured is the wrong first offer. */}
           <ErrorStateCard
             title="Couldn't set up voice"
-            description={setupError}
+            description={describeSpeechError(setupError)}
+            onRetry={() => {
+              bootstrap.retry();
+              speech.retryToken();
+            }}
           />
           <div className="flex justify-center">
             <Button variant="outline" asChild>
@@ -1415,14 +1437,18 @@ function VoiceSimulateInner() {
                 </div>
               )}
 
+              {/* Amber, not red: nothing has failed. Every browser refuses to
+                  play audio before you interact with the page, and the question
+                  is already on screen as text. It is amber rather than plain
+                  because the interview waits here until you tap. */}
               {blockedAudioMessage && (
-                <Card className="py-0">
+                <Card className="border-warning-border bg-warning-subtle py-0">
                   <CardContent className="flex flex-wrap items-center gap-3 py-4">
                     <Volume2
-                      className="size-5 shrink-0 text-slate-500"
+                      className="size-5 shrink-0 text-warning-emphasis"
                       aria-hidden
                     />
-                    <p className="min-w-48 flex-1 text-sm text-slate-700">
+                    <p className="min-w-48 flex-1 text-sm text-warning-emphasis">
                       Your browser blocked the interviewer&rsquo;s audio until
                       you interact with the page.
                     </p>
@@ -1435,6 +1461,19 @@ function VoiceSimulateInner() {
                     </Button>
                   </CardContent>
                 </Card>
+              )}
+
+              {retryingOpening && (
+                <div
+                  className="flex items-center gap-2 text-sm text-slate-500"
+                  role="status"
+                >
+                  <Loader2
+                    className="h-4 w-4 animate-spin text-primary"
+                    aria-hidden
+                  />
+                  Getting the first question…
+                </div>
               )}
 
               {isSending && (

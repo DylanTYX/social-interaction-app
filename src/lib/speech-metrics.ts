@@ -91,7 +91,8 @@ export const PACE_BANDS = {
 /** Fillers per 100 words: under `cleanBelow` is clean, over `frequentAbove` frequent. */
 export const FILLER_BANDS = { cleanBelow: 2, frequentAbove: 5 } as const;
 
-function countWords(text: string): number {
+/** Words in a piece of text. Shared with the two spoken-answer recorders. */
+export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 

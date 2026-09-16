@@ -9,6 +9,7 @@ import {
   resolveScenarioForLaunch,
   unfilledPlaceholders,
 } from "@/lib/scenarios";
+import { fetchWithRetry } from "@/lib/api/fetch-retry";
 import { buildLaunchMetaFromSetup } from "@/lib/session-launch-meta";
 import { type PersonaConfig } from "@/lib/persona-engine";
 import { toast } from "sonner";
@@ -457,7 +458,13 @@ function SetupWizard() {
         },
       };
 
-      const response = await fetch("/api/sessions", {
+      /**
+       * Retried once on a network failure. It creates a row, so a lost
+       * *response* can leave an extra empty session behind — which is a far
+       * cheaper outcome than a candidate stuck on "Failed to fetch" at the
+       * moment they press Start interview.
+       */
+      const response = await fetchWithRetry("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

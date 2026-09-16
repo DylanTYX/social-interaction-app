@@ -73,6 +73,8 @@ export interface UseSpeechAnswerOptions {
 }
 
 export interface UseSpeechAnswer {
+  /** Ask for a new speech token after one failed. */
+  retryToken: () => void;
   tokenStatus: SpeechTokenStatus;
   tokenError: string | null;
   isRecording: boolean;
@@ -110,6 +112,8 @@ export function useSpeechAnswer({
 
   const [tokenStatus, setTokenStatus] = useState<SpeechTokenStatus>("idle");
   const [tokenError, setTokenError] = useState<string | null>(null);
+  /** Bumped by `retryToken`, which is the only way to re-run the mint below. */
+  const [tokenAttempt, setTokenAttempt] = useState(0);
 
   const [isRecording, setIsRecording] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -222,7 +226,12 @@ export function useSpeechAnswer({
       cancelled = true;
       if (renewalTimer) clearTimeout(renewalTimer);
     };
-  }, [enabled]);
+  }, [enabled, tokenAttempt]);
+
+  /** Mint again after a failure, so a blip is one button rather than a reload. */
+  const retryToken = useCallback(() => {
+    setTokenAttempt((attempt) => attempt + 1);
+  }, []);
 
   const clearResponseTimeout = useCallback(() => {
     if (recordingTimeoutRef.current) {
@@ -553,6 +562,7 @@ export function useSpeechAnswer({
   return {
     tokenStatus,
     tokenError,
+    retryToken,
     isRecording,
     interimTranscript,
     finalTranscript,

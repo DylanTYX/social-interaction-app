@@ -1,5 +1,7 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
+import { fetchWithRetry } from "@/lib/api/fetch-retry";
+
 import {
   resolveKnownVoice,
   ssmlLangForVoice,
@@ -566,7 +568,9 @@ export class SpeechService {
         resolve();
       };
       const guard = setTimeout(() => {
-        console.warn("Stopping recognition did not complete within 3s; continuing.");
+        console.warn(
+          "Stopping recognition did not complete within 3s; continuing.",
+        );
         done();
       }, STOP_LISTENING_TIMEOUT_MS);
       try {
@@ -1145,7 +1149,6 @@ export class SpeechService {
 
     this.disposeSynthesizer(synthesizer, audioConfig, speakerDestination);
   }
-
 }
 
 export function getSpeechService(): SpeechService {
@@ -1165,7 +1168,11 @@ export interface SpeechTokenResponse {
  * starts returning false.
  */
 export async function fetchSpeechToken(): Promise<SpeechTokenResponse> {
-  const response = await fetch("/api/speech-token", { cache: "no-store" });
+  // Retried once: a dropped request here used to end a voice interview before
+  // it started, with "Couldn't set up voice — Failed to fetch".
+  const response = await fetchWithRetry("/api/speech-token", {
+    cache: "no-store",
+  });
   if (!response.ok) {
     const detail = (await response.json().catch(() => null)) as {
       error?: string;

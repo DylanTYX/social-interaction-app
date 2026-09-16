@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Loader2, Mic, Square } from "lucide-react";
+import { AlertCircle, Loader2, Mic, RotateCw, Square } from "lucide-react";
 
 import { AnswerCountdown } from "@/components/chat/answer-countdown";
 import { SilenceIndicator } from "@/components/chat/silence-indicator";
@@ -11,12 +11,9 @@ import {
   type SpeechAnswerCompletion,
 } from "@/hooks/use-speech-answer";
 import { SILENCE_SUBMIT_MS } from "@/lib/silence-detection";
+import { describeSpeechError } from "@/lib/speech-errors";
+import { countWords } from "@/lib/speech-metrics";
 import { cn } from "@/lib/utils";
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  return trimmed ? trimmed.split(/\s+/).length : 0;
-}
 
 type RecorderState = "connecting" | "idle" | "recording" | "processing";
 
@@ -73,13 +70,23 @@ export function DrillSpeakInput({
     return (
       <div
         role="alert"
-        className="flex items-start gap-2 rounded-lg border border-destructive-border bg-destructive-subtle px-4 py-3 text-sm text-destructive-emphasis"
+        className="flex flex-wrap items-start gap-3 rounded-lg border border-warning-border bg-warning-subtle px-4 py-3 text-sm text-warning-emphasis"
       >
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <p>
-          The microphone could not be set up: {speech.tokenError} You can still
-          type your answer.
+        <p className="min-w-48 flex-1">
+          The microphone could not be set up.{" "}
+          {describeSpeechError(speech.tokenError)} You can still type your
+          answer.
         </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 border-warning-border bg-white"
+          onClick={speech.retryToken}
+        >
+          <RotateCw />
+          Try again
+        </Button>
       </div>
     );
   }
@@ -218,11 +225,13 @@ export function DrillSpeakInput({
           className="mt-2 max-h-72 min-h-20 overflow-y-auto text-[15px] leading-relaxed"
         >
           {speech.recordingError ? (
+            // Amber, not red: the recorder stopped, the drill has not failed,
+            // and every one of these is fixed by tapping again.
             <p
               role="alert"
-              className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
+              className="rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-sm text-warning-emphasis"
             >
-              {speech.recordingError}
+              {describeSpeechError(speech.recordingError)}
             </p>
           ) : hearing ? (
             <p>
