@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { ChatMessage } from "@/components/chat/chat-message";
+import { TurnErrorCard } from "@/components/chat/turn-error-card";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { VoiceInput } from "@/components/chat/voice-input";
 import { VoiceLoadingFallback } from "./voice-loading";
@@ -78,6 +79,7 @@ import {
   recoverPersistedTurn,
 } from "@/lib/chat-recovery";
 import { reportClientError } from "@/lib/report-client-error";
+import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/api/fetch-retry";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 
@@ -259,6 +261,36 @@ function VoiceSimulateInner() {
   const [blockedAudioMessage, setBlockedAudioMessage] = useState<string | null>(
     null,
   );
+
+  /**
+   * Why the interviewer could not be heard, when they could not be.
+   *
+   * Every one of these used to be written into `recordingError` — the
+   * *candidate's* microphone channel, which the composer renders under
+   * "Transcript". So a failed synthesis put "The interviewer's voice cut out"
+   * where the candidate's own words belong, left it there while the next reply
+   * was audibly playing, and stacked it under the tap-to-hear card that was
+   * already explaining the same silence. The interviewer's audio now has one
+   * home, one reason and one action: the card below.
+   */
+  const [audioIssue, setAudioIssue] = useState<"blocked" | "failed" | null>(
+    null,
+  );
+
+  /**
+   * An answer whose request failed, kept verbatim so it can be sent again.
+   *
+   * Recording a turn is not safely repeatable — if the request arrived and only
+   * its reply was lost, sending it again would write the answer into the
+   * transcript twice — so this is a button rather than an automatic retry. What
+   * it replaces was worse than either: the answer was gone, the microphone
+   * reopened, and the candidate had to say the whole thing over.
+   */
+  const [unsentAnswer, setUnsentAnswer] = useState<{
+    userMessage: string;
+    deliveryNote?: string | null;
+    delivery?: DeliveryMetrics | null;
+  } | null>(null);
 
   /**
    * The microphone, the transcript and the delivery metrics.
@@ -449,14 +481,18 @@ function VoiceSimulateInner() {
       playbackFailedRef.current = true;
       reportClientError("voice-tts", new Error(message));
       if (cancelled) return;
-      setRecordingError(message);
+      // The service reports two kinds: a browser refusing to start audio, and
+      // everything else (missing credentials, a failed synthesis).
+      setAudioIssue(
+        message.toLowerCase().includes("autoplay") ? "blocked" : "failed",
+      );
     });
 
     return () => {
       cancelled = true;
       speechService.onPlaybackError(null);
     };
-  }, [bootstrap.status, setRecordingError]);
+  }, [bootstrap.status]);
 
   // Auto-scroll messages. See the hook for why this is not simply "scroll
   // smoothly whenever `messages` changes".
@@ -510,6 +546,7 @@ function VoiceSimulateInner() {
     const utterances = sentences.length > 0 ? sentences : [message.trim()];
 
     playbackFailedRef.current = false;
+    setAudioIssue(null);
     setIsSpeakingTts(true);
     try {
       // Fed without awaiting each in turn: `speakQueued` enqueues synchronously
@@ -566,6 +603,10 @@ function VoiceSimulateInner() {
    */
   const startAnswering = async () => {
     if (speech.isBusy()) return;
+    // Answering again replaces whatever failed to send, so the offer to send
+    // the old answer goes with it.
+    setUnsentAnswer(null);
+    setError(null);
     stopTts();
     await speech.start();
   };
@@ -648,7 +689,6 @@ function VoiceSimulateInner() {
     const message = blockedAudioMessage;
     if (!message) return;
 
-    setRecordingError(null);
     const heard = await speakAiMessage(message);
     if (!isMountedRef.current) return;
 
@@ -661,6 +701,7 @@ function VoiceSimulateInner() {
      */
     if (heard) {
       setBlockedAudioMessage(null);
+      setAudioIssue(null);
       if (!sessionCompleteRef.current) {
         await tryAutoStartRecording();
       }
@@ -900,6 +941,8 @@ function VoiceSimulateInner() {
     deliveryNote?: string | null,
     /** How the answer was spoken; saved with the turn if it is scored. */
     delivery?: DeliveryMetrics | null,
+    /** True when this is a second attempt at an answer already on screen. */
+    isResend = false,
   ) => {
     if (isSending) return;
 
@@ -912,20 +955,25 @@ function VoiceSimulateInner() {
 
     try {
       setError(null);
+      setUnsentAnswer(null);
       setIsSending(true);
 
       const userMessageId = `msg-${Date.now()}-user`;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: userMessageId,
-          role: "user",
-          content: userMessage,
-          timestamp: formatMessageTime(),
-          delivery: deliveryNote ?? null,
-        },
-      ]);
+      // A resend's answer is already in the transcript; appending it again
+      // would show the candidate saying the same thing twice.
+      if (!isResend) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: userMessageId,
+            role: "user",
+            content: userMessage,
+            timestamp: formatMessageTime(),
+            delivery: deliveryNote ?? null,
+          },
+        ]);
+      }
 
       // Stream the reply so the interviewer can start speaking sentence-by-
       // sentence while the rest of the answer is still being generated. This
@@ -957,6 +1005,8 @@ function VoiceSimulateInner() {
       // needs in order not to say it twice.
       let streamedText = "";
       let startedSpeaking = false;
+
+      setAudioIssue(null);
 
       const enqueueSentences = (flush: boolean) => {
         if (!ttsEnabled) return;
@@ -1000,11 +1050,7 @@ function VoiceSimulateInner() {
               // replay instead of opening the microphone over the missing
               // half of the reply.
               playbackFailedRef.current = true;
-              if (isMountedRef.current) {
-                setRecordingError(
-                  "The interviewer's voice cut out. The transcript is still on screen.",
-                );
-              }
+              if (isMountedRef.current) setAudioIssue("failed");
             });
         }
       };
@@ -1194,16 +1240,22 @@ function VoiceSimulateInner() {
           ? requestError.message
           : "Unable to reach the API.";
       if (isMountedRef.current) {
-        setError(messageText);
+        setError(
+          isNetworkError(requestError) ? NETWORK_ERROR_MESSAGE : messageText,
+        );
+        // The interviewer's reply never arrived, so its empty bubble is a
+        // placeholder for something that is not coming.
+        setMessages((prev) =>
+          prev.filter(
+            (message) => message.role !== "ai" || message.content.trim() !== "",
+          ),
+        );
+        setUnsentAnswer({ userMessage, deliveryNote, delivery });
         setIsSpeakingTts(false);
-
-        // Reopen the microphone. This branch skips the auto-start above, so a
-        // single failed request used to end the interview in practice: the
-        // error was shown, the mic stayed shut, and the only way forward was a
-        // button the candidate had no reason to think was needed.
-        if (!sessionCompleteRef.current) {
-          void tryAutoStartRecording();
-        }
+        // The microphone is deliberately left closed. It used to reopen here,
+        // which invited the candidate to say the whole answer again — now the
+        // answer is kept and "Send again" is the one obvious move, with the
+        // microphone still a tap away for anyone who would rather re-answer.
       }
     } finally {
       if (isMountedRef.current) {
@@ -1428,19 +1480,26 @@ function VoiceSimulateInner() {
               ))}
 
               {error && (
-                <div
-                  role="alert"
-                  className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
-                >
-                  <p className="font-medium">Something went wrong</p>
-                  <p className="mt-0.5">{error}</p>
-                </div>
+                <TurnErrorCard
+                  message={error}
+                  unsentAnswer={unsentAnswer?.userMessage}
+                  isSending={isSending}
+                  onSendAgain={() =>
+                    unsentAnswer &&
+                    void handleSend(
+                      unsentAnswer.userMessage,
+                      unsentAnswer.deliveryNote,
+                      unsentAnswer.delivery,
+                      true,
+                    )
+                  }
+                />
               )}
 
-              {/* Amber, not red: nothing has failed. Every browser refuses to
-                  play audio before you interact with the page, and the question
-                  is already on screen as text. It is amber rather than plain
-                  because the interview waits here until you tap. */}
+              {/* The one place the interviewer's audio is spoken about: the
+                  reason it went unheard, and the tap that plays it. Amber, not
+                  red — the question is already on screen as text, and the
+                  interview waits here rather than failing. */}
               {blockedAudioMessage && (
                 <Card className="border-warning-border bg-warning-subtle py-0">
                   <CardContent className="flex flex-wrap items-center gap-3 py-4">
@@ -1449,15 +1508,18 @@ function VoiceSimulateInner() {
                       aria-hidden
                     />
                     <p className="min-w-48 flex-1 text-sm text-warning-emphasis">
-                      Your browser blocked the interviewer&rsquo;s audio until
-                      you interact with the page.
+                      {audioIssue === "failed"
+                        ? "The interviewer's voice cut out. The question is on screen."
+                        : "Your browser blocked the interviewer's audio until you interact with the page."}
                     </p>
                     <Button
                       size="sm"
                       onClick={() => void handlePlayBlockedAudio()}
                       disabled={isSpeakingTts}
                     >
-                      Tap to hear the interviewer
+                      {audioIssue === "failed"
+                        ? "Play the question"
+                        : "Tap to hear the interviewer"}
                     </Button>
                   </CardContent>
                 </Card>

@@ -17,6 +17,7 @@ import { CodeInput } from "@/components/chat/code-input";
 import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { ChatMessage } from "@/components/chat/chat-message";
+import { TurnErrorCard } from "@/components/chat/turn-error-card";
 import { InterviewStatePanel } from "@/components/chat/interview-state-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -730,15 +731,7 @@ function ChatSimulateInner() {
                 />
               ))}
 
-              {error && (
-                <div
-                  role="alert"
-                  className="rounded-lg border border-destructive-border bg-destructive-subtle px-3 py-2 text-sm text-destructive-emphasis"
-                >
-                  <p className="font-medium">Something went wrong</p>
-                  <p className="mt-0.5">{error}</p>
-                </div>
-              )}
+              {error && <TurnErrorCard message={error} />}
 
               {isSending && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
