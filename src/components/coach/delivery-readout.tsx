@@ -85,9 +85,9 @@ export function DeliveryReadout({ metrics }: { metrics: DeliveryMetrics }) {
       tone: metrics.fillerCount === 0 ? "good" : fillers.tone,
     },
     {
-      label: "Long pauses",
+      label: "Pauses to think",
       value: metrics.longPauseCount,
-      caption: `Gaps of ${LONG_PAUSE_SECONDS} s or more`,
+      caption: `Gaps of ${LONG_PAUSE_SECONDS} s or more. Not scored`,
       tone: null,
     },
     {

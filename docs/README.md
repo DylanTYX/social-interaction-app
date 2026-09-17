@@ -15,6 +15,7 @@ Fourteen documents. This is which one answers what, so nobody has to grep.
 |                                            |                                                                                                            |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) | Every significant choice, the alternative rejected, and what it cost                                       |
+| [CHANGELOG.md](CHANGELOG.md)               | What changed in these documents, and every source added or corrected                                       |
 | [INTERVIEWER.md](INTERVIEWER.md)           | What the interviewer knows before and during a round, how it picks the next question, how rounds hand over |
 | [DATA-MODEL.md](DATA-MODEL.md)             | Nine tables, the RLS rule, what the client cannot write, what personal data is held                        |
 | [TOKEN-COST.md](TOKEN-COST.md)             | What a turn costs, how prompt caching works, and when it does not fire                                     |

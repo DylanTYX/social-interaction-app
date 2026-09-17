@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   Settings2,
   Code2,
+  Eye,
+  EyeOff,
   Loader2,
   Mic,
   Volume2,
@@ -278,6 +280,33 @@ function VoiceSimulateInner() {
   );
 
   /**
+   * Whether the interviewer's words are on screen.
+   *
+   * Off by default, because a real interview gives you nothing to read: with
+   * the questions printed, a candidate re-reads instead of listening, and the
+   * hardest part of a spoken round — holding the question in your head while
+   * you answer — is practised away. Your own answer stays visible either way;
+   * reading back what was transcribed is how you check the microphone heard
+   * you, not something you could do in the room.
+   *
+   * Not removed, for two reasons that outrank realism: a candidate who is deaf
+   * or hard of hearing, or in a room where audio is impossible, would have no
+   * way to practise at all; and when playback fails the app tells them the
+   * question is on screen, which has to be true. So it is a switch, and a
+   * failure flips it on. The whole transcript is in the report afterwards.
+   *
+   * See docs/DESIGN-DECISIONS.md §16.
+   */
+  const [transcriptShown, setTranscriptShown] = useState(false);
+  /**
+   * With the interviewer's voice switched off in setup, the words are all there
+   * is: hiding them would leave a screen that asks nothing. Derived rather than
+   * stored, so the two ways the text can be on screen cannot disagree.
+   */
+  const transcriptForced = !voiceConfig.ttsEnabled;
+  const transcriptVisible = transcriptShown || transcriptForced;
+
+  /**
    * An answer whose request failed, kept verbatim so it can be sent again.
    *
    * Recording a turn is not safely repeatable — if the request arrived and only
@@ -486,6 +515,8 @@ function VoiceSimulateInner() {
       setAudioIssue(
         message.toLowerCase().includes("autoplay") ? "blocked" : "failed",
       );
+      // The card about to appear says the question is on screen. Make it true.
+      setTranscriptShown(true);
     });
 
     return () => {
@@ -1050,7 +1081,10 @@ function VoiceSimulateInner() {
               // replay instead of opening the microphone over the missing
               // half of the reply.
               playbackFailedRef.current = true;
-              if (isMountedRef.current) setAudioIssue("failed");
+              if (isMountedRef.current) {
+                setAudioIssue("failed");
+                setTranscriptShown(true);
+              }
             });
         }
       };
@@ -1381,6 +1415,20 @@ function VoiceSimulateInner() {
             title={bootstrap.jobDescriptionTitle}
             missing={bootstrap.jobDescriptionMissing}
           />
+          {/* Spoken practice is the default, so this is an escape hatch
+              rather than a setting: one button, its state in its label. */}
+          {!transcriptForced && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTranscriptShown((shown) => !shown)}
+              aria-pressed={transcriptShown}
+              className="hidden sm:inline-flex"
+            >
+              {transcriptShown ? <EyeOff /> : <Eye />}
+              {transcriptShown ? "Hide transcript" : "Show transcript"}
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Open settings">
@@ -1396,6 +1444,15 @@ function VoiceSimulateInner() {
               >
                 Edit setup
               </DropdownMenuItem>
+              {/* The same switch, for the widths where the button is hidden. */}
+              {!transcriptForced && (
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onSelect={() => setTranscriptShown((shown) => !shown)}
+                >
+                  {transcriptShown ? "Hide transcript" : "Show transcript"}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onSelect={() => setIsAdvancedStateOpen(true)}>
                 Advanced system state
               </DropdownMenuItem>
@@ -1471,6 +1528,10 @@ function VoiceSimulateInner() {
                   key={msg.id}
                   role={msg.role}
                   content={msg.content}
+                  // Spoken, not printed: the interviewer's words are withheld
+                  // until asked for. Your own answers always show.
+                  spokenOnly={msg.role === "ai" && !transcriptVisible}
+                  onShowTranscript={() => setTranscriptShown(true)}
                   timestamp={msg.timestamp}
                   personaName={activePersonaConfig.name}
                   deliveryNote={msg.delivery}

@@ -62,3 +62,21 @@ describe("decideSilence", () => {
     });
   });
 });
+
+describe("a pause to think", () => {
+  /**
+   * The thing this threshold exists to protect. Mid-answer thinking pauses are
+   * reported to the candidate but never scored (docs/DESIGN-DECISIONS.md §15),
+   * so the interaction must not end a turn on one either. Three seconds used to
+   * submit; it now warns and keeps listening.
+   */
+  it("keeps listening through a three-second think", () => {
+    expect(at(3_000).kind).toBe("warning");
+  });
+
+  it("warns for long enough to be noticed before it submits", () => {
+    expect(SILENCE_SUBMIT_MS - SILENCE_WARN_AT_MS).toBeGreaterThanOrEqual(
+      2_000,
+    );
+  });
+});

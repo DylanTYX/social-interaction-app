@@ -715,13 +715,13 @@ function VoiceDeliveryCard({ summary }: { summary: DeliverySummary | null }) {
           : null,
     },
     {
-      label: "Long pauses",
+      label: "Pauses to think",
       value:
         recent.longPausesPerAnswer === null
           ? "—"
           : String(recent.longPausesPerAnswer),
       unit: recent.longPausesPerAnswer === null ? undefined : "per answer",
-      reading: `Gaps of ${LONG_PAUSE_SECONDS} s or more`,
+      reading: `Gaps of ${LONG_PAUSE_SECONDS} s or more. Thinking time is not scored`,
       tone: null,
       before:
         earlier?.longPausesPerAnswer != null

@@ -298,7 +298,7 @@ had happened. It now reads `DrillCategoryMeta.roundType`.
 uses (`useSpeechAnswer`), including the long-pause detection that ends the
 answer — so the loop is tap, talk, pause, read, with no button between finishing
 and seeing the coaching. A spoken answer also gets a **delivery** readout — pace in
-words per minute, filler words, long pauses and speaking time — computed in the
+words per minute, filler words, pauses to think and speaking time — computed in the
 browser from the recognizer's own phrase timings, so it costs no tokens and is
 the one piece of feedback a typed answer cannot have. It appears first in the
 coaching card, because it is ready the moment you stop, while the coach is still

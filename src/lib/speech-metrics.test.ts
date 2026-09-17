@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   analyzeDelivery,
+  LONG_PAUSE_SECONDS,
   FILLER_BANDS,
   FILLER_WORDS,
   fillerLabelFor,
@@ -13,7 +14,9 @@ const fillers = (text: string) => analyzeDelivery(text).fillerCount;
 
 describe("filler detection", () => {
   it("counts unambiguous hesitations", () => {
-    expect(fillers("um so uh I think, you know, I mean it worked")).toBeGreaterThanOrEqual(4);
+    expect(
+      fillers("um so uh I think, you know, I mean it worked"),
+    ).toBeGreaterThanOrEqual(4);
   });
 
   it("does not count 'like' used as a comparison", () => {
@@ -34,7 +37,9 @@ describe("filler detection", () => {
   });
 
   it("does not count emphasis words at all", () => {
-    expect(fillers("I actually shipped it and literally doubled throughput")).toBe(0);
+    expect(
+      fillers("I actually shipped it and literally doubled throughput"),
+    ).toBe(0);
   });
 });
 
@@ -63,5 +68,38 @@ describe("published thresholds", () => {
       const alone = fillers(`and then ${label} it worked`);
       expect(alone > 0).toBe(!onlyBesideHesitation);
     }
+  });
+});
+
+describe("pauses", () => {
+  const phrase = (offsetSeconds: number, durationSeconds = 1) => ({
+    text: "some words here",
+    offsetSeconds,
+    durationSeconds,
+  });
+
+  it("does not count an ordinary breath between sentences", () => {
+    // 1.5s used to count, which reported a normal way of speaking as an event.
+    const metrics = analyzeDelivery("some words here some words here", [
+      phrase(0),
+      phrase(2.5),
+    ]);
+    expect(metrics.longPauseCount).toBe(0);
+  });
+
+  it("counts a real gather-your-thoughts gap", () => {
+    const metrics = analyzeDelivery("some words here some words here", [
+      phrase(0),
+      phrase(4),
+    ]);
+    expect(metrics.longPauseCount).toBe(1);
+  });
+
+  it("counts from the published threshold, so the page cannot disagree", () => {
+    const metrics = analyzeDelivery("some words here some words here", [
+      phrase(0),
+      phrase(1 + LONG_PAUSE_SECONDS),
+    ]);
+    expect(metrics.longPauseCount).toBe(1);
   });
 });

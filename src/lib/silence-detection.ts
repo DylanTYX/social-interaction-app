@@ -14,15 +14,23 @@
  * in it.
  */
 
-/** How long a pause has to run before the turn is submitted. */
-export const SILENCE_SUBMIT_MS = 3000;
+/**
+ * How long a pause has to run before the turn is submitted.
+ *
+ * Raised from 3 s. Three seconds is inside the range a candidate spends
+ * thinking mid-answer, so the app ended turns on exactly the pauses it says
+ * elsewhere are fine — scoring never penalised them, but the interaction did.
+ * Four seconds still keeps the conversation moving, and the countdown below
+ * makes the deadline visible rather than surprising.
+ */
+export const SILENCE_SUBMIT_MS = 4000;
 
 /**
  * When the countdown becomes visible. Early enough that submission is never a
  * surprise, late enough that an ordinary between-sentence breath does not make
  * the UI flicker.
  */
-export const SILENCE_WARN_AT_MS = 1500;
+export const SILENCE_WARN_AT_MS = 2000;
 
 export type SilenceDecision =
   /** Still talking, or not yet talking. Nothing to show. */

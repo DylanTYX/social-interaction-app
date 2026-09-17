@@ -29,8 +29,20 @@ export interface DeliveryMetrics {
   fillerLabel: FillerLabel;
 }
 
-/** A gap between phrases at least this long counts as a long pause. */
-export const LONG_PAUSE_SECONDS = 1.5;
+/**
+ * A gap between phrases at least this long is counted and reported back.
+ *
+ * Reported, never scored: the analyzer takes the answer's text and nothing
+ * else, and this number carries no good/bad mark anywhere it is shown. That is
+ * deliberate — a pause is where the thinking happens, and the literature on
+ * spontaneous speech treats it as planning rather than as a fault. See
+ * docs/DESIGN-DECISIONS.md §15.
+ *
+ * It was 1.5 s, which is roughly an ordinary between-sentence breath, so
+ * "long pauses: 6" reported a normal way of talking as an event. 2.5 s is long
+ * enough that the count means a real gather-your-thoughts gap.
+ */
+export const LONG_PAUSE_SECONDS = 2.5;
 
 // Curated filler set. We deliberately avoid words that are usually legitimate,
 // to keep counts trustworthy.

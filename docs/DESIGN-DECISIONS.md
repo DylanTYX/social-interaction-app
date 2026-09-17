@@ -392,6 +392,109 @@ styles, and the derivation of the six persona dials — is documented in
 
 ---
 
+## 15. Delivery is feedback; a pause to think is never penalised
+
+**Decision.** How you sounded — pace, filler words, pauses — is measured in the
+browser, shown to you, and kept out of the grade. `analyzeResponse` takes the
+answer's text, the question and optional role context; nothing about delivery
+reaches it, the chat route sends none, and `decision-engine.ts` does not consult
+it when choosing the next question. Pauses go further than the rest: they carry
+no good/bad mark anywhere they are shown, in the drill readout or in Analytics.
+
+**The alternative** is the obvious one for a "communication skills" tool: fold
+pace, fillers and pauses into a delivery score and average it with the content.
+
+**Why not.** A score has to mean something, and this one would not. A pause is
+where the planning happens — Goldman-Eisler's work on spontaneous speech found
+pausing precedes the more complex and less predictable stretches of what people
+say — and in classroom research, lengthening the silence after a question
+produced longer, better-reasoned answers rather than worse ones (Rowe's
+"wait time"). Marking that down would train candidates to fill silence with
+noise, which is the opposite of the advice every interview guide gives.
+
+The honest complication, recorded rather than hidden: listeners *do* read long
+silences as uncertainty (Brennan & Williams), and vocal cues measurably shift
+interviewer ratings (DeGroot & Motowidlo). So the count is worth showing. It is
+worth showing as a fact about your own speech, not as a deduction from a score
+this project claims is about the content of an answer.
+
+**The two thresholds, and why they moved.**
+
+| Rule | Was | Now | Why |
+| ---- | --- | --- | --- |
+| Counted as a pause (`LONG_PAUSE_SECONDS`) | 1.5 s | **2.5 s** | 1.5 s is roughly an ordinary between-sentence breath. Conversation analysis puts the tolerated silence in talk at about a second, so a count starting just above it reported normal speech as an event |
+| Silence that ends your turn (`SILENCE_SUBMIT_MS`) | 3 s | **4 s** | Three seconds is inside the range people spend thinking mid-answer. Scoring never penalised those pauses, but the interaction ended the turn on them, which is the same message by another route |
+
+Silence *before* you start speaking has always been exempt: the response timer
+owns that, and it runs for three minutes.
+
+**What it costs.** A four-second deadline makes the conversation slightly less
+brisk, and someone who has genuinely finished waits a second longer than before.
+The countdown is visible from two seconds, so the deadline is never a surprise,
+and the microphone button ends the turn immediately for anyone who wants it.
+
+**Sources.** Compiled without internet access; verify each against the original
+before quoting it in the report.
+
+- Goldman-Eisler, F. (1968). _Psycholinguistics: Experiments in Spontaneous
+  Speech._ Academic Press. Pausing as cognitive planning in spontaneous speech.
+- Rowe, M. B. (1986). Wait time: slowing down may be a way of speeding up.
+  _Journal of Teacher Education_, 37(1), 43–50. Longer silences after a question
+  lengthen and improve the answers.
+- Jefferson, G. (1989). Preliminary notes on a possible metric which provides
+  for a "standard maximum" silence of approximately one second in conversation.
+  In D. Roger & P. Bull (Eds.), _Conversation: An Interdisciplinary
+  Perspective._ Multilingual Matters.
+- Brennan, S. E., & Williams, M. (1995). The feeling of another's knowing:
+  Prosody and filled pauses as cues to listeners' assessments of knowledge.
+  _Journal of Memory and Language_, 34(3), 383–398.
+- DeGroot, T., & Motowidlo, S. J. (1999). Why visual and vocal interview cues
+  can affect interviewers' judgments and predict job performance. _Journal of
+  Applied Psychology_, 84(6), 986–993.
+
+---
+
+## 16. A voice interview prints nothing to read from
+
+**Decision.** In a voice interview the interviewer's words are not on screen.
+The bubble says the question was asked out loud and offers to show it; one
+button in the header switches the transcript on and off. Your own answers are
+always printed. The text reveals itself in two cases: when playback fails or is
+blocked, and when the interviewer's voice is switched off in setup.
+
+**The alternative** is what the screen did until now — print every question as
+it is spoken, exactly as the text interview does.
+
+**Why.** There is nothing to read in a real interview, and a printed question
+changes the task: you re-read instead of listening, and the hard part of a
+spoken round — holding the question in your head while you answer — is
+practised away. It is also the multimedia-learning result: narration plus
+identical on-screen text is worse than narration alone, because the two channels
+compete rather than reinforce (the redundancy principle, Mayer 2009; Kalyuga,
+Chandler & Sweller 1999).
+
+**Why not remove it.** Two reasons outrank realism. A candidate who is deaf or
+hard of hearing, or in a room where audio is impossible, would have no way to
+practise at all; live audio with no text alternative is exactly what WCAG 2.2
+§1.2.4 exists to prevent. And the app's own failure path promises it: when audio
+is blocked the card says the question is on screen, which has to be true.
+
+**What it costs.** One more control in the interview header, and a candidate who
+prefers reading has to ask for it once per session. The default is deliberately
+the harder practice, not the easier one.
+
+**Sources.** Compiled without internet access; verify before quoting.
+
+- Mayer, R. E. (2009). _Multimedia Learning_ (2nd ed.). Cambridge University
+  Press. The redundancy principle.
+- Kalyuga, S., Chandler, P., & Sweller, J. (1999). Managing split-attention and
+  redundancy in multimedia instruction. _Applied Cognitive Psychology_, 13(4),
+  351–371.
+- W3C. _Web Content Accessibility Guidelines (WCAG) 2.2_, §1.2.4 Captions
+  (Live), Level AA.
+
+---
+
 ## Decisions still open
 
 Honest about what has not been settled:

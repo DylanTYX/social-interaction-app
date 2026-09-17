@@ -176,9 +176,15 @@ nothing launches, the step says why, and it offers a text interview instead.
 - **Streaming** shows the interviewer's reply as it's written. In voice mode it
   starts speaking before the sentence is finished, which cuts the pause.
 - **Voice mode** transcribes as you speak and reports your delivery under each
-  answer: speaking pace, filler words, and long pauses. Each scored spoken
+  answer: speaking pace, filler words, and pauses to think. Each scored spoken
   answer's figures are saved with the session, so Analytics can show them over
-  time.
+  time. None of it reaches the scorer: delivery is feedback, and a pause to
+  think costs nothing (DESIGN-DECISIONS §15).
+- **Nothing to read from.** The interviewer's questions are spoken, not
+  printed. A bubble says "Asked out loud", and one button in the header shows
+  the transcript for anyone who needs it; it appears by itself if the audio
+  fails or the interviewer's voice is off. Your own answers always show, and
+  the full transcript is in the report (DESIGN-DECISIONS §16).
 - **Speak, then type the code.** A technical round in voice mode gives you both:
   talk through your approach, then switch to **Write code** for the part you
   cannot dictate. The microphone stops while the editor is open, so nothing is
@@ -252,7 +258,7 @@ interviewer was; a radar and a list of each rubric part's average, with the
 weakest named and, once there are enough answers, how each part has changed;
 and what your answers most often lacked, counted from the judgements the AI made
 while scoring them, with its latest notes. Then **voice delivery** across your
-voice interviews (pace, filler words per 100 words, long pauses, compared with
+voice interviews (pace, filler words per 100 words, pauses to think, compared with
 your earlier answers), a suggestion for what to practise next, and the
 competencies no interview has asked you about yet. A short note says what the
 page does not track.
@@ -290,7 +296,7 @@ nobody is assessed on:
 - **Speak** — the same microphone the voice interview uses (`useSpeechAnswer`),
   including the long-pause detection that ends the answer for you. Tap, talk,
   pause, read the coaching. A spoken answer also gets a **delivery** line —
-  words per minute, filler count, long pauses — computed in the browser from the
+  words per minute, filler count, pauses to think — computed in the browser from the
   recognizer's own phrase timings, so it costs nothing and is the one piece of
   feedback a typed answer cannot have.
 - **Type** — the textarea, for when you want to work on the words rather than

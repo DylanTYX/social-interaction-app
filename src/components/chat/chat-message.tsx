@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
-import { Loader2, Mic } from "lucide-react";
+import { Loader2, Mic, Volume2 } from "lucide-react";
 
 import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import { TILE_ACCENT, tileColorForKey } from "@/lib/tile-colors";
@@ -20,6 +20,15 @@ interface ChatMessageProps {
   feedbackLoading?: boolean;
   /** Voice delivery summary (pace, fillers, pauses) shown under user turns. */
   deliveryNote?: string | null;
+  /**
+   * The message was spoken and its words are withheld, as a voice interview
+   * does by default. The bubble says so and offers to show them; it never
+   * renders the text, so nothing can be read off a screen the candidate was
+   * meant to be listening to.
+   */
+  spokenOnly?: boolean;
+  /** Reveals the transcript from inside the bubble. */
+  onShowTranscript?: () => void;
 }
 
 const FEEDBACK_TONE_CLASS: Record<
@@ -149,6 +158,8 @@ export const ChatMessage = memo(function ChatMessage({
   feedbackTone = "neutral",
   feedbackLoading = false,
   deliveryNote,
+  spokenOnly = false,
+  onShowTranscript,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
@@ -208,7 +219,24 @@ export const ChatMessage = memo(function ChatMessage({
               : "rounded-tl-sm border border-slate-200 bg-white text-slate-900",
           )}
         >
-          {isUser ? (
+          {spokenOnly ? (
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+              <Volume2
+                className="h-4 w-4 shrink-0 text-slate-400"
+                aria-hidden
+              />
+              <span>Asked out loud.</span>
+              {onShowTranscript && (
+                <button
+                  type="button"
+                  onClick={onShowTranscript}
+                  className="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-primary-muted focus-visible:outline-none"
+                >
+                  Show transcript
+                </button>
+              )}
+            </p>
+          ) : isUser ? (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">
               {content}
             </p>
