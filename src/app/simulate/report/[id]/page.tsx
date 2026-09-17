@@ -62,10 +62,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { ErrorStateCard } from "@/components/dashboard/error-state-card";
-import {
-  PageContainer,
-  PANEL_LABEL,
-} from "@/components/dashboard/page-header";
+import { PageContainer, PANEL_LABEL } from "@/components/dashboard/page-header";
 import { ScoreReveal } from "@/components/report/score-reveal";
 import { SessionNotesCard } from "@/components/report/session-notes-card";
 import { EditableTitle } from "@/components/sessions/editable-title";
@@ -87,6 +84,8 @@ import { CoachingResult } from "@/components/coach/coaching-result";
 import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 import type { AnalysisResult } from "@/lib/response-analyzer";
 import { parseCoverage } from "@/lib/competencies";
+import { useTokenUsage } from "@/hooks/use-token-usage";
+import { formatTokens, formatUsd } from "@/lib/format";
 
 interface MessageRecord {
   id: string;
@@ -206,6 +205,10 @@ export default function SessionReportPage({
   const [isStartingNextRound, setIsStartingNextRound] = useState(false);
   const [nextRoundError, setNextRoundError] = useState<string | null>(null);
 
+  // What this interview cost to run. A separate read from the report itself,
+  // so a slow or failed usage query never delays the scores.
+  const { usage } = useTokenUsage({ sessionId: id });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -290,7 +293,9 @@ export default function SessionReportPage({
   /** Reflect an organisation change the server has accepted. */
   const updateReportSession = (patch: Partial<SessionRecord>) =>
     setData((current) =>
-      current ? { ...current, session: { ...current.session, ...patch } } : current,
+      current
+        ? { ...current, session: { ...current.session, ...patch } }
+        : current,
     );
 
   const handleTogglePin = async () => {
@@ -301,7 +306,9 @@ export default function SessionReportPage({
       toast.success(pinned ? "Pinned to the top of your sessions" : "Unpinned");
     } catch (err) {
       updateReportSession({ pinned: !pinned });
-      toast.error(err instanceof Error ? err.message : "Couldn't update this session.");
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't update this session.",
+      );
     }
   };
 
@@ -425,13 +432,30 @@ export default function SessionReportPage({
             </span>
             <span aria-hidden>·</span>
             <span>{formatReportDate(session.startedAt)}</span>
+            {/* What this interview cost to run. The app has recorded every
+                model call since it was built; this is the one place the number
+                appears where the work happened. Settings holds the breakdown. */}
+            {usage && usage.totalTokens > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums">
+                  {formatTokens(usage.totalTokens)} tokens
+                  {usage.costUsd === null
+                    ? ""
+                    : ` (about ${formatUsd(usage.costUsd)})`}
+                </span>
+              </>
+            )}
           </p>
           {jobDescription && (
             <p
               className="flex min-w-0 items-center gap-1.5 text-sm text-slate-600"
               title={jobDescription.title}
             >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
+              <FileText
+                className="h-3.5 w-3.5 shrink-0 text-slate-400"
+                aria-hidden
+              />
               {/* Role at company when both are known, which is what the
                   interviewer was actually told. */}
               <span className="truncate">
@@ -461,7 +485,9 @@ export default function SessionReportPage({
                 ) : (
                   <Pin className="h-4 w-4" />
                 )}
-                {session.pinned ? "Unpin from your sessions" : "Pin to top of your sessions"}
+                {session.pinned
+                  ? "Unpin from your sessions"
+                  : "Pin to top of your sessions"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void handleCopyLink()}>
@@ -506,11 +532,12 @@ export default function SessionReportPage({
                       />
                     </div>
                     <div className="space-y-1.5 sm:max-w-md sm:border-l sm:border-slate-200 sm:pl-5">
-                      {prediction?.kind === "guessed" && displayedScore !== null && (
-                        <p className="text-sm font-medium text-slate-700">
-                          {predictionDetail(prediction.guess, displayedScore)}
-                        </p>
-                      )}
+                      {prediction?.kind === "guessed" &&
+                        displayedScore !== null && (
+                          <p className="text-sm font-medium text-slate-700">
+                            {predictionDetail(prediction.guess, displayedScore)}
+                          </p>
+                        )}
                       {/* The rubric is persona-blind, but the *questions* are not:
                           difficulty folds in (strictness - warmth), so easier
                           questions get better answers. Two scores from different
@@ -546,8 +573,12 @@ export default function SessionReportPage({
                 caption={communicationDetail(confidenceScore, analyses)}
               />
               <StatTile
-                label={usesTechnicalRubric ? "Technical rubric" : "STAR average"}
-                value={starScore === null ? "—" : `${Math.round(starScore * 10)}%`}
+                label={
+                  usesTechnicalRubric ? "Technical rubric" : "STAR average"
+                }
+                value={
+                  starScore === null ? "—" : `${Math.round(starScore * 10)}%`
+                }
                 caption={
                   usesTechnicalRubric
                     ? technicalDetail(analyses)
@@ -863,7 +894,10 @@ function TurnCoaching({
         <div className="mt-2 space-y-3 border-t border-slate-100 pt-3">
           {loading && (
             <p className="flex items-center gap-2 text-xs text-slate-500">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin text-primary"
+                aria-hidden
+              />
               Coaching this answer…
             </p>
           )}

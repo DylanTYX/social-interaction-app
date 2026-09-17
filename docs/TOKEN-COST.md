@@ -24,6 +24,23 @@ table has never been queried with real rows in it. Treat every figure in the
 
 ---
 
+## What the user sees
+
+The same accounting, for the person who caused it. Settings → Usage shows their
+own tokens and an estimated cost for a chosen period, grouped by what the tokens
+bought, with what caching saved and the date these rates were checked. A report
+carries one line for that interview.
+
+`GET /api/me/usage` reads the caller's rows (row-level security scopes it),
+prices them with `lib/pricing.ts`, and returns totals only. The rate card stays
+server-side: the lint rule in `eslint.config.mjs` permits it under
+`src/app/api` and bars it from every page and component.
+
+A figure shown to a user is an estimate and says so. An unpriced model is named
+rather than costed at zero, exactly as in the report below.
+
+---
+
 ## What one turn costs
 
 A single text turn makes up to four model calls:

@@ -216,6 +216,7 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | A4  | Delete all sessions | **Delete all sessions**, confirm                                           | The dialog states how many; afterwards Sessions is empty and the libraries are untouched  | ☐     |       |
 | A5  | Sign out           | **Sign out**                                                                | Lands on sign-in; `/dashboard` needs signing in again                                     | ☐     |       |
 | A6  | Section links      | ⌘K → **Export or delete your data**                                         | Settings opens scrolled to Your data                                                      | ☐     |       |
+| A7  | Usage              | Practise a round, then open Settings → Usage                                | Tokens and an estimated cost for the period, split by what they bought; the report for that session shows its own token line | ☐     |       |
 
 --- | -------------- | ------------------------------------------------- | ---------------------------------------- | ----- | ----- |
 | A1  | Profile tab    | Update display fields if available                | Saves without error                      | ☐     |       |

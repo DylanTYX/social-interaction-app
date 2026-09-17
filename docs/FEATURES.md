@@ -369,10 +369,20 @@ what to say instead, and gives the voice delivery thresholds. The criteria,
 readings and thresholds are imported from the code that applies them, so the
 page cannot teach a rule the app does not use.
 
-**Settings** — one page in five sections: your profile, sign-in and security
-(password reset, sign-out), a download of your data as JSON, where your data
-goes (OpenAI for text, Azure Speech for voice, and what this app keeps), and
-deleting your interview history, which says how many sessions it will delete. Interview preferences are deliberately not here: the
+**Settings** — one page in six sections: your profile, sign-in and security
+(password reset, sign-out), your usage, a download of your data as JSON, where
+your data goes (OpenAI for text, Azure Speech for voice, and what this app
+keeps), and deleting your interview history, which says how many sessions it
+will delete.
+
+**Usage** — what your practice cost to run. Every model call has been recorded
+since the app was built; Settings now shows your own: tokens and an estimated
+cost for a period you choose, broken down by what they bought — asking
+questions, scoring answers, coaching, keeping track of the conversation,
+reading your documents — with what prompt caching saved and the date the prices
+were checked. A report says what that one interview used. The rate card stays
+on the server: `/api/me/usage` prices your rows and returns the totals, so the
+prices are never in the browser. Interview preferences are deliberately not here: the
 setup wizard is their one home — it remembers your last setup, and every one
 of its controls sits on a step you pass through to launch anyway.
 

@@ -327,6 +327,47 @@ export default function HelpPage() {
         </Card>
       </GuideSection>
 
+      <GuideSection
+        title="What an interview costs to run"
+        description="Every question and every score is a call to a language model, and each one is counted."
+      >
+        <Card className="gap-0 py-0">
+          <dl className="divide-y divide-slate-100">
+            <GuideRow term="Tokens">
+              The unit those calls are measured in. A token is roughly
+              three-quarters of a word, counted on the way in and on the way
+              out.
+            </GuideRow>
+            <GuideRow term="One answer, two calls">
+              Scoring your answer and writing the next question are separate
+              calls, by design: the score is what shapes the question, and the
+              interviewer never sees the marking.
+            </GuideRow>
+            <GuideRow term="Short answers cost less">
+              A brief answer is cheaper to score than a rambling one, and a
+              one-word reply is not scored at all.
+            </GuideRow>
+            <GuideRow term="Repeated context is reused">
+              The part of the interviewer&rsquo;s brief that does not change
+              between turns is reused at a discount, so a long interview does
+              not cost in proportion to its length.
+            </GuideRow>
+            <GuideRow term="See your own">
+              Settings shows your tokens and an estimated cost for a period you
+              choose, broken down by what they bought. Each report shows what
+              that interview used.{" "}
+              <Link
+                href="/dashboard/settings?section=usage"
+                className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Your usage
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </GuideRow>
+          </dl>
+        </Card>
+      </GuideSection>
+
       <Card className="gap-0 divide-y divide-slate-100 py-0">
         <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div>

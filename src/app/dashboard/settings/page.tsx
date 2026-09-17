@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
+import { TokenUsageCard } from "@/components/dashboard/token-usage-card";
 import { getDisplayName, useCurrentUser } from "@/hooks/use-current-user";
 import { useInterviewHistory } from "@/hooks/use-interview-history";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -30,7 +31,14 @@ type SaveState =
  * command palette's "Account & security" and "Export or delete your data" land
  * on the right part of the page.
  */
-const SECTIONS = ["profile", "security", "data", "privacy", "delete"] as const;
+const SECTIONS = [
+  "profile",
+  "security",
+  "usage",
+  "data",
+  "privacy",
+  "delete",
+] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 const PAGE_DESCRIPTION =
@@ -382,6 +390,14 @@ function SettingsPageInner() {
               </Button>
             </SettingsRow>
           </Card>
+        </SettingsSection>
+
+        <SettingsSection
+          id="usage"
+          title="Usage"
+          description="What your practice has cost to run."
+        >
+          <TokenUsageCard />
         </SettingsSection>
 
         <SettingsSection

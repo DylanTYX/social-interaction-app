@@ -139,18 +139,19 @@ the exception is worth presenting rather than glossing.
 | `SUPABASE_SERVICE_ROLE_KEY`                                       | One CLI script, no `NEXT_PUBLIC_` prefix                                                                                    | Yes — Next only inlines `NEXT_PUBLIC_*`, so it evaluates to `undefined` in a browser even if imported wrongly |
 | Another user's data                                               | Row-level security on every table, `user_id = auth.uid()`                                                                   | Yes, in the database                                                                                          |
 | `docs/` and `docs/artifacts/`                                     | Not in `public/`, no file-serving route, no rewrites                                                                        | Yes — no URL returns them                                                                                     |
-| **A user's own `llm_usage` rows**                                 | **Nothing. The UI simply never renders them**                                                                               | **No**                                                                                                        |
+| **A user's own `llm_usage` rows**                                 | **Shown to them on purpose: Settings → Usage, and a line on each report. `GET /api/me/usage` prices them server-side**       | **RLS, plus the import rule that keeps the rate card off every page and component**                            |
 
 **The last row, stated plainly.** `0002_security.sql` grants `select` on
 `llm_usage` to `authenticated`, and Supabase exposes every granted table over
-PostgREST. A logged-in user can open devtools and read all of _their own_ usage
-rows — model names, token counts, session ids — using the publishable key
-already in their browser. They cannot insert rows: those come only from the
-`record_llm_usage` function.
+PostgREST. A logged-in user can read all of _their own_ usage rows — model
+names, token counts, session ids — and the app now shows them the same figures
+deliberately, with an estimated cost. They cannot insert rows: those come only
+from the `record_llm_usage` function.
 
 What they cannot do: read anyone else's rows (RLS blocks it), update or delete
-any row (no grant), or derive dollar cost (the price table is not in the
-browser).
+any row (no grant), or read the rate card. Pricing happens in the route handler
+and only the finished total is sent, which is why the import rule now permits
+`@/lib/pricing` under `src/app/api` and nowhere else.
 
 **Why it is that way, and why it is a trade-off rather than an oversight:**
 usage is written by the server using the _user's own_ cookie-bound session, not
@@ -158,10 +159,10 @@ a privileged one. Revoking `insert` from `authenticated` would stop recording
 entirely. Fixing it properly means a service-role write path — real work, not
 demo-blocking, and recorded here rather than discovered by someone else.
 
-**The line to use if asked:** _"The absence of a UI is not access control. The
-enforced boundaries are the import graph, the service-role key and RLS. A user
-can see their own token counts if they go looking; they cannot see anyone
-else's, and they cannot see what it cost."_
+**The line to use if asked:** _"The enforced boundaries are the import graph,
+the service-role key and RLS. A user sees their own usage because we chose to
+show it — tokens, and a cost priced on the server. They cannot see anyone
+else's, and the price table itself never leaves the server."_
 
 ### Why each command is developer-only
 

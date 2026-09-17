@@ -60,3 +60,33 @@ export function initialsFromName(name: string): string {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
+
+/**
+ * A token count, rounded to the precision the number deserves.
+ *
+ * Nobody acts on the last three digits of 23,847, and printing them implies a
+ * precision the figure does not have: usage is recorded per call and a single
+ * answer moves it by hundreds. Small counts stay exact, because "0" and "840"
+ * are meaningfully different when you are looking at one interview.
+ */
+export function formatTokens(tokens: number): string {
+  if (!Number.isFinite(tokens) || tokens <= 0) return "0";
+  if (tokens >= 10_000)
+    return (Math.round(tokens / 1_000) * 1_000).toLocaleString();
+  if (tokens >= 1_000) return (Math.round(tokens / 100) * 100).toLocaleString();
+  return Math.round(tokens).toLocaleString();
+}
+
+/**
+ * A dollar figure at a scale a candidate can read.
+ *
+ * These are fractions of a cent per call, so two decimal places would print
+ * "$0.00" for real spend. Under a dollar keeps three; at or above it, the usual
+ * two. Exact zero is zero — only an empty window produces it.
+ */
+export function formatUsd(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) return "$0.00";
+  if (amount < 0.001) return "under $0.001";
+  if (amount < 1) return `$${amount.toFixed(3)}`;
+  return `$${amount.toFixed(2)}`;
+}

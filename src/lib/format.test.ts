@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDateTime, formatRelativeDate, initialsFromName } from "@/lib/format";
+import {
+  formatDateTime,
+  formatRelativeDate,
+  formatTokens,
+  formatUsd,
+  initialsFromName,
+} from "@/lib/format";
 
 describe("formatRelativeDate", () => {
   const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
@@ -42,7 +48,9 @@ describe("formatDateTime", () => {
   });
 
   it("renders a parseable timestamp", () => {
-    expect(formatDateTime("2026-01-15T10:30:00.000Z").length).toBeGreaterThan(0);
+    expect(formatDateTime("2026-01-15T10:30:00.000Z").length).toBeGreaterThan(
+      0,
+    );
   });
 });
 
@@ -59,5 +67,33 @@ describe("initialsFromName", () => {
   it("handles empty and whitespace input", () => {
     expect(initialsFromName("")).toBe("??");
     expect(initialsFromName("   ")).toBe("??");
+  });
+});
+
+describe("formatTokens", () => {
+  it("keeps a small count exact", () => {
+    expect(formatTokens(0)).toBe("0");
+    expect(formatTokens(840)).toBe("840");
+  });
+
+  it("rounds a big count to the precision it deserves", () => {
+    expect(formatTokens(3_412)).toBe("3,400");
+    expect(formatTokens(23_847)).toBe("24,000");
+  });
+});
+
+describe("formatUsd", () => {
+  it("does not print real spend as zero", () => {
+    // Two decimal places would round a turn's cost to "$0.00".
+    expect(formatUsd(0.0042)).toBe("$0.004");
+    expect(formatUsd(0.0001)).toBe("under $0.001");
+  });
+
+  it("uses the usual two places from a dollar up", () => {
+    expect(formatUsd(1.2345)).toBe("$1.23");
+  });
+
+  it("treats nothing as nothing", () => {
+    expect(formatUsd(0)).toBe("$0.00");
   });
 });
