@@ -167,6 +167,15 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /*
+   * App pages scroll inside the shell, never as a document: a second,
+   * page-level scrollbar there is always a fault. Scoped by `:has()`, so the
+   * marketing page, the auth screens and the live interview keep their own.
+   */
+  body:has(> [data-app-shell]) {
+    overflow: hidden;
+  }
 }
 
 /* One global honouring of prefers-reduced-motion, rather than a `motion-reduce:`

@@ -27,10 +27,29 @@ import { CommandPalette } from "@/components/layout/command-palette";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="h-screen flex bg-white">
+      {/*
+        One scrollbar, inside `main`. The classes below are what keep it that
+        way — each closes a different route to a second one:
+
+          - `overflow-hidden` + `relative`: nothing, positioned or not, can
+            grow the shell or escape it to the document.
+          - `min-h-0` + `h-screen` on `main`: it sizes to the screen, not to
+            its content, and still scrolls if the flex stretch never lands.
+          - `overscroll-contain`: reaching the end stops there instead of
+            chaining the leftover scroll to the page behind.
+          - `data-app-shell`: `globals.css` locks document scrolling on pages
+            that render this, so anything injected outside it cannot scroll
+            either.
+      */}
+      <div
+        data-app-shell
+        className="relative h-screen flex overflow-hidden bg-white"
+      >
         <Sidebar />
         {/* `pb-20 lg:pb-0` clears the fixed mobile bar below `lg`. */}
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">{children}</main>
+        <main className="h-screen min-h-0 flex-1 overflow-y-auto overscroll-contain pb-20 lg:pb-0">
+          {children}
+        </main>
         <MobileNav />
         <CommandPalette />
       </div>
