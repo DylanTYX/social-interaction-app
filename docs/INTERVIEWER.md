@@ -228,8 +228,16 @@ The headlines:
   default LLM interviewers issue deepening probes on **4.9% of turns**
   (arXiv 2608.10412), the failure mode this design exists to beat.
 
-Two faults this harness found by being run rather than read: the `--live` arm
-had never executed at all — it requests a JSON response format that OpenAI
+**The fault this harness existed to find.** The steering block — the whole
+adaptive loop — was sent ahead of the transcript, where it lost to recency and
+was ignored: 0 pivots opened in 10 under the old order, 10 in 10 after moving it
+after the exchange ([DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) §17). Nothing in
+review would have caught it; the block was well-formed, tested and sent every
+turn. Only generating output and checking whether the model did what it was told
+revealed that it did not.
+
+Two further faults, also found by running it rather than reading it: the
+`--live` arm had never executed at all — it requests a JSON response format that OpenAI
 rejects unless a message contains the word "json", so every judge call returned
 400 — and the steering block was cancelling its own topic pivots two lines
 below itself. Both are fixed; both are written up in PERSONA-EVAL.md.

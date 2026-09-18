@@ -110,15 +110,18 @@ from cache. Two properties drive everything below:
 So the design goal is: _put everything constant at the front, everything that
 changes at the back, and don't switch models mid-session._
 
-### The stable / volatile split
+### The stable / volatile / steering split
 
-`buildPromptLayers` in [route.ts](../src/app/api/chat/route.ts) emits two system
-messages in a fixed order:
+`buildPromptLayers` in [route.ts](../src/app/api/chat/route.ts) emits three
+blocks, and `toOpenAIMessages` places them in an order that is load-bearing for
+two different reasons — one about cost, one about whether the model obeys.
 
 **Stable** — identical for every turn of a session, so it forms the cacheable
 prefix:
 
-- the static interviewer instructions (**measured: 832 chars, ~208 tokens**)
+- the static interviewer instructions (**measured 2026-09-18: 1,862 chars,
+  ~466 tokens**; this document previously recorded 832 chars / ~208 tokens,
+  which had been true once and was never re-measured)
 - the persona description
 - the scenario context
 - round-type guidance ("how to run this kind of round")
@@ -127,11 +130,31 @@ prefix:
 - the hiring company, when the job description records one
 - the job description **only when it was inlined whole**
 
-**Volatile** — changes turn to turn, so it must come after:
+**Volatile** — changes turn to turn, so it must come after the prefix:
 
 - retrieved JD excerpts (different every turn by construction)
-- the per-turn coaching signal from the analyzer
 - the rolling conversation summary
+
+**Steering** — the private note naming the strategy, the focus and the
+difficulty target. It goes **last, after the transcript and after the answer it
+responds to**, and that is not a cost decision:
+
+> Placed ahead of the exchange, as it was until 2026-09-18, the note was
+> ignored. On a topic pivot — where it says "change direction" and names the
+> subject to open — the model opened that subject **0 times in 10**, asking
+> instead about the story it had just been told to leave. With the identical
+> text moved after the exchange: **10 times in 10**.
+
+The instruction was never weak; it was outranked by two more recent messages
+about the very thing it wanted dropped, beneath a ~656-token persona prompt full
+of reasons to dig into the last answer. Recency decided. See
+[PERSONA-EVAL.md](PERSONA-EVAL.md) and
+[DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) §17.
+
+**This is also the better arrangement for caching**, which is the happy part. The
+cacheable prefix is now the stable prompt followed by an append-only transcript,
+rather than being cut short every turn by a block that changes every turn. The
+prefix grows with the conversation instead of being invalidated by it.
 
 The JD appears in _both_ lists deliberately. A whole inlined document is
 identical on every turn and belongs in the prefix; retrieved excerpts are chosen

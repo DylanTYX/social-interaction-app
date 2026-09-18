@@ -208,9 +208,33 @@ vocabulary reuse, not engagement, and should not be read as the latter.
 
 ---
 
-## 5. Two faults found by running the harness
+## 5. Faults found by running the harness
 
-Neither would have been caught by reading the code.
+None would have been caught by reading the code.
+
+**The steering note was never read.** This is the one that mattered. The private
+note carries the strategy, the focus and the difficulty target — the whole
+adaptive loop — and it sat in the system prompt, ahead of the transcript and
+ahead of the answer it responds to. On a topic pivot it says "change direction"
+and names the subject to open; the model opened that subject **0 times in 10**
+and asked about the story it had been told to leave, in nearly the same words
+every time. With the identical text moved after the exchange: **10 times in 10**.
+
+The instruction was never weak. Above it sat ~656 tokens of persona telling the
+interviewer to press for specifics, contest claims and stay on the answer; below
+it sat the story itself. One line asking it to let go could not win that.
+
+Two things about how this was found are worth more than the fix. **The blind
+judge missed it completely** — it rated those follow-ups as perfectly reasonable
+questions, because they *are* reasonable questions; they were simply not the ones
+the system asked for. Only the deterministic check — did the text name the
+subject the engine chose? — caught it, which is the argument for counting over
+rating in one example. And **it is invisible to review**: the block was
+well-written, correctly built, covered by tests and sent on every single turn.
+Position in a request is part of an instruction's meaning, and nothing but
+generated output will tell you so.
+
+Recorded as [DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) §17.
 
 **The live arm had never run.** It requests `response_format: json_object`, which
 OpenAI rejects with a 400 unless some message contains the literal word "json".

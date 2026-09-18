@@ -16,6 +16,35 @@ be checked against the original before it is quoted in the report.
 
 ## 2026-09-18
 
+### The steering note was in the wrong place, and nothing said so
+
+**Documents:** `DESIGN-DECISIONS.md` §17 (new), `TOKEN-COST.md`
+("The stable / volatile / steering split" rewritten), `REQUIREMENTS.md` (F9
+evidence), `INTERVIEWER.md` §7, `PERSONA-EVAL.md`.
+
+**What changed in the product.** The private note carrying the strategy, the
+focus and the difficulty target now goes after the transcript and the answer it
+responds to, rather than in the system prompt ahead of them. Measured: on a topic
+pivot the model opened the named subject 0 times in 10 under the old order and 10
+times in 10 under the new one, with identical text. Under the old order a
+51-per-cell run produced roughly 150 pivots and one follow-up that mentioned the
+new subject.
+
+**Reference corrections.** `TOKEN-COST.md` described two system messages in a
+fixed order; there are three, and the third is placed for obedience rather than
+for cost. The same document recorded the static instructions as 832 chars /
+~208 tokens in one section while a later section, corrected earlier the same day,
+gave ~466 — the stale figure is now replaced and labelled, so the contradiction
+is not simply papered over.
+
+**On caching.** The reorder is neutral-to-positive: the cacheable prefix becomes
+the stable prompt plus an append-only transcript instead of being cut short each
+turn by a block that changes each turn. This is reasoning from OpenAI's
+documented prefix rule, **not** a measurement — `cached_tokens` on live traffic
+is still unread, as `TOKEN-COST.md` has always said.
+
+**Sources:** none added.
+
 ### The persona dials, measured and then made to resolve
 
 **Documents:** `PERSONA-EVAL.md` (new), `INTERVIEWER.md` §5 and §7,

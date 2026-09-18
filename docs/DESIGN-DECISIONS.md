@@ -495,6 +495,52 @@ the harder practice, not the easier one.
 
 ---
 
+## 17. The steering note goes last, because recency decides obedience
+
+**Decision.** The private note that carries the strategy, the focus and the
+difficulty target is sent **after** the transcript and after the answer it
+responds to, not in the system prompt ahead of them.
+
+**What it replaced.** It lived in the volatile system block, which put it third
+from the top of the request and left two more recent messages — the interviewer's
+last question and the candidate's answer — between it and the model's turn.
+
+**Why it changed.** Because it was not being obeyed, and that was measurable. On
+a topic pivot the note says *"change direction — ask about a different competency
+the round has not touched yet. A good target: how they handle a production
+incident"*, and then, since 2026-09-18, *"Do not ask anything further about the
+story they just told."* Under the old order the model opened that subject **0
+times out of 10** and asked about the story it had been told to leave, in nearly
+the same words each time. With the identical text moved after the exchange:
+**10 out of 10**. Across a 51-generations-per-cell run under the old order,
+roughly 150 pivots produced a single follow-up that mentioned the new subject.
+
+The instruction was never weak. It was outranked. Above it sat ~656 tokens of
+persona telling the interviewer to press on specifics, contest claims and stay on
+the answer for several follow-ups; below it sat the story itself. One line asking
+it to let go could not win that.
+
+**Why this matters beyond pivots.** Everything adaptive routes through this
+block. REQUIREMENTS F9 is "the score steers the next question", and a note that
+loses to recency means the score steered nothing — the system was
+analyser-informed in its own logs and ordinary in its output.
+
+**What it cost.** Nothing measurable, and it probably helps the bill: the
+cacheable prefix is now the stable prompt plus an append-only transcript, where
+before it was cut short by a block that changed every turn.
+
+**What was rejected.** Shortening the persona so the note faced less competition —
+that trades away the dial resolution the persona work just bought. And repeating
+the note in two places, which is how prompts start contradicting themselves; this
+codebase already had two instances of that (§16 of
+[PERSONA-EVAL.md](PERSONA-EVAL.md) records both).
+
+**The general lesson, worth more than the fix.** An instruction's position in the
+request is part of its meaning. Nothing in the code review process would have
+caught this: the block was well-written, correctly built, covered by tests, and
+sent on every turn. Only generating output and checking whether the model did the
+thing it was told revealed that it did not.
+
 ## Decisions still open
 
 Honest about what has not been settled:
