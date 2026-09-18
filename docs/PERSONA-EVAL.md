@@ -4,14 +4,15 @@ The setup wizard draws six sliders from 1 to 10. That is a promise: that moving
 one changes how the interviewer questions you, and that the number means
 something. This document is how that promise gets checked rather than asserted.
 
-> **Status: the dials are wired and their ends are distinguishable. Adjacent
-> steps are not.**
+> **Status: the dials are wired. Whether that reaches the model is only
+> partly established, and the live experiment is underpowered.**
 > Five of the six dials produce 10 distinct behaviours across their 10 settings,
-> and probing depth produces 9 — measured offline, pinned by tests. In live
-> generation, strictness, warmth and pace behaved exactly as pre-registered;
-> pushback partly; probing depth and unpredictability moved the text but not the
-> judge. **Nothing here shows that 8 differs from 9 in the output**, because the
-> experiment tests 2, 5 and 9 only.
+> and probing depth produces 9 — measured offline, byte-identical, pinned by
+> tests. The live half is weaker than that and must not be quoted as if it
+> were: run twice at the same commit it returned **2 of 6** and **3 of 6**
+> pre-registered effects, and only **warmth** and **pace** behaved the same way
+> both times. **Nothing here shows that 8 differs from 9 in the output**, because
+> the experiment tests 2, 5 and 9 only.
 
 Everything below was produced by `npm run eval:persona`. The deterministic layer
 needs no API key and is byte-identical on every run; the live layer costs about
@@ -144,15 +145,45 @@ not they held.
 
 | Dial | Predicted | Measured, 2 → 9 | Verdict |
 | --- | --- | --- | --- |
-| strictness | demandingness ↑ | **+0.7** [0.3, 1.3], monotonic | **held** |
-| warmth | supportiveness ↑ | **+0.7** [0.3, 1.0] | **held** |
+| warmth | supportiveness ↑ | **+0.8** [0.3, 1.3], monotonic | **held** |
 | pace | no effect | none on any axis | **held** |
-| pushback | demandingness ↑ | +0.3, spans zero; topic shift **+0.5** [0.1, 1.0] | not on its axis |
-| probingDepth | adaptivity ↑ | −0.1, spans zero | not shown |
-| unpredictability | topic shift ↑ | +0.1, spans zero | not shown |
+| strictness | demandingness ↑ | +0.2 [−0.1, 0.4] | not shown |
+| pushback | demandingness ↑ | +0.4 [0.0, 0.8]; largest effect is topic shift | not shown |
+| probingDepth | adaptivity ↑ | **−0.5** [−1.0, −0.1] — significant, and *downwards* | contradicted |
+| unpredictability | topic shift ↑ | 0.0 [0.0, 0.0] | not shown |
 
-Three of six held. Effects are around 0.7 on a 1–10 scale against a control
-standard deviation of ~0.9 — a medium effect, not a dramatic one.
+Two of six held.
+
+### The replication, which matters more than the table
+
+The experiment was run twice at the same commit. It does not reproduce.
+
+| Dial | Run 1 | Run 2 (committed) | Stable? |
+| --- | --- | --- | --- |
+| warmth | +0.7 [0.3, 1.0] | +0.8 [0.3, 1.3] | **yes** |
+| pace | null | null | **yes** |
+| strictness | +0.7 [0.3, 1.3] | +0.2 [−0.1, 0.4] | no |
+| pushback | topic shift +0.5 [0.1, 1.0] | topic shift largest, n.s. | partly |
+| probingDepth | −0.1 [−0.6, 0.4] | −0.5 [−1.0, −0.1] | no |
+| unpredictability | +0.1 | 0.0 | consistently null |
+| **Expectations held** | **3 of 6** | **2 of 6** | — |
+
+At twelve generations per cell, an effect of half a point on a 1–10 scale sits
+inside the sampling noise, and the "significant" results move between runs. Only
+**warmth** and **pace** — a positive and a correctly-predicted null — survive
+replication.
+
+**This is a limitation of the experiment, not a measurement of the dials.** §3 is
+deterministic and does not move. What §4 establishes today is that warmth
+reaches the model, that pace correctly does not, and that twelve samples per cell
+are too few to say anything about the rest. The fix is more samples, a sharper
+instrument, or both — not a louder claim.
+
+One result deserves singling out because it is the wrong sign: **raising probing
+depth lowered the judge's adaptivity rating** by 0.5, with the interval
+excluding zero. The text metrics below suggest why, and suggest the judge rather
+than the dial is at fault — but that is an interpretation, and the measured
+number says the prediction failed.
 
 ### What the text shows that the judge does not
 
@@ -212,7 +243,10 @@ instructions half-followed may be worth less than four followed exactly.
   variance. Blind pairwise comparison, or counting, would be more sensitive.
 - **One question, one round type, one answer.** A behavioural question answered
   well. Nothing here covers technical rounds or a poor answer.
-- **n = 12 per cell.** Small effects cannot be separated from sampling error.
+- **n = 12 per cell, and it shows.** Two runs at the same commit disagreed on
+  four of the six dials. Any single run of this experiment, including the
+  committed one, should be read as indicative. A stable estimate needs several
+  times the sample.
 - **The answer is deliberately a good one.** Against a vague answer the engine
   returns `DRILL_SPECIFICITY` for every persona and four dials switch off — by
   design. Measuring a dial requires an answer that has cleared the fundamentals,

@@ -208,12 +208,14 @@ The headlines:
   their 10 settings**; probing depth produces 9, because depths 6 and 7 select
   the same probe tier. Offline, free, byte-identical, and pinned by tests that
   run in CI — `npm run eval:persona`.
-- **The ends of a dial are distinguishable in the output.** 12 generated
-  follow-ups per cell, rated by a judge never told the persona: strictness 2→9
-  raises demandingness **+0.7** (95% CI [0.3, 1.3]), warmth 2→9 raises
-  supportiveness **+0.7** ([0.3, 1.0]), and pushback 2→9 raises topic shift
-  **+0.5** ([0.1, 1.0]). Pace correctly shows **no** effect on any axis, which
-  was predicted before the run: its lever is the speech rate.
+- **In live generation, only warmth is established.** 12 follow-ups per cell,
+  rated by a judge never told the persona: warmth 2→9 raises supportiveness
+  **+0.8** (95% CI [0.3, 1.3]), and pace correctly shows **no** effect anywhere,
+  which was predicted before the run because its lever is the speech rate.
+  Those two are the only results that **reproduced** — run twice at the same
+  commit the experiment returned 2 of 6 and 3 of 6 pre-registered effects, and
+  disagreed on the other four dials. Twelve samples per cell is too few, and the
+  report says so rather than quoting the better run.
 - **Adjacent steps are not proven distinguishable.** The experiment tests 2, 5
   and 9. It says nothing about 8 versus 9, and the report does not claim it.
 - **Eight of the nine questioning strategies are used** across a ladder of
