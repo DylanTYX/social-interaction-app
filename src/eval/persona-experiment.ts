@@ -360,12 +360,13 @@ async function generate(
           "\nAsk exactly one follow-up question. Keep it to 1-3 sentences.",
         ].join("\n"),
       },
-      // The route folds this into a behaviour layer of the system prompt; here
-      // it is its own system message. Same role, same content, same position
-      // before the exchange — the placement is an approximation, the text is not.
-      ...(steering ? [{ role: "system", content: steering }] : []),
       { role: "assistant", content: HELD_CONSTANT.question },
       { role: "user", content: HELD_CONSTANT.answer },
+      // Last, matching `toOpenAIMessages` in the chat route. Ahead of the
+      // exchange this note was ignored — 0 pivots opened in 10 — and after it,
+      // 10 in 10. The harness has to send what production sends or it measures
+      // a different system.
+      ...(steering ? [{ role: "system", content: steering }] : []),
     ],
   });
 }

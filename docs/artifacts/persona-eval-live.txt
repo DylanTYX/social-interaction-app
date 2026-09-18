@@ -189,3 +189,93 @@ LIVE — 14 arms x 51 runs, one dial at a time, blind-judged
   probingDepth 9
   unpredictability 2
   unpredictability 9
+
+--- control: no persona at all ---
+  demandingness   mean 7.2  sd 1.0
+  supportiveness  mean 8.0  sd 0.5
+  adaptivity      mean 8.5  sd 0.9
+  topicShift      mean 3.2  sd 0.6
+
+  Every axis is rated for every follow-up, so a dial that moves an axis
+  it was not designed to move shows up as a failure of orthogonality.
+  * = the 95% interval for high-low excludes zero.
+
+--- strictness ---
+  expected: demandingness increases
+  because:  the prompt band asks for higher standards and estimateFollowupDifficulty raises the target
+  verdict:  HELD   largest effect: supportiveness
+      axis                2     5     9    high-low   95% CI
+   <- demandingness   7.5   7.8   7.8      0.3*  [0.1, 0.5]  monotonic
+      supportiveness  6.6   6.3   6.2     -0.4*  [-0.6, -0.2]  monotonic
+      adaptivity      8.5   8.6   8.4     -0.1   [-0.4, 0.2]
+      topicShift      3.1   3.0   3.0     -0.0   [-0.3, 0.3]
+
+--- warmth ---
+  expected: supportiveness increases
+  because:  the prompt band asks for encouragement, and the slow-down gate opens at 7
+  verdict:  HELD   largest effect: supportiveness
+      axis                2     5     9    high-low   95% CI
+      demandingness   7.8   7.8   7.7     -0.0   [-0.2, 0.2]
+   <- supportiveness  6.2   6.3   6.5      0.3*  [0.1, 0.5]  monotonic
+      adaptivity      8.5   8.6   8.7      0.2   [0.0, 0.5]  monotonic
+      topicShift      2.9   3.0   2.9      0.0   [-0.1, 0.2]
+
+--- pace ---
+  expected: no effect on any axis
+  because:  pace's only numeric consumer is the speech rate; the decision engine is never told it
+  verdict:  NOT SHOWN   largest effect: demandingness
+      axis                2     5     9    high-low   95% CI
+      demandingness   7.5   7.8   7.8      0.3*  [0.1, 0.5]  monotonic
+      supportiveness  6.5   6.3   6.3     -0.2   [-0.4, 0.0]
+      adaptivity      8.6   8.6   8.7      0.2   [-0.1, 0.4]  monotonic
+      topicShift      3.0   3.0   2.9     -0.1   [-0.2, 0.1]
+
+--- pushback ---
+  expected: demandingness increases
+  because:  the prompt band asks the interviewer to challenge claims and ask for evidence
+  verdict:  NOT SHOWN   largest effect: topicShift
+      axis                2     5     9    high-low   95% CI
+   <- demandingness   7.6   7.8   7.7      0.1   [-0.1, 0.3]
+      supportiveness  6.3   6.3   6.2     -0.0   [-0.2, 0.1]  monotonic
+      adaptivity      8.5   8.6   8.4     -0.1   [-0.3, 0.2]
+      topicShift      3.1   3.0   3.5      0.4*  [0.2, 0.6]
+
+--- probingDepth ---
+  expected: adaptivity increases
+  because:  it raises the probe tier limit, so more hedged phrases are worth quoting back
+  verdict:  NOT SHOWN   largest effect: topicShift
+      axis                2     5     9    high-low   95% CI
+      demandingness   7.7   7.8   7.5     -0.3*  [-0.5, -0.0]
+      supportiveness  6.4   6.3   6.8      0.4*  [0.1, 0.6]
+   <- adaptivity      8.6   8.6   8.6      0.0   [-0.2, 0.3]
+      topicShift      3.0   3.0   3.5      0.5*  [0.3, 0.7]
+
+--- unpredictability ---
+  expected: topicShift increases
+  because:  it raises the curveball chance, which pivots the topic or poses a hypothetical
+  verdict:  NOT SHOWN   largest effect: adaptivity
+      axis                2     5     9    high-low   95% CI
+      demandingness   7.7   7.8   7.8      0.1   [-0.0, 0.3]  monotonic
+      supportiveness  6.2   6.3   6.5      0.3*  [0.1, 0.5]  monotonic
+      adaptivity      8.5   8.6   8.8      0.4*  [0.2, 0.6]  monotonic
+   <- topicShift      3.1   3.0   2.9     -0.2*  [-0.4, -0.1]  monotonic
+
+  5 of 6 dials predicted an effect on one of 4 axes.
+
+  2 of 6 pre-registered expectations held.
+
+--- what the follow-ups looked like ---
+  strictness 2              28 words  1.0 questions  0.2 hedges  echoes the answer 40/51   opened the pivot subject 0/15
+  strictness 9              28 words  1.1 questions  0.1 hedges  echoes the answer 41/51   opened the pivot subject 1/15
+  warmth 2                  27 words  1.1 questions  0.2 hedges  echoes the answer 38/51   opened the pivot subject 0/15
+  warmth 9                  29 words  1.1 questions  0.2 hedges  echoes the answer 46/51   opened the pivot subject 0/15
+  pace 2                    29 words  1.1 questions  0.3 hedges  echoes the answer 44/51   opened the pivot subject 0/15
+  pace 9                    24 words  1.1 questions  0.1 hedges  echoes the answer 34/51   opened the pivot subject 0/15
+  pushback 2                28 words  1.1 questions  0.4 hedges  echoes the answer 38/51   opened the pivot subject 0/15
+  pushback 9                30 words  1.5 questions  0.1 hedges  echoes the answer 47/51
+  probingDepth 2            28 words  1.1 questions  0.2 hedges  echoes the answer 33/51   opened the pivot subject 0/15
+  probingDepth 9            18 words  1.4 questions  0.0 hedges  echoes the answer 7/51
+  unpredictability 2        27 words  1.1 questions  0.3 hedges  echoes the answer 34/51   opened the pivot subject 0/3
+  unpredictability 9        29 words  1.0 questions  0.2 hedges  echoes the answer 45/51   opened the pivot subject 0/30
+
+  cost of this run       $0.1477 (770114 in / 53565 out)

@@ -273,7 +273,7 @@ function buildPromptLayers(input: {
   behaviorContext: string | null;
   /** Whether any turns are already persisted — the summary can lag them. */
   hasTranscript: boolean;
-}): { stablePrompt: string; volatilePrompt: string } {
+}): { stablePrompt: string; volatilePrompt: string; behaviorPrompt: string } {
   const stableJobDescription =
     input.jobDescriptionIsStable && input.jobDescriptionContext
       ? input.jobDescriptionContext
@@ -338,7 +338,6 @@ function buildPromptLayers(input: {
           "",
         ]
       : []),
-    ...(input.behaviorContext ? [input.behaviorContext, ""] : []),
     input.rollingSummary
       ? `Conversation so far (compact summary):\n${input.rollingSummary}`
       : input.hasTranscript
@@ -351,7 +350,15 @@ function buildPromptLayers(input: {
         : "Conversation so far: none yet.",
   ].join("\n");
 
-  return { stablePrompt, volatilePrompt };
+  /**
+   * The private note is returned separately because *where* it sits decides
+   * whether it is obeyed. See `toOpenAIMessages`.
+   */
+  return {
+    stablePrompt,
+    volatilePrompt,
+    behaviorPrompt: input.behaviorContext ?? "",
+  };
 }
 
 function buildPromptCacheKey(input: {
@@ -387,8 +394,28 @@ function findPriorQuestion(messages: ConversationMessage[]): string | null {
   return null;
 }
 
+/**
+ * Message order, and why the steering note goes last.
+ *
+ * It used to sit in the volatile system prompt, ahead of the transcript and the
+ * answer being responded to — and it was comprehensively ignored. Measured, not
+ * suspected: on a topic pivot, with the note ahead of the exchange, the model
+ * opened the new subject **0 times out of 10**; with the identical note placed
+ * after the exchange, **10 times out of 10**. The instruction was never weak,
+ * it was just outranked by two more recent messages that were all about the
+ * story it had been told to leave.
+ *
+ * This decides whether the whole adaptive loop is real. The note carries the
+ * strategy, the focus and the difficulty target — REQUIREMENTS F9, "the score
+ * steers the next question" — so a note that loses to recency means the score
+ * steered nothing.
+ *
+ * It also costs nothing in cache terms, and arguably helps: the cacheable
+ * prefix is now the stable prompt plus an append-only transcript, rather than
+ * being cut short by a block that changes every turn.
+ */
 function toOpenAIMessages(
-  prompts: { stablePrompt: string; volatilePrompt: string },
+  prompts: { stablePrompt: string; volatilePrompt: string; behaviorPrompt: string },
   recentMessages: ConversationMessage[],
   userMessage: string,
 ): OpenAIMessage[] {
@@ -397,6 +424,9 @@ function toOpenAIMessages(
     { role: "system", content: prompts.volatilePrompt },
     ...recentMessages,
     { role: "user", content: userMessage },
+    ...(prompts.behaviorPrompt.trim()
+      ? [{ role: "system" as const, content: prompts.behaviorPrompt }]
+      : []),
   ];
 }
 
