@@ -279,8 +279,27 @@ export interface DialReading {
   readings: Record<string, string>;
 }
 
+/**
+ * The one quantity worth showing a human for this dial.
+ *
+ * "Ten distinct outcomes" is true and says nothing: distinct in what? A reader
+ * who sees that strictness moves the bar an answer must clear from 45/100 to
+ * 90/100 understands both that the dial works and what it does, from one line.
+ * Chosen per dial because the dials do genuinely different things — there is no
+ * single number that means the same across all six.
+ */
+export interface Headline {
+  /** Plain words, no jargon: "Words of acknowledgement allowed". */
+  label: string;
+  /** Value at each setting 1-10. */
+  values: number[];
+  /** Appended to the first and last value, e.g. "%" or "/100". */
+  unit: string;
+}
+
 export interface DialSweep {
   dial: DialKey;
+  headline: Headline;
   consumers: Consumer[];
   points: DialReading[];
   /** Distinct outcomes across every consumer, readouts included. */
@@ -446,6 +465,16 @@ function countDistinct(points: DialReading[], keys: string[]): number {
   ).size;
 }
 
+/** Which reading to put in front of a reader, and what to call it. */
+const HEADLINES: Record<DialKey, { consumer: string; label: string; unit: string }> = {
+  strictness: { consumer: "bar", label: "Accepts an answer scoring", unit: "/100" },
+  warmth: { consumer: "ackWords", label: "Words of acknowledgement allowed", unit: "" },
+  pace: { consumer: "wordBudget", label: "Question length allowed", unit: " words" },
+  pushback: { consumer: "unchallenged", label: "Unsupported claims let through", unit: "" },
+  probingDepth: { consumer: "probeRate", label: "Hedged claims probed", unit: "%" },
+  unpredictability: { consumer: "curveballRate", label: "Turns with a curveball", unit: "%" },
+};
+
 export function sweepDial(dial: DialKey): DialSweep {
   const consumers = DIAL_CONSUMERS[dial];
   const points: DialReading[] = DIAL_VALUES.map((value) => ({
@@ -459,8 +488,17 @@ export function sweepDial(dial: DialKey): DialSweep {
   const asked = named("questioning");
   const felt = named("questioning", "delivery");
 
+  const headline = HEADLINES[dial];
   return {
     dial,
+    headline: {
+      label: headline.label,
+      unit: headline.unit,
+      // Every headline reading starts with its number ("45/100", "57w", "70%").
+      values: points.map((point) =>
+        Number.parseInt(point.readings[headline.consumer], 10),
+      ),
+    },
     consumers,
     points,
     distinctOutcomes: countDistinct(points, all),

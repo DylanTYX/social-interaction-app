@@ -1,7 +1,7 @@
 ========================================================================
 DETERMINISTIC — no API calls, identical on every run
 ========================================================================
-Generated 2026-09-18 from 54f3134 + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona`.
+Generated 2026-09-18 from 3e1aa38 + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona`.
 
 Held constant across both arms:
   question  Tell me about a time you had to deliver a project with an unrealistic deadline.

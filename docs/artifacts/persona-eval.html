@@ -1,276 +1,337 @@
 <title>Persona dial evaluation</title>
 <style>
   :root {
-    --ink: #10151c; --muted: #5c6b7f; --line: #dfe5ec; --bg: #fbfcfd;
-    --card: #ffffff; --accent: #1d6fd0; --up: #17795e; --down: #b0341d;
-    --flat: #94a3b5;
+    --ink: #151a21; --soft: #5a6676; --line: #e2e7ee; --bg: #f6f8fa;
+    --card: #fff; --data: #35648f; --real: #146b52; --unclear: #97a1b0;
+    --rule: #eef1f5;
   }
-  :root:not([data-theme="light"]) {}
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ink: #e8edf4; --muted: #94a3b5; --line: #26303c; --bg: #0d1219;
-      --card: #141b24; --accent: #6aa9f0; --up: #4cc79e; --down: #f0765a;
-      --flat: #56657a;
+      --ink: #e9eef5; --soft: #96a2b3; --line: #253040; --bg: #0e1319;
+      --card: #161c25; --data: #74a8d8; --real: #45c39b; --unclear: #5d6a7c;
+      --rule: #1e2734;
     }
   }
   :root[data-theme="dark"] {
-    --ink: #e8edf4; --muted: #94a3b5; --line: #26303c; --bg: #0d1219;
-    --card: #141b24; --accent: #6aa9f0; --up: #4cc79e; --down: #f0765a;
-    --flat: #56657a;
+    --ink: #e9eef5; --soft: #96a2b3; --line: #253040; --bg: #0e1319;
+    --card: #161c25; --data: #74a8d8; --real: #45c39b; --unclear: #5d6a7c;
+    --rule: #1e2734;
   }
+  * { box-sizing: border-box; }
   body {
-    background: var(--bg); color: var(--ink); margin: 0;
-    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    padding-block: 40px; padding-left: 20px; padding-right: 20px;
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-block: 48px; padding-left: 20px; padding-right: 20px;
+    -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 860px; margin: 0 auto; }
-  h1 { font-size: 27px; letter-spacing: -0.02em; margin: 0 0 6px; text-wrap: balance; }
-  h2 { font-size: 17px; letter-spacing: -0.01em; margin: 40px 0 6px; }
-  p { margin: 0 0 14px; max-width: 66ch; color: var(--muted); }
-  p.lead { color: var(--ink); }
-  .prov {
-    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: var(--muted); border-left: 2px solid var(--line);
-    padding-left: 10px; margin-bottom: 28px;
+  main { max-width: 800px; margin: 0 auto; }
+  h1 {
+    font-size: 30px; line-height: 1.2; letter-spacing: -0.025em;
+    margin: 0 0 14px; text-wrap: balance; font-weight: 650;
+  }
+  h2 {
+    font-size: 13px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--soft); margin: 46px 0 8px; font-weight: 650;
+  }
+  p { margin: 0 0 16px; max-width: 64ch; }
+  .verdict-note { font-size: 17px; line-height: 1.55; margin-bottom: 26px; }
+  .verdict-note strong { font-weight: 650; }
+  .howto {
+    color: var(--soft); font-size: 14px; margin-bottom: 14px; max-width: 64ch;
   }
   section {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: 10px; padding: 18px 20px; margin-bottom: 8px;
-    overflow-x: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 8px 20px; overflow-x: auto;
   }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th { text-align: left; font-weight: 600; white-space: nowrap; padding-right: 14px; }
-  td { padding: 5px 10px 5px 0; vertical-align: middle; }
-  tbody th { padding: 5px 14px 5px 0; }
-  .muted { color: var(--muted); font-size: 13px; }
+  tr + tr { border-top: 1px solid var(--rule); }
+  th {
+    text-align: left; font-weight: 600; white-space: nowrap;
+    padding: 11px 16px 11px 0;
+  }
+  th.move { font-weight: 500; }
+  td { padding: 11px 14px 11px 0; vertical-align: middle; }
+  .what { color: var(--soft); font-size: 13.5px; }
+  .what strong { color: var(--ink); font-weight: 600; }
   .num {
     font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-variant-numeric: tabular-nums; white-space: nowrap;
+    font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right;
   }
-  .ci-text { color: var(--muted); }
-  .strip { display: flex; gap: 2px; min-width: 260px; }
-  .step {
-    flex: 1; height: 26px; border-radius: 3px; display: grid; place-items: center;
-    background: hsl(var(--hue) 62% 58%); color: #fff; font-size: 11px;
-    font-variant-numeric: tabular-nums;
+  .range { color: var(--ink); }
+  .arrow { color: var(--soft); padding: 0 1px; }
+  .sparkcell { width: 140px; }
+  .spark { display: block; overflow: visible; }
+  .spark polyline { fill: none; stroke: var(--data); stroke-width: 1.6; }
+  .spark circle { fill: var(--data); }
+  .settings {
+    font: 600 16px ui-monospace, Menlo, monospace; text-align: right;
+    white-space: nowrap; font-variant-numeric: tabular-nums;
   }
-  .step.repeat { opacity: 0.42; }
-  .score { font: 600 17px ui-monospace, Menlo, monospace; white-space: nowrap; }
-  .score span { font-size: 12px; font-weight: 400; color: var(--muted); }
-  .score.full { color: var(--up); }
-  .score.partial { color: var(--accent); }
-  .barcell { width: 200px; min-width: 150px; }
-  .bar { position: relative; height: 22px; }
+  .settings span { font-size: 11px; font-weight: 400; color: var(--soft); }
+  .settings.full { color: var(--real); }
+  .settings.partial { color: var(--data); }
+  .axisrow td, .axisrow th { padding-top: 6px; padding-bottom: 0; border: 0; }
+  .axis { position: relative; height: 15px; }
+  .axis .tick {
+    position: absolute; transform: translateX(-50%); font-size: 11px;
+    color: var(--soft); white-space: nowrap;
+  }
+  .axis .tick.zero { color: var(--ink); font-weight: 600; }
+  .barcell { width: 236px; min-width: 150px; }
+  .bar { position: relative; height: 20px; }
   .zero {
-    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    position: absolute; left: 50%; top: -4px; bottom: -4px; width: 1px;
     background: var(--line);
   }
-  .ci { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--flat); }
+  .ci { position: absolute; top: 8px; height: 4px; border-radius: 2px; background: var(--unclear); }
   .dot {
-    position: absolute; top: 5px; width: 11px; height: 11px; margin-left: -5px;
-    border-radius: 50%; background: var(--flat);
+    position: absolute; top: 4px; width: 12px; height: 12px; margin-left: -6px;
+    border-radius: 50%; background: var(--unclear);
   }
-  .bar.up .ci, .bar.up .dot { background: var(--up); }
-  .bar.down .ci, .bar.down .dot { background: var(--down); }
-  .cbar { height: 13px; border-radius: 2px; background: var(--accent); min-width: 2px; }
-  .verdict { font-size: 12px; font-weight: 600; white-space: nowrap; }
-  .verdict.held { color: var(--up); }
-  .verdict.no { color: var(--muted); }
-  footer { color: var(--muted); font-size: 13px; margin-top: 36px; }
-  @media (max-width: 620px) {
-    .barcell { width: 120px; min-width: 100px; }
-    .strip { min-width: 200px; }
+  .bar.real .ci, .bar.real .dot { background: var(--real); }
+  .cbar {
+    height: 11px; border-radius: 2px; background: var(--data);
+    min-width: 3px; opacity: 0.8;
+  }
+  .verdict { font-size: 12.5px; font-weight: 600; white-space: nowrap; text-align: right; }
+  .verdict.yes { color: var(--real); }
+  .verdict.no { color: var(--soft); }
+  .muted { color: var(--soft); }
+  .caveat {
+    margin-top: 14px; font-size: 13.5px; color: var(--soft);
+    border-left: 2px solid var(--line); padding-left: 12px; max-width: 64ch;
+  }
+  footer {
+    margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--soft);
+  }
+  footer code { font-size: 12px; }
+  @media (max-width: 640px) {
+    .sparkcell, .what { display: none; }
+    .barcell { width: 130px; min-width: 110px; }
   }
 </style>
 <main>
   <h1>Do the persona dials change the interview?</h1>
-  <p class="lead">Six sliders, 1 to 10. This is what each one measurably does.</p>
-  <p class="prov">Generated 2026-09-18 from 54f3134 + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona -- --artifacts`.</p>
+  <p class="verdict-note">
+    <strong>Yes.</strong> Five of the six sliders produce a
+    different interviewer at every one of their ten settings, and the sixth at nine of ten. Asked to run real interviews under them, a language model changed its
+    questions as predicted for four of the six &mdash; predictions
+    written down before the run.
+  </p>
 
-  <h2>1. What the dial changes &mdash; measured offline</h2>
-  <p>
-    Each dial swept 1&ndash;10 with the other five held at 5. A block is one
-    setting; faded blocks behave identically to the one before them. Free,
-    offline, and identical on every run.
+  <h2>1 &middot; Turn the dial, and this changes</h2>
+  <p class="howto">
+    Each row is one slider moved from 1 to 10 with the other five held at the
+    middle. The line is the quantity it controls; the last column counts how many
+    of the ten settings produce an interviewer that behaves differently from the
+    one before it.
+  </p>
+  <section><table><tbody><tr>
+        <th>strictness</th>
+        <td class="what">Accepts an answer scoring</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,30.0 17.8,27.1 31.6,24.2 45.3,21.3 59.1,18.4 72.9,15.6 86.7,12.7 100.4,9.8 114.2,6.9 128.0,4.0"/><circle cx="4.0" cy="30.0" r="2.8"/><circle cx="17.8" cy="27.1" r="1.8"/><circle cx="31.6" cy="24.2" r="1.8"/><circle cx="45.3" cy="21.3" r="1.8"/><circle cx="59.1" cy="18.4" r="1.8"/><circle cx="72.9" cy="15.6" r="1.8"/><circle cx="86.7" cy="12.7" r="1.8"/><circle cx="100.4" cy="9.8" r="1.8"/><circle cx="114.2" cy="6.9" r="1.8"/><circle cx="128.0" cy="4.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">45/100 <span class="arrow">&rarr;</span> 90/100</td>
+        <td class="settings full">
+          10<span>/10</span>
+        </td>
+      </tr><tr>
+        <th>warmth</th>
+        <td class="what">Words of acknowledgement allowed</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,30.0 17.8,27.6 31.6,25.3 45.3,20.5 59.1,18.2 72.9,15.8 86.7,13.5 100.4,11.1 114.2,6.4 128.0,4.0"/><circle cx="4.0" cy="30.0" r="2.8"/><circle cx="17.8" cy="27.6" r="1.8"/><circle cx="31.6" cy="25.3" r="1.8"/><circle cx="45.3" cy="20.5" r="1.8"/><circle cx="59.1" cy="18.2" r="1.8"/><circle cx="72.9" cy="15.8" r="1.8"/><circle cx="86.7" cy="13.5" r="1.8"/><circle cx="100.4" cy="11.1" r="1.8"/><circle cx="114.2" cy="6.4" r="1.8"/><circle cx="128.0" cy="4.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">0 <span class="arrow">&rarr;</span> 11</td>
+        <td class="settings full">
+          10<span>/10</span>
+        </td>
+      </tr><tr>
+        <th>pace</th>
+        <td class="what">Question length allowed</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,4.0 17.8,6.9 31.6,9.8 45.3,12.7 59.1,15.6 72.9,18.4 86.7,21.3 100.4,24.2 114.2,27.1 128.0,30.0"/><circle cx="4.0" cy="4.0" r="2.8"/><circle cx="17.8" cy="6.9" r="1.8"/><circle cx="31.6" cy="9.8" r="1.8"/><circle cx="45.3" cy="12.7" r="1.8"/><circle cx="59.1" cy="15.6" r="1.8"/><circle cx="72.9" cy="18.4" r="1.8"/><circle cx="86.7" cy="21.3" r="1.8"/><circle cx="100.4" cy="24.2" r="1.8"/><circle cx="114.2" cy="27.1" r="1.8"/><circle cx="128.0" cy="30.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">57 words <span class="arrow">&rarr;</span> 30 words</td>
+        <td class="settings full">
+          10<span>/10</span>
+        </td>
+      </tr><tr>
+        <th>pushback</th>
+        <td class="what">Unsupported claims let through</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,4.0 17.8,9.2 31.6,9.2 45.3,14.4 59.1,14.4 72.9,19.6 86.7,19.6 100.4,24.8 114.2,24.8 128.0,30.0"/><circle cx="4.0" cy="4.0" r="2.8"/><circle cx="17.8" cy="9.2" r="1.8"/><circle cx="31.6" cy="9.2" r="1.8"/><circle cx="45.3" cy="14.4" r="1.8"/><circle cx="59.1" cy="14.4" r="1.8"/><circle cx="72.9" cy="19.6" r="1.8"/><circle cx="86.7" cy="19.6" r="1.8"/><circle cx="100.4" cy="24.8" r="1.8"/><circle cx="114.2" cy="24.8" r="1.8"/><circle cx="128.0" cy="30.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">5 <span class="arrow">&rarr;</span> 0</td>
+        <td class="settings full">
+          10<span>/10</span>
+        </td>
+      </tr><tr>
+        <th>probingDepth</th>
+        <td class="what">Hedged claims probed</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,30.0 17.8,25.5 31.6,21.2 45.3,21.2 59.1,17.0 72.9,12.8 86.7,12.8 100.4,8.2 114.2,4.0 128.0,4.0"/><circle cx="4.0" cy="30.0" r="2.8"/><circle cx="17.8" cy="25.5" r="1.8"/><circle cx="31.6" cy="21.2" r="1.8"/><circle cx="45.3" cy="21.2" r="1.8"/><circle cx="59.1" cy="17.0" r="1.8"/><circle cx="72.9" cy="12.8" r="1.8"/><circle cx="86.7" cy="12.8" r="1.8"/><circle cx="100.4" cy="8.2" r="1.8"/><circle cx="114.2" cy="4.0" r="1.8"/><circle cx="128.0" cy="4.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">14% <span class="arrow">&rarr;</span> 100%</td>
+        <td class="settings partial">
+          9<span>/10</span>
+        </td>
+      </tr><tr>
+        <th>unpredictability</th>
+        <td class="what">Turns with a curveball</td>
+        <td class="sparkcell"><svg class="spark" viewBox="0 0 132 34" width="132" height="34" aria-hidden="true">
+    <polyline points="4.0,30.0 17.8,23.7 31.6,20.7 45.3,18.1 59.1,15.9 72.9,13.3 86.7,11.1 100.4,8.1 114.2,5.9 128.0,4.0"/><circle cx="4.0" cy="30.0" r="2.8"/><circle cx="17.8" cy="23.7" r="1.8"/><circle cx="31.6" cy="20.7" r="1.8"/><circle cx="45.3" cy="18.1" r="1.8"/><circle cx="59.1" cy="15.9" r="1.8"/><circle cx="72.9" cy="13.3" r="1.8"/><circle cx="86.7" cy="11.1" r="1.8"/><circle cx="100.4" cy="8.1" r="1.8"/><circle cx="114.2" cy="5.9" r="1.8"/><circle cx="128.0" cy="4.0" r="2.8"/>
+  </svg></td>
+        <td class="num range">0% <span class="arrow">&rarr;</span> 70%</td>
+        <td class="settings full">
+          10<span>/10</span>
+        </td>
+      </tr></tbody></table></section>
+  <p class="caveat">
+    Not every step does something: probingDepth 6-7 behave identically,
+    because those settings land on the same internal threshold. Published rather
+    than smoothed over &mdash; anyone can nudge a slider by one and see.
+  </p>
+
+  <h2>2 &middot; Does the model actually obey?</h2>
+  <p class="howto">
+    51 interview questions generated at each setting, then rated by
+    a second model that was never told which persona wrote them. The dot is how
+    much the rating moved between dial 2 and dial 9; the line around it is the
+    range the measurement is confident about. <strong>Clear of the centre means
+    the dial really changed the interview.</strong> Crossing it means this many
+    samples cannot tell.
   </p>
   <section>
-    <table><tbody><tr>
-      <th>strictness</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: flexible and understanding · bar: 45/100 · specifics: 1 · reAsks: 1 · difficulty: 5/10"><span>1</span></div><div class="step" style="--hue:222" title="prompt: flexible and understanding · bar: 50/100 · specifics: 1 · reAsks: 2 · difficulty: 5/10"><span>2</span></div><div class="step" style="--hue:239" title="prompt: flexible and understanding · bar: 55/100 · specifics: 2 · reAsks: 2 · difficulty: 6/10"><span>3</span></div><div class="step" style="--hue:256" title="prompt: flexible and understanding · bar: 60/100 · specifics: 2 · reAsks: 2 · difficulty: 6/10"><span>4</span></div><div class="step" style="--hue:273" title="prompt: moderate standards · bar: 65/100 · specifics: 3 · reAsks: 3 · difficulty: 6/10"><span>5</span></div><div class="step" style="--hue:290" title="prompt: moderate standards · bar: 70/100 · specifics: 3 · reAsks: 3 · difficulty: 6/10"><span>6</span></div><div class="step" style="--hue:307" title="prompt: moderate standards · bar: 75/100 · specifics: 4 · reAsks: 3 · difficulty: 7/10"><span>7</span></div><div class="step" style="--hue:324" title="prompt: high expectations and won't tolerate mediocrity · bar: 80/100 · specifics: 4 · reAsks: 4 · difficulty: 7/10"><span>8</span></div><div class="step" style="--hue:341" title="prompt: high expectations and won't tolerate mediocrity · bar: 85/100 · specifics: 5 · reAsks: 4 · difficulty: 7/10"><span>9</span></div><div class="step" style="--hue:358" title="prompt: high expectations and won't tolerate mediocrity · bar: 90/100 · specifics: 5 · reAsks: 4 · difficulty: 7/10"><span>10</span></div></div></td>
-      <td class="score full">
-        10<span>/10</span>
-      </td>
-      <td class="muted">every step differs</td>
-    </tr><tr>
-      <th>warmth</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: reserved and formal · ackWords: 0 · difficulty: 7/10 · slowsDown: no"><span>1</span></div><div class="step" style="--hue:222" title="prompt: reserved and formal · ackWords: 1 · difficulty: 7/10 · slowsDown: no"><span>2</span></div><div class="step" style="--hue:239" title="prompt: reserved and formal · ackWords: 2 · difficulty: 7/10 · slowsDown: no"><span>3</span></div><div class="step" style="--hue:256" title="prompt: reserved and formal · ackWords: 4 · difficulty: 6/10 · slowsDown: no"><span>4</span></div><div class="step" style="--hue:273" title="prompt: professional and neutral · ackWords: 5 · difficulty: 6/10 · slowsDown: no"><span>5</span></div><div class="step" style="--hue:290" title="prompt: professional and neutral · ackWords: 6 · difficulty: 6/10 · slowsDown: no"><span>6</span></div><div class="step" style="--hue:307" title="prompt: professional and neutral · ackWords: 7 · difficulty: 6/10 · slowsDown: yes"><span>7</span></div><div class="step" style="--hue:324" title="prompt: warm and encouraging · ackWords: 8 · difficulty: 5/10 · slowsDown: yes"><span>8</span></div><div class="step" style="--hue:341" title="prompt: warm and encouraging · ackWords: 10 · difficulty: 5/10 · slowsDown: yes"><span>9</span></div><div class="step" style="--hue:358" title="prompt: warm and encouraging · ackWords: 11 · difficulty: 5/10 · slowsDown: yes"><span>10</span></div></div></td>
-      <td class="score full">
-        10<span>/10</span>
-      </td>
-      <td class="muted">every step differs</td>
-    </tr><tr>
+    <table>
+      <thead><tr class="axisrow">
+    <th></th><td></td>
+    <td class="barcell"><div class="axis"><span class="tick" style="left:33.33333333333333%">-1</span><span class="tick zero" style="left:50%">0</span><span class="tick" style="left:66.66666666666666%">+1</span><span class="tick" style="left:83.33333333333334%">+2</span><span class="tick" style="left:100%">+3</span></div></td>
+    <td colspan="2"></td>
+  </tr></thead>
+      <tbody><tr>
+    <th>strictness</th>
+    <td class="what">more <strong>demandingness</strong></td>
+    <td class="barcell">
+      <div class="bar unclear">
+        <div class="zero"></div>
+        <div class="ci" style="left:50%;width:18.95424836601306%"></div>
+        <div class="dot" style="left:59.47712418300654%"></div>
+      </div>
+    </td>
+    <td class="num">+0.6</td>
+    <td class="verdict no">can't tell</td>
+  </tr><tr>
+    <th>warmth</th>
+    <td class="what">more <strong>supportiveness</strong></td>
+    <td class="barcell">
+      <div class="bar unclear">
+        <div class="zero"></div>
+        <div class="ci" style="left:48.03921568627452%;width:7.189542483660119%"></div>
+        <div class="dot" style="left:51.63398692810457%"></div>
+      </div>
+    </td>
+    <td class="num">+0.1</td>
+    <td class="verdict no">can't tell</td>
+  </tr><tr>
       <th>pace</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: deliberate and patient · wordBudget: 57w · speechRate: -20%"><span>1</span></div><div class="step" style="--hue:222" title="prompt: deliberate and patient · wordBudget: 54w · speechRate: -15%"><span>2</span></div><div class="step" style="--hue:239" title="prompt: deliberate and patient · wordBudget: 51w · speechRate: -10%"><span>3</span></div><div class="step" style="--hue:256" title="prompt: balanced · wordBudget: 48w · speechRate: -5%"><span>4</span></div><div class="step" style="--hue:273" title="prompt: balanced · wordBudget: 45w · speechRate: +0%"><span>5</span></div><div class="step" style="--hue:290" title="prompt: brisk · wordBudget: 42w · speechRate: +5%"><span>6</span></div><div class="step" style="--hue:307" title="prompt: brisk · wordBudget: 39w · speechRate: +10%"><span>7</span></div><div class="step" style="--hue:324" title="prompt: fast and assertive · wordBudget: 36w · speechRate: +15%"><span>8</span></div><div class="step" style="--hue:341" title="prompt: fast and assertive · wordBudget: 33w · speechRate: +20%"><span>9</span></div><div class="step" style="--hue:358" title="prompt: fast and assertive · wordBudget: 30w · speechRate: +25%"><span>10</span></div></div></td>
-      <td class="score full">
-        10<span>/10</span>
-      </td>
-      <td class="muted">every step differs</td>
+      <td class="what">no effect predicted &mdash; its lever is the speech rate</td>
+      <td class="barcell"><div class="bar"><div class="zero"></div></div></td>
+      <td class="num muted">&mdash;</td>
+      <td class="verdict yes">confirmed</td>
     </tr><tr>
-      <th>pushback</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: minimal · contests: 0 · unchallenged: 5 · twistShare: 0%"><span>1</span></div><div class="step" style="--hue:222" title="prompt: minimal · contests: 0 · unchallenged: 4 · twistShare: 0%"><span>2</span></div><div class="step" style="--hue:239" title="prompt: minimal · contests: 1 · unchallenged: 4 · twistShare: 0%"><span>3</span></div><div class="step" style="--hue:256" title="prompt: light · contests: 1 · unchallenged: 3 · twistShare: 0%"><span>4</span></div><div class="step" style="--hue:273" title="prompt: light · contests: 2 · unchallenged: 3 · twistShare: 0%"><span>5</span></div><div class="step" style="--hue:290" title="prompt: moderate · contests: 2 · unchallenged: 2 · twistShare: 0%"><span>6</span></div><div class="step" style="--hue:307" title="prompt: moderate · contests: 3 · unchallenged: 2 · twistShare: 48%"><span>7</span></div><div class="step" style="--hue:324" title="prompt: high · contests: 3 · unchallenged: 1 · twistShare: 100%"><span>8</span></div><div class="step" style="--hue:341" title="prompt: high · contests: 4 · unchallenged: 1 · twistShare: 100%"><span>9</span></div><div class="step" style="--hue:358" title="prompt: high · contests: 4 · unchallenged: 0 · twistShare: 100%"><span>10</span></div></div></td>
-      <td class="score full">
-        10<span>/10</span>
-      </td>
-      <td class="muted">every step differs</td>
-    </tr><tr>
-      <th>probingDepth</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="followups: 1 · probeRate: 14%"><span>1</span></div><div class="step" style="--hue:222" title="followups: 1 · probeRate: 29%"><span>2</span></div><div class="step" style="--hue:239" title="followups: 1 · probeRate: 43%"><span>3</span></div><div class="step" style="--hue:256" title="followups: 2 · probeRate: 43%"><span>4</span></div><div class="step" style="--hue:273" title="followups: 2 · probeRate: 57%"><span>5</span></div><div class="step" style="--hue:290" title="followups: 3 · probeRate: 71%"><span>6</span></div><div class="step repeat" style="--hue:290" title="followups: 3 · probeRate: 71%"><span>7</span></div><div class="step" style="--hue:307" title="followups: 4 · probeRate: 86%"><span>8</span></div><div class="step" style="--hue:324" title="followups: 4 · probeRate: 100%"><span>9</span></div><div class="step" style="--hue:341" title="followups: 5 · probeRate: 100%"><span>10</span></div></div></td>
-      <td class="score partial">
-        9<span>/10</span>
-      </td>
-      <td class="muted">6-7 identical</td>
-    </tr><tr>
-      <th>unpredictability</th>
-      <td><div class="strip"><div class="step" style="--hue:205" title="curveballRate: 0%"><span>1</span></div><div class="step" style="--hue:222" title="curveballRate: 17%"><span>2</span></div><div class="step" style="--hue:239" title="curveballRate: 25%"><span>3</span></div><div class="step" style="--hue:256" title="curveballRate: 32%"><span>4</span></div><div class="step" style="--hue:273" title="curveballRate: 38%"><span>5</span></div><div class="step" style="--hue:290" title="curveballRate: 45%"><span>6</span></div><div class="step" style="--hue:307" title="curveballRate: 51%"><span>7</span></div><div class="step" style="--hue:324" title="curveballRate: 59%"><span>8</span></div><div class="step" style="--hue:341" title="curveballRate: 65%"><span>9</span></div><div class="step" style="--hue:358" title="curveballRate: 70%"><span>10</span></div></div></td>
-      <td class="score full">
-        10<span>/10</span>
-      </td>
-      <td class="muted">every step differs</td>
-    </tr></tbody></table>
+    <th>pushback</th>
+    <td class="what">more <strong>demandingness</strong></td>
+    <td class="barcell">
+      <div class="bar real">
+        <div class="zero"></div>
+        <div class="ci" style="left:61.11111111111111%;width:14.052287581699353%"></div>
+        <div class="dot" style="left:67.97385620915034%"></div>
+      </div>
+    </td>
+    <td class="num">+1.1</td>
+    <td class="verdict yes">confirmed</td>
+  </tr><tr>
+    <th>probingDepth</th>
+    <td class="what">more <strong>adaptivity</strong></td>
+    <td class="barcell">
+      <div class="bar real">
+        <div class="zero"></div>
+        <div class="ci" style="left:66.01307189542483%;width:18.62745098039217%"></div>
+        <div class="dot" style="left:74.83660130718954%"></div>
+      </div>
+    </td>
+    <td class="num">+1.5</td>
+    <td class="verdict yes">confirmed</td>
+  </tr><tr>
+    <th>unpredictability</th>
+    <td class="what">more <strong>topic shift</strong></td>
+    <td class="barcell">
+      <div class="bar real">
+        <div class="zero"></div>
+        <div class="ci" style="left:77.12418300653594%;width:22.875816993464056%"></div>
+        <div class="dot" style="left:89.86928104575162%"></div>
+      </div>
+    </td>
+    <td class="num">+2.4</td>
+    <td class="verdict yes">confirmed</td>
+  </tr></tbody>
+    </table>
   </section>
-
-  <h2>2. Which moves the interviewer uses</h2>
-  <p>
-    8 of 9 strategies, over
-    5,184 decisions across eight
-    answer qualities. Within one answer quality the move is near-fixed &mdash; a
-    weakness outranks a dial, deliberately &mdash; so variety comes from the
-    candidate's answers changing, not from the dials.
+  <p class="caveat">
+    Tested at settings 2, 5 and 9 &mdash; so this shows the ends of a slider are
+    distinguishable, not that 8 differs from 9.
   </p>
-  <section>
-    <table><tbody><tr>
-        <th>drill specificity</th>
+
+  <h2>3 &middot; Which questions the interviewer reaches for</h2>
+  <p class="howto">
+    Across 5,184 decisions over
+    answers of every quality, it uses
+    8 of its 9 moves &mdash; it is not a
+    one-note questioner. But which move it picks is decided by the weakness in
+    the answer, not by the dials: the dials change how hard it presses, not what
+    it presses on.
+  </p>
+  <section><table><tbody><tr>
+        <th class="move">drill specificity</th>
         <td class="barcell"><div class="cbar" style="width:85.0%"></div></td>
         <td class="num">25.0%</td>
       </tr><tr>
-        <th>challenge ownership</th>
+        <th class="move">challenge ownership</th>
         <td class="barcell"><div class="cbar" style="width:85.0%"></div></td>
         <td class="num">25.0%</td>
       </tr><tr>
-        <th>clarify situation</th>
+        <th class="move">clarify situation</th>
         <td class="barcell"><div class="cbar" style="width:42.5%"></div></td>
         <td class="num">12.5%</td>
       </tr><tr>
-        <th>explore result</th>
+        <th class="move">explore result</th>
         <td class="barcell"><div class="cbar" style="width:42.5%"></div></td>
         <td class="num">12.5%</td>
       </tr><tr>
-        <th>probe action</th>
+        <th class="move">probe action</th>
         <td class="barcell"><div class="cbar" style="width:26.0%"></div></td>
         <td class="num">7.6%</td>
       </tr><tr>
-        <th>acknowledge strength</th>
+        <th class="move">acknowledge strength</th>
         <td class="barcell"><div class="cbar" style="width:26.0%"></div></td>
         <td class="num">7.6%</td>
       </tr><tr>
-        <th>hypothetical twist</th>
+        <th class="move">hypothetical twist</th>
         <td class="barcell"><div class="cbar" style="width:22.8%"></div></td>
         <td class="num">6.7%</td>
       </tr><tr>
-        <th>pivot topic</th>
+        <th class="move">pivot topic</th>
         <td class="barcell"><div class="cbar" style="width:10.2%"></div></td>
         <td class="num">3.0%</td>
-      </tr></tbody></table>
-  </section>
-
-  <h2>3. Whether it reaches the model &mdash; measured live</h2>
-  <p>
-    51 generated follow-ups per cell, each rated by a judge never
-    told the persona, the dial or the level. The bar is the change from dial 2 to
-    dial 9 on the axis predicted <em>before</em> the run; the line is the 95%
-    interval. An interval crossing the centre means this sample cannot tell.
-  </p>
-  <section>
-    <table><tbody><tr>
-        <th>strictness</th>
-        <td class="muted">demandingness</td>
-        <td class="barcell">
-    <div class="bar flat">
-      <div class="zero"></div>
-      <div class="ci" style="left:50%;width:28.4313725490196%"></div>
-      <div class="dot" style="left:64.21568627450979%"></div>
-    </div>
-  </td>
-  <td class="num">+0.6
-    <span class="ci-text">[0.0, 1.1]</span></td>
-        <td class="verdict no">not shown</td>
-      </tr><tr>
-        <th>warmth</th>
-        <td class="muted">supportiveness</td>
-        <td class="barcell">
-    <div class="bar flat">
-      <div class="zero"></div>
-      <div class="ci" style="left:47.058823529411775%;width:10.784313725490179%"></div>
-      <div class="dot" style="left:52.45098039215685%"></div>
-    </div>
-  </td>
-  <td class="num">+0.1
-    <span class="ci-text">[-0.1, 0.3]</span></td>
-        <td class="verdict no">not shown</td>
-      </tr><tr>
-        <th>pace</th>
-        <td class="muted">no effect</td>
-        <td colspan="2" class="muted">predicted no effect</td>
-        <td class="verdict held">held</td>
-      </tr><tr>
-        <th>pushback</th>
-        <td class="muted">demandingness</td>
-        <td class="barcell">
-    <div class="bar up">
-      <div class="zero"></div>
-      <div class="ci" style="left:66.66666666666666%;width:21.078431372549034%"></div>
-      <div class="dot" style="left:76.96078431372551%"></div>
-    </div>
-  </td>
-  <td class="num">+1.1
-    <span class="ci-text">[0.7, 1.5]</span></td>
-        <td class="verdict held">held</td>
-      </tr><tr>
-        <th>probingDepth</th>
-        <td class="muted">adaptivity</td>
-        <td class="barcell">
-    <div class="bar up">
-      <div class="zero"></div>
-      <div class="ci" style="left:74.01960784313727%;width:25.980392156862735%"></div>
-      <div class="dot" style="left:87.25490196078431%"></div>
-    </div>
-  </td>
-  <td class="num">+1.5
-    <span class="ci-text">[1.0, 2.1]</span></td>
-        <td class="verdict held">held</td>
-      </tr><tr>
-        <th>unpredictability</th>
-        <td class="muted">topicShift</td>
-        <td class="barcell">
-    <div class="bar up">
-      <div class="zero"></div>
-      <div class="ci" style="left:90.68627450980392%;width:9.313725490196077%"></div>
-      <div class="dot" style="left:100%"></div>
-    </div>
-  </td>
-  <td class="num">+2.4
-    <span class="ci-text">[1.6, 3.1]</span></td>
-        <td class="verdict held">held</td>
-      </tr></tbody></table>
-  </section>
-  <p class="muted">
-    gpt-4o-mini as interviewer, gpt-4o-mini as judge.
-    This run cost $0.150.
-  </p>
+      </tr></tbody></table></section>
 
   <footer>
-    Generated by <code>npm run eval:persona -- --artifacts</code>. Full method,
-    limitations and what this does not prove: <code>docs/PERSONA-EVAL.md</code>.
-    Probe-rate baseline: 4.9% (arXiv 2608.10412).
+    Generated 2026-09-18 from 3e1aa38 + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona -- --artifacts`.<br>
+    gpt-4o-mini interviewing, gpt-4o-mini judging; this run cost $0.150. Probe-rate baseline 4.9% (arXiv 2608.10412).
+    Method, limitations and what this does <em>not</em> prove:
+    <code>docs/PERSONA-EVAL.md</code>. Regenerate with
+    <code>npm run eval:persona -- --artifacts</code>.
   </footer>
 </main>
