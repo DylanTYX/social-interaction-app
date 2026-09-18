@@ -26,7 +26,10 @@ interface VoiceInputProps {
    */
   deadlineMs?: number | null;
   /** When the current pause began, or null while the candidate is speaking. */
-  silenceStartedAtMs?: number | null;
+  silenceDeadline?: {
+    atMs: number;
+    pending: "submit" | "prompt";
+  } | null;
   /** When true, recording is started by the page after the interviewer speaks. */
   autoStartRecording?: boolean;
   onStart: () => void;
@@ -62,7 +65,7 @@ export function VoiceInput({
   recordingError,
   timeLimitSeconds,
   deadlineMs,
-  silenceStartedAtMs = null,
+  silenceDeadline = null,
   autoStartRecording = false,
   onStart,
   onStop,
@@ -191,7 +194,7 @@ export function VoiceInput({
             {isRecording || hearing ? "Hearing" : "Transcript"}
           </p>
           <div className="flex items-center gap-3 text-xs text-slate-500 tabular-nums">
-            <SilenceIndicator silenceStartedAtMs={silenceStartedAtMs} />
+            <SilenceIndicator deadline={silenceDeadline} />
             {/* The clock, for screens too narrow to hold it in the row above. */}
             {isRecording && (
               <AnswerCountdown

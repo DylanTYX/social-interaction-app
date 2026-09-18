@@ -306,25 +306,27 @@ function VoiceSimulateInner() {
   const transcriptForced = !voiceConfig.ttsEnabled;
   const transcriptVisible = transcriptShown || transcriptForced;
   /**
-   * Questions opened one at a time, rather than all of them.
+   * Per-question overrides of the page-wide setting.
    *
-   * "Show transcript" in a bubble used to set the page-wide flag, so asking to
-   * read back the one question you missed printed the whole interview — and the
-   * only way to undo that was a differently-named button in the header. The
-   * common case is wanting a single question again; that is now what the bubble
-   * does, and the header keeps the all-at-once switch it always had.
+   * The header switch sets the default for the interview; a bubble can differ
+   * from it in either direction. Every interviewer message therefore carries
+   * the same control, which reads "Show transcript" or "Hide transcript"
+   * depending only on whether that message is currently visible.
+   *
+   * The first version could only override in one direction: a question could be
+   * opened while the default was hidden, but with "Show all" on there was no
+   * way to close one, so the same bubble had a control in one mode and none in
+   * the other. A control that appears and disappears with a setting elsewhere
+   * on the page is the kind of inconsistency nobody can form a habit around.
    */
-  const [revealedIds, setRevealedIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const revealOne = (id: string) =>
-    setRevealedIds((current) => new Set(current).add(id));
-  const hideOne = (id: string) =>
-    setRevealedIds((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
+  const [transcriptOverrides, setTranscriptOverrides] = useState<
+    ReadonlyMap<string, boolean>
+  >(() => new Map());
+  const setOverride = (id: string, visible: boolean) =>
+    setTranscriptOverrides((current) => new Map(current).set(id, visible));
+  /** Whether one interviewer message's text is on screen. */
+  const showsTranscript = (id: string) =>
+    transcriptOverrides.get(id) ?? transcriptVisible;
 
   /**
    * An answer whose request failed, kept verbatim so it can be sent again.
@@ -1443,7 +1445,7 @@ function VoiceSimulateInner() {
               variant="outline"
               onClick={() => {
                 setTranscriptShown((shown) => !shown);
-                setRevealedIds(new Set());
+                setTranscriptOverrides(new Map());
               }}
               aria-pressed={transcriptShown}
               className="hidden sm:inline-flex"
@@ -1473,7 +1475,7 @@ function VoiceSimulateInner() {
                   className="sm:hidden"
                   onSelect={() => {
                     setTranscriptShown((shown) => !shown);
-                    setRevealedIds(new Set());
+                    setTranscriptOverrides(new Map());
                   }}
                 >
                   {transcriptShown ? "Hide all transcripts" : "Show all transcripts"}
@@ -1556,19 +1558,17 @@ function VoiceSimulateInner() {
                   content={msg.content}
                   // Spoken, not printed: the interviewer's words are withheld
                   // until asked for. Your own answers always show.
-                  spokenOnly={
-                    msg.role === "ai" &&
-                    !transcriptVisible &&
-                    !revealedIds.has(msg.id)
-                  }
-                  onShowTranscript={() => revealOne(msg.id)}
-                  // Offered only for a question opened on its own. While the
-                  // header switch is on, hiding one message would contradict it.
+                  spokenOnly={msg.role === "ai" && !showsTranscript(msg.id)}
+                  onShowTranscript={() => setOverride(msg.id, true)}
+                  // Present on every interviewer message whose text is showing,
+                  // whichever way it came to be showing. `transcriptForced`
+                  // is the one exception: with the interviewer muted there is
+                  // nothing to hear, so hiding the words would leave nothing.
                   onHideTranscript={
                     msg.role === "ai" &&
-                    !transcriptVisible &&
-                    revealedIds.has(msg.id)
-                      ? () => hideOne(msg.id)
+                    !transcriptForced &&
+                    showsTranscript(msg.id)
+                      ? () => setOverride(msg.id, false)
                       : undefined
                   }
                   timestamp={msg.timestamp}
@@ -1695,7 +1695,7 @@ function VoiceSimulateInner() {
                 recordingError={speech.recordingError}
                 timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
                 deadlineMs={speech.answerDeadlineMs}
-                silenceStartedAtMs={speech.silenceStartedAtMs}
+                silenceDeadline={speech.silenceDeadline}
                 autoStartRecording
                 onStart={() => void startAnswering()}
                 onStop={() => void speech.stop()}

@@ -18,18 +18,17 @@ import { SILENCE_WARN_AT_MS } from "@/lib/silence-detection";
 
 describe("SilenceIndicator", () => {
   it("draws nothing while the candidate is still speaking", () => {
-    expect(
-      renderToStaticMarkup(<SilenceIndicator silenceStartedAtMs={null} />),
-    ).toBe("");
+    expect(renderToStaticMarkup(<SilenceIndicator deadline={null} />)).toBe("");
   });
 
-  it("draws nothing before the warning threshold", () => {
-    // The pause has only just begun; announcing it here would flicker on every
-    // ordinary between-sentence breath.
-    const justPaused = Date.now() - (SILENCE_WARN_AT_MS - 500);
+  it("draws nothing on its first render, before it has read the clock", () => {
+    // The first sample is taken on a microtask, so the effect body holds no
+    // synchronous setState. Server-rendered, that sample never happens.
     expect(
       renderToStaticMarkup(
-        <SilenceIndicator silenceStartedAtMs={justPaused} />,
+        <SilenceIndicator
+          deadline={{ atMs: Date.now() + SILENCE_WARN_AT_MS, pending: "submit" }}
+        />,
       ),
     ).toBe("");
   });

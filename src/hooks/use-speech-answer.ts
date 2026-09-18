@@ -83,7 +83,11 @@ export interface UseSpeechAnswer {
   recordingError: string | null;
   setRecordingError: (message: string | null) => void;
   /** When the current pause began, or null while the candidate is speaking. */
-  silenceStartedAtMs: number | null;
+  /**
+   * When the turn will end itself, and what will happen then. Null while the
+   * candidate is speaking or still inside the quiet period.
+   */
+  silenceDeadline: { atMs: number; pending: "submit" | "prompt" } | null;
   /** The instant the timeout will actually fire, so the digits cannot drift. */
   answerDeadlineMs: number | null;
   start: () => Promise<void>;
@@ -119,7 +123,10 @@ export function useSpeechAnswer({
   const [interimTranscript, setInterimTranscript] = useState("");
   const [finalTranscript, setFinalTranscript] = useState("");
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const [silenceStartedAtMs, setSilenceStartedAtMs] = useState<number | null>(
+  const [silenceDeadline, setSilenceDeadline] = useState<{
+    atMs: number;
+    pending: "submit" | "prompt";
+  } | null>(
     null,
   );
   const [answerDeadlineMs, setAnswerDeadlineMs] = useState<number | null>(null);
@@ -247,7 +254,7 @@ export function useSpeechAnswer({
       clearInterval(silencePollRef.current);
       silencePollRef.current = null;
     }
-    setSilenceStartedAtMs(null);
+    setSilenceDeadline(null);
   }, []);
 
   const clearTranscript = useCallback(() => {
@@ -368,11 +375,17 @@ export function useSpeechAnswer({
         return;
       }
 
-      const nextStart =
-        decision.kind === "warning" || decision.kind === "submit"
-          ? (lastSpeechAtRef.current ?? turnStartedAtRef.current)
+      // Written only when the deadline itself moves, not on every tick: the
+      // countdown on screen derives its own seconds from this one timestamp.
+      const next =
+        decision.kind === "warning"
+          ? { atMs: decision.deadlineAtMs, pending: decision.pending }
           : null;
-      setSilenceStartedAtMs((prev) => (prev === nextStart ? prev : nextStart));
+      setSilenceDeadline((prev) =>
+        prev?.atMs === next?.atMs && prev?.pending === next?.pending
+          ? prev
+          : next,
+      );
     }, 250);
   }, [finish, stopSilenceWatch]);
 
@@ -402,7 +415,7 @@ export function useSpeechAnswer({
       lastSpeechAtRef.current = null;
       hasSpokenRef.current = false;
       turnStartedAtRef.current = Date.now();
-      setSilenceStartedAtMs(null);
+      setSilenceDeadline(null);
       isRecordingRef.current = true;
       setIsRecording(true);
       clearResponseTimeout();
@@ -585,7 +598,7 @@ export function useSpeechAnswer({
     finalTranscript,
     recordingError,
     setRecordingError,
-    silenceStartedAtMs,
+    silenceDeadline,
     answerDeadlineMs,
     start,
     stop,

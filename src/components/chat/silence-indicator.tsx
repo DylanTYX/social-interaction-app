@@ -2,60 +2,61 @@
 
 import { useEffect, useState } from "react";
 
-import { SILENCE_SUBMIT_MS, SILENCE_WARN_AT_MS } from "@/lib/silence-detection";
 import { cn } from "@/lib/utils";
 
 /**
- * "Submitting in 2s…" — the visible half of silence detection.
+ * The visible half of silence detection: the countdown before a turn ends
+ * itself.
  *
  * A leaf for the same reason `AnswerCountdown` is one: the number it shows
  * changes several times a second, and the voice screen it lives on holds the
  * live transcript and the whole message list. Ticking here re-renders eleven
  * characters instead of the session.
  *
- * The parent hands down the moment the pause started and nothing else, so it
- * writes state once per pause rather than once per frame. Its own countdown is
- * derived, never stored.
+ * It is handed a **deadline**, not a start time. It used to be given the start
+ * of the pause and to work out the deadline from the in-answer constants, which
+ * silently broke the moment a second kind of silence existed: the opening
+ * countdown rendered as a permanent "Submitting in 1s…", because it was
+ * measuring a ten-second wait against a four-second rule and clamping the
+ * negative result. The component no longer knows any thresholds.
  */
 export function SilenceIndicator({
-  silenceStartedAtMs,
+  deadline,
   className,
 }: {
-  /** When the current pause began, or null while the candidate is speaking. */
-  silenceStartedAtMs: number | null;
+  /** When the turn ends itself, and what happens then. Null while speaking. */
+  deadline: { atMs: number; pending: "submit" | "prompt" } | null;
   className?: string;
 }) {
-  // The clock reading is stored *with* the pause it was taken during, so a
-  // stale sample from the previous pause can be recognised and ignored rather
+  // The clock reading is stored *with* the deadline it was taken for, so a
+  // stale sample from a previous pause can be recognised and ignored rather
   // than cleared. Clearing would mean a setState in the effect body, which is
   // the one thing this file is not allowed to do.
   const [reading, setReading] = useState<{
-    startedAt: number;
+    atMs: number;
     nowMs: number;
   } | null>(null);
 
-  useEffect(() => {
-    if (silenceStartedAtMs === null) return;
+  const deadlineAtMs = deadline?.atMs ?? null;
 
-    const sample = () =>
-      setReading({ startedAt: silenceStartedAtMs, nowMs: Date.now() });
+  useEffect(() => {
+    if (deadlineAtMs === null) return;
+
+    const sample = () => setReading({ atMs: deadlineAtMs, nowMs: Date.now() });
     // First sample on a microtask, so the effect body holds no synchronous
     // setState — the same constraint the lint rules enforce on AnswerCountdown.
     queueMicrotask(sample);
     const id = setInterval(sample, 100);
     return () => clearInterval(id);
-  }, [silenceStartedAtMs]);
+  }, [deadlineAtMs]);
 
-  if (silenceStartedAtMs === null) return null;
-  if (!reading || reading.startedAt !== silenceStartedAtMs) return null;
+  if (deadline === null || deadlineAtMs === null) return null;
+  if (!reading || reading.atMs !== deadlineAtMs) return null;
 
-  const quietFor = reading.nowMs - silenceStartedAtMs;
-  if (quietFor < SILENCE_WARN_AT_MS) return null;
-
-  // Ceil so it counts 2, 1 and submits, rather than showing a "0s" that lingers.
+  // Ceil so it counts 2, 1 and then acts, rather than showing a lingering "0s".
   const secondsLeft = Math.max(
     1,
-    Math.ceil((SILENCE_SUBMIT_MS - quietFor) / 1000),
+    Math.ceil((deadlineAtMs - reading.nowMs) / 1000),
   );
 
   return (
@@ -68,7 +69,12 @@ export function SilenceIndicator({
         className,
       )}
     >
-      Submitting in {secondsLeft}s…
+      {deadline.pending === "submit"
+        ? `Submitting in ${secondsLeft}s…`
+        : // Nothing of the candidate's is being submitted here — they have not
+          // said anything. Saying "submitting" would report their silence as an
+          // answer they gave.
+          `Checking you're still there in ${secondsLeft}s…`}
     </div>
   );
 }

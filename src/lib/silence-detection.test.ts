@@ -97,18 +97,27 @@ describe("silence before the first word", () => {
   };
 
   it("waits, because composing an answer is not a fault", () => {
-    expect(decideSilence({ ...base, nowMs: 10_000 })).toEqual({
+    expect(decideSilence({ ...base, nowMs: 3_000 })).toEqual({
       kind: "listening",
     });
   });
 
-  it("warns before it acts, so the check-in is never a surprise", () => {
-    const decision = decideSilence({ ...base, nowMs: 18_000 });
-    expect(decision.kind).toBe("warning");
+  it("warns before it acts, and counts down to the right deadline", () => {
+    const decision = decideSilence({ ...base, nowMs: 6_000 });
+    expect(decision).toEqual({
+      kind: "warning",
+      msRemaining: 4_000,
+      // The deadline travels with the warning so the countdown on screen does
+      // not have to guess which of the two silence rules produced it. Guessing
+      // is what made the opening countdown read "Submitting in 1s…" for its
+      // whole duration.
+      deadlineAtMs: 10_000,
+      pending: "prompt",
+    });
   });
 
   it("asks the interviewer to check in once the silence is unmistakable", () => {
-    expect(decideSilence({ ...base, nowMs: 25_000 })).toEqual({
+    expect(decideSilence({ ...base, nowMs: 10_000 })).toEqual({
       kind: "prompt",
     });
   });
@@ -127,7 +136,7 @@ describe("silence before the first word", () => {
       decideSilence({
         nowMs: 30_000,
         hasSpoken: true,
-        lastSpeechAtMs: 29_000,
+        lastSpeechAtMs: 29_500,
         turnStartedAtMs: 0,
       }),
     ).toEqual({ kind: "listening" });

@@ -199,7 +199,7 @@ export function DrillSpeakInput({
                 : "Transcript"}
           </p>
           <div className="flex items-center gap-3 text-xs text-slate-500 tabular-nums">
-            <SilenceIndicator silenceStartedAtMs={speech.silenceStartedAtMs} />
+            <SilenceIndicator deadline={speech.silenceDeadline} />
             {/* The clock, for screens too narrow to hold it in the row above. */}
             {speech.isRecording && (
               <AnswerCountdown

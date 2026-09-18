@@ -51,16 +51,38 @@ export const SILENCE_WARN_AT_MS = 2000;
  * questioner waits several seconds, so the cost of waiting a little too long is
  * much lower than the cost of interrupting someone composing an answer.
  */
-export const OPENING_SILENCE_PROMPT_MS = 25_000;
+export const OPENING_SILENCE_PROMPT_MS = 10_000;
 
-/** When the check-in becomes visible, so it is never a surprise. */
-export const OPENING_SILENCE_WARN_AT_MS = 15_000;
+/**
+ * When the check-in becomes visible.
+ *
+ * Six seconds of visible countdown: long enough to start talking and cancel it,
+ * short enough that it is not a stare. The first draft waited fifteen seconds
+ * before showing anything, which is longer than the silence a person would sit
+ * through before wondering whether the microphone was working at all.
+ */
+export const OPENING_SILENCE_WARN_AT_MS = 4_000;
 
 export type SilenceDecision =
   /** Still talking, or not yet talking. Nothing to show. */
   | { kind: "listening" }
-  /** Quiet, and close enough to the threshold to warn about it. */
-  | { kind: "warning"; msRemaining: number }
+  /**
+   * Quiet, and close enough to the threshold to warn about it.
+   *
+   * Carries the deadline as well as the remaining time, because the countdown
+   * on screen has two different deadlines to render — four seconds after the
+   * last word mid-answer, ten seconds after the microphone opened if nothing
+   * has been said — and it used to assume the first. It therefore rendered the
+   * opening countdown as a permanent "Submitting in 1s…", which is both wrong
+   * and alarming.
+   */
+  | {
+      kind: "warning";
+      msRemaining: number;
+      deadlineAtMs: number;
+      /** What happens at the deadline. */
+      pending: "submit" | "prompt";
+    }
   /** Quiet for long enough. Submit the turn. */
   | { kind: "submit" }
   /** Nothing said at all for long enough. The interviewer should check in. */
@@ -105,7 +127,12 @@ export function decideSilence(input: {
     const silentFor = input.nowMs - input.turnStartedAtMs;
     if (silentFor >= promptAfter) return { kind: "prompt" };
     if (silentFor >= promptWarnAfter) {
-      return { kind: "warning", msRemaining: promptAfter - silentFor };
+      return {
+        kind: "warning",
+        msRemaining: promptAfter - silentFor,
+        deadlineAtMs: input.turnStartedAtMs + promptAfter,
+        pending: "prompt",
+      };
     }
     return { kind: "listening" };
   }
@@ -117,7 +144,12 @@ export function decideSilence(input: {
   }
 
   if (quietFor >= warnAfter) {
-    return { kind: "warning", msRemaining: submitAfter - quietFor };
+    return {
+      kind: "warning",
+      msRemaining: submitAfter - quietFor,
+      deadlineAtMs: input.lastSpeechAtMs + submitAfter,
+      pending: "submit",
+    };
   }
 
   return { kind: "listening" };
