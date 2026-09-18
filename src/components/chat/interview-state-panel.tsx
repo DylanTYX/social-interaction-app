@@ -1,6 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import type { InterviewSessionState } from "@/lib/interview-session-state";
 import type { InterviewMetrics } from "@/lib/interview-metrics";
 import type { InterviewStrategy } from "@/lib/response-analyzer";
@@ -42,46 +40,32 @@ const STRATEGY_LABELS: Record<InterviewStrategy, string> = {
   HYPOTHETICAL_TWIST: "Twisting the scenario",
 };
 
-const clamp = (value: number) => Math.max(0, Math.min(100, value));
+const percent = (value: number | null) =>
+  value === null ? null : Math.round(Math.max(0, Math.min(100, value)));
 
-/** One labelled meter, or a stated absence. Never a stand-in number. */
-function Meter({
-  label,
-  hint,
-  value,
-}: {
+type Measure = {
   label: string;
-  hint: string;
-  value: number | null;
-}) {
-  return (
-    <div className="py-3 first:pt-0 sm:py-0">
-      <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs">
-        <span className="text-slate-500">{label}</span>
-        <span className="font-medium text-slate-900 tabular-nums">
-          {value === null ? "not yet" : `${Math.round(value)}%`}
-        </span>
-      </div>
-      <Progress
-        value={value ?? 0}
-        className={value === null ? "h-1.5 opacity-40" : "h-1.5"}
-        aria-label={label}
-      />
-      <p className="mt-1.5 text-[11px] leading-4 text-slate-500">{hint}</p>
-    </div>
-  );
-}
+  value: number | string | null;
+  unit?: string;
+  caption: string;
+};
 
 /**
  * The interview engine's own view of the session, for the "Advanced system
  * state" dialog.
  *
- * A debugging surface, so it is plain — but its whole value is being accurate,
- * and it was not. Besides the mislabelled strategies above, "Decision
- * confidence" silently fell back to the candidate's *average answer score* when
- * the engine had not produced a confidence yet: two unrelated quantities under
- * one label, with nothing to say which you were looking at. A meter now reads
- * "not yet" rather than borrowing a number from somewhere else.
+ * Drawn as the rail's readout is drawn — a panel label, a hairline grid of
+ * measures, navy figures with captions — because it is the same kind of thing
+ * and was previously the only readout in the app with progress bars and a card
+ * of its own inside a dialog that already framed it. No tone marks: nothing
+ * here is a judgement about the candidate, and the delivery readout's rule is
+ * that a mark appears only where the code actually makes one.
+ *
+ * Its value is being accurate, and it was not. Besides the mislabelled
+ * strategies above, "Decision confidence" silently fell back to the candidate's
+ * *average answer score* when the engine had not produced a confidence yet: two
+ * unrelated quantities under one label, with nothing to say which you were
+ * looking at. An absent measure now reads as absent.
  */
 export function InterviewStatePanel({
   state,
@@ -92,73 +76,100 @@ export function InterviewStatePanel({
   decisionConfidence,
   metrics,
 }: InterviewStatePanelProps) {
-  const confidence =
-    decisionConfidence === null ? null : clamp(decisionConfidence);
-  // `averageConfidenceScore` is the analyzer's assertiveness rating, 0-10. It
-  // is not "communication", and calling it that invited the reading that the
-  // interview was scoring how well the candidate communicates overall.
-  const assertiveness = metrics
-    ? clamp(metrics.averageConfidenceScore * 10)
-    : null;
+  const measures: Measure[] = [
+    {
+      label: "Scored answers",
+      value: state.turnCount,
+      caption: "Trivial replies are not counted.",
+    },
+    {
+      label: "Adaptive follow-ups",
+      value: state.followupCount,
+      caption: "Questions chosen from your answer rather than a script.",
+    },
+    {
+      label: "Decision confidence",
+      value: percent(decisionConfidence),
+      unit: "%",
+      caption:
+        "How settled the engine was on this move, from the answer's score, its vagueness and the persona's strictness and warmth.",
+    },
+    {
+      label: "Assertiveness",
+      // `averageConfidenceScore` is the analyzer's assertiveness rating, 0-10.
+      // It is not "communication", which is what this used to be called — a
+      // name that invited the reading that the interview scores how well you
+      // communicate overall.
+      value: percent(metrics ? metrics.averageConfidenceScore * 10 : null),
+      unit: "%",
+      caption: "How assertively you have been answering. Not part of your score.",
+    },
+  ];
 
   return (
-    <Card className="gap-4">
-      <CardHeader>
-        <CardTitle className="text-lg">Interview state</CardTitle>
-        <p className="text-xs leading-5 text-slate-500">
-          What the engine decided on the last scored answer, and why. Nothing
-          here is shown to the interviewer as text &mdash; it is the record of
-          the choice, not the prompt.
+    <div className="space-y-6">
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className={PANEL_LABEL}>Where this interview is</h3>
+          <p className="text-xs text-slate-500">{stageLabel}</p>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-pretty text-slate-600">
+          {stageGuidance}
         </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">Stage {stageLabel}</Badge>
-          <Badge variant="outline">
-            {lastStrategy
-              ? STRATEGY_LABELS[lastStrategy]
-              : "No decision yet"}
-          </Badge>
-          <Badge variant="outline">
-            {state.turnCount} scored {state.turnCount === 1 ? "answer" : "answers"}
-          </Badge>
-          <Badge variant="outline">
-            {state.followupCount} adaptive follow-ups
-          </Badge>
+
+        <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-100 lg:grid-cols-4">
+          {measures.map((measure) => (
+            <div key={measure.label} className="bg-white p-4">
+              <dt className="text-xs text-slate-500">{measure.label}</dt>
+              <dd className="mt-2 font-display text-2xl leading-none font-bold tracking-tight text-navy tabular-nums">
+                {measure.value === null ? (
+                  <span className="text-slate-300">&mdash;</span>
+                ) : (
+                  <>
+                    {measure.value}
+                    {measure.unit && (
+                      <span className="ml-0.5 font-sans text-xs font-medium tracking-normal text-slate-500">
+                        {measure.unit}
+                      </span>
+                    )}
+                  </>
+                )}
+              </dd>
+              <dd className="mt-2 text-xs leading-snug text-slate-600">
+                {measure.value === null ? "Not measured yet." : measure.caption}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className={PANEL_LABEL}>The move it chose last</h3>
+          <p className="text-xs text-slate-500">
+            Never shown to the interviewer as text
+          </p>
         </div>
 
-        <p className="text-xs leading-5 text-slate-600">{stageGuidance}</p>
-
-        <div className="grid gap-4 divide-y divide-slate-100 border-y border-slate-100 py-3 sm:grid-cols-2 sm:divide-x sm:divide-y-0 sm:gap-0">
-          <div className="sm:pr-5">
-            <Meter
-              label="Decision confidence"
-              hint="How settled the engine was on this move, from the answer's score, its vagueness, and the persona's strictness and warmth."
-              value={confidence}
-            />
-          </div>
-          <div className="sm:pl-5">
-            <Meter
-              label="Assertiveness in answers"
-              hint="The analyzer's read of how assertively the candidate has been speaking, averaged over scored answers. Not part of the interview score."
-              value={assertiveness}
-            />
-          </div>
-        </div>
-
-        {decisionReason ? (
-          <div>
-            <p className="mb-1 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
-              Why this move
+        {lastStrategy ? (
+          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+            <p className="font-display text-lg font-semibold tracking-tight text-slate-900">
+              {STRATEGY_LABELS[lastStrategy]}
             </p>
-            <p className="text-xs leading-5 text-slate-600">{decisionReason}</p>
+            {decisionReason && (
+              <p className="mt-2 text-sm leading-6 text-pretty text-slate-600">
+                {decisionReason}
+              </p>
+            )}
           </div>
         ) : (
-          <p className="text-xs leading-5 text-slate-500">
-            The first answer has not been scored yet, so no move has been chosen.
+          <p className="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-500">
+            The first answer has not been scored yet, so no move has been
+            chosen. Until then the interviewer follows the round&rsquo;s own
+            playbook.
           </p>
         )}
-      </CardContent>
-    </Card>
+      </section>
+    </div>
   );
 }

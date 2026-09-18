@@ -801,11 +801,12 @@ function ChatSimulateInner() {
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>
-              Internal interview strategy and decision context for debugging and
-              optimization.
+              What the engine decided on your last scored answer, and why. This
+              is the record of the choice, not the instruction &mdash; none of
+              it is shown to the interviewer as text.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto pr-1">
+          <div className="max-h-[70vh] overflow-y-auto pr-1 pb-1">
             <InterviewStatePanel
               state={turn.sessionState}
               stageLabel={stageLabel}
