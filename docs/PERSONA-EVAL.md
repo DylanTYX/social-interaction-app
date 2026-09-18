@@ -4,15 +4,15 @@ The setup wizard draws six sliders from 1 to 10. That is a promise: that moving
 one changes how the interviewer questions you, and that the number means
 something. This document is how that promise gets checked rather than asserted.
 
-> **Status: the dials are wired. Whether that reaches the model is only
-> partly established, and the live experiment is underpowered.**
-> Five of the six dials produce 10 distinct behaviours across their 10 settings,
-> and probing depth produces 9 — measured offline, byte-identical, pinned by
-> tests. The live half is weaker than that and must not be quoted as if it
-> were: run twice at the same commit it returned **2 of 6** and **3 of 6**
-> pre-registered effects, and only **warmth** and **pace** behaved the same way
-> both times. **Nothing here shows that 8 differs from 9 in the output**, because
-> the experiment tests 2, 5 and 9 only.
+> **Status: the dials are wired, and four of six now demonstrably reach the
+> model.**
+> Five of the six produce 10 distinct behaviours across their 10 settings, and
+> probing depth produces 9 — offline, byte-identical, pinned by tests. Live, at
+> 51 generations per cell: pushback, probing depth and unpredictability all move
+> their pre-registered axis with the interval well clear of zero, and pace
+> correctly moves nothing. Strictness is borderline and warmth did not show.
+> **Nothing here shows that 8 differs from 9 in the output**, because the
+> experiment tests 2, 5 and 9 only.
 
 Everything below was produced by `npm run eval:persona`. The deterministic layer
 needs no API key and is byte-identical on every run; the live layer costs about
@@ -145,45 +145,40 @@ not they held.
 
 | Dial | Predicted | Measured, 2 → 9 | Verdict |
 | --- | --- | --- | --- |
-| warmth | supportiveness ↑ | **+0.8** [0.3, 1.3], monotonic | **held** |
+| unpredictability | topic shift ↑ | **+2.4** [1.6, 3.1], monotonic | **held** |
+| probingDepth | adaptivity ↑ | **+1.5** [1.0, 2.1] | **held** |
+| pushback | demandingness ↑ | **+1.1** [0.7, 1.5] | **held** |
 | pace | no effect | none on any axis | **held** |
-| strictness | demandingness ↑ | +0.2 [−0.1, 0.4] | not shown |
-| pushback | demandingness ↑ | +0.4 [0.0, 0.8]; largest effect is topic shift | not shown |
-| probingDepth | adaptivity ↑ | **−0.5** [−1.0, −0.1] — significant, and *downwards* | contradicted |
-| unpredictability | topic shift ↑ | 0.0 [0.0, 0.0] | not shown |
+| strictness | demandingness ↑ | +0.6 [0.0, 1.1], monotonic | borderline |
+| warmth | supportiveness ↑ | +0.1 [−0.1, 0.3], monotonic | not shown |
 
-Two of six held.
+Four of six, and the three largest effects in the whole experiment belong to the
+three dials that had previously shown nothing at all.
 
-### The replication, which matters more than the table
+### What changed, and why it is the most important result here
 
-The experiment was run twice at the same commit. It does not reproduce.
+Every earlier run was measuring a system whose steering note was never read. The
+note sat ahead of the transcript, lost to recency, and the three dials that act
+through the decision engine rather than through persona prose — pushback,
+probing depth, unpredictability — were effectively disconnected from the output.
 
-| Dial | Run 1 | Run 2 (committed) | Stable? |
-| --- | --- | --- | --- |
-| warmth | +0.7 [0.3, 1.0] | +0.8 [0.3, 1.3] | **yes** |
-| pace | null | null | **yes** |
-| strictness | +0.7 [0.3, 1.3] | +0.2 [−0.1, 0.4] | no |
-| pushback | topic shift +0.5 [0.1, 1.0] | topic shift largest, n.s. | partly |
-| probingDepth | −0.1 [−0.6, 0.4] | −0.5 [−1.0, −0.1] | no |
-| unpredictability | +0.1 | 0.0 | consistently null |
-| **Expectations held** | **3 of 6** | **2 of 6** | — |
+The clearest single number in this document:
 
-At twelve generations per cell, an effect of half a point on a 1–10 scale sits
-inside the sampling noise, and the "significant" results move between runs. Only
-**warmth** and **pace** — a positive and a correctly-predicted null — survive
-replication.
+| | Steering note before the exchange | After |
+| --- | --- | --- |
+| Pivots that opened the named subject | **0 of ~150** | **45 of 45** |
+| unpredictability → topic shift | −0.2 (wrong sign) | **+2.4** |
+| probingDepth → adaptivity | 0.0 | **+1.5** |
+| pushback → demandingness | +0.1 | **+1.1** |
 
-**This is a limitation of the experiment, not a measurement of the dials.** §3 is
-deterministic and does not move. What §4 establishes today is that warmth
-reaches the model, that pace correctly does not, and that twelve samples per cell
-are too few to say anything about the rest. The fix is more samples, a sharper
-instrument, or both — not a louder claim.
+Nothing about the dials changed between those columns. One message moved.
 
-One result deserves singling out because it is the wrong sign: **raising probing
-depth lowered the judge's adaptivity rating** by 0.5, with the interval
-excluding zero. The text metrics below suggest why, and suggest the judge rather
-than the dial is at fault — but that is an interpretation, and the measured
-number says the prediction failed.
+**Strictness and warmth moved the other way**, from held to borderline and not
+shown. Both act mainly through persona prose, which was always being read, so
+their effects were never suppressed — and at +0.3 in the earlier run they were
+small enough that the interval's position either side of zero is exactly the
+instability §"The replication" warns about. The honest reading is that these two
+are weak effects this experiment cannot pin down, not that they stopped working.
 
 ### What the text shows that the judge does not
 

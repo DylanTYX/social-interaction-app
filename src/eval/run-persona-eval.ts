@@ -34,7 +34,7 @@ import {
   type PersonaConfig,
 } from "@/lib/persona-engine";
 import { estimateFollowupDifficulty } from "@/lib/decision-engine";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { renderHtml } from "./persona-report-html";
 import { provenanceLine } from "./provenance";
@@ -687,6 +687,22 @@ function parseArgs() {
 }
 
 const ARTIFACT_DIR = "docs/artifacts";
+const LIVE_JSON = `${ARTIFACT_DIR}/persona-eval-live.json`;
+
+/** Capture stdout *and* still print it, for a reporter that runs for ages. */
+function captureTee<T>(run: () => T): { value: T; text: string } {
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (...args: unknown[]) => {
+    lines.push(args.join(" "));
+    original(...args);
+  };
+  try {
+    return { value: run(), text: `${lines.join("\n")}\n` };
+  } finally {
+    console.log = original;
+  }
+}
 
 /** Capture stdout while a reporter prints, so it can be written to a file. */
 function capture<T>(run: () => T): { value: T; text: string } {
@@ -718,18 +734,37 @@ async function main() {
         process.exitCode = 1;
         return;
       }
-      // Not captured: this arm runs for the better part of an hour, and a
-      // progress line nobody sees is worse than no progress line.
-      empirical = await dialExperimentReport(runs, apiKey, false);
+      // Progress must reach the terminal — this arm runs for half an hour and
+      // a silent one cannot be told from a stalled one. So the report is
+      // printed *and* captured: `capture` tees to the real console rather than
+      // swallowing, and the text is written alongside the JSON. Leaving it out
+      // was a quiet trap: the live text artifact kept its previous contents
+      // while the JSON beside it was replaced, so the two described different
+      // runs and only the timestamps said so.
+      const live = await captureTee(() => dialExperimentReport(runs, apiKey, false));
+      empirical = await live.value;
+      writeFileSync(`${ARTIFACT_DIR}/persona-eval-live.txt`, live.text);
+      console.log(`wrote ${ARTIFACT_DIR}/persona-eval-live.txt`);
       writeFileSync(
-        `${ARTIFACT_DIR}/persona-eval-live.json`,
+        LIVE_JSON,
         `${JSON.stringify(empirical, null, 2)}\n`,
       );
-      console.log(`wrote ${ARTIFACT_DIR}/persona-eval-live.json`);
+      console.log(`wrote ${LIVE_JSON}`);
     }
 
-    // The page renders from the same objects the JSON is serialised from, in
-    // this same run, so the two cannot disagree.
+    /**
+     * Without `--live` there is no fresh experiment, so the page falls back to
+     * the committed JSON. Re-rendering a chart is a formatting change and must
+     * not cost a billed run — and the alternative, silently dropping the live
+     * section, replaces a page that has the numbers with one that does not.
+     */
+    if (!empirical && existsSync(LIVE_JSON)) {
+      empirical = JSON.parse(readFileSync(LIVE_JSON, "utf8"));
+      console.log(`reusing ${LIVE_JSON} (run with --live to regenerate it)`);
+    }
+
+    // The page renders from the same objects the JSON is serialised from, so
+    // the two cannot disagree.
     const detJson = deterministicReport(true) as unknown as Parameters<
       typeof renderHtml
     >[0];
