@@ -229,6 +229,7 @@ export function PersonaConfigEditor({
           {PERSONA_DIALS.map((dial) => (
             <DialField
               key={dial.key}
+              dial={dial.key}
               label={dial.label}
               value={value[dial.key] ?? 5}
               helper={dial.helper}

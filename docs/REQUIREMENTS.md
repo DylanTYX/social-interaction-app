@@ -64,7 +64,7 @@ a case ID in [UAT.md](UAT.md).
 | F2  | A job description can be pasted or uploaded as PDF, and grounds the questions | `api/job-descriptions`, `jd-chunking.ts`, `pdf.ts` | `jd-chunking.test.ts`, UAT I4-I5                  |
 | F3  | A resume can be pasted or uploaded, and the interviewer reads it whole        | `api/resumes`, `db/resume-prompt.ts`               | `resume-prompt.test.ts`, UAT I6-I8                |
 | F4  | Documents are saved to a reusable library, editable and deletable             | `dashboard/resumes`, `dashboard/job-descriptions`  | `route.test.ts` × 2, UAT I8b                      |
-| F5  | The interviewer persona is configurable on five axes plus four dials          | `persona-engine.ts`                                | `persona-engine.test.ts`, `eval:persona`          |
+| F5  | The interviewer persona is configurable on five axes plus six dials, and each dial demonstrably changes the interview | `persona-engine.ts`, `persona-dials.ts`      | `persona-engine.test.ts`, `persona-dials.test.ts`, [PERSONA-EVAL.md](PERSONA-EVAL.md) |
 | F6  | One round, or many, composed by the user                                      | `interview-rounds.ts`                              | `interview-rounds.test.ts`, `round-types.test.ts` |
 | F7  | Each round in a loop can have a different interviewer                         | `next-round/route.ts`, `loop-step.tsx`             | UAT T-loop                                        |
 
@@ -73,7 +73,7 @@ a case ID in [UAT.md](UAT.md).
 | #   | Requirement                                                      | Implemented in                                             | Checked by                                                         |
 | --- | ---------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------ |
 | F8  | Every answer is scored against the round's own rubric            | `response-analyzer.ts`                                     | **`npm run eval`** — 88.9% band accuracy, 41.0 separation          |
-| F9  | **The score steers the next question**                           | `decision-engine.ts` → steering block in `api/chat`        | `decision-engine.test.ts`; `eval:persona` for the difficulty curve |
+| F9  | **The score steers the next question**                           | `decision-engine.ts` → steering block in `api/chat`        | `decision-engine.test.ts`; [PERSONA-EVAL.md](PERSONA-EVAL.md) for the difficulty and probe curves |
 | F10 | The interviewer does not repeat a question within a round        | `asked-questions.ts`, `competencies.ts`                    | `asked-questions.test.ts`, `competencies.test.ts`                  |
 | F11 | **A later round knows what earlier rounds asked**                | `loop-brief.ts`, `next-round/route.ts`                     | `loop-brief.test.ts`                                               |
 | F12 | A later round does not re-ask for a background it was briefed on | `round-types.ts` `continuationOpening`, `opening-brief.ts` | `opening-brief.test.ts`                                            |
@@ -97,7 +97,7 @@ a case ID in [UAT.md](UAT.md).
 | F24 | Drills answered by speaking or typing, coached as what they are      | `dashboard/drills`, `use-speech-answer.ts`  | `coach-prompt.test.ts`, `route.test.ts`   |
 | F25 | Drill topics scoped to Computer Science, with a rubric behind each   | `question-bank/categories.ts`, `coach-rubric.ts` | `question-bank.test.ts`, **`docs/DRILLS.md`** |
 | F26 | Evidence probing: weak wording ("involved", "we decided") detected, quoted back, and marked on evidence | `text-metrics.ts`, `decision-engine.ts`     | `text-metrics.test.ts`, `decision-engine.test.ts`, **`docs/INTERVIEWER.md`** |
-| F27 | Curveballs: seeded topic pivots and scenario twists, biased by persona dials, never by the rubric | `decision-engine.ts`, `persona-engine.ts`   | `decision-engine.test.ts`, `npm run eval:persona` |
+| F27 | Curveballs: seeded topic pivots and scenario twists, biased by persona dials, never by the rubric | `decision-engine.ts`, `persona-engine.ts`   | `decision-engine.test.ts`; [PERSONA-EVAL.md](PERSONA-EVAL.md) measures the rate at every dial setting |
 | F28 | A user can see their own token use and its estimated cost, by period and by what it bought | `api/me/usage`, `usage-summary.ts`, `dashboard/settings`, report header | `usage-summary.test.ts`, `api/me/usage/route.test.ts`, UAT A7 |
 
 ### Account and data
@@ -115,7 +115,7 @@ a case ID in [UAT.md](UAT.md).
 | #   | Requirement                                                                       | How it is met                                                                                                                               | Evidence                                                           |
 | --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | N1  | **Scoring must be stable** — the same answer must not score 62 then 78            | `temperature: 0.1`, anchored 0-100 bands                                                                                                    | `npm run eval` reports mean σ = 1.39 across runs                   |
-| N2  | **Scoring must be persona-blind** — a warm interviewer must not inflate the score | The analyzer takes no persona argument; cache key is `analyzer:${roundType}`                                                                | Asserted in `DEMO.md`; no persona in `analyzeResponse`'s signature |
+| N2  | **Scoring must be persona-blind** — a warm interviewer must not inflate the score | The analyzer takes no persona argument; cache key is `analyzer:${roundType}`                                                                | `response-analyzer.test.ts` stubs the request and asserts two personas send identical bodies with no persona vocabulary |
 | N3  | **Token cost must be measured, not assumed**                                      | Every call records to `llm_usage`; `npm run cost-report` prices it, and `/api/me/usage` prices the caller's own                                                                          | [TOKEN-COST.md](TOKEN-COST.md), with the cache-floor caveat stated |
 | N4  | **A user's data must be unreachable by another user**                             | RLS on every table; retrieval RPC filters on `auth.uid()` **inside** the database                                                           | [DATA-MODEL.md](DATA-MODEL.md)                                     |
 | N5  | **Untrusted text must not reach a system prompt**                                 | Input caps, `isRoundType` validation, `sanitizeNotes`, `collectAskedQuestions` skips user turns                                             | Route tests assert the injection cases directly                    |

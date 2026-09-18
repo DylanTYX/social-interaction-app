@@ -96,13 +96,42 @@ describe("the dial thresholds", () => {
     expect(prompt).toContain(expected);
   });
 
-  it("collapses strictness 5, 6 and 7 to identical text", () => {
-    // Documented rather than fixed: it means a demo comparing strictness 5 vs 7
-    // would show no difference at all, and someone should know that before
-    // standing in front of a room claiming otherwise.
+  it("no longer collapses strictness 5 and 7 to identical text", () => {
+    // This test used to assert the opposite, and documented the collapse as a
+    // known flaw: a demo comparing strictness 5 with 7 showed no difference at
+    // all. The personality clause is still banded and still identical across
+    // 5-7 — what separates them now is the standards line, which states the
+    // dial's own value and the number of specifics it insists on.
     const five = generatePersonaPrompt(persona({ strictness: 5 }));
     const seven = generatePersonaPrompt(persona({ strictness: 7 }));
-    expect(five).toBe(seven);
+
+    expect(five).not.toBe(seven);
+    expect(five).toContain("at least 3 concrete specifics");
+    expect(seven).toContain("at least 4 concrete specifics");
+    // The banded personality clause is deliberately unchanged.
+    expect(five).toContain("moderate standards");
+    expect(seven).toContain("moderate standards");
+  });
+
+  it("gives each pace setting its own word budget", () => {
+    // Four prose bands cannot express ten settings; a budget can, and it is
+    // the one dial directive a reader can check by counting.
+    const budgets = Array.from({ length: 10 }, (_, i) =>
+      generatePersonaPrompt(persona({ pace: (i + 1) as never })).match(
+        /question to at most (\d+) words/,
+      )?.[1],
+    );
+    expect(new Set(budgets).size).toBe(10);
+    expect(budgets[0]).toBe("57");
+    expect(budgets[9]).toBe("30");
+  });
+
+  it("scales how many claims pushback contests", () => {
+    const contested = (pushback: number) =>
+      generatePersonaPrompt(persona({ pushback: pushback as never }));
+    expect(contested(2)).toContain("do not contest a claim");
+    expect(contested(5)).toContain("one claim of theirs");
+    expect(contested(9)).toContain("Name two claims");
   });
 
   it.each([

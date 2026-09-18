@@ -26,6 +26,7 @@ Fourteen documents. This is which one answers what, so nobody has to grep.
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [TESTING.md](TESTING.md)                                          | The five layers, and what is deliberately not tested                         |
 | [EVALUATION.md](EVALUATION.md)                                    | Is the **analyzer's score** trustworthy? Measured against a keyword baseline |
+| [PERSONA-EVAL.md](PERSONA-EVAL.md)                                | Do the **persona dials** change the interview, or are they decoration? Measured one dial at a time |
 | [COACHING.md](COACHING.md)                                        | How the **coach** generates a response, and how much of it is measured       |
 | [UAT.md](UAT.md) · [UAT-tester-handout.md](UAT-tester-handout.md) | Can people actually use it? Test plan and participant script                 |
 | [PRODUCTION-REVIEW.md](PRODUCTION-REVIEW.md)                      | What a hardening pass found, what was fixed, what was not, and why           |
@@ -45,7 +46,9 @@ without re-running it:
 
 | File                           | From                             |
 | ------------------------------ | -------------------------------- |
-| `persona-comparison.txt`       | `npm run eval:persona -- --live` |
+| `persona-eval.txt`             | `npm run eval:persona -- --live --runs=12` — the per-dial sweeps and experiment behind [PERSONA-EVAL.md](PERSONA-EVAL.md) |
+| `persona-eval-live.json`       | the same run's raw follow-ups and judge scores |
+| `persona-comparison.txt`       | `npm run eval:persona` at `0052081`, superseded by `persona-eval.txt` |
 | `coach-eval-deterministic.txt` | `npm run eval:coach`             |
 | `voice-audition.md`            | `npm run eval:voices -- --live --stt` (listen: `-- --page` or `-- --play`) |
 | `azure-voices-southeastasia.json` | `npm run eval:voices -- --list` |

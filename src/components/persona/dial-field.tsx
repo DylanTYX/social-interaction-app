@@ -4,6 +4,7 @@ import { HelpCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { describeDial, type PersonaDialKey } from "@/lib/persona-dials";
 import {
   Tooltip,
   TooltipContent,
@@ -20,16 +21,23 @@ import {
  * whole job is editing dials. One component, both surfaces.
  */
 export function DialField({
+  dial,
   label,
   value,
   helper,
   onChange,
 }: {
+  dial: PersonaDialKey;
   label: string;
   value: number;
   helper: string;
   onChange: (next: number) => void;
 }) {
+  // The label names the *character* the setting produces — Demanding, Warm,
+  // Brisk — which is what someone picking a number is actually choosing. It is
+  // not a claim that every value sharing a label behaves identically: each dial
+  // now resolves 7 to 10 of its ten steps, measured in `docs/PERSONA-EVAL.md`.
+  const band = describeDial(dial, value);
   // A <Label> with no `htmlFor` next to an <input> with no `id` is decoration:
   // it looks associated and is not. Wiring them means the dials are actually
   // reachable and announced.
@@ -60,9 +68,12 @@ export function DialField({
             <TooltipContent className="max-w-56">{helper}</TooltipContent>
           </Tooltip>
         </div>
-        <Badge variant="secondary" className="tabular-nums">
-          {value}/10
-        </Badge>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{band.label}</span>
+          <Badge variant="secondary" className="tabular-nums">
+            {value}/10
+          </Badge>
+        </div>
       </div>
       <input
         id={id}
@@ -71,13 +82,13 @@ export function DialField({
         max={10}
         step={1}
         value={value}
-        aria-valuetext={`${value} out of 10`}
+        aria-valuetext={`${value} out of 10, ${band.label}`}
         aria-describedby={`${id}-help`}
         onChange={(event) => onChange(Number(event.target.value))}
         className="w-full accent-primary"
       />
       <span id={`${id}-help`} className="sr-only">
-        {helper}
+        {helper} Currently {value} out of 10, {band.label.toLowerCase()}.
       </span>
     </div>
   );

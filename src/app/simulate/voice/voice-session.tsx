@@ -1,6 +1,7 @@
 "use client";
 
 import type { DeliveryMetrics } from "@/lib/speech-metrics";
+import { paceToRatePercent } from "@/lib/speech-voices";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -65,7 +66,6 @@ import {
 import {
   extractSpeakableSentences,
   getSpeechService,
-  paceToRatePercent,
   STOP_LISTENING_TIMEOUT_MS,
 } from "@/lib/speech-service";
 import { resolveVoiceForPersona } from "@/lib/persona-voice";

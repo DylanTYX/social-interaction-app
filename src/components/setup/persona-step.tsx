@@ -35,6 +35,7 @@ import { PersonaGridSkeleton } from "@/components/dashboard/page-skeletons";
 import { PersonaCard } from "@/components/persona/persona-card";
 import { PersonaConfigEditor } from "@/components/persona/persona-config-editor";
 import { PERSONA_DIALS } from "@/components/persona/dial-field";
+import { describeDial } from "@/lib/persona-dials";
 import {
   QUESTIONING_STYLE_META,
   type PersonaConfig,
@@ -308,10 +309,10 @@ export function PersonaStep({
                 Edit details
                 <span className="ml-2 truncate text-xs font-normal text-muted-foreground">
                   {styleLabel} ·{" "}
-                  {PERSONA_DIALS.map(
-                    (dial) =>
-                      `${dial.label.split(" ")[0]} ${value[dial.key] ?? 5}`,
-                  ).join(" · ")}
+                  {PERSONA_DIALS.map((dial) => {
+                    const setting = value[dial.key] ?? 5;
+                    return `${dial.label.split(" ")[0]} ${setting} ${describeDial(dial.key, setting).label.toLowerCase()}`;
+                  }).join(" · ")}
                 </span>
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />

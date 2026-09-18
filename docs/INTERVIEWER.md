@@ -134,11 +134,11 @@ personas" works at all — only orthogonal parameters compose.
 
 | Candidate | Verdict | Rationale |
 |---|---|---|
-| Warmth | **SHIP** (existed) | Supportive archetype (HackerRank). Consumed: confidence arithmetic + slow-down gate. |
-| Strictness | **SHIP** (existed) | High-bar archetype (Amazon Bar Raiser). Consumed: confidence + difficulty. |
-| Pace | **SHIP** (existed) | Attribute table. Consumed: TTS rate (voice) + pacing prose. |
-| Skepticism | **SHIP** as `pushback` | Same lever; storage name kept for saved personas. Gained its first numeric consumer: curveball twist/pivot weighting. |
-| Probing depth | **SHIP** (new) | Attribute table; Amazon "Dive Deep"; arXiv 2608.10412 (default LLM interviewers deepen on 4.9% of turns — probe frequency is *the* documented gap). Consumed: the signal→probe gate. **Pointer 1's control knob.** |
+| Warmth | **SHIP** (existed) | Supportive archetype (HackerRank). Consumed: confidence arithmetic, slow-down gate, and an acknowledgement allowance in words (0 at 1, 11 at 10). |
+| Strictness | **SHIP** (existed) | High-bar archetype (Amazon Bar Raiser). Consumed: confidence, difficulty, a specifics floor, a re-ask allowance, and an acceptance bar stated on the analyzer's own scale (45/100 at 1, 90/100 at 10). |
+| Pace | **SHIP** (existed) | Attribute table. Consumed: TTS rate (voice), pacing prose, and a per-question word budget (57 words at 1, 30 at 10) — the one directive that reaches a *typed* interview. |
+| Skepticism | **SHIP** as `pushback` | Same lever; storage name kept for saved personas. Consumed: curveball twist/pivot weighting, five challenge rungs, and a budget of unsupported claims allowed to pass (5 at 1, **0** at 10). |
+| Probing depth | **SHIP** (new) | Attribute table; Amazon "Dive Deep"; arXiv 2608.10412 (default LLM interviewers deepen on 4.9% of turns — probe frequency is *the* documented gap). Consumed: the signal→probe gate, and a follow-ups-before-moving-on floor. **Pointer 1's control knob.** |
 | Unpredictability | **SHIP** (new) | The professor's requirement verbatim; adversarial archetype's deliberate ambiguity. Consumed: curveball probability. **Pointer 2's control knob.** |
 | Patience | DEFER — no honest consumer | Text turns are discrete; voice silence handling is a product constant (`SILENCE_SUBMIT_MS`) that persona roleplay must not break. |
 | Helpfulness | DEFER — with the hint ladder | Its only honest consumer is the hint-ladder feature, itself deferred. Ships together with it. |
@@ -154,17 +154,23 @@ already represented elsewhere, 2 rejected, 1 absorbed into the engine.**
 
 ### Orthogonality: six dials, six levers
 
-| Dial | The one lever it pulls |
-|---|---|
-| `strictness` | difficulty/confidence arithmetic |
-| `warmth` | acknowledgment + slow-down behaviour |
-| `pace` | tempo (TTS rate + phrasing) |
-| `pushback` | challenge intensity (twist/challenge weighting) |
-| `probingDepth` | evidence-probe frequency |
-| `unpredictability` | curveball frequency |
+| Dial | The one lever it pulls | Steps of 10 it resolves |
+|---|---|---|
+| `strictness` | the bar an answer must clear | 10 |
+| `warmth` | acknowledgement + slow-down behaviour | 10 |
+| `pace` | tempo (TTS rate + question length) | 10 |
+| `pushback` | challenge intensity (twist weighting + claims contested) | 10 |
+| `probingDepth` | evidence-probe frequency | 9 |
+| `unpredictability` | curveball frequency | 10 |
 
 No two share a lever, and the two new dials are exactly the professor's two
 requirements — one control each. The parameter set was derived, not picked.
+
+**One caveat on orthogonality, found by measuring rather than by review.**
+Pushback and `questioningStyle` are not independent: the twist/pivot split is
+`pushback - 5 + styleBias`, so the value at which pushback starts twisting moves
+with the style — 2 under `stress`, 8 under `supportive`. The dials compose, but
+this pair interacts, and the table above would have hidden that.
 
 ## 6. Questioning styles
 
@@ -193,23 +199,38 @@ just names it.
 
 ## 7. Measured, not asserted
 
-`npm run eval:persona` (deterministic layer — offline, byte-identical,
-committed to `docs/artifacts/persona-comparison.txt`):
+Full method, results and limitations: **[PERSONA-EVAL.md](PERSONA-EVAL.md)**.
+The headlines:
 
-- **Move distribution by style** — 40 seeded turns of a merely-fine answer:
-  supportive acknowledges 29/40, stress twists 28/40, conversational splits
-  evenly between acknowledging and pivoting. The style demonstrably changes
-  what the interviewer *does*, not just how it sounds.
-- **Probe rate** — seven hedged answers, one per signal type, run through the
-  real lexicon end-to-end: 29% probed at probingDepth 2, 57% at 5, 100% at 9.
-  Baseline: default LLM interviewers issue deepening probes on **4.9% of
-  turns** (arXiv 2608.10412) — the failure mode this design exists to beat.
+- **Every dial is consumed, and almost every step of it does something.**
+  Swept one dial at a time with the others held at 5: strictness, warmth, pace,
+  pushback and unpredictability each produce **10 distinct behaviours across
+  their 10 settings**; probing depth produces 9, because depths 6 and 7 select
+  the same probe tier. Offline, free, byte-identical, and pinned by tests that
+  run in CI — `npm run eval:persona`.
+- **The ends of a dial are distinguishable in the output.** 12 generated
+  follow-ups per cell, rated by a judge never told the persona: strictness 2→9
+  raises demandingness **+0.7** (95% CI [0.3, 1.3]), warmth 2→9 raises
+  supportiveness **+0.7** ([0.3, 1.0]), and pushback 2→9 raises topic shift
+  **+0.5** ([0.1, 1.0]). Pace correctly shows **no** effect on any axis, which
+  was predicted before the run: its lever is the speech rate.
+- **Adjacent steps are not proven distinguishable.** The experiment tests 2, 5
+  and 9. It says nothing about 8 versus 9, and the report does not claim it.
+- **Eight of the nine questioning strategies are used** across a ladder of
+  answer qualities, `DRILL_SPECIFICITY` at 25% rather than by default. But
+  within one answer quality the move is almost fully determined — the persona
+  cannot override a weakness-driven choice. Variety over an interview comes
+  from the candidate's answers changing, not from the dials.
+- **Probe rate** — seven hedged answers, one per signal type, through the real
+  lexicon: 29% probed at probing depth 2, 57% at 5, 100% at 9. Baseline:
+  default LLM interviewers issue deepening probes on **4.9% of turns**
+  (arXiv 2608.10412), the failure mode this design exists to beat.
 
-The `--live` empirical layer generates real follow-ups and has a blind judge
-(never told the persona, temperature 0) rate each for **demandingness** and —
-new — **adaptivity**: does the follow-up engage the candidate's actual words,
-or could it have been asked of any answer? Run it before the demo; it has not
-been run yet and the realism claim deserves a measured number.
+Two faults this harness found by being run rather than read: the `--live` arm
+had never executed at all — it requests a JSON response format that OpenAI
+rejects unless a message contains the word "json", so every judge call returned
+400 — and the steering block was cancelling its own topic pivots two lines
+below itself. Both are fixed; both are written up in PERSONA-EVAL.md.
 
 ## 8. Deferred, with dependencies
 

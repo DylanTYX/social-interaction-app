@@ -118,6 +118,49 @@ export function bootstrapCI(
 }
 
 /**
+ * 95% interval for the difference between two independent groups.
+ *
+ * `bootstrapCI` resamples one sample; this resamples both and takes the
+ * difference of the resampled means, which is the right shape when nothing
+ * pairs a value in `high` with a value in `low` — two separate generations from
+ * two separate prompts, say. Seeded for the same reason as `bootstrapCI`: an
+ * interval a reader cannot reproduce is one they are asked to take on trust.
+ *
+ * Returns the interval on `mean(high) - mean(low)`. An interval that excludes
+ * zero is the claim that the two groups differ; one that spans it is not
+ * evidence that they do not, only that this many samples cannot tell.
+ */
+export function bootstrapDiffCI(
+  low: number[],
+  high: number[],
+  { draws = 5000, seed = 20260816, level = 0.95 } = {},
+): [number, number] {
+  if (low.length < 2 || high.length < 2) return [Number.NaN, Number.NaN];
+
+  const random = mulberry32(seed);
+  const differences: number[] = [];
+
+  for (let d = 0; d < draws; d += 1) {
+    let lowTotal = 0;
+    for (let i = 0; i < low.length; i += 1) {
+      lowTotal += low[Math.floor(random() * low.length)];
+    }
+    let highTotal = 0;
+    for (let i = 0; i < high.length; i += 1) {
+      highTotal += high[Math.floor(random() * high.length)];
+    }
+    differences.push(highTotal / high.length - lowTotal / low.length);
+  }
+
+  differences.sort((a, b) => a - b);
+  const alpha = (1 - level) / 2;
+  return [
+    differences[Math.floor(alpha * draws)],
+    differences[Math.min(draws - 1, Math.ceil((1 - alpha) * draws) - 1)],
+  ];
+}
+
+/**
  * Pearson correlation.
  *
  * Used for exactly one question in the coach harness, and it is the question

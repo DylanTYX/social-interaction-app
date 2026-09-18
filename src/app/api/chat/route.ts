@@ -32,6 +32,7 @@ import { UsageCollector, type OpenAIUsage } from "@/lib/api/token-usage";
 import { TurnTimer } from "@/lib/api/turn-timing";
 import { generatePersonaPrompt } from "@/lib/persona-engine";
 import { buildOpeningInstruction } from "@/lib/opening-brief";
+import { buildSteeringBlock } from "@/lib/steering-block";
 import type { InterviewRoundType } from "@/lib/interview-rounds";
 import {
   formatPlaybooksForPrompt,
@@ -365,63 +366,6 @@ function buildPromptCacheKey(input: {
     input.scenarioValue,
     input.roundType ?? "behavioral",
   ].join(":");
-}
-
-/**
- * How a strategy is named to the interviewer model.
- *
- * The enum is load-bearing elsewhere (analyzer schema, turn history), so it
- * keeps its name. Only the label the model reads changes: a model told
- * "ACKNOWLEDGE_STRENGTH" acknowledges, out loud, every time.
- */
-const STRATEGY_LABEL: Partial<Record<InterviewStrategy, string>> = {
-  ACKNOWLEDGE_STRENGTH: "RAISE_THE_BAR",
-};
-
-/**
- * Turn the analyzer's verdict into a concise, private coaching signal that
- * tells the interviewer exactly what to probe next. This is what closes the
- * loop: the same judgment used to score the answer now shapes the follow-up.
- */
-function buildSteeringBlock(
-  analysis: AnalysisResult,
-  strategy: InterviewStrategy,
-  decisionReason: string,
-  nextFocus: string,
-  difficulty: number,
-  escalate: boolean,
-  slowDown: boolean,
-): string {
-  const topGap = analysis.gaps?.[0];
-  const topStrength = analysis.strengths?.[0];
-  const lines = [
-    "Interviewer notes for your next question (private; never read out or refer to):",
-    `- Their last answer scored ${Math.round(analysis.overallScore)}/100.`,
-    `- Approach: ${STRATEGY_LABEL[strategy] ?? strategy} — ${decisionReason}`,
-    `- Focus the next question on: ${nextFocus}.`,
-    `- Aim for difficulty ${difficulty}/10.`,
-  ];
-  // What held up is still useful — it decides how far to push — but it used
-  // to arrive as "Briefly acknowledge this strength first", which is how the
-  // interviewer came to open every turn with a compliment.
-  if (topStrength) {
-    lines.push(
-      `- What held up: ${topStrength}. Do not praise it out loud; use it to decide how far to push.`,
-    );
-  }
-  if (topGap) {
-    lines.push(`- The main gap to test: ${topGap}.`);
-  }
-  if (escalate) {
-    lines.push(
-      "- The answer was weak or repeated; be firmer and push for specifics.",
-    );
-  } else if (slowDown) {
-    lines.push(
-      "- The answer was strong; do not compliment it — go one level deeper on reasoning or tradeoffs.",
-    );
-  }
-  return lines.join("\n");
 }
 
 function isTrivialAnswer(message: string): boolean {

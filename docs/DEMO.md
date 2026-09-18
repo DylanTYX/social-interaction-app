@@ -252,10 +252,18 @@ Stochastic and billed, so run it in advance and show the file.
 
 ### Caveats to raise before you are asked
 
-- **The dials are coarse.** Strictness 5, 6 and 7 all emit "moderate standards" —
-  those three prompts are byte-identical. The difficulty curve compresses too:
-  strictness 1→10 moves difficulty only 5→7. Both are pinned by tests, so they
-  are known and documented rather than discovered by your examiner.
+- **The dials used to be coarse, and the fix is measured.** Strictness 5, 6 and
+  7 once emitted byte-identical prompts, and every dial resolved four or five of
+  its ten steps. Each now carries a countable directive alongside the adjective
+  — an acceptance bar on the analyzer's own 0-100 scale, a word budget, a
+  specifics floor, a challenge rung — and five of the six resolve all ten steps;
+  probing depth resolves nine, because depths 6 and 7 select the same probe tier
+  and are genuinely the same interviewer. The numbers, and what a blind judge
+  could and could not detect in the output, are in
+  [PERSONA-EVAL.md](PERSONA-EVAL.md). **What is still compressed** is the
+  difficulty target: strictness 1→10 moves it only 5→7, and that is unchanged.
+  All of it is pinned by tests, so it is documented rather than discovered by
+  your examiner.
 - **Scoring is persona-independent, deliberately.** `analyzeResponse` takes no
   persona and its cache key is `analyzer:${roundType}`. A strict interviewer and
   a warm one score the same answer identically. Persona changes _what gets

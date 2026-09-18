@@ -82,7 +82,7 @@ Two calls are deliberately skipped rather than optimised:
   inlined whole — which also moves it into the cacheable layer (see below), so
   the small-JD path is cheaper on _both_ counts.
 
-Rough per-turn total, uncached: **~3,200 input / ~400 output** without a job
+Rough per-turn total, uncached: **~3,530 input / ~400 output** without a job
 description, **~5,800 / ~400** with one. With the interviewer on `gpt-5-mini`
 and the analyzer on `gpt-4o-mini` that is roughly $0.0012–0.0019 a turn
 (it was $0.0007–0.0011 when everything ran on `gpt-4o-mini`), so a
@@ -157,9 +157,10 @@ recomputed it per turn would cost far more than it looks. And it is bounded at
 both ends: `MAX_CARRIED_QUESTIONS` caps the count, `MAX_QUESTION_CHARS` the
 length.
 
-What this does **not** do is push the prefix past the 1,024-token cache floor. A
-bare session's stable prefix measures ~590 tokens; +360 reaches ~950 and still
-misses. It moves in the right direction, and that is the whole claim.
+This used to be described as moving the prefix in the right direction without
+reaching the 1,024-token cache floor. The prefix now clears that floor on its
+own (see "The honest caveat" below), so the anti-repeat list is no longer what
+decides whether caching fires — it is simply ordered correctly for when it does.
 
 ### One model for every interviewer turn
 
@@ -190,11 +191,38 @@ on the round type, so every user scoring a behavioural answer shares one prefix.
 This is the part worth stating plainly, because it is the sort of thing a viva
 question goes straight to.
 
-**The interviewer's stable prefix on a bare session is around 590 tokens** — 208
-measured for the static instructions, plus roughly 325 for a persona, plus a
-short scenario. That is **below the 1,024-token floor, so nothing is cached.**
-The prefix only clears the bar once a job description or a resume is attached,
-which is exactly when it grows past 1,000 tokens.
+**This section previously said the prefix was ~590 tokens and never cached. That
+is no longer true, and the reversal is worth more than the correction.**
+
+Measured on 2026-09-18, at four characters to the token, the same basis as the
+rest of this document:
+
+| Part of the stable prefix | Characters | ~Tokens |
+| ------------------------- | ---------- | ------- |
+| Static interviewer instructions | 1,862 | ~466 |
+| Persona description (mean of the six presets) | 2,624 | ~656 |
+| Short scenario line | ~200 | ~50 |
+| **Total on a bare session** | | **~1,172** |
+
+That is **above the 1,024-token floor**, so on current numbers the interviewer's
+prefix caches on a bare session — the opposite of what this document said.
+
+Two separate things moved, and only one of them was deliberate:
+
+- **The persona description roughly doubled**, from ~325 to ~656 tokens, when
+  each dial gained a countable directive — an acceptance bar, a word budget, a
+  specifics floor, a challenge rung. That was a deliberate trade, made to stop
+  the sliders being decoration, and it is measured in
+  [PERSONA-EVAL.md](PERSONA-EVAL.md).
+- **The static instructions had already grown** from the 208 tokens recorded
+  here to ~466, through edits that predate the persona work. Nobody re-measured
+  at the time. That is the ordinary way a number in a document goes stale, and
+  it is the reason this table gives characters as well as tokens: the next
+  person can re-derive it instead of trusting it.
+
+The prefix is only just over the floor, so a persona with fewer traits or no
+scenario can still fall under it. Treat "it caches" as the likely case, not a
+guarantee.
 
 **The analyzer scaffold measures ~1,184 characters (~296 tokens)** before
 interpolation. It is nowhere near the floor and, on its own, **almost certainly
@@ -205,6 +233,9 @@ So the accurate claim is not "this app uses prompt caching." It is:
 > The prompt is _ordered_ so that caching engages whenever the prompt is large
 > enough to be worth caching. On small prompts it does not fire — and on small
 > prompts it does not matter, because those are the cheap turns.
+
+What changed is which side of the line a bare session sits on, not the argument
+for ordering the prompt this way.
 
 The layering costs nothing when it doesn't fire, and is the only thing that makes
 it possible when it does. That is the whole argument for it.

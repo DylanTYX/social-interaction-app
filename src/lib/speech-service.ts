@@ -94,12 +94,6 @@ function buildProsodySsml(
 /** How long `stopListening` waits for the SDK before moving on. */
 export const STOP_LISTENING_TIMEOUT_MS = 3_000;
 
-/** Map a persona pace dial (1=patient … 10=fast) to an SSML rate delta. */
-export function paceToRatePercent(pace: number | undefined): number {
-  const safe = Number.isFinite(pace) ? (pace as number) : 5;
-  // pace 1 → -20%, pace 5 → 0%, pace 10 → +25%
-  return Math.round((safe - 5) * 5);
-}
 
 /**
  * Incrementally split a growing text buffer into complete, speakable sentences

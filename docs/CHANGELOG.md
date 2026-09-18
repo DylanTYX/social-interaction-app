@@ -14,6 +14,65 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-18
+
+### The persona dials, measured and then made to resolve
+
+**Documents:** `PERSONA-EVAL.md` (new), `INTERVIEWER.md` §5 and §7,
+`REQUIREMENTS.md` (F5, F9, F27, N2), `DEMO.md`, `TOKEN-COST.md`, `README.md`.
+
+**What was measured.** Each dial was swept 1-10 with the others held at 5, and
+every consumer of it recorded. Four of the six resolved only four or five of
+their ten steps: the interviewer's instructions were written as three or four
+bands of prose, so strictness 8, 9 and 10 were one interviewer, and pushback's
+two *extremes* — 1-2 and 9-10 — were each a single setting, because all of its
+consumers happened to break in the middle of the scale.
+
+**What changed in the product.** Every dial gained a directive a reader can
+count, alongside the adjective it already had: an acceptance bar on the
+analyzer's own 0-100 scale (strictness), an acknowledgement allowance in words
+(warmth), a per-question word budget (pace), five challenge rungs plus a budget
+of unsupported claims allowed to pass (pushback), and a follow-ups-before-moving
+floor (probing depth, which until now reached the interviewer through no prompt
+text at all). Five dials now resolve all ten steps; probing depth resolves nine,
+because depths 6 and 7 select the same probe tier.
+
+**Two faults found by running the harness rather than reading it:**
+
+- The `--live` arm had never executed successfully. It requests a JSON response
+  format that OpenAI rejects unless a message contains the word "json", so every
+  judge call returned 400. `INTERVIEWER.md` §7 recorded the arm as "not run yet";
+  this is why.
+- `PIVOT_TOPIC` was being cancelled two lines below itself. The steering block
+  told the model to change subject and then supplied a focus and a gap drawn
+  from the subject it was leaving. Unpredictability moved a blind judge's
+  topic-shift rating by 0.0 points; pushback, whose move is a twist *within* the
+  topic and so contradicts nothing, moved it by 2.2. The block now suppresses
+  the focus and gap lines on a pivot.
+
+**Corrections to numbers already published.**
+
+- `TOKEN-COST.md` said the interviewer's stable prefix was ~590 tokens and
+  therefore **never cached**. Re-measured, it is ~1,172 and sits **above** the
+  1,024-token floor. Two causes, one of them deliberate: the persona description
+  roughly doubled (~325 → ~656 tokens) as the directives were added, and the
+  static instructions had already grown from 208 to ~466 through earlier edits
+  that were never re-measured. The document now records characters as well as
+  tokens so the figure can be re-derived rather than trusted.
+- `DEMO.md` listed "the dials are coarse" as a caveat to raise, citing strictness
+  5, 6 and 7 as byte-identical. That is no longer true and the passage was
+  rewritten. The difficulty target is still compressed (1→10 moves it 5→7) and
+  that part stands.
+- `INTERVIEWER.md` §5 claimed "no two dials share a lever". Pushback and
+  `questioningStyle` do interact: the twist threshold is `pushback - 5 +
+  styleBias`, so it falls at 2 under `stress` and 8 under `supportive`. Stated
+  rather than removed.
+
+**Sources:** none added. The existing citations for the dial set — arXiv
+2608.10412 for the 4.9% probe baseline, Amazon's Bar Raiser and "Dive Deep",
+HackerRank's archetypes, SHRM — are unchanged and still support the same
+choices; nothing in this work rests on a new reference.
+
 ## 2026-09-17
 
 ### Pauses: reported, never scored, and the thresholds that moved

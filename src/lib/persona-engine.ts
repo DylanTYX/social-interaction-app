@@ -234,37 +234,227 @@ function buildInterestAreas(areas: string[]): string {
 }
 
 /**
+ * Words of acknowledgement this interviewer may spend before the question.
+ *
+ * Warmth's only prompt consumer was a three-band adjective, so 8, 9 and 10 read
+ * identically. A word allowance is countable and has eight settings, which is
+ * as many as this dial can honestly carry: the standing rules already forbid
+ * praise, so warmth can lengthen the acknowledgement but never turn it into
+ * approval.
+ */
+export function acknowledgementWords(warmth: number): number {
+  const safe = Math.max(1, Math.min(10, Number.isFinite(warmth) ? warmth : 5));
+  // Scaled from 1, not 2: the old curve rounded both 1 and 2 down to zero, so
+  // the two coldest settings produced the same interviewer — the same defect
+  // at the bottom of this dial that `unchallengedAllowed` fixes at the ends of
+  // pushback. Eleven words at the top is a sentence, which is the most a rule
+  // forbidding praise can honestly allow.
+  return Math.round((safe - 1) * 1.2);
+}
+
+/**
+ * The score this interviewer treats as good enough, on the analyzer's own 0-100
+ * scale: 45 at strictness 1, 90 at strictness 10.
+ *
+ * The strongest of the strictness directives, because it is the only one that
+ * is both continuous over all ten steps and *comparable to something the model
+ * is already told*. The steering block states "Their last answer scored 80/100"
+ * on every turn, so a bar of 85 and a bar of 60 are not two shades of adjective
+ * — they put the same answer on opposite sides of a line the model can see.
+ */
+export function acceptanceBar(strictness: number): number {
+  const safe = Math.max(1, Math.min(10, Number.isFinite(strictness) ? strictness : 5));
+  return 40 + 5 * safe;
+}
+
+/** Concrete specifics an answer must carry before this interviewer moves on. */
+export function specificsRequired(strictness: number): number {
+  const safe = Number.isFinite(strictness) ? strictness : 5;
+  return Math.max(1, Math.min(5, Math.round(safe / 2)));
+}
+
+/**
+ * How many times this interviewer re-asks for a missing detail before moving on.
+ *
+ * Breaks at 2, 5 and 8, where `specificsRequired` breaks on the even numbers.
+ * Two scales out of step give eight distinct settings between them where either
+ * alone gives five — the same trick as the pushback rungs, and the reason
+ * strictness no longer collapses 8, 9 and 10 into one interviewer.
+ */
+export function reAskAllowance(strictness: number): number {
+  const safe = Math.max(1, Math.min(10, Number.isFinite(strictness) ? strictness : 5));
+  if (safe >= 8) return 4;
+  if (safe >= 5) return 3;
+  if (safe >= 2) return 2;
+  return 1;
+}
+
+/**
+ * The bar for accepting an answer, and how the question is opened.
+ *
+ * Strictness and warmth reached the model only through one clause each inside
+ * the personality sentence — three prose bands apiece, which is why moving
+ * either slider from 8 to 9 changed nothing a candidate could see. These lines
+ * add something countable: a number of specifics to insist on, and whether to
+ * acknowledge before pressing. The dial's own value is stated too, so the model
+ * has a continuous signal as well as a threshold.
+ *
+ * Deliberately additive — the personality sentence is unchanged, so nothing
+ * about the interviewer's voice moves; this only makes the standard explicit.
+ */
+function buildStandardsProfile(strictness: number, warmth: number): string {
+  const specifics = specificsRequired(strictness);
+  const allowance = acknowledgementWords(warmth);
+  const warmthDirective =
+    allowance === 0
+      ? "Do not acknowledge, thank or soften. Put the question directly."
+      : `Before the question you may spend at most ${allowance} words acknowledging that they answered — no praise, no assessment.`;
+
+  const reAsks = reAskAllowance(strictness);
+  return [
+    `Standards: strictness ${strictness}/10, warmth ${warmth}/10.`,
+    `You consider an answer good enough at about ${acceptanceBar(strictness)} out of 100; below that you keep digging.`,
+    `Accept an answer and move on only when it carries at least ${specifics} concrete specific${specifics === 1 ? "" : "s"} — a number, a date, a named person, system or tradeoff.`,
+    `If it falls short, ask again for the missing detail, up to ${reAsks} time${reAsks === 1 ? "" : "s"} across the round, before you let it go.`,
+    warmthDirective,
+  ].join(" ");
+}
+
+/** Follow-ups on the same answer before this interviewer changes subject. */
+export function followupsBeforeMoving(probingDepth: number): number {
+  const safe = Math.max(1, Math.min(10, Number.isFinite(probingDepth) ? probingDepth : 5));
+  // Divided by 2.2 rather than 2 so the steps fall between the probe gate's,
+  // which move at 2, 3, 5, 6, 8 and 9. Halving put them on top of each other
+  // and wasted the dial. Five is the ceiling because "stay on this answer for
+  // a seventh follow-up" is not something a real interviewer does.
+  return Math.max(1, Math.min(5, Math.round(safe / 2.2)));
+}
+
+/**
+ * How hard the interviewer digs at a hedge — the dial's first prompt presence.
+ *
+ * Probing depth reached the model through nothing at all until now. Its only
+ * consumer was `probeTierLimit` in the decision engine, which decides whether a
+ * hedged phrase is worth quoting back; the interviewer itself was never told
+ * that it was supposed to be a deep prober or a shallow one. That is a thin
+ * place for what `INTERVIEWER.md` calls the control knob for the failure mode
+ * this whole design exists to beat — default LLM interviewers deepen on 4.9% of
+ * turns — so the dial now says so in words as well as deciding in code.
+ *
+ * The top of the scale is an absolute rather than one more number, because the
+ * end of a dial should mean something a middle value cannot.
+ */
+function buildProbingProfile(probingDepth: number): string {
+  const followups = followupsBeforeMoving(probingDepth);
+  const absolute =
+    probingDepth >= 10
+      ? " Let nothing vague or unowned past you, however small."
+      : "";
+
+  // "before you choose to move on" is load-bearing, not padding. Without it
+  // this line reads as a standing order to stay on the answer, and it then
+  // contradicts the private notes whenever those call a topic pivot — which is
+  // measurable: the pivot simply does not happen. The persona sets the
+  // interviewer's own inclination; the notes outrank it.
+  return `Probing depth: ${probingDepth}/10. When an answer leans on a vague or unowned phrase — "helped with", "we decided", "it went well" — ask about that phrase before you move on. Left to your own judgement, stay on the same answer for at least ${followups} follow-up${followups === 1 ? "" : "s"} before you choose to move on; if your private notes tell you to change subject, change subject.${absolute}`;
+}
+
+/**
  * Conversational pace — how quickly the interviewer fires questions and how
  * much breathing room they leave between turns.
  */
 function buildPaceProfile(pace: Pace): string {
-  if (pace >= 8) {
-    return "Pace: fast and assertive. You fire crisp follow-ups quickly, sometimes stacking a clarifying probe in the same turn, and you expect the candidate to keep up.";
-  }
-  if (pace >= 6) {
-    return "Pace: brisk. You move through topics efficiently and rarely dwell, but you still ask one question at a time.";
-  }
-  if (pace >= 4) {
-    return "Pace: balanced. You ask one question at a time and let the candidate finish their thought before moving on.";
-  }
-  return "Pace: deliberate and patient. You give the candidate space to think, never rush, and you're comfortable with short silences.";
+  const band =
+    pace >= 8
+      ? "Pace: fast and assertive. You fire crisp follow-ups quickly, sometimes stacking a clarifying probe in the same turn, and you expect the candidate to keep up."
+      : pace >= 6
+        ? "Pace: brisk. You move through topics efficiently and rarely dwell, but you still ask one question at a time."
+        : pace >= 4
+          ? "Pace: balanced. You ask one question at a time and let the candidate finish their thought before moving on."
+          : "Pace: deliberate and patient. You give the candidate space to think, never rush, and you're comfortable with short silences.";
+
+  // The one directive on any dial with ten genuinely distinct settings, and the
+  // only one a reader can check by counting rather than by judgement. Four
+  // prose bands cannot express ten steps; a budget can. Stays inside the
+  // standing "1 to 4 sentences" rule at both ends (57 words down to 30).
+  return `${band.replace(/^Pace: ([^.]+)\./, `Pace: $1 (${pace}/10).`)} Keep your next question to at most ${paceWordBudget(pace)} words.`;
 }
+
+/** Words allowed in one question at this pace: 57 at 1, 30 at 10. */
+export function paceWordBudget(pace: number): number {
+  const safe = Number.isFinite(pace) ? pace : 5;
+  return 60 - 3 * Math.max(1, Math.min(10, Math.round(safe)));
+}
+
 
 /**
  * Pushback / skepticism — how willing the interviewer is to challenge claims,
  * ask follow-up "how do you know?" probes, or surface gaps.
  */
 function buildPushbackProfile(pushback: Pushback): string {
-  if (pushback >= 8) {
-    return "Pushback: high. You frequently challenge claims, ask 'how do you know that?' or 'what's the evidence?', and probe for the weakest point in any answer. Stay respectful but persistent.";
-  }
-  if (pushback >= 6) {
-    return "Pushback: moderate. You push back when a claim is vague or unsupported, and you'll ask one follow-up to test the candidate's reasoning before moving on.";
-  }
-  if (pushback >= 4) {
-    return "Pushback: light. You generally take answers at face value but will gently probe if something sounds inconsistent.";
-  }
-  return "Pushback: minimal. You accept answers as given, encourage the candidate, and don't dwell on inconsistencies unless they're glaring.";
+  const band =
+    pushback >= 8
+      ? "Pushback: high. You frequently challenge claims, ask 'how do you know that?' or 'what's the evidence?', and probe for the weakest point in any answer. Stay respectful but persistent."
+      : pushback >= 6
+        ? "Pushback: moderate. You push back when a claim is vague or unsupported, and you'll ask one follow-up to test the candidate's reasoning before moving on."
+        : pushback >= 4
+          ? "Pushback: light. You generally take answers at face value but will gently probe if something sounds inconsistent."
+          : "Pushback: minimal. You accept answers as given, encourage the candidate, and don't dwell on inconsistencies unless they're glaring.";
+
+  // Phrased as one question throughout: the standing rules forbid stacking
+  // questions, so a higher dial names more claims inside a single question
+  // rather than asking more of them.
+  const directive = PUSHBACK_DIRECTIVES[contestCount(pushback)];
+  const allowed = unchallengedAllowed(pushback);
+  const budget =
+    allowed === 0
+      ? "Across this round, let no unsupported claim pass without asking what backs it."
+      : `Across this round, you may let about ${allowed} unsupported claim${allowed === 1 ? "" : "s"} pass without asking what backs ${allowed === 1 ? "it" : "them"}.`;
+
+  return `${band.replace(/^Pushback: ([^.]+)\./, `Pushback: $1 (${pushback}/10).`)} ${directive} ${budget}`;
+}
+
+/**
+ * Five rungs of challenge, deliberately offset from the four prose bands.
+ *
+ * Bands break at 4, 6 and 8; these break at 3, 5, 7 and 9. Two coarse scales
+ * out of step resolve more finely than either alone — eight of the ten steps
+ * become distinct — without claiming a granularity one question can't carry.
+ * Every rung is one question, because the standing rules forbid stacking them.
+ */
+const PUSHBACK_DIRECTIVES = [
+  "Take their account at face value this turn; do not contest a claim.",
+  "Question a claim only where the answer is plainly inconsistent with itself.",
+  "Build your question around one claim of theirs you are not yet convinced by.",
+  "Name one claim of theirs you doubt and ask what evidence supports it.",
+  "Name two claims of theirs you doubt, ask what evidence supports them, and say plainly that you are not convinced yet.",
+] as const;
+
+/**
+ * Unsupported claims this interviewer lets pass in a round before challenging:
+ * five at pushback 1, none at pushback 10.
+ *
+ * Added because the two extremes — where a dial should be most obviously itself
+ * — were the two places it did nothing: 1 and 2 were identical, and so were 9
+ * and 10. Every other pushback consumer breaks in the middle of the scale (the
+ * prose bands at 4, 6 and 8; the challenge rungs at 3, 5, 7 and 9), so nothing
+ * separated the ends. This breaks on the even numbers, which is exactly the
+ * gap, and it says something a reader can check: at 10 the interviewer lets
+ * nothing through.
+ */
+export function unchallengedAllowed(pushback: number): number {
+  const safe = Math.max(1, Math.min(10, Number.isFinite(pushback) ? pushback : 5));
+  return Math.max(0, Math.round((10 - safe) / 2));
+}
+
+/** Which rung of `PUSHBACK_DIRECTIVES` this dial setting reaches, 0 to 4. */
+export function contestCount(pushback: number): number {
+  const safe = Number.isFinite(pushback) ? pushback : 5;
+  if (safe >= 9) return 4;
+  if (safe >= 7) return 3;
+  if (safe >= 5) return 2;
+  if (safe >= 3) return 1;
+  return 0;
 }
 
 /**
@@ -328,6 +518,13 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
   );
   const boundariesExpression = buildBoundaries(config.boundaries);
   const interestExpression = buildInterestAreas(config.interestAreas);
+  const standardsExpression = buildStandardsProfile(
+    clampDial<Strictness>(config.strictness),
+    clampDial<Warmth>(config.warmth),
+  );
+  const probingExpression = buildProbingProfile(
+    clampDial<ProbingDepth>(config.probingDepth),
+  );
   const paceExpression = buildPaceProfile(clampDial<Pace>(config.pace));
   const pushbackExpression = buildPushbackProfile(
     clampDial<Pushback>(config.pushback),
@@ -358,6 +555,8 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
     NATIONALITY_IS_BACKGROUND,
     communicationProfile,
     styleExpression,
+    standardsExpression,
+    probingExpression,
     paceExpression,
     pushbackExpression,
     personalityExpression,

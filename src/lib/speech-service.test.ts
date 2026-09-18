@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   appendUniqueTranscript,
   extractSpeakableSentences,
-  paceToRatePercent,
 } from "@/lib/speech-service";
+import { paceToRatePercent } from "@/lib/speech-voices";
 
 describe("extractSpeakableSentences", () => {
   it("splits on sentence-ending punctuation", () => {

@@ -45,6 +45,19 @@ export interface SpeechVoiceOption {
 }
 
 /**
+ * A persona's pace dial (1 = patient … 10 = fast) as an SSML rate delta.
+ *
+ * Lives here rather than in `speech-service.ts` for the reason at the top of
+ * this file: it is static data about prosody, and the eval harness reads it
+ * without wanting a megabyte of Azure SDK in the process.
+ */
+export function paceToRatePercent(pace: number | undefined): number {
+  const safe = Number.isFinite(pace) ? (pace as number) : 5;
+  // pace 1 → -20%, pace 5 → 0%, pace 10 → +25%
+  return Math.round((safe - 5) * 5);
+}
+
+/**
  * The voice used when nothing else resolves: unknown nationality, an accent
  * that has not been auditioned, accents switched off, or a stale voice URI
  * read back out of an old session's `launch_meta`.

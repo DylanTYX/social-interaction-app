@@ -2,8 +2,9 @@
  * Persona differentiation harness.
  *
  *   npm run eval:persona                # deterministic only, free, offline
- *   npm run eval:persona -- --live      # + generated follow-ups, costs money
+ *   npm run eval:persona -- --live      # + the per-dial experiment, costs money
  *   npm run eval:persona -- --live --runs=5
+ *   npm run eval:persona -- --live --presets   # the older two-persona arm
  *   npm run eval:persona -- --json
  *
  * Answers one question the project asserts everywhere and had never measured:
@@ -32,16 +33,30 @@ import {
   PRESET_PERSONAS,
   type PersonaConfig,
 } from "@/lib/persona-engine";
+import { estimateFollowupDifficulty } from "@/lib/decision-engine";
+import { provenanceLine } from "./provenance";
+import { mean, stdDev } from "./stats";
 import {
-  decideInterviewAction,
-  estimateFollowupDifficulty,
-} from "@/lib/decision-engine";
+  DIAL_CONSUMERS,
+  DIAL_KEYS,
+  MIDDLING as MIDDLING_ANALYSIS,
+  SWEEP_TURNS,
+  pushbackThresholds,
+  sweepAllDials,
+  sweepStyles,
+  type DialSweep,
+} from "./persona-sweeps";
+import {
+  EXPECTATIONS,
+  JUDGE_AXES,
+  HIGH,
+  LOW,
+  runExperiment,
+  type DialResult,
+} from "./persona-experiment";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
 import { formatUsd, summariseCost } from "@/lib/pricing";
-import type { AnalysisResult } from "@/lib/response-analyzer";
-import { makeAnalysis } from "@/lib/test-support/analysis";
-import { detectBehavioralSignals } from "@/lib/text-metrics";
 
 const MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
 const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "gpt-4o-mini";
@@ -87,20 +102,6 @@ interface JudgedTurn {
   reasoning: string;
 }
 
-function mean(values: number[]): number {
-  return values.length
-    ? values.reduce((a, b) => a + b, 0) / values.length
-    : Number.NaN;
-}
-
-function stdDev(values: number[]): number {
-  if (values.length < 2) return 0;
-  const m = mean(values);
-  return Math.sqrt(
-    values.reduce((sum, v) => sum + (v - m) ** 2, 0) / (values.length - 1),
-  );
-}
-
 /** Lines present in one persona's prompt and absent from the other's. */
 function promptDiff(
   a: string,
@@ -115,38 +116,54 @@ function promptDiff(
 }
 
 /**
- * A middling answer, so neither persona is pinned at a ceiling or a floor.
- *
- * The answer in `HELD_CONSTANT` is genuinely mediocre — vague, unquantified,
- * "it went okay" — which is where the dials have the most room to diverge. A
- * flawless answer leaves nothing to push on, and a terrible one leaves no
- * choice about whether to.
- *
- * Built from the shared fixture rather than hand-rolled: `AnalysisResult` has
- * five nested objects, and a third independent copy would drift from the other
- * two the moment the interface changes.
+ * Baseline for the probe rate, from the only published number the project
+ * found for this behaviour: default LLM interviewers deepen on 4.9% of turns.
  */
-const MIDDLING_ANALYSIS: AnalysisResult = makeAnalysis({
-  overallScore: 58,
-  specificityMetrics: {
-    hasMetrics: false,
-    metricCount: 0,
-    hasTimeframes: false,
-    hasStakeholders: true,
-    vaguenessScore: 7,
-    concreteExamples: 0,
-  },
-  responseQuality: {
-    length: 46,
-    isRelevant: true,
-    addressesExplicitly: true,
-    depthLevel: "surface",
-    thinkingVisible: false,
-  },
-  strengths: [],
-  gaps: ["no metrics", "unclear personal ownership"],
-  followupTopics: ["what was cut", "how the decision was made"],
-});
+const PROBE_BASELINE = "4.9% (arXiv 2608.10412)";
+
+const bar = (label: string) => `\n--- ${label} ---`;
+
+/** One dial's sweep as an aligned table, with the resolution line beneath it. */
+function printDialSweep(sweep: DialSweep) {
+  const consumers = DIAL_CONSUMERS[sweep.dial];
+  const widths = consumers.map((consumer) =>
+    Math.max(
+      consumer.name.length,
+      consumer.kind.length + 2,
+      ...sweep.points.map((point) => point.readings[consumer.name].length),
+    ),
+  );
+
+  console.log(bar(sweep.dial));
+  console.log(
+    `      ${consumers.map((c, i) => c.name.padEnd(widths[i])).join("  ")}`.trimEnd(),
+  );
+  console.log(
+    `      ${consumers.map((c, i) => `(${c.kind})`.padEnd(widths[i])).join("  ")}`.trimEnd(),
+  );
+  for (const point of sweep.points) {
+    const cells = consumers.map((c, i) => point.readings[c.name].padEnd(widths[i]));
+    console.log(`  ${String(point.value).padStart(2)}  ${cells.join("  ")}`.trimEnd());
+  }
+
+  const plateaus = sweep.plateaus.length
+    ? sweep.plateaus.join(", ")
+    : "none — every step differs";
+  const perConsumer = consumers
+    .map((consumer) => `${consumer.name} ${sweep.perConsumer[consumer.name]}`)
+    .join(", ");
+  console.log(
+    `      distinct behaviour: ${sweep.distinctQuestioning} of 10` +
+      `   spoken: ${sweep.distinctExperienced} of 10` +
+      `   with readouts: ${sweep.distinctOutcomes} of 10`,
+  );
+  console.log(`      per consumer: ${perConsumer}`);
+  console.log(`      identical runs: ${plateaus}`);
+  for (const consumer of consumers) {
+    if (consumer.kind !== "unused") continue;
+    console.log(`      note: ${consumer.name} — ${consumer.source}`);
+  }
+}
 
 function deterministicReport(json: boolean) {
   const strictPrompt = generatePersonaPrompt(STRICT);
@@ -166,173 +183,107 @@ function deterministicReport(json: boolean) {
     }),
   };
 
-  // Holding warmth at the neutral middle so the curve isolates strictness.
-  const curve = Array.from({ length: 10 }, (_, i) => ({
-    strictness: i + 1,
-    difficulty: estimateFollowupDifficulty(MIDDLING_ANALYSIS, {
-      personaName: "sweep",
-      strictness: i + 1,
-      warmth: 5,
-    }),
-  }));
+  const dials = sweepAllDials();
+  const styles = sweepStyles();
+  const pushbackSwitch = pushbackThresholds();
 
-  /**
-   * Move-distribution sweep — does the questioning style actually change what
-   * the interviewer *does*, not just how it sounds?
-   *
-   * Forty seeded turns of a merely-fine answer per style. Pure and offline:
-   * `decideInterviewAction` is deterministic given the seed, so this table is
-   * byte-identical on every run and safe to show live. ACKNOWLEDGE/PROBE are
-   * the ladder's "answer is fine" outcomes; pivots and twists are curveballs.
-   */
-  const SWEEP_TURNS = 40;
-  const fineAnswer = makeAnalysis();
-  const styles = [
-    "supportive",
-    "conversational",
-    "bar_raiser",
-    "stress",
-  ] as const;
-  const moveMix = styles.map((style) => {
-    const counts: Record<string, number> = {};
-    for (let turn = 0; turn < SWEEP_TURNS; turn++) {
-      const outcome = decideInterviewAction(fineAnswer, {
-        personaName: "sweep",
-        questioningStyle: style,
-        unpredictability: 7,
-        pushback: style === "bar_raiser" || style === "stress" ? 8 : 4,
-        seed: { sessionId: "persona-eval-sweep", turnIndex: turn },
-        uncoveredCompetency: "how they handle production incidents",
-      });
-      counts[outcome.strategy] = (counts[outcome.strategy] ?? 0) + 1;
-    }
-    return { style, counts };
-  });
-
-  /**
-   * Probe rate — of seven answers whose wording earns a probe, how many get
-   * one at a given probingDepth? Reported against the arXiv 2608.10412
-   * finding that default LLM interviewers issue deepening probes on only 4.9%
-   * of turns.
-   *
-   * End-to-end on purpose: each answer runs through the real lexicon
-   * (`detectBehavioralSignals`) and the real policy, so this sweep breaks if
-   * either half stops hearing the wording. One answer per signal type, in
-   * taxonomy priority order — the gradient below IS the priority order made
-   * visible. The gate is deterministic, so the sweep runs over answers, not
-   * turns: for a fixed answer the verdict never varies.
-   */
-  const PROBE_FIXTURES = [
-    {
-      signal: "ownership",
-      text: "I was involved in the migration effort for our main service.",
-    },
-    {
-      signal: "decision",
-      text: "We decided to move to Kafka for the event pipeline.",
-    },
-    {
-      signal: "leadership",
-      text: "I led the replatforming of our checkout system.",
-    },
-    {
-      signal: "attribution",
-      text: "It wasn't my fault — they didn't deliver the API on time.",
-    },
-    {
-      signal: "impact",
-      text: "My caching change made the whole app significantly faster.",
-    },
-    {
-      signal: "technical",
-      text: "I optimized the database when the reports got slow.",
-    },
-    {
-      signal: "learning",
-      text: "I learned to communicate earlier with stakeholders.",
-    },
-  ];
-  const probeRate = (probingDepth: number) =>
-    PROBE_FIXTURES.filter((fixture) => {
-      const outcome = decideInterviewAction(
-        makeAnalysis({
-          languageSignals: detectBehavioralSignals(fixture.text),
-        }),
-        { personaName: "probe-sweep", probingDepth },
-      );
-      // Probe reasons are the only ones that quote the candidate.
-      return outcome.reason.includes('"');
-    }).length / PROBE_FIXTURES.length;
-  const probeRates = {
-    low: probeRate(2),
-    mid: probeRate(5),
-    high: probeRate(9),
-  };
-
-  if (json) return { diff, difficulty, curve, moveMix, probeRates };
+  if (json)
+    return {
+      diff,
+      difficulty,
+      dials,
+      styles,
+      pushbackSwitch,
+      probeBaseline: PROBE_BASELINE,
+    };
 
   console.log("=".repeat(72));
   console.log("DETERMINISTIC — no API calls, identical on every run");
   console.log("=".repeat(72));
+  console.log(provenanceLine("npm run eval:persona"));
 
   console.log(`\nHeld constant across both arms:`);
   console.log(`  question  ${HELD_CONSTANT.question}`);
   console.log(`  answer    ${HELD_CONSTANT.answer.slice(0, 68)}...`);
 
-  console.log(`\n--- ${STRICT.name} (${STRICT.communicationStyle}) ---`);
+  console.log(bar(`${STRICT.name} (${STRICT.communicationStyle})`));
   console.log(
     `  strictness ${STRICT.strictness} · warmth ${STRICT.warmth} · pace ${STRICT.pace} · pushback ${STRICT.pushback}`,
   );
   for (const line of diff.onlyA) console.log(`  + ${line}`);
 
-  console.log(`\n--- ${WARM.name} (${WARM.communicationStyle}) ---`);
+  console.log(bar(`${WARM.name} (${WARM.communicationStyle})`));
   console.log(
     `  strictness ${WARM.strictness} · warmth ${WARM.warmth} · pace ${WARM.pace} · pushback ${WARM.pushback}`,
   );
   for (const line of diff.onlyB) console.log(`  + ${line}`);
 
-  console.log(`\n--- follow-up difficulty on the SAME answer ---`);
+  console.log(bar("follow-up difficulty on the SAME answer"));
   console.log(`  ${STRICT.name.padEnd(22)} ${difficulty.strict}/10`);
   console.log(`  ${WARM.name.padEnd(22)} ${difficulty.warm}/10`);
   console.log(
     `  difference             ${difficulty.strict - difficulty.warm} points`,
   );
 
-  console.log(`\n--- difficulty vs strictness (warmth held at 5) ---`);
-  for (const point of curve) {
-    console.log(
-      `  strictness ${String(point.strictness).padStart(2)}  ${"█".repeat(point.difficulty)} ${point.difficulty}`,
-    );
-  }
+  console.log(`\n${"=".repeat(72)}`);
+  console.log("ONE DIAL AT A TIME — others held at 5, swept 1 to 10");
+  console.log("=".repeat(72));
+  console.log(
+    "  Two presets differ on every dial, so a difference between them cannot",
+  );
+  console.log(
+    "  be attributed. These sweeps move one number and read every consumer of",
+  );
+  console.log(
+    "  it. 'questioning' changes what is asked, 'delivery' how it is spoken,",
+  );
+  console.log(
+    "  'readout' only a number on screen, and 'instruction' the text the model",
+  );
+  console.log(
+    "  is handed — which states the dial's value, so it differs at all ten steps",
+  );
+  console.log("  by construction and is shown but never counted.");
+
+  for (const sweep of dials) printDialSweep(sweep);
 
   console.log(
-    `\n--- move distribution by questioning style (${SWEEP_TURNS} seeded fine-answer turns) ---`,
+    `\n      probe-rate baseline: default LLM interviewers deepen on ${PROBE_BASELINE}`,
   );
-  for (const row of moveMix) {
-    const parts = Object.entries(row.counts)
+
+  console.log(
+    bar(`questioning style over ${SWEEP_TURNS} seeded fine-answer turns`),
+  );
+  for (const row of styles) {
+    const mix = Object.entries(row.moveMix)
       .sort((a, b) => b[1] - a[1])
       .map(([move, count]) => `${move} ${count}`)
       .join("  ");
-    console.log(`  ${row.style.padEnd(15)} ${parts}`);
+    console.log(
+      `  ${row.style.padEnd(15)} curveballs ${(row.curveballRate * 100).toFixed(0).padStart(3)}%   ${mix}`,
+    );
   }
 
+  console.log(bar("where pushback's twist switch sits, per style"));
   console.log(
-    "\n--- probe rate over 7 hedged answers, one per signal type ---",
+    "  twistScore = pushback - 5 + styleBias, so the same dial value means a",
   );
-  console.log(
-    `  probingDepth 2   ${(probeRates.low * 100).toFixed(0)}% of answers probed`,
-  );
-  console.log(
-    `  probingDepth 5   ${(probeRates.mid * 100).toFixed(0)}% of answers probed`,
-  );
-  console.log(
-    `  probingDepth 9   ${(probeRates.high * 100).toFixed(0)}% of answers probed`,
-  );
-  console.log(
-    "  baseline: default LLM interviewers deepen on 4.9% of turns (arXiv 2608.10412)",
-  );
+  console.log("  different interview under a different style.");
+  for (const row of pushbackSwitch) {
+    console.log(
+      `  ${row.style.padEnd(15)} all pivots up to ${String(row.allPivotUntil ?? "—").padStart(2)}` +
+        `   all twists from ${String(row.allTwistFrom ?? "—").padStart(2)}`,
+    );
+  }
 
-  return { diff, difficulty, curve, moveMix, probeRates };
+  return {
+    diff,
+    difficulty,
+    dials,
+    styles,
+    pushbackSwitch,
+    probeBaseline: PROBE_BASELINE,
+  };
 }
 
 async function generateFollowup(
@@ -411,7 +362,9 @@ async function judge(
             "You rate an interviewer's follow-up question on two independent dimensions.",
             "DEMANDING (1-10): 1 = accepts the answer, encouraging, moves on. 10 = challenges the claim directly, asks for evidence or numbers, probes the weakest point.",
             "ADAPTIVE (1-10): 1 = generic — could have been asked after any answer. 10 = engages the candidate's actual words: quotes or paraphrases their claim, probes the specific gap their answer left open.",
-            'Return ONLY {"demandingness": number, "adaptivity": number, "reasoning": string}. Reasoning max 15 words.',
+            // "json" must appear literally — see the note in
+            // persona-experiment.ts. Its absence is why this arm 400'd.
+            'Reply with JSON only: {"demandingness": number, "adaptivity": number, "reasoning": string}. Reasoning max 15 words.',
           ].join("\n"),
         },
         {
@@ -540,6 +493,136 @@ async function empiricalReport(runs: number, apiKey: string, json: boolean) {
   return { summary, turns };
 }
 
+/**
+ * Print one dial's live result: the pre-registered expectation, then every
+ * axis, so an unintended effect is as visible as the intended one.
+ */
+function printDialResult(result: DialResult) {
+  const { expectation } = result;
+  const verdict = result.expectationHeld ? "HELD" : "NOT SHOWN";
+  const target = expectation.axis
+    ? `${expectation.axis} ${expectation.direction}s`
+    : "no effect on any axis";
+
+  console.log(`\n--- ${result.dial} ---`);
+  console.log(`  expected: ${target}`);
+  console.log(`  because:  ${expectation.why}`);
+  console.log(`  verdict:  ${verdict}   largest effect: ${result.largestEffect}`);
+  console.log(
+    `      axis             ${String(LOW).padStart(4)}     5     ${String(HIGH).padStart(1)}    high-low   95% CI`,
+  );
+
+  for (const axis of result.axes) {
+    const flag = axis.separates ? "*" : " ";
+    const intended = axis.axis === expectation.axis ? "<-" : "  ";
+    console.log(
+      `   ${intended} ${axis.axis.padEnd(15)}` +
+        `${num(axis.lowMean, 1).padStart(4)}  ` +
+        `${num(axis.neutralMean, 1).padStart(4)}  ` +
+        `${num(axis.highMean, 1).padStart(4)}   ` +
+        `${num(axis.difference, 1).padStart(6)}${flag}  ` +
+        `[${num(axis.ci[0], 1)}, ${num(axis.ci[1], 1)}]` +
+        `${axis.monotonic ? "  monotonic" : ""}`,
+    );
+  }
+}
+
+const num = (value: number, digits = 2) =>
+  Number.isFinite(value) ? value.toFixed(digits) : "n/a";
+
+/**
+ * The per-dial live experiment: one factor at a time, blind-judged.
+ *
+ * This is the arm that answers "does the number reach the question?". The
+ * two-preset comparison (`--presets`) answers a weaker version of it and is
+ * kept because the write-up already cites it.
+ */
+async function dialExperimentReport(runs: number, apiKey: string, json: boolean) {
+  const cells = 14;
+  if (!json) {
+    console.log(`\n${"=".repeat(72)}`);
+    console.log(
+      `LIVE — ${cells} arms x ${runs} runs, one dial at a time, blind-judged`,
+    );
+    console.log("=".repeat(72));
+  }
+
+  const result = await runExperiment(runs, apiKey, (line) => {
+    if (!json) console.log(line);
+  });
+  const cost = summariseCost(result.usage.all());
+
+  const report = {
+    runs: result.runs,
+    model: result.model,
+    judgeModel: result.judgeModel,
+    dials: result.dials,
+    control: result.control,
+    followups: result.followups,
+    errors: result.errors,
+    costUsd: cost.totalUsd,
+    promptTokens: cost.promptTokens,
+    completionTokens: cost.completionTokens,
+  };
+
+  if (json) return report;
+
+  console.log("\n--- control: no persona at all ---");
+  for (const axis of result.control) {
+    console.log(
+      `  ${axis.axis.padEnd(15)} mean ${num(axis.mean, 1)}  sd ${num(axis.stdDev, 1)}`,
+    );
+  }
+
+  console.log(
+    `\n  Every axis is rated for every follow-up, so a dial that moves an axis`,
+  );
+  console.log(
+    `  it was not designed to move shows up as a failure of orthogonality.`,
+  );
+  console.log(`  * = the 95% interval for high-low excludes zero.`);
+
+  for (const dial of result.dials) printDialResult(dial);
+
+  const axesRated = JUDGE_AXES.length;
+  const predicted = Object.values(EXPECTATIONS).filter((e) => e.axis).length;
+  console.log(
+    `\n  ${predicted} of ${result.dials.length} dials predicted an effect on one of ${axesRated} axes.`,
+  );
+  const held = result.dials.filter((dial) => dial.expectationHeld).length;
+  console.log(
+    `\n  ${held} of ${result.dials.length} pre-registered expectations held.`,
+  );
+
+  console.log("\n--- what the follow-ups looked like ---");
+  for (const dial of DIAL_KEYS) {
+    for (const level of [LOW, HIGH]) {
+      const rows = result.followups.filter(
+        (row) => row.dial === dial && row.level === level,
+      );
+      if (!rows.length) continue;
+      const echoes = rows.filter((row) => row.shape.echoesCandidate).length;
+      console.log(
+        `  ${`${dial} ${level}`.padEnd(24)} ` +
+          `${num(mean(rows.map((r) => r.shape.words)), 0).padStart(3)} words  ` +
+          `${num(mean(rows.map((r) => r.shape.questions)), 1)} questions  ` +
+          `${num(mean(rows.map((r) => r.shape.hedges)), 1)} hedges  ` +
+          `echoes the answer ${echoes}/${rows.length}`,
+      );
+    }
+  }
+
+  console.log(
+    `\n  cost of this run       ${formatUsd(report.costUsd)} (${report.promptTokens} in / ${report.completionTokens} out)`,
+  );
+  if (report.errors.length) {
+    console.log(`\n  ${report.errors.length} errors:`);
+    for (const error of report.errors.slice(0, 5)) console.log(`    ${error}`);
+  }
+
+  return report;
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const runsArg = args.find((a) => a.startsWith("--runs="));
@@ -547,11 +630,15 @@ function parseArgs() {
     runs: runsArg ? Math.max(1, Number(runsArg.split("=")[1]) || 3) : 3,
     json: args.includes("--json"),
     live: args.includes("--live"),
+    // The original two-preset arm. Kept because the write-up cites it, but it
+    // is no longer what --live runs: two personas differing on every dial
+    // cannot attribute a difference to any one of them.
+    presets: args.includes("--presets"),
   };
 }
 
 async function main() {
-  const { runs, json, live } = parseArgs();
+  const { runs, json, live, presets } = parseArgs();
 
   const deterministic = deterministicReport(json);
 
@@ -571,7 +658,9 @@ async function main() {
     return;
   }
 
-  const empirical = await empiricalReport(runs, apiKey, json);
+  const empirical = presets
+    ? await empiricalReport(runs, apiKey, json)
+    : await dialExperimentReport(runs, apiKey, json);
   if (json) console.log(JSON.stringify({ deterministic, empirical }, null, 2));
 }
 
