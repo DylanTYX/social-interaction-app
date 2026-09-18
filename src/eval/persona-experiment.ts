@@ -210,12 +210,33 @@ export interface TextShape {
   hedges: number;
   /** Whether the follow-up quotes the candidate's own wording back at them. */
   echoesCandidate: boolean;
+  /**
+   * Whether the follow-up actually opened the subject a pivot was told to open.
+   *
+   * The sharpest measure in the harness, and the only one that needs no judge:
+   * when the engine chooses PIVOT_TOPIC it names a destination, so obedience is
+   * a fact about the text rather than an opinion about it. The judge's
+   * topic-shift axis returned 2.0 with zero variance across almost every cell,
+   * which is an instrument reporting nothing; this replaces it for the one
+   * question it was there to answer.
+   */
+  opensPivotTarget: boolean;
 }
 
 const HEDGES =
   /\b(maybe|perhaps|possibly|might|could|somewhat|a bit|sort of|kind of|if you don't mind|feel free|no worries|take your time)\b/gi;
 
 /** Words in the answer worth calling an echo — long enough to be distinctive. */
+/**
+ * Content words belonging to the pivot destination and absent from the answer.
+ *
+ * The engine's `uncoveredCompetency` is "how they handle a production
+ * incident", so a follow-up that obeyed the pivot has to name that subject.
+ * Matching on its distinctive words is a blunt test, but it is a *factual* one,
+ * which the judge's topic-shift rating turned out not to be.
+ */
+const PIVOT_TARGET_WORDS = ["incident", "outage", "production", "on-call", "oncall"];
+
 const ANSWER_WORDS = new Set(
   HELD_CONSTANT.answer
     .toLowerCase()
@@ -225,6 +246,7 @@ const ANSWER_WORDS = new Set(
 );
 
 export function describeShape(text: string): TextShape {
+  const lower = text.toLowerCase();
   const words = text.split(/\s+/).filter(Boolean);
   const echoed = words.filter((word) =>
     ANSWER_WORDS.has(word.toLowerCase().replace(/[^a-z]/g, "")),
@@ -237,6 +259,7 @@ export function describeShape(text: string): TextShape {
     // Two shared distinctive words, so one incidental "stakeholders" is not
     // counted as engaging with what the candidate actually said.
     echoesCandidate: echoed.length >= 2,
+    opensPivotTarget: PIVOT_TARGET_WORDS.some((word) => lower.includes(word)),
   };
 }
 
@@ -354,7 +377,10 @@ const JUDGE_RUBRIC = [
   "DEMANDINGNESS (1-10): 1 = accepts the answer and moves on. 10 = challenges the claim, asks for evidence, numbers or the weakest point.",
   "SUPPORTIVENESS (1-10): 1 = cold, clipped, no acknowledgement. 10 = warm, encouraging, explicitly makes space for the candidate.",
   "ADAPTIVITY (1-10): 1 = generic, could follow any answer. 10 = engages this candidate's actual words and the specific gap they left.",
-  "TOPIC SHIFT (1-10): 1 = stays on the project just described. 10 = moves to a new subject or poses a hypothetical the candidate did not raise.",
+  // Anchored at three points rather than two, and worded as a question about
+  // subject matter rather than degree. The two-anchor version returned 2 for
+  // almost every follow-up it was shown, which is a constant, not a rating.
+  "TOPIC SHIFT (1-10): what is this question about? 1-3 = the same project the candidate just described. 4-6 = the same project, but a hypothetical change to it the candidate did not raise. 7-10 = a different subject, situation or competency altogether.",
   "",
   // The literal word "json" is required here: the request sets
   // response_format json_object, and OpenAI rejects that with a 400 unless

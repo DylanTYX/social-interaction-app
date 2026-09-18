@@ -602,12 +602,17 @@ async function dialExperimentReport(runs: number, apiKey: string, json: boolean)
       );
       if (!rows.length) continue;
       const echoes = rows.filter((row) => row.shape.echoesCandidate).length;
+      const pivots = rows.filter((row) => row.strategy === "PIVOT_TOPIC");
+      const opened = pivots.filter((row) => row.shape.opensPivotTarget).length;
       console.log(
         `  ${`${dial} ${level}`.padEnd(24)} ` +
           `${num(mean(rows.map((r) => r.shape.words)), 0).padStart(3)} words  ` +
           `${num(mean(rows.map((r) => r.shape.questions)), 1)} questions  ` +
           `${num(mean(rows.map((r) => r.shape.hedges)), 1)} hedges  ` +
-          `echoes the answer ${echoes}/${rows.length}`,
+          `echoes the answer ${echoes}/${rows.length}` +
+          (pivots.length
+            ? `   opened the pivot subject ${opened}/${pivots.length}`
+            : ""),
       );
     }
   }
