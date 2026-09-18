@@ -263,6 +263,17 @@ export function describeShape(text: string): TextShape {
   };
 }
 
+/**
+ * How long one call may take before it is abandoned.
+ *
+ * A full run is about 1,400 sequential requests, and `fetch` has no timeout of
+ * its own: one socket that never answers stalls the entire experiment with no
+ * output and no error, indefinitely. That happened — a run sat for over an hour
+ * on a single connection. Forty seconds is far longer than these completions
+ * take and short enough that a stall is a blip rather than an evening.
+ */
+const REQUEST_TIMEOUT_MS = 40_000;
+
 async function chat(
   apiKey: string,
   usage: UsageCollector,
@@ -277,6 +288,7 @@ async function chat(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({ model, ...body }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error(`${stage} ${response.status}: ${await response.text()}`);
@@ -517,8 +529,8 @@ export async function runExperiment(
   const errors: string[] = [];
   const cells = buildCells();
 
-  for (const cell of cells) {
-    onProgress?.(`  ${cell.label}`);
+  for (const [index, cell] of cells.entries()) {
+    onProgress?.(`  [${index + 1}/${cells.length}] ${cell.label}`);
     for (let run = 0; run < runs; run += 1) {
       try {
         const steer = steeringFor(cell, run);
