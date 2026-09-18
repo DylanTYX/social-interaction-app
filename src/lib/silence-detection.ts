@@ -32,13 +32,39 @@ export const SILENCE_SUBMIT_MS = 4000;
  */
 export const SILENCE_WARN_AT_MS = 2000;
 
+/**
+ * How long total silence runs before the interviewer checks in.
+ *
+ * A separate rule from the one above, because the two silences are different
+ * events. A pause *inside* an answer is thinking, and the product's position is
+ * that thinking is never penalised. A candidate who has not said a single word
+ * is not thinking out loud — they may not have heard the question, the
+ * microphone may be dead, or they may be lost, and a real interviewer notices
+ * within about half a minute rather than waiting three.
+ *
+ * Three minutes is what this used to be, by accident: the *answer length* cap
+ * was doing double duty as the never-spoke fallback, and nobody had separated
+ * them. Three minutes of dead air is not an interview, it is a stuck page.
+ *
+ * Twenty-five seconds is a judgement, not a measurement, and is deliberately
+ * generous: wait-time research (Rowe 1986) finds answers improve when a
+ * questioner waits several seconds, so the cost of waiting a little too long is
+ * much lower than the cost of interrupting someone composing an answer.
+ */
+export const OPENING_SILENCE_PROMPT_MS = 25_000;
+
+/** When the check-in becomes visible, so it is never a surprise. */
+export const OPENING_SILENCE_WARN_AT_MS = 15_000;
+
 export type SilenceDecision =
   /** Still talking, or not yet talking. Nothing to show. */
   | { kind: "listening" }
   /** Quiet, and close enough to the threshold to warn about it. */
   | { kind: "warning"; msRemaining: number }
   /** Quiet for long enough. Submit the turn. */
-  | { kind: "submit" };
+  | { kind: "submit" }
+  /** Nothing said at all for long enough. The interviewer should check in. */
+  | { kind: "prompt" };
 
 export function decideSilence(input: {
   /** Wall-clock now, injected so this stays pure. */
@@ -55,13 +81,32 @@ export function decideSilence(input: {
    * submits a "no response", which is a real outcome rather than an accident.
    */
   hasSpoken: boolean;
+  /**
+   * When the microphone opened for this turn. Only used before the candidate
+   * has said anything; once they have, the clock that matters is the one since
+   * their last word.
+   */
+  turnStartedAtMs?: number | null;
   submitAfterMs?: number;
   warnAfterMs?: number;
+  promptAfterMs?: number;
+  promptWarnAfterMs?: number;
 }): SilenceDecision {
   const submitAfter = input.submitAfterMs ?? SILENCE_SUBMIT_MS;
   const warnAfter = input.warnAfterMs ?? SILENCE_WARN_AT_MS;
+  const promptAfter = input.promptAfterMs ?? OPENING_SILENCE_PROMPT_MS;
+  const promptWarnAfter = input.promptWarnAfterMs ?? OPENING_SILENCE_WARN_AT_MS;
 
   if (!input.hasSpoken || input.lastSpeechAtMs === null) {
+    // Nothing said yet. Wait, visibly, and then have the interviewer ask again
+    // rather than leaving the candidate in silence until the answer cap.
+    if (input.turnStartedAtMs == null) return { kind: "listening" };
+
+    const silentFor = input.nowMs - input.turnStartedAtMs;
+    if (silentFor >= promptAfter) return { kind: "prompt" };
+    if (silentFor >= promptWarnAfter) {
+      return { kind: "warning", msRemaining: promptAfter - silentFor };
+    }
     return { kind: "listening" };
   }
 

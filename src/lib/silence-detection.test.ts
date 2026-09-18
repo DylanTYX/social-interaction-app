@@ -80,3 +80,56 @@ describe("a pause to think", () => {
     );
   });
 });
+
+/**
+ * The silence before a candidate says anything at all.
+ *
+ * A different event from a pause inside an answer, and it used to be handled by
+ * accident: the three-minute *answer length* cap was also the never-spoke
+ * fallback, so someone who missed the question sat in silence for three minutes
+ * before anything happened.
+ */
+describe("silence before the first word", () => {
+  const base = {
+    hasSpoken: false,
+    lastSpeechAtMs: null,
+    turnStartedAtMs: 0,
+  };
+
+  it("waits, because composing an answer is not a fault", () => {
+    expect(decideSilence({ ...base, nowMs: 10_000 })).toEqual({
+      kind: "listening",
+    });
+  });
+
+  it("warns before it acts, so the check-in is never a surprise", () => {
+    const decision = decideSilence({ ...base, nowMs: 18_000 });
+    expect(decision.kind).toBe("warning");
+  });
+
+  it("asks the interviewer to check in once the silence is unmistakable", () => {
+    expect(decideSilence({ ...base, nowMs: 25_000 })).toEqual({
+      kind: "prompt",
+    });
+  });
+
+  it("does nothing at all until the microphone has actually opened", () => {
+    // No start time means no turn in progress; a countdown here would run
+    // against a candidate who is not being asked anything.
+    expect(
+      decideSilence({ ...base, turnStartedAtMs: null, nowMs: 999_999 }),
+    ).toEqual({ kind: "listening" });
+  });
+
+  it("hands over to the in-answer rule the moment a word is heard", () => {
+    // One word spoken 30s in must not be read as 30s of opening silence.
+    expect(
+      decideSilence({
+        nowMs: 30_000,
+        hasSpoken: true,
+        lastSpeechAtMs: 29_000,
+        turnStartedAtMs: 0,
+      }),
+    ).toEqual({ kind: "listening" });
+  });
+});

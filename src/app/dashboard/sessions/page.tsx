@@ -73,6 +73,7 @@ export default function SessionsLibraryPage() {
   const [sort, setSort] = useState<SessionSort>("newest");
   const [tagFilter, setTagFilter] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
+  const wantedArchived = showArchived ? "archived" : "active";
 
   // Debounced so a refetch does not fire on every keystroke. The filter runs in
   // Postgres now, so each change is a request rather than an array pass.
@@ -85,6 +86,7 @@ export default function SessionsLibraryPage() {
   const {
     sessions,
     status,
+    loadedArchived,
     error,
     refresh,
     loadMore,
@@ -100,7 +102,7 @@ export default function SessionsLibraryPage() {
     tag: tagFilter === "all" ? undefined : tagFilter,
     // The sessions page hides archived sessions unless asked. The API's own
     // default is "all", because the dashboard's statistics still count them.
-    archived: showArchived ? "archived" : "active",
+    archived: wantedArchived,
   });
 
   const { tags: tagCounts, refresh: refreshTags } = useSessionTags();
@@ -256,7 +258,28 @@ export default function SessionsLibraryPage() {
     tagFilter !== "all" ||
     showArchived;
 
-  const isLoading = status === "loading" && sessions.length === 0;
+  /**
+   * Switching tab is a fresh load, not a filtered one.
+   *
+   * `isLoading` used to require an empty list, so moving from Active to
+   * Archived showed the *Active* rows, unchanged, for as long as the request
+   * took — no spinner, no skeleton, nothing to say anything was happening. The
+   * page looked frozen, and then the list silently became a different list.
+   *
+   * A tab is a different place, so its stale rows are worse than no rows:
+   * leaving them up says "these are your archived sessions" while they are not.
+   * Other filter changes keep their rows and dim instead (`refetching` below),
+   * because there the old rows are a near-miss rather than the wrong answer.
+   */
+  const switchingTab =
+    status === "loading" &&
+    loadedArchived !== undefined &&
+    loadedArchived !== wantedArchived;
+
+  const isLoading =
+    status === "loading" && (sessions.length === 0 || switchingTab);
+  /** A refetch under a list that is still worth looking at: search, sort, tags. */
+  const refetching = status === "loading" && !isLoading;
 
   return (
     <PageContainer>
@@ -448,9 +471,15 @@ export default function SessionsLibraryPage() {
         // One card holding one list: a heading row, hairline rows, and a
         // footer that says how much of the result is on screen.
         <div
+          // `aria-busy` and the fade are the only signal a refetch is running
+          // when rows are already on screen — a search keystroke, a sort, a tag.
+          // Without it the list simply changes under the user with no sign that
+          // anything was asked for.
+          aria-busy={refetching}
           className={cn(
             "rounded-xl border border-slate-200 bg-white shadow-soft",
             CONTENT_ENTER,
+            refetching && "opacity-60 transition-opacity duration-150",
           )}
         >
           <div

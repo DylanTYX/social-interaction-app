@@ -305,6 +305,26 @@ function VoiceSimulateInner() {
    */
   const transcriptForced = !voiceConfig.ttsEnabled;
   const transcriptVisible = transcriptShown || transcriptForced;
+  /**
+   * Questions opened one at a time, rather than all of them.
+   *
+   * "Show transcript" in a bubble used to set the page-wide flag, so asking to
+   * read back the one question you missed printed the whole interview — and the
+   * only way to undo that was a differently-named button in the header. The
+   * common case is wanting a single question again; that is now what the bubble
+   * does, and the header keeps the all-at-once switch it always had.
+   */
+  const [revealedIds, setRevealedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const revealOne = (id: string) =>
+    setRevealedIds((current) => new Set(current).add(id));
+  const hideOne = (id: string) =>
+    setRevealedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
 
   /**
    * An answer whose request failed, kept verbatim so it can be sent again.
@@ -1421,12 +1441,15 @@ function VoiceSimulateInner() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setTranscriptShown((shown) => !shown)}
+              onClick={() => {
+                setTranscriptShown((shown) => !shown);
+                setRevealedIds(new Set());
+              }}
               aria-pressed={transcriptShown}
               className="hidden sm:inline-flex"
             >
               {transcriptShown ? <EyeOff /> : <Eye />}
-              {transcriptShown ? "Hide transcript" : "Show transcript"}
+              {transcriptShown ? "Hide all" : "Show all"}
             </Button>
           )}
           <DropdownMenu>
@@ -1448,9 +1471,12 @@ function VoiceSimulateInner() {
               {!transcriptForced && (
                 <DropdownMenuItem
                   className="sm:hidden"
-                  onSelect={() => setTranscriptShown((shown) => !shown)}
+                  onSelect={() => {
+                    setTranscriptShown((shown) => !shown);
+                    setRevealedIds(new Set());
+                  }}
                 >
-                  {transcriptShown ? "Hide transcript" : "Show transcript"}
+                  {transcriptShown ? "Hide all transcripts" : "Show all transcripts"}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onSelect={() => setIsAdvancedStateOpen(true)}>
@@ -1530,8 +1556,21 @@ function VoiceSimulateInner() {
                   content={msg.content}
                   // Spoken, not printed: the interviewer's words are withheld
                   // until asked for. Your own answers always show.
-                  spokenOnly={msg.role === "ai" && !transcriptVisible}
-                  onShowTranscript={() => setTranscriptShown(true)}
+                  spokenOnly={
+                    msg.role === "ai" &&
+                    !transcriptVisible &&
+                    !revealedIds.has(msg.id)
+                  }
+                  onShowTranscript={() => revealOne(msg.id)}
+                  // Offered only for a question opened on its own. While the
+                  // header switch is on, hiding one message would contradict it.
+                  onHideTranscript={
+                    msg.role === "ai" &&
+                    !transcriptVisible &&
+                    revealedIds.has(msg.id)
+                      ? () => hideOne(msg.id)
+                      : undefined
+                  }
                   timestamp={msg.timestamp}
                   personaName={activePersonaConfig.name}
                   deliveryNote={msg.delivery}

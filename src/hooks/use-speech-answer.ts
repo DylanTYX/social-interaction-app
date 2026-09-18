@@ -148,6 +148,8 @@ export function useSpeechAnswer({
   // submit an empty answer.
   const lastSpeechAtRef = useRef<number | null>(null);
   const hasSpokenRef = useRef(false);
+  /** When this turn's microphone opened, for the before-the-first-word rule. */
+  const turnStartedAtRef = useRef<number | null>(null);
 
   /**
    * Read through refs, refreshed every render.
@@ -344,6 +346,7 @@ export function useSpeechAnswer({
         nowMs: Date.now(),
         lastSpeechAtMs: lastSpeechAtRef.current,
         hasSpoken: hasSpokenRef.current,
+        turnStartedAtMs: turnStartedAtRef.current,
       });
 
       if (decision.kind === "submit" && autoSubmitRef.current) {
@@ -352,9 +355,22 @@ export function useSpeechAnswer({
         return;
       }
 
+      /**
+       * Nothing said at all. Treated as a timeout rather than as an empty
+       * answer: the caller's timeout branch submits the no-response placeholder,
+       * which the analyzer skips and the chat route answers by checking the
+       * channel and asking the question again. That is what a real interviewer
+       * does when someone goes quiet, and it is what used to take three minutes.
+       */
+      if (decision.kind === "prompt" && autoSubmitRef.current) {
+        stopSilenceWatch();
+        void finish("timeout");
+        return;
+      }
+
       const nextStart =
         decision.kind === "warning" || decision.kind === "submit"
-          ? lastSpeechAtRef.current
+          ? (lastSpeechAtRef.current ?? turnStartedAtRef.current)
           : null;
       setSilenceStartedAtMs((prev) => (prev === nextStart ? prev : nextStart));
     }, 250);
@@ -385,6 +401,7 @@ export function useSpeechAnswer({
       isStoppingRef.current = false;
       lastSpeechAtRef.current = null;
       hasSpokenRef.current = false;
+      turnStartedAtRef.current = Date.now();
       setSilenceStartedAtMs(null);
       isRecordingRef.current = true;
       setIsRecording(true);

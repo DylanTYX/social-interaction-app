@@ -27,6 +27,15 @@ interface ChatMessageProps {
    * meant to be listening to.
    */
   spokenOnly?: boolean;
+  /**
+   * Put this one message's text back out of sight.
+   *
+   * Only meaningful once it has been revealed on its own: the header's control
+   * governs every message at once, and a reader who opened a single question
+   * had no way to close it again without reaching for a different control in a
+   * different place that did a different, larger thing.
+   */
+  onHideTranscript?: () => void;
   /** Reveals the transcript from inside the bubble. */
   onShowTranscript?: () => void;
 }
@@ -159,6 +168,7 @@ export const ChatMessage = memo(function ChatMessage({
   feedbackLoading = false,
   deliveryNote,
   spokenOnly = false,
+  onHideTranscript,
   onShowTranscript,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -248,6 +258,18 @@ export const ChatMessage = memo(function ChatMessage({
               >
                 {content || " "}
               </ReactMarkdown>
+              {/* Sits where "Show transcript" was, so opening and closing one
+                  question happen in the same place rather than one in the
+                  bubble and the other in the page header. */}
+              {onHideTranscript && (
+                <button
+                  type="button"
+                  onClick={onHideTranscript}
+                  className="rounded-sm text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline focus-visible:ring-[3px] focus-visible:ring-primary-muted focus-visible:outline-none"
+                >
+                  Hide transcript
+                </button>
+              )}
             </div>
           )}
         </div>

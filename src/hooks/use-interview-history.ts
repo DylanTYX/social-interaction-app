@@ -69,6 +69,13 @@ export interface InterviewHistoryFilters {
 export interface UseInterviewHistory {
   sessions: InterviewSessionSummary[];
   status: "loading" | "ready" | "error";
+  /**
+   * The view the rows currently on screen were fetched for, which during a
+   * request is not the view the caller has selected. Lets a caller tell "these
+   * rows are nearly right, keep them" from "these rows are the other tab's".
+   * `undefined` until the first load lands.
+   */
+  loadedArchived: ArchivedView | undefined;
   error: string | null;
   refresh: () => Promise<void>;
   /** Append the next page. No-op while one is in flight or when exhausted. */
@@ -98,6 +105,17 @@ export function useInterviewHistory(
   filters: InterviewHistoryFilters = {},
 ): UseInterviewHistory {
   const [sessions, setSessions] = useState<InterviewSessionSummary[]>([]);
+  /**
+   * Which view the rows on screen belong to, as opposed to which one is
+   * selected. The two differ for the length of a request, and a caller cannot
+   * tell them apart from `status` alone: "loading with rows present" covers
+   * both a search being narrowed — where the stale rows are a near-miss worth
+   * keeping — and a switch to a different tab, where they are the wrong answer
+   * and should not be left on screen looking like the right one.
+   */
+  const [loadedArchived, setLoadedArchived] = useState<ArchivedView | undefined>(
+    undefined,
+  );
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -167,18 +185,20 @@ export function useInterviewHistory(
       if (payload === null) {
         setSessions([]);
         setTotal(0);
+        setLoadedArchived(archived);
         setStatus("ready");
         return;
       }
       setSessions(payload.sessions);
       setTotal(payload.total ?? payload.sessions.length);
+      setLoadedArchived(archived);
       setStatus("ready");
     } catch (err) {
       if (!isCurrent()) return;
       setError(err instanceof Error ? err.message : "Failed to load sessions.");
       setStatus("error");
     }
-  }, [fetchPage]);
+  }, [fetchPage, archived]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore) return;
@@ -229,6 +249,7 @@ export function useInterviewHistory(
   return {
     sessions,
     status,
+    loadedArchived,
     error,
     refresh,
     loadMore,
