@@ -35,7 +35,14 @@ function git(...args: string[]): string | null {
 export function provenance(): Provenance {
   return {
     sha: git("rev-parse", "--short", "HEAD") ?? "unknown",
-    dirty: (git("status", "--porcelain") ?? "") !== "",
+    // `docs/artifacts` is excluded because writing an artifact is what makes
+    // the tree dirty: redirect this output into that directory and the stamp
+    // would report uncommitted changes every single time, which is a warning
+    // that fires always and therefore means nothing. The stamp is a claim
+    // about the code that produced the numbers, and artifacts are not that.
+    dirty:
+      (git("status", "--porcelain", "--", ".", ":(exclude)docs/artifacts") ??
+        "") !== "",
     // Date only. A wall-clock time would change every run and make two
     // otherwise identical artifacts look different in a diff.
     generatedAt: new Date().toISOString().slice(0, 10),
