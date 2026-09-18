@@ -1,0 +1,193 @@
+<title>Persona dial evaluation</title>
+<style>
+  :root {
+    --ink: #10151c; --muted: #5c6b7f; --line: #dfe5ec; --bg: #fbfcfd;
+    --card: #ffffff; --accent: #1d6fd0; --up: #17795e; --down: #b0341d;
+    --flat: #94a3b5;
+  }
+  :root:not([data-theme="light"]) {}
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e8edf4; --muted: #94a3b5; --line: #26303c; --bg: #0d1219;
+      --card: #141b24; --accent: #6aa9f0; --up: #4cc79e; --down: #f0765a;
+      --flat: #56657a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e8edf4; --muted: #94a3b5; --line: #26303c; --bg: #0d1219;
+    --card: #141b24; --accent: #6aa9f0; --up: #4cc79e; --down: #f0765a;
+    --flat: #56657a;
+  }
+  body {
+    background: var(--bg); color: var(--ink); margin: 0;
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-block: 40px; padding-left: 20px; padding-right: 20px;
+  }
+  main { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 27px; letter-spacing: -0.02em; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-size: 17px; letter-spacing: -0.01em; margin: 40px 0 6px; }
+  p { margin: 0 0 14px; max-width: 66ch; color: var(--muted); }
+  p.lead { color: var(--ink); }
+  .prov {
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--muted); border-left: 2px solid var(--line);
+    padding-left: 10px; margin-bottom: 28px;
+  }
+  section {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 20px; margin-bottom: 8px;
+    overflow-x: auto;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; font-weight: 600; white-space: nowrap; padding-right: 14px; }
+  td { padding: 5px 10px 5px 0; vertical-align: middle; }
+  tbody th { padding: 5px 14px 5px 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .num {
+    font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .ci-text { color: var(--muted); }
+  .strip { display: flex; gap: 2px; min-width: 260px; }
+  .step {
+    flex: 1; height: 26px; border-radius: 3px; display: grid; place-items: center;
+    background: hsl(var(--hue) 62% 58%); color: #fff; font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .step.repeat { opacity: 0.42; }
+  .score { font: 600 17px ui-monospace, Menlo, monospace; white-space: nowrap; }
+  .score span { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .score.full { color: var(--up); }
+  .score.partial { color: var(--accent); }
+  .barcell { width: 200px; min-width: 150px; }
+  .bar { position: relative; height: 22px; }
+  .zero {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: var(--line);
+  }
+  .ci { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--flat); }
+  .dot {
+    position: absolute; top: 5px; width: 11px; height: 11px; margin-left: -5px;
+    border-radius: 50%; background: var(--flat);
+  }
+  .bar.up .ci, .bar.up .dot { background: var(--up); }
+  .bar.down .ci, .bar.down .dot { background: var(--down); }
+  .cbar { height: 13px; border-radius: 2px; background: var(--accent); min-width: 2px; }
+  .verdict { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .verdict.held { color: var(--up); }
+  .verdict.no { color: var(--muted); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 36px; }
+  @media (max-width: 620px) {
+    .barcell { width: 120px; min-width: 100px; }
+    .strip { min-width: 200px; }
+  }
+</style>
+<main>
+  <h1>Do the persona dials change the interview?</h1>
+  <p class="lead">Six sliders, 1 to 10. This is what each one measurably does.</p>
+  <p class="prov">Generated 2026-09-18 from c4df59c + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona -- --artifacts`.</p>
+
+  <h2>1. What the dial changes &mdash; measured offline</h2>
+  <p>
+    Each dial swept 1&ndash;10 with the other five held at 5. A block is one
+    setting; faded blocks behave identically to the one before them. Free,
+    offline, and identical on every run.
+  </p>
+  <section>
+    <table><tbody><tr>
+      <th>strictness</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: flexible and understanding · bar: 45/100 · specifics: 1 · reAsks: 1 · difficulty: 5/10"><span>1</span></div><div class="step" style="--hue:222" title="prompt: flexible and understanding · bar: 50/100 · specifics: 1 · reAsks: 2 · difficulty: 5/10"><span>2</span></div><div class="step" style="--hue:239" title="prompt: flexible and understanding · bar: 55/100 · specifics: 2 · reAsks: 2 · difficulty: 6/10"><span>3</span></div><div class="step" style="--hue:256" title="prompt: flexible and understanding · bar: 60/100 · specifics: 2 · reAsks: 2 · difficulty: 6/10"><span>4</span></div><div class="step" style="--hue:273" title="prompt: moderate standards · bar: 65/100 · specifics: 3 · reAsks: 3 · difficulty: 6/10"><span>5</span></div><div class="step" style="--hue:290" title="prompt: moderate standards · bar: 70/100 · specifics: 3 · reAsks: 3 · difficulty: 6/10"><span>6</span></div><div class="step" style="--hue:307" title="prompt: moderate standards · bar: 75/100 · specifics: 4 · reAsks: 3 · difficulty: 7/10"><span>7</span></div><div class="step" style="--hue:324" title="prompt: high expectations and won't tolerate mediocrity · bar: 80/100 · specifics: 4 · reAsks: 4 · difficulty: 7/10"><span>8</span></div><div class="step" style="--hue:341" title="prompt: high expectations and won't tolerate mediocrity · bar: 85/100 · specifics: 5 · reAsks: 4 · difficulty: 7/10"><span>9</span></div><div class="step" style="--hue:358" title="prompt: high expectations and won't tolerate mediocrity · bar: 90/100 · specifics: 5 · reAsks: 4 · difficulty: 7/10"><span>10</span></div></div></td>
+      <td class="score full">
+        10<span>/10</span>
+      </td>
+      <td class="muted">every step differs</td>
+    </tr><tr>
+      <th>warmth</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: reserved and formal · ackWords: 0 · difficulty: 7/10 · slowsDown: no"><span>1</span></div><div class="step" style="--hue:222" title="prompt: reserved and formal · ackWords: 1 · difficulty: 7/10 · slowsDown: no"><span>2</span></div><div class="step" style="--hue:239" title="prompt: reserved and formal · ackWords: 2 · difficulty: 7/10 · slowsDown: no"><span>3</span></div><div class="step" style="--hue:256" title="prompt: reserved and formal · ackWords: 4 · difficulty: 6/10 · slowsDown: no"><span>4</span></div><div class="step" style="--hue:273" title="prompt: professional and neutral · ackWords: 5 · difficulty: 6/10 · slowsDown: no"><span>5</span></div><div class="step" style="--hue:290" title="prompt: professional and neutral · ackWords: 6 · difficulty: 6/10 · slowsDown: no"><span>6</span></div><div class="step" style="--hue:307" title="prompt: professional and neutral · ackWords: 7 · difficulty: 6/10 · slowsDown: yes"><span>7</span></div><div class="step" style="--hue:324" title="prompt: warm and encouraging · ackWords: 8 · difficulty: 5/10 · slowsDown: yes"><span>8</span></div><div class="step" style="--hue:341" title="prompt: warm and encouraging · ackWords: 10 · difficulty: 5/10 · slowsDown: yes"><span>9</span></div><div class="step" style="--hue:358" title="prompt: warm and encouraging · ackWords: 11 · difficulty: 5/10 · slowsDown: yes"><span>10</span></div></div></td>
+      <td class="score full">
+        10<span>/10</span>
+      </td>
+      <td class="muted">every step differs</td>
+    </tr><tr>
+      <th>pace</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: deliberate and patient · wordBudget: 57w · speechRate: -20%"><span>1</span></div><div class="step" style="--hue:222" title="prompt: deliberate and patient · wordBudget: 54w · speechRate: -15%"><span>2</span></div><div class="step" style="--hue:239" title="prompt: deliberate and patient · wordBudget: 51w · speechRate: -10%"><span>3</span></div><div class="step" style="--hue:256" title="prompt: balanced · wordBudget: 48w · speechRate: -5%"><span>4</span></div><div class="step" style="--hue:273" title="prompt: balanced · wordBudget: 45w · speechRate: +0%"><span>5</span></div><div class="step" style="--hue:290" title="prompt: brisk · wordBudget: 42w · speechRate: +5%"><span>6</span></div><div class="step" style="--hue:307" title="prompt: brisk · wordBudget: 39w · speechRate: +10%"><span>7</span></div><div class="step" style="--hue:324" title="prompt: fast and assertive · wordBudget: 36w · speechRate: +15%"><span>8</span></div><div class="step" style="--hue:341" title="prompt: fast and assertive · wordBudget: 33w · speechRate: +20%"><span>9</span></div><div class="step" style="--hue:358" title="prompt: fast and assertive · wordBudget: 30w · speechRate: +25%"><span>10</span></div></div></td>
+      <td class="score full">
+        10<span>/10</span>
+      </td>
+      <td class="muted">every step differs</td>
+    </tr><tr>
+      <th>pushback</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="prompt: minimal · contests: 0 · unchallenged: 5 · twistShare: 0%"><span>1</span></div><div class="step" style="--hue:222" title="prompt: minimal · contests: 0 · unchallenged: 4 · twistShare: 0%"><span>2</span></div><div class="step" style="--hue:239" title="prompt: minimal · contests: 1 · unchallenged: 4 · twistShare: 0%"><span>3</span></div><div class="step" style="--hue:256" title="prompt: light · contests: 1 · unchallenged: 3 · twistShare: 0%"><span>4</span></div><div class="step" style="--hue:273" title="prompt: light · contests: 2 · unchallenged: 3 · twistShare: 0%"><span>5</span></div><div class="step" style="--hue:290" title="prompt: moderate · contests: 2 · unchallenged: 2 · twistShare: 0%"><span>6</span></div><div class="step" style="--hue:307" title="prompt: moderate · contests: 3 · unchallenged: 2 · twistShare: 48%"><span>7</span></div><div class="step" style="--hue:324" title="prompt: high · contests: 3 · unchallenged: 1 · twistShare: 100%"><span>8</span></div><div class="step" style="--hue:341" title="prompt: high · contests: 4 · unchallenged: 1 · twistShare: 100%"><span>9</span></div><div class="step" style="--hue:358" title="prompt: high · contests: 4 · unchallenged: 0 · twistShare: 100%"><span>10</span></div></div></td>
+      <td class="score full">
+        10<span>/10</span>
+      </td>
+      <td class="muted">every step differs</td>
+    </tr><tr>
+      <th>probingDepth</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="followups: 1 · probeRate: 14%"><span>1</span></div><div class="step" style="--hue:222" title="followups: 1 · probeRate: 29%"><span>2</span></div><div class="step" style="--hue:239" title="followups: 1 · probeRate: 43%"><span>3</span></div><div class="step" style="--hue:256" title="followups: 2 · probeRate: 43%"><span>4</span></div><div class="step" style="--hue:273" title="followups: 2 · probeRate: 57%"><span>5</span></div><div class="step" style="--hue:290" title="followups: 3 · probeRate: 71%"><span>6</span></div><div class="step repeat" style="--hue:290" title="followups: 3 · probeRate: 71%"><span>7</span></div><div class="step" style="--hue:307" title="followups: 4 · probeRate: 86%"><span>8</span></div><div class="step" style="--hue:324" title="followups: 4 · probeRate: 100%"><span>9</span></div><div class="step" style="--hue:341" title="followups: 5 · probeRate: 100%"><span>10</span></div></div></td>
+      <td class="score partial">
+        9<span>/10</span>
+      </td>
+      <td class="muted">6-7 identical</td>
+    </tr><tr>
+      <th>unpredictability</th>
+      <td><div class="strip"><div class="step" style="--hue:205" title="curveballRate: 0%"><span>1</span></div><div class="step" style="--hue:222" title="curveballRate: 17%"><span>2</span></div><div class="step" style="--hue:239" title="curveballRate: 25%"><span>3</span></div><div class="step" style="--hue:256" title="curveballRate: 32%"><span>4</span></div><div class="step" style="--hue:273" title="curveballRate: 38%"><span>5</span></div><div class="step" style="--hue:290" title="curveballRate: 45%"><span>6</span></div><div class="step" style="--hue:307" title="curveballRate: 51%"><span>7</span></div><div class="step" style="--hue:324" title="curveballRate: 59%"><span>8</span></div><div class="step" style="--hue:341" title="curveballRate: 65%"><span>9</span></div><div class="step" style="--hue:358" title="curveballRate: 70%"><span>10</span></div></div></td>
+      <td class="score full">
+        10<span>/10</span>
+      </td>
+      <td class="muted">every step differs</td>
+    </tr></tbody></table>
+  </section>
+
+  <h2>2. Which moves the interviewer uses</h2>
+  <p>
+    8 of 9 strategies, over
+    5,184 decisions across eight
+    answer qualities. Within one answer quality the move is near-fixed &mdash; a
+    weakness outranks a dial, deliberately &mdash; so variety comes from the
+    candidate's answers changing, not from the dials.
+  </p>
+  <section>
+    <table><tbody><tr>
+        <th>drill specificity</th>
+        <td class="barcell"><div class="cbar" style="width:85.0%"></div></td>
+        <td class="num">25.0%</td>
+      </tr><tr>
+        <th>challenge ownership</th>
+        <td class="barcell"><div class="cbar" style="width:85.0%"></div></td>
+        <td class="num">25.0%</td>
+      </tr><tr>
+        <th>clarify situation</th>
+        <td class="barcell"><div class="cbar" style="width:42.5%"></div></td>
+        <td class="num">12.5%</td>
+      </tr><tr>
+        <th>explore result</th>
+        <td class="barcell"><div class="cbar" style="width:42.5%"></div></td>
+        <td class="num">12.5%</td>
+      </tr><tr>
+        <th>probe action</th>
+        <td class="barcell"><div class="cbar" style="width:26.0%"></div></td>
+        <td class="num">7.6%</td>
+      </tr><tr>
+        <th>acknowledge strength</th>
+        <td class="barcell"><div class="cbar" style="width:26.0%"></div></td>
+        <td class="num">7.6%</td>
+      </tr><tr>
+        <th>hypothetical twist</th>
+        <td class="barcell"><div class="cbar" style="width:22.8%"></div></td>
+        <td class="num">6.7%</td>
+      </tr><tr>
+        <th>pivot topic</th>
+        <td class="barcell"><div class="cbar" style="width:10.2%"></div></td>
+        <td class="num">3.0%</td>
+      </tr></tbody></table>
+  </section>
+
+  
+
+  <footer>
+    Generated by <code>npm run eval:persona -- --artifacts</code>. Full method,
+    limitations and what this does not prove: <code>docs/PERSONA-EVAL.md</code>.
+    Probe-rate baseline: 4.9% (arXiv 2608.10412).
+  </footer>
+</main>

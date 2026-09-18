@@ -34,6 +34,9 @@ import {
   type PersonaConfig,
 } from "@/lib/persona-engine";
 import { estimateFollowupDifficulty } from "@/lib/decision-engine";
+import { mkdirSync, writeFileSync } from "node:fs";
+
+import { renderHtml } from "./persona-report-html";
 import { provenanceLine } from "./provenance";
 import { mean, stdDev } from "./stats";
 import {
@@ -42,6 +45,7 @@ import {
   MIDDLING as MIDDLING_ANALYSIS,
   SWEEP_TURNS,
   pushbackThresholds,
+  strategyCoverage,
   sweepAllDials,
   sweepStyles,
   type DialSweep,
@@ -186,6 +190,7 @@ function deterministicReport(json: boolean) {
   const dials = sweepAllDials();
   const styles = sweepStyles();
   const pushbackSwitch = pushbackThresholds();
+  const coverage = strategyCoverage();
 
   if (json)
     return {
@@ -194,6 +199,7 @@ function deterministicReport(json: boolean) {
       dials,
       styles,
       pushbackSwitch,
+      coverage,
       probeBaseline: PROBE_BASELINE,
     };
 
@@ -276,12 +282,41 @@ function deterministicReport(json: boolean) {
     );
   }
 
+  console.log(
+    bar(`which moves get used, over ${coverage.decisions} decisions`),
+  );
+  console.log(
+    "  Eight answer qualities x six styles x three depths x three",
+  );
+  console.log(
+    "  unpredictability settings. The question is whether the interviewer has",
+  );
+  console.log("  more than one move, and whether a dial can reach it.");
+  for (const [strategy, share] of Object.entries(coverage.shares)) {
+    console.log(
+      `  ${strategy.padEnd(22)} ${(share * 100).toFixed(1).padStart(5)}%  ${"█".repeat(Math.round(share * 60))}`,
+    );
+  }
+  console.log(
+    `\n  ${coverage.distinctStrategies} of 9 strategies used. But within one answer quality the move is`,
+  );
+  console.log(
+    "  near-fixed: a weakness outranks a dial, by design. Variety across an",
+  );
+  console.log(
+    "  interview comes from the answers changing, not from the dials.",
+  );
+  for (const row of coverage.byQuality) {
+    console.log(`  ${row.label.padEnd(24)} ${row.strategies.join(", ")}`);
+  }
+
   return {
     diff,
     difficulty,
     dials,
     styles,
     pushbackSwitch,
+    coverage,
     probeBaseline: PROBE_BASELINE,
   };
 }
@@ -635,6 +670,15 @@ function parseArgs() {
     runs: runsArg ? Math.max(1, Number(runsArg.split("=")[1]) || 3) : 3,
     json: args.includes("--json"),
     live: args.includes("--live"),
+    /**
+     * Write every artifact from one run.
+     *
+     * The convention used to be a hand-written shell redirect per file, which
+     * meant the text, the JSON and the page could each come from a different
+     * run of a stochastic experiment and quietly disagree. One flag, one run,
+     * one set of numbers.
+     */
+    artifacts: args.includes("--artifacts"),
     // The original two-preset arm. Kept because the write-up cites it, but it
     // is no longer what --live runs: two personas differing on every dial
     // cannot attribute a difference to any one of them.
@@ -642,8 +686,65 @@ function parseArgs() {
   };
 }
 
+const ARTIFACT_DIR = "docs/artifacts";
+
+/** Capture stdout while a reporter prints, so it can be written to a file. */
+function capture<T>(run: () => T): { value: T; text: string } {
+  const lines: string[] = [];
+  const original = console.log;
+  console.log = (...args: unknown[]) => void lines.push(args.join(" "));
+  try {
+    return { value: run(), text: `${lines.join("\n")}\n` };
+  } finally {
+    console.log = original;
+  }
+}
+
 async function main() {
-  const { runs, json, live, presets } = parseArgs();
+  const { runs, json, live, presets, artifacts } = parseArgs();
+
+  if (artifacts) {
+    mkdirSync(ARTIFACT_DIR, { recursive: true });
+
+    const deterministic = capture(() => deterministicReport(false));
+    writeFileSync(`${ARTIFACT_DIR}/persona-eval.txt`, deterministic.text);
+    console.log(`wrote ${ARTIFACT_DIR}/persona-eval.txt`);
+
+    let empirical: Awaited<ReturnType<typeof dialExperimentReport>> | null = null;
+    if (live) {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        console.error("OPENAI_API_KEY is not set. --live needs it.");
+        process.exitCode = 1;
+        return;
+      }
+      // Not captured: this arm runs for the better part of an hour, and a
+      // progress line nobody sees is worse than no progress line.
+      empirical = await dialExperimentReport(runs, apiKey, false);
+      writeFileSync(
+        `${ARTIFACT_DIR}/persona-eval-live.json`,
+        `${JSON.stringify(empirical, null, 2)}\n`,
+      );
+      console.log(`wrote ${ARTIFACT_DIR}/persona-eval-live.json`);
+    }
+
+    // The page renders from the same objects the JSON is serialised from, in
+    // this same run, so the two cannot disagree.
+    const detJson = deterministicReport(true) as unknown as Parameters<
+      typeof renderHtml
+    >[0];
+    writeFileSync(
+      `${ARTIFACT_DIR}/persona-eval.html`,
+      renderHtml(
+        detJson,
+        empirical as unknown as Parameters<typeof renderHtml>[1],
+        provenanceLine("npm run eval:persona -- --artifacts"),
+      ),
+    );
+    console.log(`wrote ${ARTIFACT_DIR}/persona-eval.html`);
+    return;
+  }
+
 
   const deterministic = deterministicReport(json);
 

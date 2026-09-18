@@ -1,7 +1,7 @@
 ========================================================================
 DETERMINISTIC — no API calls, identical on every run
 ========================================================================
-Generated 2026-09-18 from 02cb0bb by `npm run eval:persona`.
+Generated 2026-09-18 from c4df59c + uncommitted changes — REGENERATE FROM A CLEAN TREE BEFORE QUOTING by `npm run eval:persona`.
 
 Held constant across both arms:
   question  Tell me about a time you had to deliver a project with an unrealistic deadline.
@@ -172,4 +172,27 @@ ONE DIAL AT A TIME — others held at 5, swept 1 to 10
   conversational  all pivots up to  6   all twists from  8
   stress          all pivots up to  —   all twists from  2
 
-Run with --live to generate and judge real follow-ups (costs money).
+--- which moves get used, over 5184 decisions ---
+  Eight answer qualities x six styles x three depths x three
+  unpredictability settings. The question is whether the interviewer has
+  more than one move, and whether a dial can reach it.
+  DRILL_SPECIFICITY       25.0%  ███████████████
+  CHALLENGE_OWNERSHIP     25.0%  ███████████████
+  CLARIFY_SITUATION       12.5%  ████████
+  EXPLORE_RESULT          12.5%  ████████
+  PROBE_ACTION             7.6%  █████
+  ACKNOWLEDGE_STRENGTH     7.6%  █████
+  HYPOTHETICAL_TWIST       6.7%  ████
+  PIVOT_TOPIC              3.0%  ██
+
+  8 of 9 strategies used. But within one answer quality the move is
+  near-fixed: a weakness outranks a dial, by design. Variety across an
+  interview comes from the answers changing, not from the dials.
+  missing context          CLARIFY_SITUATION
+  vague action             DRILL_SPECIFICITY
+  weak ownership           CHALLENGE_OWNERSHIP
+  no quantified result     EXPLORE_RESULT
+  complete but hedged      DRILL_SPECIFICITY
+  solid                    HYPOTHETICAL_TWIST, PIVOT_TOPIC, PROBE_ACTION
+  strong                   ACKNOWLEDGE_STRENGTH, HYPOTHETICAL_TWIST, PIVOT_TOPIC
+  strong, hedged wording   CHALLENGE_OWNERSHIP
