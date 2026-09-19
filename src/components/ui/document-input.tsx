@@ -120,7 +120,10 @@ export function DocumentInput({
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
           {footer}
         </div>
-        <div className="flex items-center gap-2">
+        {/* Wraps, and wraps within itself: Upload PDF and Save together are
+            wider than a phone's card, and a row that could not break ran the
+            save button into the card's edge. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <input
             ref={inputRef}
             type="file"

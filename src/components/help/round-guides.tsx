@@ -175,7 +175,11 @@ export function RoundGuides() {
   return (
     <div className="space-y-4">
       <div
-        className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200"
+        // One row that scrolls on a phone, bleeding to the screen edge so the
+        // cut-off tab is the hint that there are more. Six tabs wrapped into
+        // three rows and read as a list, not a tab strip. From `sm` it wraps
+        // as before.
+        className="-mx-6 flex items-center gap-x-6 overflow-x-auto border-b border-slate-200 px-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:gap-y-2 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
         role="group"
         aria-label="Round type"
       >
@@ -186,9 +190,13 @@ export function RoundGuides() {
               key={type}
               type="button"
               aria-pressed={current}
-              onClick={() => setActive(type)}
+              onClick={(event) => {
+                setActive(type);
+                // Bring a tab chosen at the edge of the strip fully into view.
+                event.currentTarget.scrollIntoView({ inline: "nearest", block: "nearest" });
+              }}
               className={cn(
-                "-mb-px border-b-2 pb-3 text-sm font-medium transition-colors duration-150",
+                "-mb-px shrink-0 border-b-2 pb-3 text-sm font-medium whitespace-nowrap transition-colors duration-150",
                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary-muted",
                 current
                   ? "border-primary text-slate-900"

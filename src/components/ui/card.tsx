@@ -20,7 +20,9 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        // The action takes its own row below `sm`: beside the title it left a
+        // phone-width card with a title column ninety pixels wide.
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className,
       )}
       {...props}
@@ -84,7 +86,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-action"
       className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        "row-start-3 self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end",
         className,
       )}
       {...props}

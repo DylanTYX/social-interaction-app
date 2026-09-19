@@ -118,21 +118,33 @@ export function TokenUsageCard() {
             {usage.purposes.map((purpose) => (
               <div
                 key={purpose.callSite}
-                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_5rem_6rem_6rem]"
+                // Phones: the label, then one meta line — "89 calls · 186,000
+                // tokens · $0.031" — the way every other row in the app reads.
+                // From `sm` the same cells are the four-column grid under the
+                // header row; `sm:contents` dissolves the wrapper so they
+                // become grid items again.
+                className="flex flex-col gap-0.5 px-5 py-3 text-sm sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_6rem_6rem] sm:gap-x-4 sm:gap-y-1"
               >
                 <dt className="font-medium text-slate-900">{purpose.label}</dt>
-                <dd className="text-right text-slate-500 tabular-nums">
-                  <span className="sm:sr-only">Calls: </span>
-                  {purpose.calls.toLocaleString()}
-                </dd>
-                <dd className="text-right text-slate-700 tabular-nums">
-                  <span className="sm:sr-only">Tokens: </span>
-                  {formatTokens(purpose.totalTokens)}
-                </dd>
-                <dd className="text-right text-slate-700 tabular-nums">
-                  <span className="sm:sr-only">Cost: </span>
-                  {purpose.costUsd === null ? "—" : formatUsd(purpose.costUsd)}
-                </dd>
+                <div className="flex flex-wrap items-center gap-x-1.5 text-slate-500 sm:contents">
+                  <dd className="text-slate-500 tabular-nums sm:text-right">
+                    {purpose.calls.toLocaleString()}
+                    <span className="sm:sr-only"> calls</span>
+                  </dd>
+                  <span className="sm:hidden" aria-hidden>
+                    ·
+                  </span>
+                  <dd className="text-slate-500 tabular-nums sm:text-right sm:text-slate-700">
+                    {formatTokens(purpose.totalTokens)}
+                    <span className="sm:sr-only"> tokens</span>
+                  </dd>
+                  <span className="sm:hidden" aria-hidden>
+                    ·
+                  </span>
+                  <dd className="text-slate-500 tabular-nums sm:text-right sm:text-slate-700">
+                    {purpose.costUsd === null ? "—" : formatUsd(purpose.costUsd)}
+                  </dd>
+                </div>
               </div>
             ))}
           </dl>

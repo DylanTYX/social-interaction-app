@@ -692,7 +692,7 @@ function SetupWizard() {
   return (
     // The shared page frame, like every /dashboard page: `AppShell`'s <main>
     // owns the scroll container and the page background.
-    <PageContainer>
+    <PageContainer className="pb-28 lg:pb-8">
       {/* Named as the sidebar's button and every "New interview" action
           that leads here names it. */}
       <PageHeader title="New interview" description={PAGE_DESCRIPTION} />
@@ -799,9 +799,14 @@ function SetupWizard() {
 
       {/* The wizard's actions, pinned above the bottom bar on phones. The
           summary card carries them from `lg`; below that it sits under the
-          whole form, and Continue was a long scroll away. Sticky rather than
-          fixed so it scrolls with `main` and settles into the flow at the end. */}
-      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 -mx-6 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur lg:hidden">
+          whole form, and Continue was a long scroll away.
+
+          `fixed`, not `sticky`: sticky inside the `dvh` scroll container drifted
+          up the screen on a phone as the browser's own toolbar collapsed, and
+          read as a bar stuck in the middle of the page. Fixed sits on the
+          mobile bar regardless; the container's extra bottom padding keeps the
+          last of the form above it. */}
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-slate-200 bg-white px-6 py-3 lg:hidden">
         {blockedReason && (
           <p className="mb-2 text-xs leading-5 text-warning-emphasis" role="status">
             {blockedReason}

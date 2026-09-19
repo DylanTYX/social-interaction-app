@@ -16,6 +16,23 @@ be checked against the original before it is quoted in the report.
 
 ## 2026-09-19
 
+### A second pass on phones, from screenshots of the real thing
+
+**Documents:** `DESIGN.md` ("Phones" section extended).
+
+Ten defects reported from a phone after the first pass, each traced to one
+cause: the onboarding dialog's options could not wrap because a `Button` is
+`nowrap`; a sort control with `ml-auto` sat alone on a third row; a company
+filter was drawn with one company in it; the document input's two buttons
+could not break; six round tabs wrapped into three rows; usage rows read as
+bare numbers in two columns; the wizard's sticky action bar drifted up the
+screen; a summary line in an inline span could not truncate; `CardAction`
+squeezed a card title to ninety pixels; and menus opened flush with the screen
+edge. All fixed at the primitive where one existed — `Card`, `DropdownMenu`,
+`Select`, `DocumentInput` — so the next screen inherits the fix.
+
+**Sources:** none added.
+
 ### Every screen made to work on a phone
 
 **Documents:** `DESIGN.md` (Shell, Setup wizard, Live interview; "Phones" section

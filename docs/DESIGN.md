@@ -130,7 +130,12 @@ of it:
 - **A dialog never overrides the mobile clamp.** `DialogContent` is `max-w-[calc(100%-2rem)]` first; wider sizes are `sm:max-w-*`. An unprefixed `max-w-3xl` produced a 768px dialog on a 360px phone.
 - **Charts are drawn at the width they occupy**, not scaled from a fixed viewBox: a 760-unit chart on a 312px screen shrank its labels to 4px. See `useElementWidth`.
 - **Rows give the title the width.** In lists, the score or status joins the meta line below `sm` rather than taking a column; icon actions sit in one tight group; the checkbox and menu gutters narrow.
-- **One column where two cannot fit the words**: persona dials, usage rows (with their labels shown, since the header row is gone), radar and bar labels allowed to wrap or overflow the drawing.
+- **One column where two cannot fit the words**: persona dials, and radar and bar labels allowed to wrap or overflow the drawing. A usage row becomes a title over one meta line — "89 calls · 186,000 tokens · $0.031" — the way every other row in the app reads; the four-column grid returns from `sm`.
+- **Filters tile.** Below `sm` a toolbar's selects are two to a row and fill it, the sort control among them; an odd last one takes the whole row. A sort pushed right with `ml-auto` sat alone on a third row looking dropped. A filter with one option is not drawn at all — one company made a dropdown that could only show what was already on screen.
+- **A card's action goes under its title** below `sm` (`CardAction` takes its own row). Beside the title it left "Pick an interviewer" a column ninety pixels wide.
+- **The wizard's Continue and Back are `fixed`** on the mobile bar below `lg`, never `sticky`: sticky inside the `dvh` scroll container drifted up the screen as a phone browser's toolbar collapsed. The container pads its bottom so the last field clears the bar.
+- **A tab strip scrolls in one row** on a phone, bleeding to the screen edge so the cut-off tab says there are more; wrapping six tabs into three rows read as a list. From `sm` it wraps.
+- **Menus and selects keep 12px from the screen edge** (`collisionPadding`, set once in the primitives). A dialog's options are `whitespace-normal`: a `Button` is `nowrap` by default, and a two-line option that cannot wrap is as wide as its longest line.
 
 ### Page frame
 - **`PageContainer`.** Every app page body: `max-w-295`, `p-6 lg:p-8`, `space-y-8`. No page sets its own width or gutter.

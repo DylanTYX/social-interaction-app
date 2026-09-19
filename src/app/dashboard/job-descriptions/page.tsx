@@ -204,13 +204,16 @@ export default function JobDescriptionsPage() {
                 ariaLabel: "Search job descriptions",
               }}
               filters={
-                companyOptions.length > 0 && (
+                // Two or more companies, or there is nothing to filter: one
+                // company made the control an orphaned dropdown that could only
+                // ever show what was already on screen.
+                companyOptions.length > 1 && (
                   <Select
                     value={companyFilter}
                     onValueChange={setCompanyFilter}
                   >
                     <SelectTrigger
-                      className="w-50"
+                      className="w-full sm:w-50"
                       aria-label="Filter by company"
                     >
                       <SelectValue placeholder="Company" />

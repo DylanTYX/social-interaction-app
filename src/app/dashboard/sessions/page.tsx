@@ -350,7 +350,7 @@ export default function SessionsLibraryPage() {
             value={modeFilter}
             onValueChange={(value) => setModeFilter(value as ModeFilter)}
           >
-            <SelectTrigger className="w-auto min-w-32" aria-label="Mode">
+            <SelectTrigger className="w-auto min-w-32 flex-1 basis-[calc(50%-0.25rem)] sm:flex-none sm:basis-auto" aria-label="Mode">
               <SelectValue placeholder="Mode" />
             </SelectTrigger>
             <SelectContent>
@@ -364,7 +364,7 @@ export default function SessionsLibraryPage() {
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
-            <SelectTrigger className="w-auto min-w-36" aria-label="Status">
+            <SelectTrigger className="w-auto min-w-36 flex-1 basis-[calc(50%-0.25rem)] sm:flex-none sm:basis-auto" aria-label="Status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -377,7 +377,7 @@ export default function SessionsLibraryPage() {
 
           {tagCounts.length > 0 && (
             <Select value={tagFilter} onValueChange={setTagFilter}>
-              <SelectTrigger className="w-auto min-w-32" aria-label="Tag">
+              <SelectTrigger className="w-auto min-w-32 flex-1 basis-[calc(50%-0.25rem)] sm:flex-none sm:basis-auto" aria-label="Tag">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -397,7 +397,10 @@ export default function SessionsLibraryPage() {
             </Button>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
+          {/* Below `sm` the filters tile two to a row and fill it, and the sort
+              is one of them: with `ml-auto` it sat alone on a third row, pushed to
+              the right edge, looking like it had fallen off the toolbar. */}
+          <div className="flex flex-1 basis-[calc(50%-0.25rem)] items-center gap-2 sm:ml-auto sm:flex-none sm:basis-auto">
             <span className="hidden text-sm text-slate-500 sm:inline">
               Sort
             </span>
@@ -405,7 +408,7 @@ export default function SessionsLibraryPage() {
               value={sort}
               onValueChange={(value) => setSort(value as SessionSort)}
             >
-              <SelectTrigger className="w-auto min-w-36" aria-label="Sort">
+              <SelectTrigger className="w-auto min-w-36 flex-1 sm:flex-none" aria-label="Sort">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

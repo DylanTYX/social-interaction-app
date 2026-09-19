@@ -88,7 +88,10 @@ export function OnboardingDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-lg">
+      {/* Capped and scrollable: five options plus a header is taller than a
+          small phone in landscape, and a dialog that cannot scroll cannot be
+          dismissed either. */}
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>What are you preparing for?</DialogTitle>
           <DialogDescription>
@@ -101,7 +104,11 @@ export function OnboardingDialog() {
             <Button
               key={goal.id}
               variant="outline"
-              className="h-auto flex-col items-start gap-1 py-3 text-left"
+              // `whitespace-normal` overrides the button's own `nowrap`: with
+              // it the description could not wrap, so each option's minimum
+              // width was its longest line — wider than a phone's dialog, and
+              // the options ran off the right edge.
+              className="h-auto w-full min-w-0 flex-col items-start gap-1 py-3 text-left whitespace-normal"
               onClick={() => handlePick(goal.id)}
             >
               <span className="font-semibold text-slate-900">{goal.title}</span>

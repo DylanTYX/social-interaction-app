@@ -305,9 +305,11 @@ export function PersonaStep({
               state honest by showing what it hides. */}
           <details className="group border-t border-slate-100 pt-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-slate-900">
-              <span className="min-w-0">
-                Edit details
-                <span className="ml-2 truncate text-xs font-normal text-muted-foreground">
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+                <span className="shrink-0">Edit details</span>
+                {/* A block, so `truncate` can act; inline it could not, and
+                    the summary ran past the card on a phone. */}
+                <span className="block min-w-0 truncate text-xs font-normal text-muted-foreground">
                   {styleLabel} ·{" "}
                   {PERSONA_DIALS.map((dial) => {
                     const setting = value[dial.key] ?? 5;
