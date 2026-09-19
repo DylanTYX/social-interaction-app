@@ -75,7 +75,7 @@ export function JobDescriptionAddForm({
     <div className="space-y-6">
       {/* Company first: it is the field that makes a library of more than a few
           postings navigable, and the one the title falls back to. */}
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Field label="Company (optional)" htmlFor="jd-company">
           <Input
             id="jd-company"

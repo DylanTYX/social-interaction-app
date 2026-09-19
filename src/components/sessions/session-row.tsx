@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
  * right, which sit over the row rather than inside the link.
  */
 export const SESSION_GRID =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 pr-14 pl-12 md:grid-cols-[minmax(0,1fr)_6rem_8rem_6.5rem]";
+  "grid grid-cols-1 items-center gap-3 pr-12 pl-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4 sm:pr-14 sm:pl-12 md:grid-cols-[minmax(0,1fr)_6rem_8rem_6.5rem]";
 
 /** Tags shown on a row before the rest collapse into "+N". */
 const VISIBLE_TAGS = 3;
@@ -53,7 +53,14 @@ const VISIBLE_TAGS = 3;
  * look like all the others. Completed is the normal state, so it says nothing;
  * only the exceptions get a badge.
  */
-function ScoreCell({ session }: { session: InterviewSessionSummary }) {
+function ScoreCell({
+  session,
+  compact = false,
+}: {
+  session: InterviewSessionSummary;
+  /** In the meta line rather than its own column: the number alone. */
+  compact?: boolean;
+}) {
   if (session.status === "in_progress") {
     return <Badge variant="warning">In progress</Badge>;
   }
@@ -62,6 +69,13 @@ function ScoreCell({ session }: { session: InterviewSessionSummary }) {
       <Badge variant="outline">Abandoned</Badge>
     ) : (
       <span className="text-sm text-slate-400">—</span>
+    );
+  }
+  if (compact) {
+    return (
+      <span className="font-semibold text-slate-900 tabular-nums">
+        {Math.round(session.averageScore)}%
+      </span>
     );
   }
   return (
@@ -125,7 +139,7 @@ export function SessionRow({
         checked={selected}
         onChange={onToggleSelect}
         aria-label={`Select ${title}`}
-        className="absolute top-1/2 left-5 z-10 h-4 w-4 -translate-y-1/2 cursor-pointer accent-primary"
+        className="absolute top-1/2 left-4 z-10 h-4 w-4 sm:left-5 -translate-y-1/2 cursor-pointer accent-primary"
       />
 
       <Link
@@ -157,6 +171,12 @@ export function SessionRow({
               </span>
             </p>
             <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+              {/* On a phone the score column is gone — a badge beside a
+                  40px avatar left the title with sixty pixels — so the score
+                  leads the meta line instead. */}
+              <span className="sm:hidden">
+                <ScoreCell session={session} compact />
+              </span>
               <span className="truncate">{session.personaName}</span>
               <span className="md:hidden" aria-hidden>
                 ·
@@ -188,7 +208,7 @@ export function SessionRow({
           {modeLabel}
         </span>
         <span className="hidden text-sm text-slate-600 md:block">{date}</span>
-        <span className="flex justify-end">
+        <span className="hidden justify-end sm:flex">
           <ScoreCell session={session} />
         </span>
       </Link>

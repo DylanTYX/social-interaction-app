@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  */
 export function VoiceLoadingFallback() {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50">
-      <Card className="w-96">
+    <div className="flex h-dvh items-center justify-center bg-slate-50 px-6">
+      <Card className="w-full max-w-96">
         <CardHeader>
           <CardTitle className="text-lg">
             Starting your voice interview…

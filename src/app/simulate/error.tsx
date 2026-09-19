@@ -31,7 +31,7 @@ export default function SimulateError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-8">
+    <div className="flex min-h-dvh items-center justify-center bg-slate-50 p-8">
       <div className="max-w-md text-center">
         <AlertTriangle
           className="mx-auto h-6 w-6 text-destructive"

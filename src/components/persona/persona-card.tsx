@@ -179,7 +179,7 @@ export function PersonaCard({
             cannot be missing from either card again. Drawn as bars rather than
             listed as numbers, so a strict, deep-probing interviewer looks
             different from a warm, conversational one at a glance. */}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-xs">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-xs sm:grid-cols-2">
           {PERSONA_DIALS.map((dial) => {
             const value = config[dial.key] ?? 5;
             return (

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
+import { useElementWidth } from "@/hooks/use-element-width";
 import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 
@@ -173,7 +175,10 @@ function LegendGlyph({ band }: { band: DifficultyBand }) {
 }
 
 function TrendChart({ points }: { points: TrendPoint[] }) {
-  const width = 760;
+  // Drawn at the width it occupies, not at a fixed 760 scaled down: on a phone
+  // the scaled version shrank its labels to 4px.
+  const { ref, width: measured } = useElementWidth<HTMLDivElement>();
+  const width = measured > 0 ? measured : 760;
   const height = 230;
   const pad = { top: 22, right: 64, bottom: 30, left: 34 };
   const innerW = width - pad.left - pad.right;
@@ -201,6 +206,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
   const last = coords[coords.length - 1];
 
   return (
+    <div ref={ref} className="w-full">
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className="h-auto w-full text-primary"
@@ -296,6 +302,7 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
         {formatShortDate(last.createdAt)}
       </text>
     </svg>
+    </div>
   );
 }
 
@@ -398,7 +405,7 @@ function RubricCard({
             work.
           </NotEnoughData>
         ) : (
-          <div className="grid items-center gap-8 md:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
             <div>
               <DimensionRadar
                 axes={criteria.map((criterion) => ({
@@ -544,8 +551,8 @@ function MissingCard({
             leave out.
           </NotEnoughData>
         ) : (
-          <div className="grid gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <ul className="grid content-start gap-x-8 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <ul className="grid grid-cols-1 content-start gap-x-8 gap-y-3.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {missing.map((item) => {
                 const share = item.checked ? item.answers / item.checked : 0;
                 return (
@@ -737,7 +744,7 @@ function VoiceDeliveryCard({ summary }: { summary: DeliverySummary | null }) {
         <CardDescription>{sentence}</CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-100 sm:grid-cols-3">
           {cells.map((cell) => (
             <div key={cell.label} className="bg-white p-4">
               <dt className="text-xs text-slate-500">{cell.label}</dt>
@@ -907,7 +914,7 @@ export default function AnalyticsPage() {
     return (
       <PageContainer>
         {header}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[0, 1, 2].map((index) => (
             <Skeleton key={index} className="h-28 rounded-xl" />
           ))}
@@ -946,7 +953,7 @@ export default function AnalyticsPage() {
 
       {/* How much you have practised. Context, not a verdict: the average
           pools every round type, and its caption says so. */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="Average score"
           value={formatAverageScore(stats.averageScore)}
@@ -1137,7 +1144,7 @@ export default function AnalyticsPage() {
         <h2 id="not-tracked-heading" className={PANEL_LABEL}>
           Not tracked here
         </h2>
-        <ul className="mt-3 grid gap-x-8 gap-y-4 text-sm text-slate-600 md:grid-cols-3">
+        <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 text-sm text-slate-600 md:grid-cols-3">
           {[
             {
               title: "Quick drills",

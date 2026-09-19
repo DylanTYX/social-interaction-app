@@ -201,7 +201,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* 3. What have I done? */}
         <section className="space-y-4 lg:col-span-2">
           <SectionHeader
@@ -253,7 +253,7 @@ export default function DashboardPage() {
                         <p className="truncate font-medium text-slate-900 transition-colors group-hover:text-primary">
                           {displayTitle(session)}
                         </p>
-                        <p className="flex items-center gap-2 text-sm text-slate-500">
+                        <p className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                           <span className="truncate">
                             {session.personaName}
                           </span>

@@ -25,7 +25,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid min-h-screen bg-white lg:grid-cols-2">
+    <div className="grid grid-cols-1 min-h-dvh bg-white lg:grid-cols-2">
       <aside className="hidden flex-col justify-between bg-navy p-12 text-white lg:flex xl:p-16">
         <Link
           href="/"

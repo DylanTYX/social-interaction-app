@@ -218,12 +218,12 @@ export default function ResumesPage() {
                 <div
                   key={item.id}
                   className={cn(
-                    "group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors duration-150 hover:bg-slate-50",
+                    "group flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors duration-150 hover:bg-slate-50 sm:flex-nowrap",
                     isExiting ? ROW_EXIT : ROW_ENTER,
                   )}
                   style={isExiting ? undefined : staggerDelay(index)}
                 >
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 basis-full sm:flex-1 sm:basis-auto">
                     <p className="text-sm font-medium text-slate-900 truncate">
                       {item.title}
                     </p>
@@ -241,6 +241,7 @@ export default function ResumesPage() {
                         .join(" · ")}
                     </p>
                   </div>
+                  <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -268,6 +269,7 @@ export default function ResumesPage() {
                   >
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
+                  </div>
                 </div>
               );
             })

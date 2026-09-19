@@ -228,6 +228,8 @@ export function DimensionRadar({
   return (
     <svg
       viewBox={`0 0 ${SIZE} ${SIZE}`}
+      // Edge labels ("Specificity") run past the viewBox on narrow screens.
+      style={{ overflow: "visible" }}
       className={className ?? "mx-auto h-auto w-full max-w-sm"}
       role="img"
       aria-label={`Dimension profile: ${axes

@@ -82,7 +82,7 @@ export function PersonaConfigEditor({
             the accent follows the nationality, and the hint under the voice
             says which voice that actually produces. Apart, a nationality with
             no accent voice looked like a bug rather than a stated limit. */}
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field label="Nationality" htmlFor="persona-nationality">
             <Input
               id="persona-nationality"
@@ -125,7 +125,7 @@ export function PersonaConfigEditor({
           </Field>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field label="Industry" htmlFor="persona-industry">
             <Input
               id="persona-industry"
@@ -144,7 +144,7 @@ export function PersonaConfigEditor({
           </Field>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field label="Years of experience" htmlFor="persona-years">
             <Input
               id="persona-years"
@@ -225,7 +225,7 @@ export function PersonaConfigEditor({
       </FieldSection>
 
       <FieldSection title="Dials">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {PERSONA_DIALS.map((dial) => (
             <DialField
               key={dial.key}

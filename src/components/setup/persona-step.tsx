@@ -181,7 +181,7 @@ export function PersonaStep({
                   was two scrollbars for one list. */}
               {/* Two across: the step shares its width with the summary
                   panel, and a persona card needs room for its dials. */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {sortedLibrary.map((entry) => (
                   <PersonaCard
                     key={entry.id}

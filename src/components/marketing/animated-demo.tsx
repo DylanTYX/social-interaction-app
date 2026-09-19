@@ -195,7 +195,7 @@ export function AnimatedDemo() {
         </span>
       </div>
 
-      <div className="grid md:grid-cols-[minmax(0,1fr)_248px]">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_248px]">
         <div
           ref={scrollRef}
           className="flex h-75 flex-col gap-3.5 overflow-y-auto scroll-smooth p-5 md:h-95"

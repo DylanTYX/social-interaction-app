@@ -38,7 +38,7 @@ import { PageContainer, PageHeader } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PersonaStep } from "@/components/setup/persona-step";
 import { FinalizeStep } from "@/components/setup/finalize-step";
-import { SetupSummary } from "@/components/setup/setup-summary";
+import { SetupActions, SetupSummary } from "@/components/setup/setup-summary";
 import { cn } from "@/lib/utils";
 import {
   buildRoundScenarioDescription,
@@ -80,7 +80,7 @@ function SetupLoadingFallback() {
     <PageContainer>
       <PageHeader title="New interview" description={PAGE_DESCRIPTION} />
       <Skeleton className="h-8 w-80 max-w-full rounded-md" />
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Skeleton className="h-96 rounded-xl" />
         <Skeleton className="h-96 rounded-xl" />
       </div>
@@ -703,7 +703,7 @@ function SetupWizard() {
           The panel holds the step buttons, so the way forward is always in
           the same place however long a step is; below `lg` it follows the
           step, where the buttons used to sit. */}
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-6">
           {/* Keyed on the step so React remounts this subtree and the entrance
               animation replays; the direction makes the wizard read as one
@@ -795,6 +795,29 @@ function SetupWizard() {
             onNext={goNext}
           />
         </div>
+      </div>
+
+      {/* The wizard's actions, pinned above the bottom bar on phones. The
+          summary card carries them from `lg`; below that it sits under the
+          whole form, and Continue was a long scroll away. Sticky rather than
+          fixed so it scrolls with `main` and settles into the flow at the end. */}
+      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 -mx-6 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur lg:hidden">
+        {blockedReason && (
+          <p className="mb-2 text-xs leading-5 text-warning-emphasis" role="status">
+            {blockedReason}
+          </p>
+        )}
+        <SetupActions
+          voice={reviewSetup.practiceMode === "voice"}
+          isFirstStep={isFirstStep}
+          isLastStep={isLastStep}
+          canProceed={blockedReason === null}
+          micChecking={microphoneStatus === "checking"}
+          isLaunching={isLaunching}
+          onBack={goBack}
+          onNext={goNext}
+          layout="bar"
+        />
       </div>
     </PageContainer>
   );

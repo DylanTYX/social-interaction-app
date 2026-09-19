@@ -55,7 +55,7 @@ export function RoundProgression({ points }: { points: Point[] }) {
               }`}
               style={{ height: `${height}px` }}
             />
-            <span className="max-w-24 truncate text-xs text-slate-500">
+            <span className="line-clamp-2 w-full text-center text-xs leading-tight text-slate-500">
               {point.label}
             </span>
           </div>

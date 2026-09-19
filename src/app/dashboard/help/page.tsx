@@ -158,7 +158,7 @@ export default function HelpPage() {
       >
         <Card className="gap-0 overflow-hidden py-0">
           {/* A hairline grid: the gaps show the card's slate ground. */}
-          <ol className="grid gap-px bg-slate-100 md:grid-cols-2 xl:grid-cols-4">
+          <ol className="grid grid-cols-1 gap-px bg-slate-100 md:grid-cols-2 xl:grid-cols-4">
             {PRACTICE_STEPS.map((step, index) => (
               <li key={step.title} className="flex flex-col bg-white px-5 py-5">
                 <span className="font-display text-sm font-semibold text-primary tabular-nums">
@@ -267,7 +267,7 @@ export default function HelpPage() {
         description="One interview is a data point. These are how a run of them becomes progress."
       >
         <Card className="gap-0 py-0">
-          <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
+          <div className="grid grid-cols-1 divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
             <div className="px-5 py-4">
               <p className={PANEL_LABEL}>On the report</p>
               <dl className="mt-1 divide-y divide-slate-100">
@@ -443,7 +443,7 @@ function GuideRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1 px-5 py-3.5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6">
+    <div className="grid grid-cols-1 gap-1 px-5 py-3.5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6">
       <dt className="text-sm font-medium text-slate-900">{term}</dt>
       <dd className="text-sm leading-relaxed text-slate-600">{children}</dd>
     </div>

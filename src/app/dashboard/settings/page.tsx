@@ -289,7 +289,7 @@ function SettingsPageInner() {
 
             <form onSubmit={handleSaveProfile}>
               <div className="space-y-6 px-5 py-5">
-                <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <Field label="First name" htmlFor="firstName">
                     <Input
                       id="firstName"
@@ -526,7 +526,7 @@ function SettingsSection({
     <section
       id={`settings-${id}`}
       aria-labelledby={`settings-${id}-title`}
-      className="grid scroll-mt-8 gap-4 border-t border-slate-200 py-8 first:border-t-0 first:pt-0 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10"
+      className="grid grid-cols-1 scroll-mt-8 gap-4 border-t border-slate-200 py-8 first:border-t-0 first:pt-0 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10"
     >
       <div>
         <h2
@@ -571,7 +571,7 @@ function DataFlowRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1 px-5 py-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
+    <div className="grid grid-cols-1 gap-1 px-5 py-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
       <dt className="text-sm font-medium text-slate-900">{term}</dt>
       <dd className="text-sm leading-relaxed text-slate-600">{children}</dd>
     </div>

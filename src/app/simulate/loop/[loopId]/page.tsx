@@ -254,7 +254,7 @@ export default function LoopReportPage({
             </CardHeader>
             <CardContent className="space-y-4">
               {(round.strengths.length > 0 || round.gaps.length > 0) && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ThemeList
                     title="Recurring strengths"
                     items={round.strengths}

@@ -122,7 +122,7 @@ function Story({
   children: React.ReactNode;
 }) {
   return (
-    <Reveal className="grid items-center gap-8 border-t border-slate-200 py-8 first:border-t-0 md:grid-cols-2 md:gap-16 md:py-12">
+    <Reveal className="grid grid-cols-1 items-center gap-8 border-t border-slate-200 py-8 first:border-t-0 md:grid-cols-2 md:gap-16 md:py-12">
       <div
         className={cn(
           "flex max-w-[46ch] flex-col gap-3.5",
@@ -242,7 +242,7 @@ export default function LandingPage() {
               title="Set up the role. Answer questions. Read the report."
               lede="Setup takes a minute. The interview runs like a real one. The report explains every score."
             />
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {STEPS.map((step, index) => (
                 <Reveal key={step.title} delay={index * 80}>
                   <article className="flex h-full flex-col gap-2.5 rounded-[14px] border border-slate-200 bg-white p-5.5 shadow-soft">
@@ -386,7 +386,7 @@ export default function LandingPage() {
               title="Each round is scored the way that round is actually judged."
               lede="Run one on its own, or chain several into a full loop with a different interviewer in each."
             />
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ROUND_ORDER.map((type, index) => {
                 const spec = ROUND_TYPE_SPECS[type];
                 return (
@@ -506,7 +506,7 @@ export default function LandingPage() {
                     </span>
                   </div>
                 </div>
-                <div className="grid sm:grid-cols-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2">
                   <div className="px-5 py-4.5">
                     <h4 className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                       Last six sessions

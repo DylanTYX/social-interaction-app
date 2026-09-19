@@ -411,7 +411,7 @@ export default function SessionReportPage({
         sharing sit behind one menu. The title is the page's `h1`, in the
         display face like every page title.
       */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <EditableTitle
             sessionId={session.id}
@@ -419,7 +419,7 @@ export default function SessionReportPage({
             generatedTitle={session.scenarioTitle ?? session.scenarioValue}
             onRenamed={(title) => updateReportSession({ title })}
           />
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 [&>span]:whitespace-nowrap">
             <span className="inline-flex items-center gap-1">
               <ModeIcon className="h-3.5 w-3.5" aria-hidden />
               {session.practiceMode === "voice" ? "Voice" : "Text"}
@@ -512,7 +512,7 @@ export default function SessionReportPage({
                 "animate-in fade-in-0 slide-in-from-bottom-2 duration-500 ease-soft",
             )}
           >
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {/* Full width, so the score has room for what qualifies it — the
                   change since last time, your prediction, and how hard this
                   interviewer was — without squeezing the three tiles below.

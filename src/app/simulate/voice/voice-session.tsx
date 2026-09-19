@@ -1326,7 +1326,7 @@ function VoiceSimulateInner() {
 
   if (bootstrap.status === "error") {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
+      <div className="flex h-dvh items-center justify-center bg-slate-50 px-6">
         <div className="w-full max-w-md space-y-4">
           <ErrorStateCard
             title="Couldn't open this interview"
@@ -1350,7 +1350,7 @@ function VoiceSimulateInner() {
 
   if (setupError) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
+      <div className="flex h-dvh items-center justify-center bg-slate-50 px-6">
         <div className="w-full max-w-md space-y-4">
           {/* Try again before Return to setup: both failures here are usually a
               dropped request, and sending the user back to rebuild an interview
@@ -1402,11 +1402,11 @@ function VoiceSimulateInner() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="h-dvh flex flex-col bg-slate-50">
       {/* One header, as on the text screen. Speaking and recording states
           live in the microphone control that already reports them, not in a
           second band of badges up here. */}
-      <div className="flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-6">
+      <div className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:gap-4 sm:px-6">
         <Button variant="ghost" size="icon" asChild>
           <Link
             href="/dashboard"
@@ -1417,7 +1417,7 @@ function VoiceSimulateInner() {
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+          <h1 className="truncate font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             Voice interview
           </h1>
           <p className="truncate text-sm text-slate-500">
@@ -1493,7 +1493,8 @@ function VoiceSimulateInner() {
             // Held shut while a turn is streaming; see `handleEndSession`.
             disabled={isSending || isEnding}
           >
-            End interview
+            <span className="hidden sm:inline">End interview</span>
+            <span className="sm:hidden">End</span>
           </Button>
         </div>
       </div>
@@ -1714,7 +1715,7 @@ function VoiceSimulateInner() {
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>

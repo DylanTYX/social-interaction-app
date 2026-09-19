@@ -122,15 +122,15 @@ export function TokenUsageCard() {
               >
                 <dt className="font-medium text-slate-900">{purpose.label}</dt>
                 <dd className="text-right text-slate-500 tabular-nums">
-                  <span className="sr-only">Calls: </span>
+                  <span className="sm:sr-only">Calls: </span>
                   {purpose.calls.toLocaleString()}
                 </dd>
                 <dd className="text-right text-slate-700 tabular-nums">
-                  <span className="sr-only">Tokens: </span>
+                  <span className="sm:sr-only">Tokens: </span>
                   {formatTokens(purpose.totalTokens)}
                 </dd>
                 <dd className="text-right text-slate-700 tabular-nums">
-                  <span className="sr-only">Cost: </span>
+                  <span className="sm:sr-only">Cost: </span>
                   {purpose.costUsd === null ? "—" : formatUsd(purpose.costUsd)}
                 </dd>
               </div>

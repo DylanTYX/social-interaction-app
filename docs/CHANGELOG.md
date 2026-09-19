@@ -14,6 +14,35 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-19
+
+### Every screen made to work on a phone
+
+**Documents:** `DESIGN.md` (Shell, Setup wizard, Live interview; "Phones" section
+added).
+
+**What was measured.** Every route rendered under mobile emulation at 360px
+and 390px, with a probe reporting anything past the viewport or wider than the
+scrolling `main`, plus full-page screenshots read one by one. Before: the
+dashboard overflowed by 65px (an implicit grid column grown to a `truncate`
+title's minimum width), three dialogs overrode the mobile width clamp, the
+live-interview header wrapped a two-line title inside a fixed 64px bar, the
+analytics trend chart drew its labels at 4px, the sessions list left titles
+sixty pixels wide beside a status badge, the compare table and radar clipped,
+and five pages — Drills, Personas, Job descriptions, Resumes, Tips & guides —
+had no navigation on a phone at all. After: nothing overflows on any of the 16
+screens at either width.
+
+**What changed in the product.** `dvh` heights throughout; `grid-cols-1` on
+every grid that relied on the implicit column (39 of them); `sm:` prefixes on
+dialog widths; a compact live-interview header; the score in the meta line on
+phone-width session rows; charts drawn at their container's width; a "More"
+tab in the mobile bar carrying the remaining pages and the palette; and the
+setup wizard's Continue and Back pinned above the bar on phones. The coaching
+rail stays hidden below `xl` by decision, and the design document now says so.
+
+**Sources:** none added.
+
 ## 2026-09-18
 
 ### The steering note was in the wrong place, and nothing said so

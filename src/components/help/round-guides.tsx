@@ -226,7 +226,7 @@ export function RoundGuides() {
           )}
         </div>
 
-        <div className="grid divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
+        <div className="grid grid-cols-1 divide-y divide-slate-100 md:grid-cols-2 md:divide-x md:divide-y-0">
           <GuideList title="What scores well" items={guide.good} tone="good" />
           <GuideList
             title="What costs marks"
@@ -241,7 +241,7 @@ export function RoundGuides() {
             <p className="mt-1 text-sm text-slate-500">
               Your report names the weakest one and prints the line beside it.
             </p>
-            <dl className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
               {breakdown.rows.map(([label, advice]) => (
                 <div key={label} className="flex gap-3 text-sm">
                   <dt className="w-24 shrink-0 font-medium text-slate-900">

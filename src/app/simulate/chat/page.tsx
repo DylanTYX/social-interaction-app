@@ -117,7 +117,7 @@ export default function ChatSimulatePage() {
 
 function ChatLoadingFallback() {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-50">
+    <div className="flex h-dvh items-center justify-center bg-slate-50">
       <div className="flex items-center gap-3 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
         Preparing your interview…
@@ -586,7 +586,7 @@ function ChatSimulateInner() {
 
   if (bootstrap.status === "error") {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 px-6">
+      <div className="flex h-dvh items-center justify-center bg-slate-50 px-6">
         <div className="w-full max-w-md space-y-4">
           <ErrorStateCard
             title="Couldn't open this interview"
@@ -603,13 +603,13 @@ function ChatSimulateInner() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50">
+    <div className="h-dvh flex flex-col bg-slate-50">
       {/* One header. It names the interview and who is asking, and carries
           the question counter, the settings and the way out. A second band
           under it used to repeat "Adaptive session in progress" with three
           badges of equal weight; the counter is the only one that told you
           anything, so it lives here now. */}
-      <div className="flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-6">
+      <div className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:gap-4 sm:px-6">
         {/* `asChild` so this renders one <a>, not a <button> nested inside
             one. The nesting was invalid HTML and left the link with no
             accessible name at all, since the only content was an icon. */}
@@ -619,7 +619,7 @@ function ChatSimulateInner() {
           </Link>
         </Button>
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-lg font-semibold tracking-tight text-slate-900">
+          <h1 className="truncate font-display text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
             Text interview
           </h1>
           <p className="truncate text-sm text-slate-500">
@@ -675,7 +675,8 @@ function ChatSimulateInner() {
             // Held shut while a turn is streaming; see `handleEndSession`.
             disabled={isSending || isEnding}
           >
-            End interview
+            <span className="hidden sm:inline">End interview</span>
+            <span className="sm:hidden">End</span>
           </Button>
         </div>
       </div>
@@ -797,7 +798,7 @@ function ChatSimulateInner() {
       </div>
 
       <Dialog open={isAdvancedStateOpen} onOpenChange={setIsAdvancedStateOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader className="text-left">
             <DialogTitle>Advanced system state</DialogTitle>
             <DialogDescription>

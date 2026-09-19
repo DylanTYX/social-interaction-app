@@ -342,7 +342,7 @@ function RoundCard({
           This was three titled sections and a permanently open reference
           block, which made one round card taller than the screen. */}
       <CardContent className="space-y-6">
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field
             label="Type"
             htmlFor={ids.type}
@@ -406,7 +406,7 @@ function RoundCard({
           </Field>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field label="Focus" htmlFor={ids.focus}>
             <Input
               id={ids.focus}

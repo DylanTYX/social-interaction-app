@@ -162,7 +162,7 @@ export function CompareSessions() {
     return (
       <PageContainer>
         <PageHeader title="Compare sessions" actions={back} />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Skeleton className="h-64 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
         </div>
@@ -228,7 +228,7 @@ export function CompareSessions() {
           )}
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead>
               <tr className={cn("text-left", PANEL_LABEL)}>
                 <th className="py-2 pr-4">Measure</th>
@@ -253,7 +253,7 @@ export function CompareSessions() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {column(first, "First")}
         {column(second, "Second")}
       </div>

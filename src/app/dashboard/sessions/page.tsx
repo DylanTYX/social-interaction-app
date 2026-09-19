@@ -523,7 +523,7 @@ export default function SessionsLibraryPage() {
                 <span className={PANEL_LABEL}>Session</span>
                 <span className={cn(PANEL_LABEL, "hidden md:block")}>Mode</span>
                 <span className={cn(PANEL_LABEL, "hidden md:block")}>Date</span>
-                <span className={cn(PANEL_LABEL, "text-right")}>Score</span>
+                <span className={cn(PANEL_LABEL, "hidden text-right sm:block")}>Score</span>
               </div>
             )}
           </div>

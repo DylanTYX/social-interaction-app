@@ -217,35 +217,23 @@ export function SetupSummary({
             again, or switch to a text interview.
           </p>
         )}
-        <Button
-          className="w-full"
-          onClick={onNext}
-          disabled={!canProceed || isLaunching || micChecking}
-        >
-          {isLastStep ? (
-            <>
-              {voice && <Mic />}
-              {micChecking
-                ? "Checking microphone…"
-                : isLaunching
-                  ? "Starting…"
-                  : "Start interview"}
-            </>
-          ) : (
-            <>
-              Continue
-              <ArrowRight />
-            </>
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          className="w-full text-slate-600"
-          onClick={onBack}
-        >
-          <ChevronLeft />
-          {isFirstStep ? "Cancel" : "Back"}
-        </Button>
+        {/* Present in the card from `lg`; below that the same two buttons
+            live in a bar pinned to the bottom of the screen, because here the
+            card sits under the whole form and the primary action was at the
+            end of a long scroll. */}
+        <div className="hidden space-y-2 lg:block">
+          <SetupActions
+            voice={voice}
+            isFirstStep={isFirstStep}
+            isLastStep={isLastStep}
+            canProceed={canProceed}
+            micChecking={micChecking}
+            isLaunching={isLaunching}
+            onBack={onBack}
+            onNext={onNext}
+            layout="stack"
+          />
+        </div>
         <p className="sr-only" aria-live="polite">
           Step: {stepLabel}
         </p>
@@ -279,4 +267,78 @@ function DocumentValue({
   if (!enabled) return <span className="text-slate-400">Not used</span>;
   if (!title) return <span className="text-warning-emphasis">None chosen</span>;
   return <span className="block truncate text-slate-900">{title}</span>;
+}
+
+/**
+ * Continue and Back, in the two shapes the wizard needs: stacked inside the
+ * summary card on wide screens, side by side in a sticky bar on phones. One
+ * component so the gating — blocked, launching, microphone still checking —
+ * cannot differ between the two.
+ */
+export function SetupActions({
+  voice,
+  isFirstStep,
+  isLastStep,
+  canProceed,
+  micChecking,
+  isLaunching,
+  onBack,
+  onNext,
+  layout,
+}: {
+  voice: boolean;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  canProceed: boolean;
+  micChecking: boolean;
+  isLaunching: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  layout: "stack" | "bar";
+}) {
+  const next = (
+    <Button
+      className={layout === "stack" ? "w-full" : "min-w-0 flex-1"}
+      onClick={onNext}
+      disabled={!canProceed || isLaunching || micChecking}
+    >
+      {isLastStep ? (
+        <>
+          {voice && <Mic />}
+          {micChecking
+            ? "Checking microphone…"
+            : isLaunching
+              ? "Starting…"
+              : "Start interview"}
+        </>
+      ) : (
+        <>
+          Continue
+          <ArrowRight />
+        </>
+      )}
+    </Button>
+  );
+  const back = (
+    <Button
+      variant="ghost"
+      className={layout === "stack" ? "w-full text-slate-600" : "shrink-0 text-slate-600"}
+      onClick={onBack}
+    >
+      <ChevronLeft />
+      {isFirstStep ? "Cancel" : "Back"}
+    </Button>
+  );
+
+  return layout === "stack" ? (
+    <>
+      {next}
+      {back}
+    </>
+  ) : (
+    <div className="flex items-center gap-2">
+      {back}
+      {next}
+    </div>
+  );
 }
