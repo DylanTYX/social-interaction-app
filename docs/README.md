@@ -30,6 +30,7 @@ Fourteen documents. This is which one answers what, so nobody has to grep.
 | [COACHING.md](COACHING.md)                                        | How the **coach** generates a response, and how much of it is measured       |
 | [UAT.md](UAT.md) · [UAT-tester-handout.md](UAT-tester-handout.md) | Can people actually use it? Test plan and participant script                 |
 | [PRODUCTION-REVIEW.md](PRODUCTION-REVIEW.md)                      | What a hardening pass found, what was fixed, what was not, and why           |
+| [SECURITY.md](SECURITY.md)                                        | What an error message tells a stranger: the three defects, the OWASP mapping, and what each claim rests on |
 
 ## Operating it
 

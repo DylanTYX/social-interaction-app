@@ -14,6 +14,52 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-24
+
+### What an error message tells a stranger
+
+**Documents:** `SECURITY.md` (new), `README.md` (index row).
+
+The error work below, written up as a security argument rather than a list of
+edits: the three defects (messages that repeated whatever text they were
+handed, authentication responses that distinguished one failure from another, a
+redirect that followed any URL), each mapped to **OWASP Top 10:2025** with its
+CWE, and a table separating what Supabase provides from what this project
+provides — because most of what makes authentication here secure is not this
+project's work.
+
+The 2025 revision suits this work better than 2021 did. **A10:2025 Mishandling
+of Exceptional Conditions** is new, carries CWE-209, and its Scenario #2 is this
+defect exactly: errors triggered deliberately to harvest system detail for a
+later attack. **A07:2025 Authentication Failures** states the enumeration
+requirement in its own words — the same messages for all outcomes across
+registration, credential recovery and API paths — which is the three flows
+fixed here.
+
+Two things recorded deliberately, against the temptation to round them up:
+
+- **The sign-up claim is reasoned, not tested.** `GET /auth/v1/settings`
+  returns `mailer_autoconfirm: false`, so email confirmation is enabled and the
+  endpoint does not distinguish a taken address from a new one. An end-to-end
+  test would have created a user that could not then be deleted, the
+  service-role key being empty in `.env.local`. The document says so and gives
+  the manual check instead.
+- **Suppressing detail in responses moved it into logs.** A09:2025 maps
+  CWE-532, sensitive information in a log file, so the document states what is
+  written there and why the trade is judged worthwhile.
+
+An earlier note in this session that email confirmation was *off* was an
+assumption drawn from an unrelated probe, and is corrected by the settings
+reading above.
+
+**Sources:** the OWASP Top 10:2025 category pages for A01, A02, A07, A09 and
+A10, read from `owasp.org` on 2026-09-24 and linked individually in
+`SECURITY.md`. **This entry is an exception to the standing caveat at the head
+of this file** — these references were checked online rather than compiled from
+memory, and the quotations are the pages' own words.
+
+---
+
 ## 2026-09-21
 
 ### Error messages: what the app wrote, or nothing
