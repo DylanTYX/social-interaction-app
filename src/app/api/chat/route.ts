@@ -689,7 +689,9 @@ function createStreamingResponse(
         // client the same opaque message a JSON 500 would carry.
         console.error("[POST /api/chat] stream failed:", error);
         send(
-          formatSseEvent("error", { error: "Failed to generate response." }),
+          formatSseEvent("error", {
+            error: "The interviewer couldn't reply. Try sending that again.",
+          }),
         );
       } finally {
         try {

@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { safeRedirectPath } from "@/lib/safe-redirect";
+import {
+  authErrorMessage,
+  passwordResetFeedback,
+} from "@/lib/auth-error-message";
 
 export default function LoginPage() {
   return (
@@ -41,22 +46,23 @@ function LoginForm() {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(authErrorMessage("sign-in", error));
         return;
       }
 
-      const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
-      router.replace(redirectTo);
+      router.replace(safeRedirectPath(searchParams.get("redirectTo")));
       router.refresh();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to sign in right now. Please try again.";
-      setErrorMessage(message);
+      setErrorMessage(authErrorMessage("sign-in", error));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const showResetFeedback = (error: unknown | null) => {
+    const feedback = passwordResetFeedback(error);
+    if (feedback.kind === "info") setInfoMessage(feedback.message);
+    else setErrorMessage(feedback.message);
   };
 
   const handleForgotPassword = async () => {
@@ -77,19 +83,9 @@ function LoginForm() {
         email.trim(),
         { redirectTo },
       );
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-      setInfoMessage(
-        "If an account exists for that email, a reset link is on its way.",
-      );
+      showResetFeedback(error);
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to send reset email right now.";
-      setErrorMessage(message);
+      showResetFeedback(error);
     } finally {
       setIsSendingReset(false);
     }

@@ -5,6 +5,7 @@ import { Check, Eraser, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { readJson } from "@/lib/api/fetch-json";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 export interface TidyResult {
   cleanedText: string;
@@ -75,9 +76,7 @@ export function TidyJobDescription({
     } catch (err) {
       setStatus("error");
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not tidy that up. Save it as-is.",
+        toUserMessage(err, "Could not tidy that up. Save it as-is."),
       );
     }
   };

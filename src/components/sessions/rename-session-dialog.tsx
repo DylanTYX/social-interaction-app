@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { MAX_SESSION_TITLE_CHARS } from "@/lib/api/input-limits";
 import { patchSessionRequest } from "@/lib/session-actions";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 export interface RenameTarget {
   id: string;
@@ -69,7 +70,7 @@ function RenameForm({
       const session = await patchSessionRequest(target.id, { title: value });
       onDone(session.title);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't rename this session.");
+      toast.error(toUserMessage(err, "Couldn't rename this session."));
     } finally {
       setSaving(false);
     }

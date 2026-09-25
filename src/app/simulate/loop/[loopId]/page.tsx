@@ -30,6 +30,11 @@ import {
 import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 import { TILE_COLORS } from "@/lib/tile-colors";
 import { RoundProgression } from "@/components/report/round-progression";
+import {
+  GENERIC_ERROR_MESSAGE,
+  toUserMessage,
+  UserFacingError,
+} from "@/lib/user-facing-error";
 
 interface LoopRound {
   sessionId: string;
@@ -99,10 +104,10 @@ export default function LoopReportPage({
           { cache: "no-store" },
         );
         if (!response.ok) {
-          throw new Error(
+          throw new UserFacingError(
             response.status === 404
               ? "This interview loop could not be found."
-              : "Failed to load the loop report.",
+              : "Couldn't load the loop report. Try again.",
           );
         }
         const payload = (await response.json()) as LoopReport;
@@ -110,7 +115,7 @@ export default function LoopReportPage({
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Something went wrong.",
+            toUserMessage(err, GENERIC_ERROR_MESSAGE),
           );
         }
       } finally {

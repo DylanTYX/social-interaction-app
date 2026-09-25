@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 export interface CurrentUserState {
   user: User | null;
@@ -44,7 +45,7 @@ export function useCurrentUser(): CurrentUserState {
         console.warn("Could not read the current user:", err);
         setUser(null);
         setError(
-          err instanceof Error ? err.message : "Could not verify your session.",
+          toUserMessage(err, "Could not verify your session."),
         );
         setStatus("ready");
       });

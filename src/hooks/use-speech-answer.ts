@@ -15,6 +15,7 @@ import {
   type DeliveryMetrics,
   type PhraseTiming,
 } from "@/lib/speech-metrics";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * Capture one spoken answer: token, microphone, transcript, delivery.
@@ -221,9 +222,7 @@ export function useSpeechAnswer({
       } catch (error) {
         if (cancelled) return;
         setTokenError(
-          error instanceof Error
-            ? error.message
-            : "Failed to initialize speech service.",
+          toUserMessage(error, "The voice service didn't respond. Try again."),
         );
         setTokenStatus("error");
       }
@@ -323,9 +322,7 @@ export function useSpeechAnswer({
       } catch (error) {
         if (isMountedRef.current) {
           setRecordingError(
-            error instanceof Error
-              ? error.message
-              : "Failed to stop recording.",
+            toUserMessage(error, "Couldn't stop the recording. Try again."),
           );
         }
       } finally {
@@ -500,7 +497,7 @@ export function useSpeechAnswer({
     } catch (err) {
       if (!isMountedRef.current) return;
       setRecordingError(
-        err instanceof Error ? err.message : "Recording failed.",
+        toUserMessage(err, "Recording failed."),
       );
       isRecordingRef.current = false;
       setIsRecording(false);

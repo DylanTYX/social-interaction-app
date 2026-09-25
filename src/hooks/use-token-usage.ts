@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { readJson } from "@/lib/api/fetch-json";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * The caller's own token usage, as `/api/me/usage` reports it.
@@ -88,9 +89,7 @@ export function useTokenUsage({
       setError(null);
     } catch (requestError) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Couldn't load your usage.",
+        toUserMessage(requestError, GENERIC_ERROR_MESSAGE),
       );
       setStatus("error");
     }

@@ -152,10 +152,10 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 | “Supabase is not configured”                       | Add `NEXT_PUBLIC_SUPABASE_*` in Vercel env; redeploy                                                   |
 | Login works locally, not on Vercel                 | Add production URL to Supabase **Redirect URLs**                                                       |
 | Register succeeds but dashboard redirects to login | Same as above; check cookies / Site URL                                                                |
-| AI never responds / “The interviewer is unavailable” | `OPENAI_API_KEY` missing for this environment (Preview vs Production), rejected, or out of credit — the message says which. Redeploy after changing it |
+| AI never responds / “The interviewer is unavailable right now. (ref …)” | `OPENAI_API_KEY` missing for this environment (Preview vs Production), rejected, or out of credit. The screen does not say which in production: search the function logs for the `ref` shown, and the line carries a `hint=` that does. Run locally and the hint is on screen. Redeploy after changing the key |
 | Voice broken                                       | Add `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`                                                         |
 | PDF upload fails                                   | The files in `supabase/migrations` not all applied on the production DB                                |
-| “The database is behind this version of the app” | A migration the deployed code needs is not applied (a missing column or table). Run the newest files in `supabase/migrations`, in order |
+| “Something went wrong. (ref …)” on every page, and the log line for that `ref` has `hint="The database is behind…"` | A migration the deployed code needs is not applied (a missing column or table). Run the newest files in `supabase/migrations`, in order. Locally the hint is shown on screen |
 | Sending a message 500s; no greeting, resumed sessions blank | `0003_functions.sql` not applied, so `append_interview_turn` is missing. Run all three files in order — each is safe to rerun |
 | API timeout (~10s) on Hobby                        | Rare for streaming chat; if analyze route times out, retry or upgrade plan                             |
 

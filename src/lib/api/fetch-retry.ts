@@ -11,8 +11,12 @@
  * and sending the same request again would only ask it to refuse twice.
  */
 
-export const NETWORK_ERROR_MESSAGE =
-  "Couldn't reach the server. Check your connection and try again.";
+import {
+  NETWORK_ERROR_MESSAGE,
+  UserFacingError,
+} from "@/lib/user-facing-error";
+
+export { NETWORK_ERROR_MESSAGE };
 
 /** True for a request that never got an answer, as opposed to a bad answer. */
 export function isNetworkError(error: unknown): boolean {
@@ -44,7 +48,7 @@ export async function fetchWithRetry(
     } catch (retryError) {
       // Twice in a row is not a blip. Say what a candidate can act on rather
       // than passing the browser's own words through.
-      if (isNetworkError(retryError)) throw new Error(NETWORK_ERROR_MESSAGE);
+      if (isNetworkError(retryError)) throw new UserFacingError(NETWORK_ERROR_MESSAGE);
       throw retryError;
     }
   }

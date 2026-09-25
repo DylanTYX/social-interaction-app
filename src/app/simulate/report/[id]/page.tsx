@@ -86,6 +86,7 @@ import type { AnalysisResult } from "@/lib/response-analyzer";
 import { parseCoverage } from "@/lib/competencies";
 import { useTokenUsage } from "@/hooks/use-token-usage";
 import { formatTokens, formatUsd } from "@/lib/format";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 interface MessageRecord {
   id: string;
@@ -224,7 +225,7 @@ export default function SessionReportPage({
       } catch (err) {
         if (cancelled) return;
         setError(
-          err instanceof Error ? err.message : "Failed to load session.",
+          toUserMessage(err, GENERIC_ERROR_MESSAGE),
         );
         setStatus("error");
       }
@@ -307,7 +308,7 @@ export default function SessionReportPage({
     } catch (err) {
       updateReportSession({ pinned: !pinned });
       toast.error(
-        err instanceof Error ? err.message : "Couldn't update this session.",
+        toUserMessage(err, "Couldn't update this session."),
       );
     }
   };
@@ -357,7 +358,7 @@ export default function SessionReportPage({
       );
     } catch (err) {
       setNextRoundError(
-        err instanceof Error ? err.message : "Could not start the next round.",
+        toUserMessage(err, "Could not start the next round."),
       );
     } finally {
       setIsStartingNextRound(false);
@@ -867,9 +868,7 @@ function TurnCoaching({
       setResult(await readJson<SuggestedAnswerResult>(response));
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not generate a stronger answer.",
+        toUserMessage(err, "Could not generate a stronger answer."),
       );
     } finally {
       setLoading(false);

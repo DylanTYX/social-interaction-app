@@ -49,6 +49,7 @@ import {
   SESSION_SORTS,
   type SessionSort,
 } from "@/lib/session-organisation";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 type ModeFilter = "all" | "text" | "voice";
 type StatusFilter = "all" | "in_progress" | "completed" | "abandoned";
@@ -170,7 +171,7 @@ export default function SessionsLibraryPage() {
       if (options.refetch) await refresh();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Couldn't update that session.",
+        toUserMessage(err, "Couldn't update that session."),
       );
     }
   };
@@ -198,7 +199,7 @@ export default function SessionsLibraryPage() {
       await Promise.all([refresh(), refreshTags()]);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Couldn't update those sessions.",
+        toUserMessage(err, "Couldn't update those sessions."),
       );
     } finally {
       setBulkBusy(false);

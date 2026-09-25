@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authErrorMessage } from "@/lib/auth-error-message";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(authErrorMessage("sign-up", error));
         return;
       }
 
@@ -62,11 +63,7 @@ export default function RegisterPage() {
       router.replace("/dashboard");
       router.refresh();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to create account right now. Please try again.";
-      setErrorMessage(message);
+      setErrorMessage(authErrorMessage("sign-up", error));
     } finally {
       setIsSubmitting(false);
     }

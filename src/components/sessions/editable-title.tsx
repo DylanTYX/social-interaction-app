@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { MAX_SESSION_TITLE_CHARS } from "@/lib/api/input-limits";
 import { patchSessionRequest } from "@/lib/session-actions";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * A session title renamed by clicking it.
@@ -57,7 +58,7 @@ export function EditableTitle({
       onRenamed(session.title);
       setEditing(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't rename this session.");
+      toast.error(toUserMessage(err, "Couldn't rename this session."));
     } finally {
       setSaving(false);
     }

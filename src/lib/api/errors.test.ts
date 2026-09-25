@@ -10,7 +10,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ClientVisibleError, handleRouteError } from "@/lib/api/errors";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 async function respond(error: unknown) {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -53,14 +56,46 @@ describe("an unexpected server error", () => {
 
 describe("a database older than the code", () => {
   it.each(["42703", "42P01", "PGRST204", "PGRST205"])(
-    "says to apply migrations for %s instead of 'something went wrong'",
+    "says to apply migrations for %s, beside the generic message",
     async (code) => {
       const { status, body } = await respond(Object.assign(new Error("x"), { code }));
       expect(status).toBe(500);
-      expect(body.error).toMatch(/database is behind .* migrations/i);
+      expect(body.error).toBe("Something went wrong. Please try again.");
+      expect(body.hint).toMatch(/database is behind .* migrations/i);
       expect(body.code).toBe(code);
     },
   );
+});
+
+describe("in production", () => {
+  it("sends the message and the reference, and nothing about the system", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = handleRouteError(
+      "test",
+      Object.assign(new Error('column "tags" does not exist'), { code: "42703" }),
+    );
+    const body = await response.json();
+    expect(Object.keys(body).sort()).toEqual(["error", "ref"]);
+    expect(body.error).toBe("Something went wrong. Please try again.");
+    // The person running the deployment still finds it, under the reference.
+    expect(String(log.mock.calls[0][0])).toMatch(
+      new RegExp(`ref=${body.ref} code=42703 hint=".*migrations`),
+    );
+  });
+
+  it("keeps an operator hint in the log and out of the response", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = handleRouteError(
+      "test",
+      new ClientVisibleError("The interviewer is unavailable right now.", 503, "Set SOME_KEY."),
+    );
+    const body = await response.json();
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ error: "The interviewer is unavailable right now.", ref: body.ref });
+    expect(String(log.mock.calls[0][0])).toContain(`ref=${body.ref} hint="Set SOME_KEY."`);
+  });
 });
 
 describe("a client-visible error", () => {

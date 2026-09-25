@@ -3,6 +3,7 @@
 import { useLibraryList } from "@/hooks/use-library-list";
 import { useCallback } from "react";
 import { readJson } from "@/lib/api/fetch-json";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export interface ResumeSummary {
   id: string;
@@ -88,20 +89,8 @@ async function loadResumes(
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    // A 401 is an error, not an empty library. Swallowing it made a signed-out
-    // user see the cheerful "add your first one" empty state.
-    if (response.status === 401) {
-      throw new Error("Your session expired. Sign in again to continue.");
-    }
-    const detail = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new Error(
-      detail?.error ?? `Failed to load resumes (HTTP ${response.status}).`,
-    );
-  }
-
+  // `readJson` throws on a 401 rather than returning nothing: swallowing it
+  // made a signed-out user see the cheerful "add your first one" empty state.
   const payload = await readJson<ApiPayload>(response);
   return payload.resumes ?? [];
 }
@@ -118,7 +107,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
 
   const { items, status, error, refresh, setItems, setError } = useLibraryList(
     load,
-    "Failed to load resumes.",
+    GENERIC_ERROR_MESSAGE,
   );
 
   const uploadText = useCallback<UseResumes["uploadText"]>(
@@ -146,7 +135,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         setItems((current) => [resume, ...current]);
         return resume;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save resume.");
+        setError(toUserMessage(err, "Couldn't save the resume. Try again."));
         return null;
       }
     },
@@ -181,7 +170,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         setItems((current) => [resume, ...current]);
         return resume;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to upload PDF.");
+        setError(toUserMessage(err, "Couldn't read that PDF. Try again."));
         return null;
       }
     },
@@ -213,7 +202,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         // turned the 409 body into this message, count and all.
         throw err instanceof Error
           ? err
-          : new Error("Failed to update resume.");
+          : new Error("Couldn't update the resume. Try again.");
       }
     },
     // No `setError`: this one rethrows rather than writing the library-level
@@ -232,7 +221,7 @@ export function useResumes(filters: ResumeFilters = {}): UseResumes {
         return true;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to delete resume.",
+          toUserMessage(err, "Couldn't delete the resume. Try again."),
         );
         return false;
       }

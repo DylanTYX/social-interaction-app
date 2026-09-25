@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * The list half of a document-library hook.
@@ -56,7 +57,7 @@ export function useLibraryList<T>(
       setStatus("ready");
     } catch (err) {
       if (!isCurrent()) return;
-      setError(err instanceof Error ? err.message : fallbackMessage);
+      setError(toUserMessage(err, fallbackMessage));
       setStatus("error");
     }
   }, [load, fallbackMessage]);

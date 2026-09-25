@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { JobDescriptionSummary } from "@/hooks/use-job-descriptions";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 export interface JobDescriptionPatch {
   title: string;
@@ -134,9 +135,7 @@ function EditForm({
       // which is the actionable part and belongs beside the field, not in a
       // banner over the list behind this dialog.
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not save those changes. Try again.",
+        toUserMessage(err, "Could not save those changes. Try again."),
       );
     } finally {
       setSaving(false);

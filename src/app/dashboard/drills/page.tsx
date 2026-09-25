@@ -54,6 +54,7 @@ import { DeliveryReadout } from "@/components/coach/delivery-readout";
 import type { SpeechAnswerCompletion } from "@/hooks/use-speech-answer";
 import type { DeliveryMetrics } from "@/lib/speech-metrics";
 import type { AnswerMode, SuggestedAnswerResult } from "@/lib/coach-contract";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * `ssr: false` is not a preference.
@@ -322,7 +323,7 @@ export default function DrillsPage() {
       setResult(await readJson<SuggestedAnswerResult>(response));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not generate feedback.",
+        toUserMessage(err, "Could not generate feedback."),
       );
     } finally {
       setLoading(false);

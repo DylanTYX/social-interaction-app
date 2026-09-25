@@ -153,6 +153,7 @@ of it:
 - **Empty states.** `EmptyStateCard`: a dashed box with a title, a description and up to two actions, with no icon. It is a box rather than a card, so it nests inside a card.
 - **Error states.** `ErrorStateCard`: the same shape in `destructive` colours, with a warning icon and a retry.
 - **A dropped request is not a wall.** A request that fails below HTTP — the browser's "Failed to fetch" — is retried once by `fetchWithRetry`, and what the user reads is "Couldn't reach the server. Check your connection and try again", never the browser's phrasing. A card that blocks a whole screen offers Try again before it offers a way back.
+- **An error says what the app wrote, or nothing.** No screen prints a caught error's own `message`. `toUserMessage(error, fallback)` shows a dropped connection in plain words, shows a `UserFacingError` (which includes every message an API route authored, through `readJson`'s `ApiError`), and otherwise shows the fallback. Under a "Couldn't load …" title the fallback is "Something went wrong. Please try again."; for an action it names the action: "Couldn't save the resume. Try again."
 - **Charts.** Drawn in theme colours through `currentColor` with `text-primary`: the line, area and points in blue, the grid in `slate-100`, labels in `slate-400`. Each series has its own labelled panel instead of its own colour. A trend is not drawn below four points.
 - **Tables.** Column heads use the panel label. Rows are separated by `slate-100` hairlines. Numbers are `tabular-nums`.
 - **Sessions list.** One card holding one list: a heading row of panel labels (Session, Mode, Date, Score), hairline rows, and a footer with the count and "Load more". A row leads with the interviewer's avatar; the score column shows the score, and a badge only for the exceptions, In progress in amber and Abandoned in outline. Ticking a row turns the heading row into the action bar, so nothing below moves. Active and Archived are underline tabs above the controls; search, filters and sort sit on the page, not in a card.
@@ -214,6 +215,8 @@ of it:
 - Fine print sits next to the button it de-risks, never floating on its own.
 - Describe the state, do not issue instructions the screen cannot fulfil.
 - British spelling in every string a user reads: practise (verb), customise, behavioural, colour, summarise. Code identifiers keep whatever they have.
+- An error never says what the system is built from: no provider, variable, table, status code or library wording. A server failure reads "Something went wrong. Please try again. (ref a1b2c3d4)", and the reference is the way into the log.
+- Sign-in, sign-up and reset never say whether an email has an account. A refused sign-in is always "Those credentials didn't match. Check them and try again." — "credentials", never "email" or "password". A refused sign-up reads the same whether or not the address is taken. "Forgot password?" always answers "If an account exists for that email, a reset link is on its way." The wording lives in `lib/auth-error-message.ts`, with tests.
 - A pending button keeps its verb and gains a real ellipsis: "Saving…", "Deleting…", "Signing in…". Never three full stops. Placeholders end the same way.
 
 ## Checklist before shipping a screen

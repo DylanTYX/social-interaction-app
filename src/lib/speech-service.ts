@@ -7,6 +7,7 @@ import {
   ssmlLangForVoice,
   type SpeechVoiceOption,
 } from "@/lib/speech-voices";
+import { apiErrorFrom } from "@/lib/api/fetch-json";
 
 export interface SpeechServiceConfig {
   /** Azure-issued authorization token (preferred). */
@@ -1168,15 +1169,7 @@ export async function fetchSpeechToken(): Promise<SpeechTokenResponse> {
     cache: "no-store",
   });
   if (!response.ok) {
-    const detail = (await response.json().catch(() => null)) as {
-      error?: string;
-      details?: string;
-    } | null;
-    throw new Error(
-      detail?.details ||
-        detail?.error ||
-        `Failed to fetch speech token (HTTP ${response.status}).`,
-    );
+    throw await apiErrorFrom(response);
   }
 
   const data = (await response.json()) as SpeechTokenResponse;

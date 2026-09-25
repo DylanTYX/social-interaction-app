@@ -3,6 +3,7 @@
 import { useLibraryList } from "@/hooks/use-library-list";
 import { useCallback } from "react";
 import { readJson } from "@/lib/api/fetch-json";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export interface JobDescriptionSummary {
   id: string;
@@ -95,21 +96,8 @@ async function loadJobDescriptions(
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    // A 401 is an error, not an empty library. Swallowing it made a signed-out
-    // user see the cheerful "add your first one" empty state.
-    if (response.status === 401) {
-      throw new Error("Your session expired. Sign in again to continue.");
-    }
-    const detail = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new Error(
-      detail?.error ??
-        `Failed to load job descriptions (HTTP ${response.status}).`,
-    );
-  }
-
+  // `readJson` throws on a 401 rather than returning nothing: swallowing it
+  // made a signed-out user see the cheerful "add your first one" empty state.
   const payload = await readJson<ApiPayload>(response);
   return payload.jobDescriptions ?? [];
 }
@@ -131,7 +119,7 @@ export function useJobDescriptions(
 
   const { items, status, error, refresh, setItems, setError } = useLibraryList(
     load,
-    "Failed to load job descriptions.",
+    GENERIC_ERROR_MESSAGE,
   );
 
   const uploadText = useCallback<UseJobDescriptions["uploadText"]>(
@@ -158,9 +146,7 @@ export function useJobDescriptions(
         return jd;
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to save job description.",
+          toUserMessage(err, "Couldn't save the job description. Try again."),
         );
         return null;
       }
@@ -191,7 +177,7 @@ export function useJobDescriptions(
         setItems((current) => [jd, ...current]);
         return jd;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to upload PDF.");
+        setError(toUserMessage(err, "Couldn't read that PDF. Try again."));
         return null;
       }
     },
@@ -223,7 +209,7 @@ export function useJobDescriptions(
         // turned the 409 body into this message, count and all.
         throw err instanceof Error
           ? err
-          : new Error("Failed to update job description.");
+          : new Error("Couldn't update the job description. Try again.");
       }
     },
     // No `setError`: this one rethrows rather than writing the library-level
@@ -242,9 +228,7 @@ export function useJobDescriptions(
         return true;
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to delete job description.",
+          toUserMessage(err, "Couldn't delete the job description. Try again."),
         );
         return false;
       }

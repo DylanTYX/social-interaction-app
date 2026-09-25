@@ -8,6 +8,7 @@ import { MAX_SESSION_TAG_CHARS, MAX_SESSION_TAGS } from "@/lib/api/input-limits"
 import { patchSessionRequest } from "@/lib/session-actions";
 import { addTag, normalizeTag, removeTag } from "@/lib/session-organisation";
 import { cn } from "@/lib/utils";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * A session's tags as chips, with remove and add in place.
@@ -41,7 +42,7 @@ export function TagEditor({
       const session = await patchSessionRequest(sessionId, { tags: next });
       onChange(session.tags);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't update tags.");
+      toast.error(toUserMessage(err, "Couldn't update tags."));
     } finally {
       setSaving(false);
     }

@@ -127,7 +127,10 @@ export async function POST(request: Request): Promise<NextResponse> {
           error.status,
           error.detail,
         );
-        return NextResponse.json({ error: error.message }, { status: 502 });
+        return NextResponse.json(
+          { error: "Could not generate coaching for that answer. Try again." },
+          { status: 502 },
+        );
       }
       throw error;
     }

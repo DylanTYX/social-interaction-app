@@ -12,6 +12,7 @@ import {
   type PersonaLibraryEntry,
 } from "@/lib/persona-library";
 import type { PersonaConfig } from "@/lib/persona-engine";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export interface UsePersonaLibrary {
   library: PersonaLibraryEntry[];
@@ -44,7 +45,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
     refresh,
     setItems: setLibrary,
     setError,
-  } = useLibraryList(fetchPersonaLibrary, "Failed to load personas.");
+  } = useLibraryList(fetchPersonaLibrary, GENERIC_ERROR_MESSAGE);
 
   const createEntry = useCallback(
     async (config: PersonaConfig) => {
@@ -54,7 +55,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return created;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to save persona.",
+          toUserMessage(err, "Couldn't save the persona. Try again."),
         );
         return null;
       }
@@ -72,7 +73,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return updated;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to update persona.",
+          toUserMessage(err, "Couldn't update the persona. Try again."),
         );
         return null;
       }
@@ -88,7 +89,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return copy;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to duplicate persona.",
+          toUserMessage(err, "Couldn't duplicate the persona. Try again."),
         );
         return null;
       }
@@ -104,7 +105,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
         return true;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to delete persona.",
+          toUserMessage(err, "Couldn't delete the persona. Try again."),
         );
         return false;
       }
@@ -118,7 +119,7 @@ export function usePersonaLibrary(): UsePersonaLibrary {
       setLibrary(next);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to restore presets.",
+        toUserMessage(err, "Couldn't restore the presets. Try again."),
       );
     }
   }, [setLibrary, setError]);

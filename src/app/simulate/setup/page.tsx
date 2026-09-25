@@ -45,6 +45,7 @@ import {
   buildRoundScenarioTitle,
   getCurrentRound,
 } from "@/lib/interview-rounds";
+import { toUserMessage, UserFacingError } from "@/lib/user-facing-error";
 
 type StepId = "context" | "rounds" | "persona" | "review";
 
@@ -413,7 +414,7 @@ function SetupWizard() {
         setup.jobDescription,
         selectedJobDescription,
       );
-      if ("error" in jd) throw new Error(jd.error);
+      if ("error" in jd) throw new UserFacingError(jd.error);
       const jobDescriptionId = jd.id;
 
       /**
@@ -429,7 +430,7 @@ function SetupWizard() {
         setup.resume,
         selectedResume,
       );
-      if ("error" in resume) throw new Error(resume.error);
+      if ("error" in resume) throw new UserFacingError(resume.error);
       const resumeId = resume.id;
 
       /**
@@ -511,9 +512,7 @@ function SetupWizard() {
       router.push(getSetupHref(setup, session.id));
     } catch (error) {
       setLaunchError(
-        error instanceof Error
-          ? error.message
-          : "Unable to start the interview right now.",
+        toUserMessage(error, "Couldn't start the interview. Try again."),
       );
     } finally {
       setIsLaunching(false);

@@ -4,6 +4,7 @@ import { readJson } from "@/lib/api/fetch-json";
 import { useCallback, useRef, useEffect, useState } from "react";
 import type { ArchivedView, SessionSort } from "@/lib/session-organisation";
 import type { SessionLaunchMeta } from "@/lib/session-launch-meta";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export interface InterviewSessionSummary {
   id: string;
@@ -195,7 +196,7 @@ export function useInterviewHistory(
       setStatus("ready");
     } catch (err) {
       if (!isCurrent()) return;
-      setError(err instanceof Error ? err.message : "Failed to load sessions.");
+      setError(toUserMessage(err, GENERIC_ERROR_MESSAGE));
       setStatus("error");
     }
   }, [fetchPage, archived]);
@@ -217,7 +218,7 @@ export function useInterviewHistory(
       });
       setTotal(payload.total ?? sessions.length);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load sessions.");
+      setError(toUserMessage(err, GENERIC_ERROR_MESSAGE));
     } finally {
       setLoadingMore(false);
     }

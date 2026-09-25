@@ -33,6 +33,7 @@ import { isTechnicalRound } from "@/lib/round-types";
 import { readLaunchMeta, type SessionLaunchMeta } from "@/lib/session-launch-meta";
 import { displayTitle } from "@/lib/session-organisation";
 import { cn } from "@/lib/utils";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * Two sessions side by side: what changed between attempts.
@@ -125,7 +126,7 @@ export function CompareSessions() {
         );
         if (!cancelled) setPair([summarise(first), summarise(second)]);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't load those sessions.");
+        if (!cancelled) setError(toUserMessage(err, GENERIC_ERROR_MESSAGE));
       }
     });
     return () => {

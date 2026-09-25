@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { readJson } from "@/lib/api/fetch-json";
 import type { RoundBreakdown } from "@/lib/progress-insights";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export interface UseRubricBreakdown {
   rounds: RoundBreakdown[];
@@ -40,7 +41,7 @@ export function useRubricBreakdown(): UseRubricBreakdown {
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       setError(
-        err instanceof Error ? err.message : "Couldn't load your answers.",
+        toUserMessage(err, GENERIC_ERROR_MESSAGE),
       );
       setStatus("error");
     }

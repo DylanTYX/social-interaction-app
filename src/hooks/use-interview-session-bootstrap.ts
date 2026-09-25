@@ -24,6 +24,7 @@ import {
   type SessionLaunchMeta,
 } from "@/lib/session-launch-meta";
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import { GENERIC_ERROR_MESSAGE, toUserMessage } from "@/lib/user-facing-error";
 
 export type BootstrapStatus =
   "loading" | "ready" | "redirect-setup" | "redirect-voice" | "error";
@@ -439,9 +440,7 @@ export function useInterviewSessionBootstrap(
             setBootstrap({
               status: "error",
               error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to resume session.",
+                toUserMessage(error, GENERIC_ERROR_MESSAGE),
               personaConfig: DEFAULT.personaConfig,
               scenarioValue: DEFAULT.scenarioValue,
               customScenarioBrief: "",

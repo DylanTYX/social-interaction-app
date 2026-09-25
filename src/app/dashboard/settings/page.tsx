@@ -19,6 +19,9 @@ import { getDisplayName, useCurrentUser } from "@/hooks/use-current-user";
 import { useInterviewHistory } from "@/hooks/use-interview-history";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { toUserMessage } from "@/lib/user-facing-error";
+import { apiErrorFrom } from "@/lib/api/fetch-json";
+import { authErrorMessage } from "@/lib/auth-error-message";
 
 type SaveState =
   | { kind: "idle" }
@@ -127,7 +130,10 @@ function SettingsPageInner() {
         },
       });
       if (error) {
-        setProfileState({ kind: "error", message: error.message });
+        setProfileState({
+          kind: "error",
+          message: authErrorMessage("account", error),
+        });
         return;
       }
       setSavedName({ first: firstName.trim(), last: lastName.trim() });
@@ -138,7 +144,7 @@ function SettingsPageInner() {
       setProfileState({
         kind: "error",
         message:
-          error instanceof Error ? error.message : "Failed to save profile.",
+          toUserMessage(error, "Couldn't save your profile. Try again."),
       });
     }
   };
@@ -156,7 +162,10 @@ function SettingsPageInner() {
         redirectTo,
       });
       if (error) {
-        setResetState({ kind: "error", message: error.message });
+        setResetState({
+          kind: "error",
+          message: authErrorMessage("account", error),
+        });
         return;
       }
       setResetState({ kind: "saved" });
@@ -165,9 +174,7 @@ function SettingsPageInner() {
       setResetState({
         kind: "error",
         message:
-          error instanceof Error
-            ? error.message
-            : "Failed to send reset email.",
+          toUserMessage(error, "Couldn't send the reset email. Try again."),
       });
     }
   };
@@ -183,14 +190,7 @@ function SettingsPageInner() {
     setExportState({ kind: "saving" });
     try {
       const response = await fetch("/api/me/export");
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ?? `Export failed (HTTP ${response.status}).`,
-        );
-      }
+      if (!response.ok) throw await apiErrorFrom(response);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -206,7 +206,7 @@ function SettingsPageInner() {
       setExportState({
         kind: "error",
         message:
-          error instanceof Error ? error.message : "Failed to export data.",
+          toUserMessage(error, "Couldn't export your data. Try again."),
       });
     }
   };
@@ -218,20 +218,13 @@ function SettingsPageInner() {
   const handleWipeSessions = async () => {
     try {
       const response = await fetch("/api/me/sessions", { method: "DELETE" });
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(
-          detail?.error ?? `Delete failed (HTTP ${response.status}).`,
-        );
-      }
+      if (!response.ok) throw await apiErrorFrom(response);
       toast.success("All sessions deleted.");
       void refreshSessions();
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete sessions.",
+        toUserMessage(error, "Couldn't delete your sessions. Try again."),
       );
     }
   };

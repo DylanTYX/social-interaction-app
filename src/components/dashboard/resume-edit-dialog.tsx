@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MIN_RESUME_CHARS } from "@/lib/api/input-limits";
 import type { ResumeSummary } from "@/hooks/use-resumes";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 export interface ResumePatch {
   title: string;
@@ -129,9 +130,7 @@ function EditForm({
       // which is the actionable part and belongs beside the field, not in a
       // banner over the list behind this dialog.
       setError(
-        err instanceof Error
-          ? err.message
-          : "Could not save those changes. Try again.",
+        toUserMessage(err, "Could not save those changes. Try again."),
       );
     } finally {
       setSaving(false);

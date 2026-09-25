@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { readJson } from "@/lib/api/fetch-json";
+import { ApiError } from "@/lib/user-facing-error";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -21,9 +22,9 @@ describe("readJson", () => {
     ).rejects.toThrow("Resume is too short.");
   });
 
-  it("shows the reference and error class a generic failure carries", async () => {
-    // Without these, every server failure read "Something went wrong" on
-    // screen, and a report could not be matched to its log line.
+  it("shows the reference a generic failure carries, and not the error class", async () => {
+    // The reference matches a report to its log line. The database error
+    // class says what the system is built from, so it stays in the log.
     await expect(
       readJson(
         new Response(
@@ -35,16 +36,32 @@ describe("readJson", () => {
           { status: 500 },
         ),
       ),
-    ).rejects.toThrow(
-      "Something went wrong. Please try again. (ref a1b2c3d4 · 42501)",
+    ).rejects.toThrow(/^Something went wrong\. Please try again\. \(ref a1b2c3d4\)$/);
+  });
+
+  it("appends the operator hint a non-production server sends", async () => {
+    await expect(
+      readJson(jsonResponse({ error: "Unavailable.", ref: "a1b2c3d4", hint: "Set the key." }, 503)),
+    ).rejects.toThrow("Unavailable. Set the key. (ref a1b2c3d4)");
+  });
+
+  it("throws an ApiError, the kind a screen is allowed to show", async () => {
+    const error = await readJson(jsonResponse({ error: "Title cannot be empty." }, 400)).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).status).toBe(400);
+  });
+
+  it("says the session expired on a 401 with no body", async () => {
+    await expect(readJson(new Response("", { status: 401 }))).rejects.toThrow(
+      "Your session has expired. Sign in again.",
     );
   });
 
-  it("falls back to the status when the error body is not JSON", async () => {
-    // A proxy 502 or an auth redirect returns HTML; parsing it would mask the
-    // real status.
+  it("keeps a proxy's HTML and its status code off the screen", async () => {
     await expect(
       readJson(new Response("<html>Bad Gateway</html>", { status: 502 })),
-    ).rejects.toThrow("HTTP 502");
+    ).rejects.toThrow(/^Something went wrong\. Please try again\.$/);
   });
 });

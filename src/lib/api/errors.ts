@@ -19,13 +19,31 @@ const GENERIC_500 = "Something went wrong. Please try again.";
  * Postgres and PostgREST codes that mean the database schema is older than
  * the code — a column or table the app reads does not exist yet.
  *
- * Every one of these reached the screen as "something went wrong", which is
- * how a database missing one migration took down every interview turn with
- * nothing to say why. The fix is always the same, so say it.
+ * A database missing one migration took down every interview turn with
+ * nothing to say why. The fix is always the same, so the log line says it, and
+ * so does the response outside production.
  */
 const SCHEMA_BEHIND_CODES = new Set(["42703", "42P01", "PGRST204", "PGRST205"]);
 const SCHEMA_BEHIND =
   "The database is behind this version of the app. Apply the newest migrations in supabase/migrations, in order.";
+
+/**
+ * Whether a response may carry detail meant for whoever runs the deployment.
+ *
+ * A variable name, a folder path or a database error class tells a visitor
+ * what the system is built from. In production that detail goes to the log,
+ * under the `ref` the visitor is shown; everywhere else it also rides along.
+ */
+function showsOperatorDetail(): boolean {
+  return process.env.NODE_ENV !== "production";
+}
+
+function newRef(): string {
+  return (
+    globalThis.crypto?.randomUUID?.().slice(0, 8) ??
+    Math.random().toString(36).slice(2, 10)
+  );
+}
 
 /**
  * Log the real error server-side and return an opaque 500.
@@ -42,19 +60,22 @@ const SCHEMA_BEHIND =
  * — so the only way to log-and-500 is now the one that checks first.
  */
 function serverError(scope: string, error: unknown): NextResponse {
-  const ref =
-    globalThis.crypto?.randomUUID?.().slice(0, 8) ??
-    Math.random().toString(36).slice(2, 10);
+  const ref = newRef();
   const code = safeErrorCode(error);
-  console.error(`[${scope}] ref=${ref}${code ? ` code=${code}` : ""}`, error);
-  // `error` stays the stable generic message. `ref` ties what the user sees to
-  // one log line; `code` is a database error class when there is one. Neither
-  // carries a message, a table name or a stack.
+  const hint = code && SCHEMA_BEHIND_CODES.has(code) ? SCHEMA_BEHIND : null;
+  console.error(
+    `[${scope}] ref=${ref}${code ? ` code=${code}` : ""}${hint ? ` hint="${hint}"` : ""}`,
+    error,
+  );
+  // `error` is always the generic message and `ref` ties it to one log line.
+  // The error class and the hint name what the system is built from, so they
+  // are left out in production.
   return NextResponse.json(
     {
-      error: code && SCHEMA_BEHIND_CODES.has(code) ? SCHEMA_BEHIND : GENERIC_500,
+      error: GENERIC_500,
       ref,
-      ...(code ? { code } : {}),
+      ...(showsOperatorDetail() && code ? { code } : {}),
+      ...(showsOperatorDetail() && hint ? { hint } : {}),
     },
     { status: 500 },
   );
@@ -87,7 +108,10 @@ export function badRequest(message: string): NextResponse {
 
 /** 401 for a missing or expired session. */
 export function unauthorized(): NextResponse {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return NextResponse.json(
+    { error: "Your session has expired. Sign in again." },
+    { status: 401 },
+  );
 }
 
 /** 404 for a row that does not exist, or that RLS hides from this user. */
@@ -102,11 +126,17 @@ export function notFound(message = "Not found"): NextResponse {
  */
 export class ClientVisibleError extends Error {
   readonly status: number;
+  /**
+   * What whoever runs the deployment should fix. Always logged; sent to the
+   * client only outside production.
+   */
+  readonly operatorHint?: string;
 
-  constructor(message: string, status = 400) {
+  constructor(message: string, status = 400, operatorHint?: string) {
     super(message);
     this.name = "ClientVisibleError";
     this.status = status;
+    this.operatorHint = operatorHint;
   }
 }
 
@@ -116,8 +146,20 @@ export class ClientVisibleError extends Error {
  */
 export function handleRouteError(scope: string, error: unknown): NextResponse {
   if (error instanceof ClientVisibleError) {
+    if (!error.operatorHint) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+    const ref = newRef();
+    console.error(`[${scope}] ref=${ref} hint="${error.operatorHint}"`);
     return NextResponse.json(
-      { error: error.message },
+      {
+        error: error.message,
+        ref,
+        ...(showsOperatorDetail() ? { hint: error.operatorHint } : {}),
+      },
       { status: error.status },
     );
   }

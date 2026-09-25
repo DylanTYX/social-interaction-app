@@ -14,6 +14,62 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-21
+
+### Error messages: what the app wrote, or nothing
+
+**Documents:** `DESIGN.md` (error rule under Patterns; three rules under Copy),
+`DEPLOYMENT.md` (two troubleshooting rows).
+
+Reported as "every error says Failed to fetch, even a wrong password". Forty-five
+places printed a caught error's own `message`, so the browser's wording, a JSON
+parser's complaint and the Supabase SDK's text all reached the screen. Supabase
+*returns* a dropped connection as an error whose message is "Failed to fetch"
+rather than throwing it, which is how the sign-in form came to say it. Checked
+against the project: a wrong sign-in returns `400 invalid_credentials`, an
+unreachable host returns `AuthRetryableFetchError`, status 0.
+
+**Behaviour that reversed.**
+
+- A screen shows a caught error only if the app authored it (`UserFacingError`,
+  which `readJson` now throws as `ApiError`). Anything else becomes the
+  caller's fallback. A dropped connection is matched on its message across
+  Chrome, Safari, Firefox and Node, not on `instanceof TypeError`, which is
+  also what a bug throws.
+- Sign-in, sign-up and reset no longer print SDK text. A refused sign-in reads
+  the same for every reason and says "credentials". A refused sign-up reads the
+  same whether or not the address is taken. The reset link answers the same
+  for an address with an account and one without, **including when Supabase
+  rate-limits it**, because it only rate-limits addresses that exist.
+- Responses stopped naming the system. The OpenAI configuration messages named
+  the provider, `OPENAI_API_KEY`, Vercel, the model and the state of the
+  account's billing; a schema error named `supabase/migrations`; every 500
+  carried a Postgres error class. All of that is now an `operatorHint` that is
+  always logged under the `ref` the user sees, and sent in the response only
+  when `NODE_ENV` is not `production`. This reverses the decision in commit
+  `2b9468b` (2026-09-11) to show those messages to everyone; the reason for
+  that decision (a deployer who cannot tell why the first turn failed) is met
+  by the log line instead.
+- `readJson` no longer shows "Request failed (HTTP 502)" for a non-JSON body,
+  and a 401 reads "Your session has expired. Sign in again."
+- `redirectTo` on the sign-in page is followed only when it is a path on this
+  site. It came from the URL and went straight to `router.replace`, so a link
+  could send someone to another origin after a real sign-in.
+
+**Where the wording alone is not enough.** Sign-up is only non-revealing while
+email confirmation is enabled in Supabase; with it switched off,
+`POST /auth/v1/signup` answers "User already registered" to anyone who calls it
+directly, whatever the form says. It **is** enabled on this project —
+`GET /auth/v1/settings` returns `mailer_autoconfirm: false` — which an earlier
+draft of this entry had backwards, having assumed it rather than read it.
+
+**Tests:** `user-facing-error.test.ts`, `auth-error-message.test.ts`,
+`safe-redirect.test.ts` (new); `errors.test.ts`, `openai-errors.test.ts`,
+`fetch-json.test.ts` (updated to pin production responses carrying only
+`error` and `ref`). 896 tests.
+
+**Sources:** none added.
+
 ## 2026-09-19
 
 ### A second pass on phones, from screenshots of the real thing

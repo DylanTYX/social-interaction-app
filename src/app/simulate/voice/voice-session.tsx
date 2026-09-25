@@ -74,16 +74,16 @@ import { CodeInput } from "@/components/chat/code-input";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
-import { readJson } from "@/lib/api/fetch-json";
+import { readJson, apiErrorFrom } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import {
   recoverPersistedOpening,
   recoverPersistedTurn,
 } from "@/lib/chat-recovery";
 import { reportClientError } from "@/lib/report-client-error";
-import { isNetworkError, NETWORK_ERROR_MESSAGE } from "@/lib/api/fetch-retry";
 import { targetTurnsForRound } from "@/lib/interview-progress";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 const RESPONSE_TIME_LIMIT_SECONDS = 180; // 3 minutes per answer
 /** Retries of the opening greeting before the error is left standing. */
@@ -914,8 +914,7 @@ function VoiceSimulateInner() {
          */
         openingGeneratedRef.current = false;
         const willRetry = openingAttempt < MAX_OPENING_ATTEMPTS;
-        const reason =
-          err instanceof Error ? err.message : "Could not start the interview.";
+        const reason = toUserMessage(err, "Could not start the interview.");
         setRetryingOpening(willRetry);
         setError(willRetry ? null : reason);
         /**
@@ -1122,16 +1121,7 @@ function VoiceSimulateInner() {
       });
 
       if (!chatResponse.ok) {
-        const errorData = (await chatResponse.json().catch(() => null)) as {
-          error?: string;
-          details?: string;
-        } | null;
-
-        throw new Error(
-          errorData?.details ||
-            errorData?.error ||
-            `Chat API error: ${chatResponse.statusText}`,
-        );
+        throw await apiErrorFrom(chatResponse);
       }
 
       let result: ChatTurnResponse;
@@ -1291,13 +1281,12 @@ function VoiceSimulateInner() {
           ? requestError
           : new Error(String(requestError)),
       );
-      const messageText =
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to reach the API.";
       if (isMountedRef.current) {
         setError(
-          isNetworkError(requestError) ? NETWORK_ERROR_MESSAGE : messageText,
+          toUserMessage(
+            requestError,
+            "The interviewer couldn't reply. Try answering again.",
+          ),
         );
         // The interviewer's reply never arrived, so its empty bubble is a
         // placeholder for something that is not coming.

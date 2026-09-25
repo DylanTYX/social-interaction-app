@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { MAX_SESSION_NOTES_CHARS } from "@/lib/api/input-limits";
 import { patchSessionRequest } from "@/lib/session-actions";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 /**
  * Private takeaways at the end of a report — what to do differently next time.
@@ -48,7 +49,7 @@ export function SessionNotesCard({
       onSaved(session.notes);
       toast.success("Takeaways saved");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save your takeaways.");
+      toast.error(toUserMessage(err, "Couldn't save your takeaways."));
     } finally {
       setSaving(false);
     }

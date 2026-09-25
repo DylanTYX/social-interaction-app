@@ -42,7 +42,7 @@ import {
 } from "@/hooks/use-interview-session-bootstrap";
 import type { MicroFeedbackTone } from "@/lib/micro-feedback";
 import { updateInterviewSetup } from "@/lib/interview-setup";
-import { readJson } from "@/lib/api/fetch-json";
+import { readJson, apiErrorFrom } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
 import { recoverPersistedTurn } from "@/lib/chat-recovery";
 import { targetTurnsForRound } from "@/lib/interview-progress";
@@ -62,6 +62,7 @@ import { useTranscriptAutoscroll } from "@/hooks/use-transcript-autoscroll";
 import { CoachingRail } from "@/components/chat/coaching-rail";
 import { JobDescriptionChip } from "@/components/chat/job-description-chip";
 import { resolveAnswerFormat, type AnswerFormat } from "@/lib/interview-rounds";
+import { toUserMessage } from "@/lib/user-facing-error";
 
 type DisplayMessage = {
   id: string;
@@ -431,7 +432,7 @@ function ChatSimulateInner() {
       // path cannot use it: the body is an event stream, not a JSON document,
       // so it checks the status directly.
       if (!response.ok && streamResponses) {
-        throw new Error("Failed to generate AI response.");
+        throw await apiErrorFrom(response);
       }
 
       if (streamResponses) {
@@ -568,11 +569,12 @@ function ChatSimulateInner() {
         }, 1000);
       }
     } catch (requestError) {
-      const messageText =
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to reach the chat API.";
-      setError(messageText);
+      setError(
+        toUserMessage(
+          requestError,
+          "The interviewer couldn't reply. Try sending that again.",
+        ),
+      );
     } finally {
       setIsSending(false);
     }

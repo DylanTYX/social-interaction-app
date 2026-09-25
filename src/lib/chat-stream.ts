@@ -1,10 +1,11 @@
+import { UserFacingError } from "@/lib/user-facing-error";
 /**
  * Shared Server-Sent-Events consumer for the `/api/chat` streaming response.
  *
  * The chat route emits three event types:
  *   - `delta`: { chunk } — an incremental piece of the interviewer's reply
  *   - `done`:  the full final payload (assistant message + inline analysis)
- *   - `error`: { error | details }
+ *   - `error`: { error }
  *
  * `onDelta` fires for each `delta`; the resolved value is the `done` payload.
  * Both the text and voice pages use this so streaming behaves identically.
@@ -13,7 +14,6 @@
 type StreamEventPayload = {
   chunk?: string;
   error?: string;
-  details?: string;
 };
 
 export async function consumeChatStream<TResult>(
@@ -52,7 +52,11 @@ export async function consumeChatStream<TResult>(
       finalResult = JSON.parse(payload) as TResult;
     } else if (currentEvent === "error") {
       const parsed = JSON.parse(payload) as StreamEventPayload;
-      throw new Error(parsed.error ?? parsed.details ?? "Streaming failed.");
+      // Only `error`, which the route authors. A stream ends on the same
+      // opaque message a JSON 500 would carry.
+      throw new UserFacingError(
+        parsed.error ?? "The interviewer couldn't reply. Try sending that again.",
+      );
     }
 
     currentEvent = "";
