@@ -1,6 +1,8 @@
 import { PANEL_LABEL } from "@/components/dashboard/page-header";
 import type { InterviewMetrics } from "@/lib/interview-metrics";
+import type { PracticeMode } from "@/lib/interview-setup";
 import type { AnalysisResult } from "@/lib/response-analyzer";
+import type { DeliverySnapshot } from "@/lib/session-launch-meta";
 import { cn } from "@/lib/utils";
 
 type LiveFeedbackSidebarProps = {
@@ -9,16 +11,30 @@ type LiveFeedbackSidebarProps = {
   followupPrompt: string | null;
   /** One line on how the interview is trending, from the page's metric read. */
   trendNote?: string | null;
+  /** Decides the third measure: speaking pace when spoken, answer length when typed. */
+  mode: PracticeMode;
+  /** The spoken answers' delivery, one per scored answer. Unused in text. */
+  delivery?: DeliverySnapshot[];
 };
 
-type MetricChip = {
+export type MetricChip = {
   key: string;
   label: string;
   value: number | null;
+  unit: "%" | "wpm" | "words";
+  /** Plotted on a 0–100 scale; see the chart ceilings below. */
   trend: number[];
 };
 
-type CoachingItem = {
+/*
+ * Sparkline ceilings for the two measures that carry a unit. Fixed rather than
+ * fitted to the data, so a change of ten words a minute looks like ten words a
+ * minute. 250 wpm sits well past the fast band (`PACE_BANDS.fastAbove`).
+ */
+const PACE_CHART_MAX_WPM = 250;
+const LENGTH_CHART_MAX_WORDS = 200;
+
+export type CoachingItem = {
   id: string;
   title: string;
   body: string;
@@ -56,7 +72,7 @@ function getMetricTrend(values: number[], maxPoints = 7): number[] {
   return bounded.slice(Math.max(0, bounded.length - maxPoints));
 }
 
-function getCoachingItems(
+export function getCoachingItems(
   analyses: AnalysisResult[],
   followupPrompt: string | null,
 ): CoachingItem[] {
@@ -138,9 +154,20 @@ function getCoachingItems(
   return items.slice(0, 4);
 }
 
-function buildMetricChips(
+/**
+ * The rail's four measures.
+ *
+ * The third was "Speaking pace", scored by how close an answer's word count
+ * came to 95 — so it measured length, reported a pace for typed answers, and
+ * could contradict the real pace printed under a spoken answer. It now shows
+ * what it names: words a minute from the speech itself when you speak, and the
+ * answer's length in words when you type.
+ */
+export function buildMetricChips(
   metrics: InterviewMetrics | null,
   analyses: AnalysisResult[],
+  mode: PracticeMode = "text",
+  delivery: DeliverySnapshot[] = [],
 ): MetricChip[] {
   const confidenceSeries = analyses.map(
     (analysis) => analysis.confidenceIndicators.assertivenessScore * 10,
@@ -148,10 +175,10 @@ function buildMetricChips(
   const relevanceSeries = analyses.map((analysis) =>
     analysis.responseQuality.isRelevant ? 90 : 50,
   );
-  const paceSeries = analyses.map((analysis) => {
-    const distance = Math.abs(analysis.responseQuality.length - 95);
-    return clamp(100 - distance, 38, 100);
-  });
+  const paceSeries = delivery.flatMap((snapshot) =>
+    snapshot.wpm === null ? [] : [snapshot.wpm],
+  );
+  const lengthSeries = analyses.map((analysis) => analysis.responseQuality.length);
   const conciseSeries = analyses.map(
     (analysis) => (10 - analysis.specificityMetrics.vaguenessScore) * 10,
   );
@@ -160,6 +187,7 @@ function buildMetricChips(
     {
       key: "confidence",
       label: "Confidence",
+      unit: "%",
       value:
         metrics && analyses.length > 0
           ? clamp(metrics.averageConfidenceScore * 10)
@@ -169,21 +197,37 @@ function buildMetricChips(
     {
       key: "relevance",
       label: "Relevance",
+      unit: "%",
       value:
         relevanceSeries.length > 0
           ? relevanceSeries[relevanceSeries.length - 1]
           : null,
       trend: getMetricTrend(relevanceSeries),
     },
-    {
-      key: "pace",
-      label: "Speaking pace",
-      value: paceSeries.length > 0 ? paceSeries[paceSeries.length - 1] : null,
-      trend: getMetricTrend(paceSeries),
-    },
+    mode === "voice"
+      ? {
+          key: "pace",
+          label: "Speaking pace",
+          value: paceSeries.length > 0 ? paceSeries[paceSeries.length - 1] : null,
+          unit: "wpm",
+          trend: getMetricTrend(
+            paceSeries.map((wpm) => (wpm / PACE_CHART_MAX_WPM) * 100),
+          ),
+        }
+      : {
+          key: "length",
+          label: "Answer length",
+          value:
+            lengthSeries.length > 0 ? lengthSeries[lengthSeries.length - 1] : null,
+          unit: "words",
+          trend: getMetricTrend(
+            lengthSeries.map((words) => (words / LENGTH_CHART_MAX_WORDS) * 100),
+          ),
+        },
     {
       key: "concise",
       label: "Conciseness",
+      unit: "%",
       value:
         conciseSeries.length > 0
           ? conciseSeries[conciseSeries.length - 1]
@@ -191,6 +235,12 @@ function buildMetricChips(
       trend: getMetricTrend(conciseSeries),
     },
   ];
+}
+
+function formatMetric(metric: MetricChip): string {
+  if (metric.value === null) return "—";
+  const value = Math.round(metric.value);
+  return metric.unit === "%" ? `${value}%` : `${value} ${metric.unit}`;
 }
 
 /** Good is green, needs attention is amber, a focus is neutral. */
@@ -218,8 +268,10 @@ export function LiveFeedbackSidebar({
   analyses,
   followupPrompt,
   trendNote,
+  mode,
+  delivery,
 }: LiveFeedbackSidebarProps) {
-  const metricChips = buildMetricChips(metrics, analyses);
+  const metricChips = buildMetricChips(metrics, analyses, mode, delivery);
   const coachingItems = getCoachingItems(analyses, followupPrompt);
 
   return (
@@ -240,8 +292,8 @@ export function LiveFeedbackSidebar({
             <div key={metric.key} className="bg-white p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs text-slate-500">{metric.label}</span>
-                <span className="font-display text-base font-semibold text-navy tabular-nums">
-                  {metric.value === null ? "—" : `${Math.round(metric.value)}%`}
+                <span className="font-display text-base font-semibold whitespace-nowrap text-navy tabular-nums">
+                  {formatMetric(metric)}
                 </span>
               </div>
               {metric.value === null ? (

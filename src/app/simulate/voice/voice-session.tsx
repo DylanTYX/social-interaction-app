@@ -1700,6 +1700,7 @@ function VoiceSimulateInner() {
           onOpenChange={setShowLiveCoaching}
           turn={turn}
           trendNote={metricTone}
+          mode="voice"
         />
       </div>
 

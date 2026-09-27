@@ -62,6 +62,8 @@ export interface InterviewTurnState {
   lastDecisionReason: string | null;
   lastStrategy: InterviewStrategy | null;
   lastConfidence: number | null;
+  /** One per scored spoken answer, restored on resume. Empty in text interviews. */
+  deliverySnapshots: DeliverySnapshot[];
   /** For the in-session progress indicator; includes turns restored on resume. */
   scoredTurns: number;
   targetTurns: number;
@@ -427,6 +429,7 @@ export function useInterviewTurnState(input: {
     lastDecisionReason,
     lastStrategy,
     lastConfidence,
+    deliverySnapshots: effectiveDelivery,
     applyTurn,
     endSession,
   };

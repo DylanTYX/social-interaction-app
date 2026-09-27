@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LiveFeedbackSidebar } from "@/components/chat/live-feedback-sidebar";
 import { cn } from "@/lib/utils";
 import type { InterviewTurnState } from "@/hooks/use-interview-turn-state";
+import type { PracticeMode } from "@/lib/interview-setup";
 
 /**
  * The collapsible live-coaching rail on the right of both interview screens.
@@ -29,10 +30,13 @@ export function CoachingRail({
   onOpenChange,
   turn,
   trendNote,
+  mode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   turn: InterviewTurnState;
+  /** Which interview screen this is, so the rail measures what that screen can. */
+  mode: PracticeMode;
   /** One line on how the interview is trending, shown under the rail's title. */
   trendNote?: string | null;
 }) {
@@ -68,6 +72,8 @@ export function CoachingRail({
             analyses={turn.analyses}
             followupPrompt={turn.lastFollowupPrompt}
             trendNote={trendNote}
+            mode={mode}
+            delivery={turn.deliverySnapshots}
           />
         </div>
       </div>

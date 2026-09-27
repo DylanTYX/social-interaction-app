@@ -796,6 +796,7 @@ function ChatSimulateInner() {
           onOpenChange={setSidebarOverride}
           turn={turn}
           trendNote={metricTone}
+          mode="text"
         />
       </div>
 

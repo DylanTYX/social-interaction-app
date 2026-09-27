@@ -164,10 +164,14 @@ nothing launches, the step says why, and it offers a text interview instead.
 - **The interviewer adapts.** Your answer is scored _before_ the next question
   is written, and the verdict steers what comes next. A vague answer gets
   drilled for specifics; a strong one gets pushed a level deeper.
-- **Live coaching** (optional, text interviews only) shows a one-line hint under
-  each of your answers, plus running scores for clarity, specificity, confidence
-  and structure. Voice interviews never show it: a real interviewer does not
-  grade you mid-interview, so the same feedback waits for the report.
+- **Live coaching** is a panel beside the interview on wide screens: four
+  running measures and notes on your last answer. Three are the same in both
+  modes (Confidence, Relevance, Conciseness). The fourth is what that mode can
+  measure: your answer's length in words when you type, and your speaking pace
+  in words a minute, taken from the speech itself, when you speak. In a text
+  interview the Live coaching setting controls the panel and adds a one-line
+  hint under each answer. In a voice interview the panel opens by default and
+  there is no hint; the delivery note sits under each answer instead.
 - **The interviewer behaves like a real one.** It never calls the interview
   practice, never praises or grades your answers out loud, and never explains
   how to structure an answer. It assesses; the coaching comes afterwards.
