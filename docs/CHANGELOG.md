@@ -14,6 +14,64 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-27
+
+### The landing page says only what the app does
+
+**Documents:** `DESIGN.md` (two rules under Landing page and the header's
+breakpoint, one under Motion), `FEATURES.md` (Live coaching).
+
+An audit of every claim on the landing page against the code. Most held. These
+did not, and each is now either true or gone:
+
+| Claim on the page | What the app does | Now |
+| --- | --- | --- |
+| The hero's "Live score" climbing 78 → 88 | No single live score exists on the interview screen | The header's real "Question n of ~6" |
+| A rail headed "This round scores" with STAR bars | The rail is "Live coaching": Confidence, Relevance, Speaking pace, Conciseness, and notes | The real rail, with values from its own formulas |
+| "Type your answer, or hold to speak" with a microphone | Text and voice are separate screens; voice is tap, and the microphone opens by itself | The text composer: "Your answer…" and Send |
+| "We improved things" flagged as "Vague on impact" | The detector flags nothing in that sentence, and "Vague on impact" appears nowhere in the app | An answer the detector does flag, followed through the app |
+| "Six kinds of round" and "2 practice modes", typed | Counts must be derived (`DESIGN.md`, "Honest copy") | `ROUND_TYPES.length` and the new `PRACTICE_MODES` |
+| "Setup takes a minute" | Never measured | "You describe the role." |
+| "A different interviewer in each" round of a loop | Optional: a round without one inherits the session's | "…its own interviewer if you like" |
+| Per-answer STAR bars under "Honest scoring" | No screen shows STAR bars for one answer | The report's dimension profile, and the note under one answer |
+| Report scores "on structure, specificity and confidence" | The report scores the round's rubric: STAR parts, specificity, clarity; or the technical areas | "A score for each rubric part…" |
+| "You predicted 70. Solid: meets the rubric…" | That sentence is the analyzer's internal band; the report says "You predicted 70% — close to how it went." | The report's own sentence, from `predictionDetail` |
+| A "Last six sessions" chart in the report | The report compares with the last session; trends are in Analytics | "+6 vs last session", and "in Analytics" on the bullet |
+| A voice strip in the report: "1 pause over 3 s" | Long pauses start at 2.5 s (`LONG_PAUSE_SECONDS`), and delivery shows under each spoken answer and in Analytics, not in the report | Removed from the report mock; the bullet says where it is |
+| "Tightened rewrite" | The report calls it "Your answer, tightened" | The report's label and hint |
+| "The fastest way to learn how interviewers hear you" | Unmeasured | What the prediction actually shows: the gap between your read and the interviewer's |
+
+The report mocks and the hero demo are now computed rather than typed: the
+page runs the report's and the interview screen's own functions over example
+readings, and three tests (`animated-demo`, `follow-up-scroll`,
+`landing-copy`) fail if the page and the app drift apart.
+
+**The rail's "Speaking pace" measured length.** It scored how close an answer's
+word count came to 95, a target nothing explained. So it showed a pace for
+typed answers, floored a tight 30-word answer at 38% (the same as a 160-word
+one), and in a voice interview could read 38% beside the real "148 wpm" printed
+under the answer. It now shows what it names: in a voice interview, words a
+minute from the speech (the per-answer delivery snapshots the session already
+saved, now exposed by the turn state, so it survives a reload); in a text
+interview, "Answer length" in words, with no target. The hero demo, a text
+interview, could then drop its answers from about 75 words to about 37.
+`live-feedback-sidebar.test.ts` pins both modes.
+
+**`FEATURES.md` described a different panel.** It said live coaching was text
+only ("voice interviews never show it") and listed its measures as clarity,
+specificity, confidence and structure. The voice screen opens the panel by
+default, and the measures are Confidence, Relevance, Conciseness and the one
+above. The document now describes the panel as it is.
+
+**The landing header overflowed at tablet width.** Its five section links
+appeared from 768px, where the row needs about 965px, so "Create account"
+pushed the page wider than the screen. The links now appear from 1024px; below
+that the header is the phone one.
+
+**Sources:** none added.
+
+---
+
 ## 2026-09-24
 
 ### What an error message tells a stranger

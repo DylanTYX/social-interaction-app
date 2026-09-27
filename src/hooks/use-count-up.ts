@@ -20,10 +20,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * should begin (on scroll into view, on reveal, on a fetch landing). It is not
  * automatic: every caller here animates in response to an event, not on mount.
  *
- * `start` counts from wherever the value currently is, not from zero. That is
- * a no-op for the callers that begin at 0, and it is the whole behaviour for
- * the landing-page demo, whose score climbs 0 → 78 → 88 across the script and
- * would otherwise drop back to zero before each rise.
+ * `start` counts from wherever the value currently is, not from zero, so a
+ * second `start` continues from the first rather than dropping back to zero.
  */
 export function useCountUp(durationMs = 1200) {
   const [value, setValue] = useState(0);

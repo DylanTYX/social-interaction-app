@@ -5,7 +5,9 @@ import {
   type InterviewLoopConfig,
 } from "./interview-rounds";
 
-export type PracticeMode = "text" | "voice";
+/** Every way to answer. The landing page counts these rather than typing a number. */
+export const PRACTICE_MODES = ["text", "voice"] as const;
+export type PracticeMode = (typeof PRACTICE_MODES)[number];
 
 export interface VoiceSetupConfig {
   // Stored records may still carry `sttEnabled` or `microphoneChecked`. Both

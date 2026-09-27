@@ -28,7 +28,7 @@ type InterviewStatePanelProps = {
  * Each line below is the short form of that strategy's entry in `REASONS`
  * (`decision-engine.ts`). If those change, these are wrong.
  */
-const STRATEGY_LABELS: Record<InterviewStrategy, string> = {
+export const STRATEGY_LABELS: Record<InterviewStrategy, string> = {
   CLARIFY_SITUATION: "Asking for the missing context",
   DRILL_SPECIFICITY: "Pressing for specifics",
   CHALLENGE_OWNERSHIP: "Testing personal ownership",

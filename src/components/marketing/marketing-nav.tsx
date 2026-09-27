@@ -76,7 +76,7 @@ export function MarketingNav({ links }: MarketingNavProps) {
         scrolled ? "border-slate-200" : "border-transparent",
       )}
     >
-      <div className="mx-auto grid h-[68px] max-w-[1180px] grid-cols-[auto_1fr] items-center gap-6 px-6 md:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto grid h-[68px] max-w-[1180px] grid-cols-[auto_1fr] items-center gap-6 px-6 lg:grid-cols-[1fr_auto_1fr]">
         <Link
           href="#top"
           className="font-display text-[22px] font-bold tracking-[-0.02em] text-navy"
@@ -86,7 +86,7 @@ export function MarketingNav({ links }: MarketingNavProps) {
 
         <nav
           aria-label="Page sections"
-          className="hidden items-center justify-center gap-0.5 md:flex"
+          className="hidden items-center justify-center gap-0.5 lg:flex"
         >
           {links.map(({ id, label }) => {
             const isActive = active === id;

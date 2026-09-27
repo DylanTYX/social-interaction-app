@@ -104,8 +104,10 @@ palette, page title, button and docs.
 
 - Container `max-w-295` (1180px), `px-6`.
 - Section rhythm `py-16 md:py-24 lg:py-28`. Backgrounds alternate white and `slate-50`. The page closes with a full-bleed navy section that carries the footer.
-- **Header.** Three zones: wordmark left; page links centred as plain text with a blue active underline; account actions right. "Sign in" is a ghost button and "Create account" the filled one, so the two doors are named and weighted differently. `MarketingNav` computes the active section on scroll.
+- **Header.** Three zones: wordmark left; page links centred as plain text with a blue active underline; account actions right. The links need about 965px, so they appear from `lg`; below it the header is the wordmark and the two buttons. "Sign in" is a ghost button and "Create account" the filled one, so the two doors are named and weighted differently. `MarketingNav` computes the active section on scroll.
 - **Interface mocks.** White window, `rounded-[14px]`, `border-slate-200`, `shadow-soft-lg`, a header row with a round tag and a status chip, `slate-100` hairlines, real content. See `AnimatedDemo`.
+- **A mock shows only what the app does.** Every label in it is one the screen it depicts uses, and every figure and sentence is what the app produces for the example's input, computed by the app's own functions or pinned to them by a test. The inputs (an answer, the analyzer's reading of it) are the only invented part. The hero demo is the text interview screen: its question count, the chip under each answer and the Live coaching rail. The report mocks run the report's own captions over `landing-examples.ts`. Labels copied from app screens are listed in `landing-copy.test.ts`, which fails when either side changes.
+- **One story is scroll-driven.** "It follows up on what you actually said" follows one answer through the app as labelled cards: the interview, Advanced system state, the follow-up, the report. It is a trace, not a second interview window, because the hero already is one.
 
 ## App screens
 
@@ -207,6 +209,7 @@ of it:
 - Landing sections enter through `Reveal`; app lists through `CONTENT_ENTER`, `ROW_ENTER` and `staggerDelay` in `lib/motion.ts`; numbers count through `useCountUp`.
 - `prefers-reduced-motion` is honoured globally in `globals.css`; JS-driven motion checks `matchMedia` itself.
 - No ambient motion.
+- **At most one pinned section, and only where it works.** `FollowUpScroll` holds its story in place and advances one step per stretch of scroll, only on screens at least `64rem` wide and `42rem` tall with motion allowed. Everywhere else, and before hydration, it is an ordinary story showing the finished frame. Scrolling stays native: no smooth-scroll library, no snapping, nothing that changes how far a wheel or trackpad moves the page. Its content must fit the pinned frame at `1024 × 672`, the smallest screen that gets it.
 
 ## Copy
 

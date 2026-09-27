@@ -1,18 +1,36 @@
 import { Fragment } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CircleAlert, TrendingUp } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AnimatedDemo } from "@/components/marketing/animated-demo";
+import { FollowUpScroll } from "@/components/marketing/follow-up-scroll";
+import {
+  EXAMPLE_ANALYSES,
+  EXAMPLE_NOTED_ANSWER,
+  EXAMPLE_REPORT,
+} from "@/components/marketing/landing-examples";
 import {
   MarketingNav,
   type MarketingNavLink,
 } from "@/components/marketing/marketing-nav";
 import { Reveal } from "@/components/marketing/reveal";
+import { RubricRadarExample } from "@/components/marketing/rubric-radar-example";
 import { StatCounter } from "@/components/marketing/stat-counter";
 import { TryQuestion } from "@/components/marketing/try-question";
 import { COMPETENCIES } from "@/lib/competencies";
+import { describeDifficulty } from "@/lib/interview-difficulty";
+import { buildInterviewMetrics } from "@/lib/interview-metrics";
 import { ROUND_TYPES, type InterviewRoundType } from "@/lib/interview-rounds";
+import { createInterviewSessionState } from "@/lib/interview-session-state";
+import { PRACTICE_MODES } from "@/lib/interview-setup";
+import {
+  communicationDetail,
+  durationDetail,
+  predictionDetail,
+  starDetail,
+} from "@/lib/report-insights";
 import { ROUND_TYPE_SPECS } from "@/lib/round-types";
 import { TILE_ACCENT, TILE_COLORS } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
@@ -74,6 +92,31 @@ const H2 =
   "font-display text-[clamp(1.85rem,3.1vw,2.6rem)] font-bold leading-[1.1] tracking-tight text-balance text-slate-900";
 const LEDE = "text-lg leading-relaxed text-pretty text-slate-600";
 const MOCK = "rounded-[14px] border border-slate-200 bg-white p-5 shadow-soft-md";
+const PANEL_LABEL = "text-xs font-semibold tracking-wide text-slate-500 uppercase";
+
+/** A count in words, for a heading. Counts are derived, so the word is too. */
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+function countWord(count: number): string {
+  const word = NUMBER_WORDS[count] ?? String(count);
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+/*
+ * The example report, computed the way the report computes it: the session
+ * metrics from the answers' readings, then the report's own captions. See
+ * `landing-examples.ts`.
+ */
+const EXAMPLE_METRICS = buildInterviewMetrics({
+  analyses: EXAMPLE_ANALYSES,
+  state: createInterviewSessionState("example", "Maya Kim"),
+  restoredTurns: 0,
+});
+const EXAMPLE_SCORE = Math.round(EXAMPLE_METRICS.averageOverallScore);
+const EXAMPLE_DIFFICULTY = describeDifficulty(
+  EXAMPLE_REPORT.strictness,
+  EXAMPLE_REPORT.warmth,
+);
+const EXAMPLE_NOTE = EXAMPLE_ANALYSES[EXAMPLE_NOTED_ANSWER];
 
 /** A round's name in its own colour. The only place round colours appear as chips. */
 function RoundTag({ type }: { type: InterviewRoundType }) {
@@ -108,16 +151,27 @@ function SectionHead({
   );
 }
 
+type StoryCopy = { eyebrow: string; title: string; body: string };
+
+function StoryText({ eyebrow, title, body }: StoryCopy) {
+  return (
+    <>
+      <p className={EYEBROW}>{eyebrow}</p>
+      <h3 className="font-display text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-tight tracking-[-0.02em] text-balance">
+        {title}
+      </h3>
+      <p className="text-base leading-relaxed text-pretty text-slate-600">
+        {body}
+      </p>
+    </>
+  );
+}
+
 function Story({
-  eyebrow,
-  title,
-  body,
   flip = false,
   children,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
+  ...copy
+}: StoryCopy & {
   flip?: boolean;
   children: React.ReactNode;
 }) {
@@ -129,13 +183,7 @@ function Story({
           flip && "md:order-2",
         )}
       >
-        <p className={EYEBROW}>{eyebrow}</p>
-        <h3 className="font-display text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-tight tracking-[-0.02em] text-balance">
-          {title}
-        </h3>
-        <p className="text-base leading-relaxed text-pretty text-slate-600">
-          {body}
-        </p>
+        <StoryText {...copy} />
       </div>
       <div className="min-w-0">{children}</div>
     </Reveal>
@@ -218,7 +266,7 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 flex items-center justify-center gap-5 sm:gap-12 md:mt-12">
-              <StatCounter value={2} label="Practice modes" />
+              <StatCounter value={PRACTICE_MODES.length} label="Practice modes" />
               <div className="h-13 w-px bg-slate-200" aria-hidden="true" />
               {/* Derived, not typed: the count follows the product. */}
               <StatCounter
@@ -240,7 +288,7 @@ export default function LandingPage() {
             <SectionHead
               eyebrow="How it works"
               title="Set up the role. Answer questions. Read the report."
-              lede="Setup takes a minute. The interview runs like a real one. The report explains every score."
+              lede="You describe the role. The interview runs like a real one. The report explains every score."
             />
             <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {STEPS.map((step, index) => (
@@ -271,82 +319,69 @@ export default function LandingPage() {
               lede="A question bank can't hear what you left out, and it doesn't know the job. This does both."
             />
 
-            <Story
-              eyebrow="Adaptive follow-ups"
-              title="It follows up on what you actually said."
-              body="A vague answer gets drilled for specifics. A strong one gets pushed a level deeper. The next question is chosen from your last answer, not from a list."
-            >
-              <div className={MOCK}>
-                <MockHead>
-                  <span>Your answer</span>
-                  <span className="inline-flex h-6 items-center rounded-md bg-warning-muted px-2 text-xs font-semibold text-warning-emphasis">
-                    Vague on impact
-                  </span>
-                </MockHead>
-                <p className="text-[15px] leading-relaxed text-slate-900">
-                  &ldquo;When the API kept timing out, I got the team together
-                  and{" "}
-                  <mark className="rounded-[2px] bg-warning-muted px-0.5 text-inherit shadow-[inset_0_-2px_0_var(--color-warning)]">
-                    we improved things
-                  </mark>{" "}
-                  until the alerts stopped.&rdquo;
-                </p>
-                <ArrowRow label="Follow-up chosen" />
-                <div className="rounded-[10px] bg-primary-subtle px-3.5 py-3 text-[14.5px] leading-relaxed text-blue-900">
-                  Which change was yours, and what did the timeout rate look
-                  like before and after it?
-                </div>
-              </div>
-            </Story>
+            {/* Scroll-driven on large screens; the same finished frame as an
+                ordinary story everywhere else. */}
+            <FollowUpScroll
+              intro={
+                <StoryText
+                  eyebrow="Adaptive follow-ups"
+                  title="It follows up on what you actually said."
+                  body="A vague answer gets drilled for specifics. A strong one gets pushed a level deeper. The next question is chosen from your last answer, not from a list."
+                />
+              }
+            />
 
             <Story
               flip
               eyebrow="Honest scoring"
               title="Scored against the real rubric for the round."
-              body="Behavioral answers are judged on Situation, Task, Action and Result. Technical ones on correctness, complexity and edge cases. Each score says what was missing, in plain words."
+              body="Behavioral answers are judged on Situation, Task, Action and Result, and on how specific and clear you were. Technical ones on correctness, complexity and edge cases, among others. Each answer's score says what was missing, in plain words."
             >
+              {/* The report's dimension profile and the note under one
+                  answer, both drawn from the example round by the report's
+                  own code. */}
               <div className={MOCK}>
                 <MockHead>
-                  <span>Answer 3 · marked</span>
+                  <span>Dimension profile</span>
                   <RoundTag type="behavioral" />
                 </MockHead>
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-display text-[40px] font-bold leading-none tracking-[-0.03em] text-navy tabular-nums">
-                    64
-                  </span>
-                  <span className="text-[13px] text-slate-500">out of 100</span>
-                </div>
-                <div className="mt-4 flex flex-col gap-3">
-                  {[
-                    ["Situation", 8],
-                    ["Task", 7],
-                    ["Action", 4],
-                    ["Result", 3],
-                  ].map(([label, score]) => (
-                    <div
-                      key={label}
-                      className="grid grid-cols-[92px_1fr_34px] items-center gap-3 text-[13.5px] text-slate-600"
-                    >
-                      <span>{label}</span>
-                      <span className="block h-2 overflow-hidden rounded-full bg-slate-100">
-                        <span
-                          className="block h-full rounded-full bg-primary"
-                          style={{ width: `${Number(score) * 10}%` }}
-                        />
-                      </span>
-                      <span className="text-right font-semibold text-slate-900 tabular-nums">
-                        {score}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-4 border-t border-slate-100 pt-3.5 text-sm leading-relaxed text-slate-600">
-                  <b className="font-semibold text-slate-900">
-                    What was missing:
-                  </b>{" "}
-                  the action is the team&apos;s, not yours, and the result has
-                  no number attached.
+                <p className="-mt-1.5 text-[13px] text-slate-500">
+                  Averaged across this round&apos;s scored answers, on the STAR
+                  rubric.
                 </p>
+                <div className="mt-2">
+                  <RubricRadarExample />
+                </div>
+                <div className="mt-3 border-t border-slate-100 pt-3.5">
+                  <p className={PANEL_LABEL}>
+                    Under answer {EXAMPLE_NOTED_ANSWER + 1}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge
+                      variant={
+                        EXAMPLE_NOTE.overallScore >= 75 ? "success" : "warning"
+                      }
+                      className="font-semibold tabular-nums"
+                    >
+                      {EXAMPLE_NOTE.overallScore}%
+                    </Badge>
+                    <span className="text-xs text-slate-500">this answer</span>
+                  </div>
+                  <ul className="mt-2 space-y-1 text-xs leading-relaxed">
+                    {EXAMPLE_NOTE.gaps.map((gap) => (
+                      <li
+                        key={gap}
+                        className="flex gap-1.5 text-warning-emphasis"
+                      >
+                        <CircleAlert
+                          className="mt-0.5 size-3.5 shrink-0"
+                          aria-hidden
+                        />
+                        <span>{gap}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </Story>
 
@@ -382,9 +417,9 @@ export default function LandingPage() {
         <section id="rounds" className={cn(SECTION, "bg-slate-50")}>
           <div className={WRAP}>
             <SectionHead
-              eyebrow="Six kinds of round"
+              eyebrow={`${countWord(ROUND_TYPES.length)} kinds of round`}
               title="Each round is scored the way that round is actually judged."
-              lede="Run one on its own, or chain several into a full loop with a different interviewer in each."
+              lede="Run one on its own, or chain several into a full loop, and give each round its own interviewer if you like."
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ROUND_ORDER.map((type, index) => {
@@ -447,27 +482,27 @@ export default function LandingPage() {
               <p className={EYEBROW}>Reports</p>
               <h2 className={H2}>Predict your score. Then see why.</h2>
               <p className={LEDE}>
-                Before the number appears you guess it, which is the fastest way
-                to learn how interviewers actually hear you. Then the report
-                breaks it down.
+                Before the number appears you guess it, so you learn how far
+                your own read of an answer is from the interviewer&apos;s. Then
+                the report breaks it down.
               </p>
               <ul className="mt-1.5 flex flex-col gap-3">
                 {[
                   [
-                    "Per-dimension scores",
-                    " on structure, specificity and confidence, with the reason for each.",
+                    "A score for each rubric part",
+                    ", with the weakest one named and what to do about it.",
                   ],
                   [
-                    "A suggested answer",
-                    " and a tightened rewrite of your own.",
+                    "A stronger answer",
+                    " and your own answer tightened, for any answer you choose.",
                   ],
                   [
                     "Trends across sessions",
-                    ", so you can see where you're improving and what to work on next.",
+                    " in Analytics, so you can see where you're improving and what to work on next.",
                   ],
                   [
                     "Voice delivery",
-                    ", when you speak your answers: pace, filler words and long pauses, measured as you talk.",
+                    ", when you speak your answers: pace, filler words and long pauses under each answer, and over time in Analytics.",
                   ],
                 ].map(([lead, rest]) => (
                   <li
@@ -488,114 +523,78 @@ export default function LandingPage() {
             </Reveal>
 
             <Reveal delay={80}>
+              {/* The top of the report for the example round, computed by the
+                  report's own functions: the score, what your guess and the
+                  interviewer's difficulty say about it, the three tiles, and
+                  one answer tightened. */}
               <div className="overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-soft-lg">
-                <div className="grid grid-cols-[auto_1fr] items-center gap-5 border-b border-slate-100 p-5">
-                  <div className="font-display text-[56px] font-bold leading-none tracking-[-0.04em] text-slate-900 tabular-nums">
-                    74
-                    <span className="text-lg font-semibold tracking-normal text-slate-500">
-                      /100
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm text-slate-500">Overall score</p>
+                    <p className="font-display text-[56px] leading-none font-bold tracking-[-0.04em] text-navy tabular-nums">
+                      {EXAMPLE_SCORE}%
+                    </p>
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-success-emphasis">
+                      <TrendingUp className="h-3.5 w-3.5" aria-hidden />+
+                      {EXAMPLE_SCORE - EXAMPLE_REPORT.previousScore} vs last
+                      session
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1.5 text-[13.5px] text-slate-600">
-                    <b className="text-[15px] font-semibold text-slate-900">
-                      Behavioral · Senior Product Engineer
-                    </b>
-                    <span>
-                      You predicted 70. Solid: meets the rubric with specifics,
-                      without being exceptional.
-                    </span>
+                  <div className="space-y-1.5 sm:max-w-xs sm:border-l sm:border-slate-200 sm:pl-5">
+                    <p className="text-sm font-medium text-slate-700">
+                      {predictionDetail(EXAMPLE_REPORT.predicted, EXAMPLE_SCORE)}
+                    </p>
+                    <p className="text-xs leading-relaxed text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        {EXAMPLE_DIFFICULTY.label}.
+                      </span>{" "}
+                      {EXAMPLE_DIFFICULTY.note}
+                    </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2">
-                  <div className="px-5 py-4.5">
-                    <h4 className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                      Last six sessions
-                    </h4>
-                    <svg
-                      className="block h-18.5 w-full text-primary"
-                      viewBox="0 0 300 74"
-                      preserveAspectRatio="none"
-                      role="img"
-                      aria-label="Scores over the last six sessions, rising from 52 to 74"
-                    >
-                      <defs>
-                        <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0" stopColor="currentColor" stopOpacity=".22" />
-                          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <polygon
-                        fill="url(#trend-fill)"
-                        points="0,60 60,52 120,44 180,47 240,30 300,20 300,74 0,74"
-                      />
-                      <polyline
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        points="0,60 60,52 120,44 180,47 240,30 300,20"
-                      />
-                      <circle cx="300" cy="20" r="4" fill="currentColor" />
-                    </svg>
-                    <div className="mt-1.5 flex justify-between text-xs text-slate-500 tabular-nums">
-                      <span>52</span>
-                      <span>74</span>
+                <div className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-3">
+                  {[
+                    [
+                      "Communication",
+                      `${Math.round(EXAMPLE_METRICS.averageConfidenceScore * 10)}%`,
+                      communicationDetail(
+                        EXAMPLE_METRICS.averageConfidenceScore,
+                        EXAMPLE_ANALYSES,
+                      ),
+                    ],
+                    [
+                      "STAR average",
+                      `${Math.round(EXAMPLE_METRICS.averageSTARScore * 10)}%`,
+                      starDetail(EXAMPLE_ANALYSES),
+                    ],
+                    [
+                      "Duration",
+                      `${EXAMPLE_REPORT.durationMinutes} min`,
+                      durationDetail(
+                        EXAMPLE_REPORT.durationMinutes,
+                        EXAMPLE_ANALYSES.length,
+                      ),
+                    ],
+                  ].map(([label, value, caption]) => (
+                    <div key={label} className="bg-white px-5 py-4">
+                      <p className="text-[13px] text-slate-500">{label}</p>
+                      <p className="mt-1.5 font-display text-2xl leading-none font-bold tracking-tight text-navy tabular-nums">
+                        {value}
+                      </p>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                        {caption}
+                      </p>
                     </div>
-                  </div>
-                  <div className="border-t border-slate-100 px-5 py-4.5 sm:border-t-0 sm:border-l">
-                    <h4 className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                      This answer
-                    </h4>
-                    <div className="flex flex-col gap-2.5">
-                      {[
-                        ["Structure", 8],
-                        ["Specificity", 6],
-                        ["Confidence", 7],
-                      ].map(([label, score]) => (
-                        <div
-                          key={label}
-                          className="grid grid-cols-[80px_1fr_28px] items-center gap-2.5 text-[13px] text-slate-600"
-                        >
-                          <span>{label}</span>
-                          <span className="block h-1.75 overflow-hidden rounded-full bg-slate-100">
-                            <span
-                              className="block h-full rounded-full bg-primary"
-                              style={{ width: `${Number(score) * 10}%` }}
-                            />
-                          </span>
-                          <span className="text-right font-semibold text-slate-900 tabular-nums">
-                            {score}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-5.5 gap-y-2.5 border-t border-slate-100 px-5 py-3.5 text-[13px] text-slate-600 tabular-nums">
-                  <h4 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    Voice delivery
-                  </h4>
-                  <span>
-                    <b className="text-sm font-semibold text-slate-900">148</b>{" "}
-                    words / min
-                  </span>
-                  <span>
-                    <b className="text-sm font-semibold text-slate-900">3</b>{" "}
-                    filler words
-                  </span>
-                  <span>
-                    <b className="text-sm font-semibold text-slate-900">1</b>{" "}
-                    pause over 3 s
-                  </span>
-                </div>
-                <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 text-[13.5px] leading-relaxed text-slate-600">
-                  <b className="font-semibold text-slate-900">
-                    Tightened rewrite:
-                  </b>{" "}
-                  &ldquo;The roadmap changed mid-quarter. I re-scoped to the two
-                  changes with the highest reach, and we still launched on the
-                  14th with a 12% lift.&rdquo;
+                <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
+                  <p className={PANEL_LABEL}>Your answer, tightened</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Your own facts, restructured. You could say this tomorrow.
+                  </p>
+                  <p className="mt-2 text-[13.5px] leading-relaxed text-slate-700">
+                    &ldquo;{EXAMPLE_REPORT.rewrite}&rdquo;
+                  </p>
                 </div>
               </div>
             </Reveal>
