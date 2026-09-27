@@ -87,3 +87,22 @@ export const EXAMPLE_REPORT = {
   rewrite:
     "The roadmap changed mid-quarter. I re-scoped to the two changes with the highest reach, and we still launched on the 14th with a 12% lift.",
 } as const;
+
+/**
+ * The answer under "It follows up on what you actually said".
+ *
+ * The phrase is the one the detector flags in it, the chip is the report's
+ * reading of that gap, and the follow-up asks what the decision engine tells
+ * the interviewer to ask at every probing depth — `follow-up-example.test.ts`
+ * fails if any of the three drifts. Only the follow-up's wording is an
+ * example, since a model writes it.
+ */
+export const FOLLOW_UP_EXAMPLE = {
+  answerBefore: "When our checkout API kept timing out during a sale, I ",
+  marker: "helped with",
+  answerAfter:
+    " the fix. We put a cache in front of pricing and the alerts stopped.",
+  reading: "your personal role is unclear",
+  followUp:
+    "You said you helped with the fix. Which part of it were you responsible for?",
+} as const;

@@ -5,11 +5,11 @@ import { ArrowRight, CircleAlert, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AnimatedDemo } from "@/components/marketing/animated-demo";
-import { FollowUpScroll } from "@/components/marketing/follow-up-scroll";
 import {
   EXAMPLE_ANALYSES,
   EXAMPLE_NOTED_ANSWER,
   EXAMPLE_REPORT,
+  FOLLOW_UP_EXAMPLE,
 } from "@/components/marketing/landing-examples";
 import {
   MarketingNav,
@@ -151,27 +151,16 @@ function SectionHead({
   );
 }
 
-type StoryCopy = { eyebrow: string; title: string; body: string };
-
-function StoryText({ eyebrow, title, body }: StoryCopy) {
-  return (
-    <>
-      <p className={EYEBROW}>{eyebrow}</p>
-      <h3 className="font-display text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-tight tracking-[-0.02em] text-balance">
-        {title}
-      </h3>
-      <p className="text-base leading-relaxed text-pretty text-slate-600">
-        {body}
-      </p>
-    </>
-  );
-}
-
 function Story({
+  eyebrow,
+  title,
+  body,
   flip = false,
   children,
-  ...copy
-}: StoryCopy & {
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
   flip?: boolean;
   children: React.ReactNode;
 }) {
@@ -183,7 +172,13 @@ function Story({
           flip && "md:order-2",
         )}
       >
-        <StoryText {...copy} />
+        <p className={EYEBROW}>{eyebrow}</p>
+        <h3 className="font-display text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-tight tracking-[-0.02em] text-balance">
+          {title}
+        </h3>
+        <p className="text-base leading-relaxed text-pretty text-slate-600">
+          {body}
+        </p>
       </div>
       <div className="min-w-0">{children}</div>
     </Reveal>
@@ -319,17 +314,35 @@ export default function LandingPage() {
               lede="A question bank can't hear what you left out, and it doesn't know the job. This does both."
             />
 
-            {/* Scroll-driven on large screens; the same finished frame as an
-                ordinary story everywhere else. */}
-            <FollowUpScroll
-              intro={
-                <StoryText
-                  eyebrow="Adaptive follow-ups"
-                  title="It follows up on what you actually said."
-                  body="A vague answer gets drilled for specifics. A strong one gets pushed a level deeper. The next question is chosen from your last answer, not from a list."
-                />
-              }
-            />
+            <Story
+              eyebrow="Adaptive follow-ups"
+              title="It follows up on what you actually said."
+              body="A vague answer gets drilled for specifics. A strong one gets pushed a level deeper. The next question is chosen from your last answer, not from a list."
+            >
+              {/* The phrase the detector flags in this answer, the report's
+                  reading of it, and the follow-up the engine asks for. See
+                  `landing-examples.ts`. */}
+              <div className={MOCK}>
+                <MockHead>
+                  <span>Your answer</span>
+                  <span className="inline-flex h-6 items-center rounded-md bg-warning-muted px-2 text-xs font-semibold text-warning-emphasis">
+                    {FOLLOW_UP_EXAMPLE.reading.charAt(0).toUpperCase() +
+                      FOLLOW_UP_EXAMPLE.reading.slice(1)}
+                  </span>
+                </MockHead>
+                <p className="text-[15px] leading-relaxed text-slate-900">
+                  &ldquo;{FOLLOW_UP_EXAMPLE.answerBefore}
+                  <mark className="rounded-[2px] bg-warning-muted px-0.5 text-inherit shadow-[inset_0_-2px_0_var(--color-warning)]">
+                    {FOLLOW_UP_EXAMPLE.marker}
+                  </mark>
+                  {FOLLOW_UP_EXAMPLE.answerAfter}&rdquo;
+                </p>
+                <ArrowRow label="Follow-up chosen" />
+                <div className="rounded-[10px] bg-primary-subtle px-3.5 py-3 text-[14.5px] leading-relaxed text-blue-900">
+                  {FOLLOW_UP_EXAMPLE.followUp}
+                </div>
+              </div>
+            </Story>
 
             <Story
               flip

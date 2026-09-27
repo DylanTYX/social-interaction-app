@@ -16,6 +16,28 @@ be checked against the original before it is quoted in the report.
 
 ## 2026-09-27
 
+### The follow-up story is static again
+
+**Documents:** `DESIGN.md` (the scroll-driven story and the pinned-section rule
+removed; the mock rule says what the follow-up card shows; the setup wizard's
+action bar described as `fixed`).
+
+"It follows up on what you actually said" goes back to its original design: an
+ordinary story, the text beside one card, with no scroll animation. What the
+card claims stays corrected. It highlights "helped with", which the detector
+flags, rather than "we improved things", which it does not. Its chip is the
+report's reading, "Your personal role is unclear", rather than "Vague on
+impact", which the app never says. And its follow-up asks what the engine
+tells the interviewer to ask. `follow-up-example.test.ts` pins all three. The
+trace's cards, the pinned frame and the rules written for them are gone.
+
+Found while removing them: `DESIGN.md` still called the setup wizard's mobile
+action bar `sticky`, two sections after its own Phones rule says it is
+`fixed` because sticky drifted up the screen. The code is `fixed`; the
+sentence now says so.
+
+**Sources:** none added.
+
 ### The landing page says only what the app does
 
 **Documents:** `DESIGN.md` (two rules under Landing page and the header's
