@@ -14,6 +14,26 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-09-28
+
+### The hero demo holds its height
+
+**Documents:** `DESIGN.md` (one rule under Motion).
+
+Reported as the landing page jumping while being read. The hero demo's
+transcript had a fixed height and its Live coaching rail did not, so the taller
+of the two set the demo's height: 564px while the rail listed its two starter
+notes, 500px once it listed one, every loop. Measured through a full loop at
+1440, 1024, 768 and 390 wide, it now holds one height at each (500px, and 420px
+on phones, where the rail is hidden). The rail is held to the transcript's
+height and shows the first of its notes, as the real rail would before
+scrolling; each measure keeps room for a two-line label, so "Answer length"
+wrapping beside its value no longer moves the notes.
+
+**Sources:** none added.
+
+---
+
 ## 2026-09-27
 
 ### The follow-up story is static again
