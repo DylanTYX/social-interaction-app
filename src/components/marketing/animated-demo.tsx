@@ -328,7 +328,10 @@ export function AnimatedDemo() {
           })}
         </div>
 
-        <aside className="hidden flex-col border-l border-slate-100 md:flex">
+        {/* Held to the transcript's height, so the demo never changes size as
+            the loop plays: a height that moved with the rail's contents made
+            the whole page below it jump every few seconds. */}
+        <aside className="hidden flex-col border-l border-slate-100 md:flex md:h-95 md:overflow-hidden">
           <div className="border-b border-slate-100 px-4 py-3.5">
             <h4 className="font-display text-base font-semibold tracking-tight text-slate-900">
               Live coaching
@@ -343,8 +346,14 @@ export function AnimatedDemo() {
               const trend = scoredReadings.map((reading) => reading.points[index]);
               return (
                 <div key={label} className="bg-white p-3">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs text-slate-500">{label}</span>
+                  {/* Room for two lines of label, so "Answer length" wrapping
+                      beside its value does not move the notes below. Top
+                      aligned with a padded label rather than baseline aligned,
+                      which grew the row by the value's taller ascent. */}
+                  <div className="flex min-h-9 items-start justify-between gap-2">
+                    <span className="pt-1 text-xs leading-4 text-slate-500">
+                      {label}
+                    </span>
                     <span className="font-display text-base font-semibold whitespace-nowrap text-navy tabular-nums">
                       {value === null
                         ? "—"
@@ -364,11 +373,13 @@ export function AnimatedDemo() {
               );
             })}
           </div>
-          <p className="px-4 pt-3.5 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          <p className="px-4 pt-2.5 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             Notes on your last answer
           </p>
           <ul className="divide-y divide-slate-100">
-            {(latest ? latest.notes : NOTES_BEFORE_ANSWERS).map((note) => (
+            {/* The first note only. The rail scrolls when its notes overflow,
+                and a second one here would be cut in half by the fixed height. */}
+            {(latest ? latest.notes : NOTES_BEFORE_ANSWERS).slice(0, 1).map((note) => (
               <li key={note.title} className="px-4 py-2.5">
                 <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
                   <span

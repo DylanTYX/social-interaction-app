@@ -208,6 +208,7 @@ of it:
 - Landing sections enter through `Reveal`; app lists through `CONTENT_ENTER`, `ROW_ENTER` and `staggerDelay` in `lib/motion.ts`; numbers count through `useCountUp`.
 - `prefers-reduced-motion` is honoured globally in `globals.css`; JS-driven motion checks `matchMedia` itself.
 - No ambient motion.
+- **A looping demo keeps one height.** Whatever changes as it plays scrolls or is cropped inside a fixed frame; it never resizes the page, which moves everything below it while someone is reading. The hero demo's rail is held to the transcript's height and shows the first note.
 
 ## Copy
 
