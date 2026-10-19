@@ -203,8 +203,19 @@ Two properties are checked on every test run by `src/lib/db/migrations.test.ts`:
 no function writes a column the schema lacks, and no statement uses a table
 before a file has created it.
 
-**Changing the schema:** add `0004_…`. Editing one of the three would not reach
-a database that has already run it.
+**Changing the schema:** add a new numbered file. Editing one of the three would
+not reach a database that has already run it.
+
+**`0004_usage_rows_read_only.sql` (2026-10-18)** is the first such file. `0002`
+revoked inserting usage rows but left update and delete, which Supabase's default
+privileges grant, so a signed-in user could edit or delete their own rows through
+PostgREST. `0004` revokes both. The app never updates or deletes a usage row, and
+deleting a session still sets `llm_usage.session_id` to null, because referential
+actions run with the table owner's privileges. Checked in PGlite against
+`0001`–`0003` with a stub `auth` schema: before `0004` the owner could update
+and delete their rows; after it both are refused, reading and
+`record_llm_usage` still work, and deleting the session leaves the usage row
+with its session link cleared.
 
 ### A database that ran the eighteen
 

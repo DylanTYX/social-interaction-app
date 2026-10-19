@@ -30,7 +30,7 @@ const PLAYBOOKS: InterviewerPlaybook[] = [
     id: "technical-framing",
     tags: ["technical", "framing"],
     content:
-      "For technical rounds, make the candidate clarify constraints before solving. Ask about edge cases and complexity.",
+      "For technical rounds, make the candidate clarify constraints before solving. Ask about edge cases and complexity. If you set a new coding problem, write its full statement in a fenced block tagged problem and say only a short line about it.",
   },
   {
     id: "system-design",

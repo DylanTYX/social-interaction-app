@@ -16,6 +16,12 @@ export async function GET(request: Request) {
       return unauthorized();
     }
 
+    // The library list was the one read with no limit, though it runs a
+    // search in Postgres. Same bucket as the single-document routes, so the
+    // library as a whole shares one budget.
+    const limited = enforceRateLimit(`resumeDoc:${user.id}`, RATE_LIMITS.standard);
+    if (limited) return limited;
+
     const { searchParams } = new URL(request.url);
     const limit = parseLimit(searchParams, { fallback: 20, max: 50 });
 

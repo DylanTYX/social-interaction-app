@@ -1,0 +1,104 @@
+
+> social-interaction-app@0.1.0 eval:coach
+> DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-coach-eval.ts --live --runs=2
+
+========================================================================
+DETERMINISTIC — no API calls, identical on every run
+========================================================================
+
+'before' is the two-branch prompt this replaced, reproduced verbatim in
+this file as a control. No checkout needed.
+
+Prompt differentiation across round types
+  distinct system prompts     6 of 6        (before: 4 of 6)
+  lines shared by all six     11
+  lines unique to behavioral     11
+  lines unique to technical_swe  11
+  lines unique to system_design  11
+  lines unique to cs_fundamentals 11
+  lines unique to screening      11
+  lines unique to hr             11
+
+Rubric coverage — criteria from ROUND_TYPE_SPECS.rubric named in the prompt
+  (the criteria the analyzer will actually score the answer on)
+
+  behavioral      3/3   (before 2/3)  <-- was silent here
+  technical_swe   7/7   (before 7/7)
+  system_design   6/6   (before 6/6)
+  cs_fundamentals 4/4   (before 4/4)
+  screening       4/4   (before 0/4)  <-- was silent here
+  hr              4/4   (before 0/4)  <-- was silent here
+
+  total                 28/28   (before 19/28)
+
+Estimated system-prompt size  ~523 tokens, cached per round type
+
+========================================================================
+LIVE — 22 fixtures, 2 original score(s) each, gpt-5.6-luna
+========================================================================
+  beh-strong-conflict    strong    orig  85.5   rewrite  88.0 (  +2.5)   suggested  89.0
+  beh-weak-conflict      weak      orig  35.0   rewrite  40.0 (  +5.0)   suggested  76.0
+  beh-mediocre-conflict  mediocre  orig  55.0   rewrite  72.0 ( +17.0)   suggested  82.0
+  beh-strong-failure     strong    orig  88.0   rewrite  88.0 (  +0.0)   suggested  88.0
+  beh-weak-failure       weak      orig  30.0   rewrite  57.0 ( +27.0)   suggested  76.0
+  tech-strong-code       strong    orig  94.0   rewrite  84.0 ( -10.0)   suggested  86.0
+  tech-weak-code         weak      orig  47.5   rewrite  82.0 ( +34.5)   suggested  86.0
+  tech-mediocre-code     mediocre  orig  76.0   rewrite  74.0 (  -2.0)   suggested  88.0
+  design-strong          strong    orig  71.0   rewrite  72.0 (  +1.0)   suggested  76.0
+  design-weak            weak      orig  33.5   rewrite  54.0 ( +20.5)   suggested  76.0
+  design-mediocre        mediocre  orig  48.0   rewrite  59.0 ( +11.0)   suggested  72.0
+  screen-strong          strong    orig  82.0   rewrite  78.0 (  -4.0)   suggested  83.0
+  screen-weak            weak      orig  48.0   rewrite  52.0 (  +4.0)   suggested  70.0
+  cs-fundamentals-strong strong    orig  82.0   rewrite  88.0 (  +6.0)   suggested  88.0
+  cs-fundamentals-weak   weak      orig  39.0   rewrite  86.0 ( +47.0)   suggested  88.0
+  hr-strong              strong    orig  88.0   rewrite  88.0 (  +0.0)   suggested  88.0
+  hr-mediocre            mediocre  orig  70.0   rewrite  82.0 ( +12.0)   suggested  88.0
+  hr-weak                weak      orig  52.0   rewrite  74.0 ( +22.0)   suggested  78.0
+  weak-dense             weak      orig  69.0   rewrite  78.0 (  +9.0)   suggested  84.0
+  dense-screening        mediocre  orig  70.0   rewrite  76.0 (  +6.0)   suggested  78.0
+  dense-design           mediocre  orig  43.0   rewrite  68.0 ( +25.0)   suggested  72.0
+  dense-hr               weak      orig  55.0   rewrite  76.0 ( +21.0)   suggested  78.0
+
+--- headline ---
+  Uplift (rewrite − original)       +11.6 points   95% CI [+6.1, +17.2]
+    improved                        17 of 22 fixtures   (exact sign test p = 0.0026)
+    effect size (Cohen's d_z)       0.84
+  Analyzer noise floor              ±0.61 sd on identical text  →  uplift = 18.9× noise
+  Band promotion rate               10 of 22 rewrites moved up a band
+  Suggested answer reaches 'strong' 21 of 22
+
+--- uplift by band (the ceiling check) ---
+  weak       (n=9)    +21.1   #####################
+  mediocre   (n=6)    +11.5   ############
+  strong     (n=7)     -0.6   
+
+--- uplift by round type ---
+  behavioral       +10.1 (6)
+  technical_swe     +7.5 (3)
+  system_design    +14.4 (4)
+  cs_fundamentals  +26.5 (2)
+  screening         +2.0 (3)
+  hr               +13.8 (4)
+
+--- or did it just make them longer? ---
+  mean word delta                   +35 words
+  corr(uplift, word delta)          r = 0.63    <- high r means read uplift as a length effect
+
+--- fact preservation ---
+  candidate quantities retained     70.0%   (21 of 30)
+  novel quantities per rewrite      0.05            <- proxy for fabrication, not proof
+  rewrites with an unsupported claim (blind judge)   77.3%
+
+--- do the tips name the analyzer's gaps? ---
+  coach tips        gap coverage    0.78
+  heuristic tips    gap coverage    0.08   <- control, no API call
+  (matcher is blind: which set is the coach's varies by fixture)
+
+--- contract conformance ---
+  field completeness                100.0%
+  JSON repaired by jsonrepair       0
+  truncated (finish_reason=length)  0
+  contract warnings                 3
+    1 tip(s) over 14 words
+
+  cost of this run                  $0.0446 (97528 in / 52226 out)

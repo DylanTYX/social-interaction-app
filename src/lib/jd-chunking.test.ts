@@ -68,6 +68,46 @@ describe("chunkJobDescription", () => {
     const chunks = chunkJobDescription("Go. ".repeat(800));
     expect(chunks.length).toBeGreaterThan(0);
   });
+
+  const bulletList = Array.from(
+    { length: 24 },
+    (_, i) =>
+      `- Own pipeline ${i + 1} end to end, from ingestion to the dashboards that rely on it.`,
+  ).join("\n");
+
+  it("terminates on a short intro followed by a long bullet list", () => {
+    // Bullets end in ".\n", which is neither break the chunker looks for, so
+    // the last break before the size cap is the one after the intro. That
+    // break used to be accepted, and the next chunk then started back at 0.
+    const intro =
+      "We are hiring a data engineer for our analytics platform team in Singapore. You will work closely with analysts and product managers.";
+    const text = `${intro}\n\n${bulletList}`;
+
+    const chunks = chunkJobDescription(text);
+    const joined = chunks.map((c) => c.content).join("\n");
+
+    expect(chunks[0].content.startsWith("We are hiring")).toBe(true);
+    for (let i = 1; i <= 24; i += 1) {
+      expect(joined).toContain(`- Own pipeline ${i} end to end`);
+    }
+    for (const chunk of chunks) {
+      expect(chunk.content.length).toBeLessThanOrEqual(MAX_CHARS_PER_CHUNK);
+    }
+  });
+
+  it("makes forward progress wherever the last break falls", () => {
+    // Sweeps the break across, and either side of, the overlap window.
+    for (let introLength = 100; introLength <= 260; introLength += 1) {
+      const text = `${"a".repeat(introLength)}\n\n${bulletList}`;
+
+      const chunks = chunkJobDescription(text);
+      const joined = chunks.map((c) => c.content).join("\n");
+
+      expect(joined).toContain("- Own pipeline 1 end to end");
+      expect(joined).toContain("- Own pipeline 24 end to end");
+      expect(chunks.length).toBeLessThanOrEqual(4);
+    }
+  });
 });
 
 describe("buildJobDescriptionTitle", () => {

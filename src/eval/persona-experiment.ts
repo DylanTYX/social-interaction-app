@@ -32,6 +32,7 @@ import {
 import { buildSteeringBlock } from "@/lib/steering-block";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
+import { INTERVIEWER_MODEL, JUDGE_MODEL } from "@/lib/models";
 
 import { makeAnalysis } from "@/lib/test-support/analysis";
 import { detectBehavioralSignals } from "@/lib/text-metrics";
@@ -41,8 +42,6 @@ import { bootstrapDiffCI, mean, stdDev } from "./stats";
 import { DIAL_KEYS, neutralPersona, type DialKey } from "./persona-sweeps";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
-const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "gpt-4o-mini";
 
 /**
  * The one exchange every arm responds to, so only the dial varies.
@@ -314,7 +313,7 @@ async function chat(
  * that rate across runs that are actually different turns. Twelve runs of turn
  * zero would be twelve copies of one decision.
  */
-function steeringFor(
+export function steeringFor(
   cell: Cell,
   run: number,
 ): { block: string; strategy: string } | null {
@@ -348,17 +347,17 @@ function steeringFor(
   };
 }
 
-async function generate(
+export async function generate(
   cell: Cell,
   run: number,
   apiKey: string,
   usage: UsageCollector,
   steering: string | null,
 ): Promise<string> {
-  return chat(apiKey, usage, "interviewer", MODEL, {
+  return chat(apiKey, usage, "interviewer", INTERVIEWER_MODEL, {
     // The app's own interviewer settings, so this measures the deployed
     // behaviour rather than a quieter version of it.
-    ...completionParams(MODEL, {
+    ...completionParams(INTERVIEWER_MODEL, {
       temperature: 0.7,
       maxTokens: 320,
       reasoningEffort: "minimal",
@@ -595,7 +594,7 @@ export async function runExperiment(
 
   return {
     runs,
-    model: MODEL,
+    model: INTERVIEWER_MODEL,
     judgeModel: JUDGE_MODEL,
     followups,
     dials,

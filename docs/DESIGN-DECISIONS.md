@@ -253,8 +253,20 @@ cost does not apply there.
 **What it costs.** The analyzer's known failure — leniency toward fluent,
 confident, wrong answers — might not survive a stronger model. That is
 untested, and it is named as untested in [EVALUATION.md](EVALUATION.md); the
-gated path is `ANALYZER_MODEL=gpt-5-mini npm run eval` against the committed
+gated path is `ANALYZER_MODEL=gpt-6-luna npm run eval` against the committed
 baseline.
+
+**19 October 2026.** OpenAI retired both defaults: the `gpt-5-mini` snapshot
+on 11 December 2026 and `gpt-4o-mini` on 14 January 2027. The decision does
+not change; the gate does the work. Two things did change. The defaults now
+live in one file, [`models.ts`](../src/lib/models.ts), which the harnesses
+read too — the persona harness had kept a `gpt-4o-mini` default of its own
+after the app moved, so its committed live run measured a model the app no
+longer used. And `model-params.ts` learned the third request contract
+(gpt-5.6-\*, gpt-6-\*: `none` in place of `minimal`, sampling parameters at
+`none` only). The candidates, the order of the runs and what counts as
+passing are in [TOKEN-COST.md](TOKEN-COST.md) §"Retirements and the
+migration".
 
 ---
 
@@ -483,6 +495,9 @@ is blocked the card says the question is on screen, which has to be true.
 prefers reading has to ask for it once per session. The default is deliberately
 the harder practice, not the easier one.
 
+**One exception, added later.** A coding problem's statement is written on
+screen, because a real coding interview writes it down too (§18).
+
 **Sources.** Compiled without internet access; verify before quoting.
 
 - Mayer, R. E. (2009). _Multimedia Learning_ (2nd ed.). Cambridge University
@@ -540,6 +555,53 @@ request is part of its meaning. Nothing in the code review process would have
 caught this: the block was well-written, correctly built, covered by tests, and
 sent on every turn. Only generating output and checking whether the model did the
 thing it was told revealed that it did not.
+
+## 18. A coding answer has its own clock, and its problem is written down
+
+**Decision.** In a Technical SWE round, an answer written in the code editor
+gets 20 minutes rather than the prose limit (`CODE_ANSWER_TIME_LIMIT_SECONDS`),
+and the round is planned at five minutes an exchange rather than two. The
+interviewer writes the problem statement in a fence tagged `problem`; it is
+shown as a card in the transcript — in a voice interview too — and pinned above
+the editor while code is being written, and no fenced code is ever spoken.
+
+**What it replaced.** A code answer shared the prose clock: five minutes typed,
+three in a voice interview, after which the half-written function was sent as
+if it were finished. A 25-minute technical round was planned at two minutes an
+exchange, so the header promised about twelve questions in a round whose second
+answer could take most of it. And in a voice interview the problem was read out
+by speech synthesis — brackets, commas and example arrays — and then withheld
+from the screen like every other question (§16).
+
+**Why.** Writing a solution is not a two-minute act. A real coding interview
+gives one problem most of the session, and when time runs out the interviewer
+does not mark it wrong: they ask where you got to. So the clock is now a
+ceiling, not a pace. When it runs out the code is still sent, with a note
+(`CODE_TIME_UP_NOTE`), and the chat route tells the interviewer — after the
+steering note, so it wins — to say they are at time and ask the candidate to
+walk through where they got to, instead of reviewing the fragment as done.
+
+The written problem is the exception §16 already allows for. §16 withholds the
+question because "there is nothing to read in a real interview", and for a
+spoken question that is true. For a coding problem it is not: on a real phone
+screen the interviewer talks and pastes the problem into the shared editor,
+because inputs, constraints and an example cannot be held in your head for
+twenty minutes. So the interviewer now says one or two sentences — the problem
+is on screen, think out loud — and the statement is read, not heard.
+
+Five minutes an exchange is the shape the technical ladder already walks:
+framing, approach, the code, its complexity, its edge cases.
+
+**What it costs.** A long coding answer is a long silence in a voice interview:
+the microphone is closed while the editor is open, so the candidate cannot
+think out loud and type at the same time, as they would with a real
+interviewer. And a candidate who needs a hint mid-problem has to send what they
+have, which ends the answer.
+
+**What was deferred.** Both of those: keeping the microphone open while the
+editor is open, so the code and the spoken reasoning are sent together, and a
+"share progress" action that gets a hint without ending the answer. Each
+touches the speech pipeline or the turn model, not a constant.
 
 ## Decisions still open
 

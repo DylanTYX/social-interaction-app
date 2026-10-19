@@ -17,15 +17,15 @@ import {
   detectBehavioralSignals,
   type LanguageSignals,
 } from "@/lib/text-metrics";
+import { ANALYZER_MODEL } from "@/lib/models";
 import { isTechnicalRound } from "@/lib/round-types";
 
 /**
  * Scoring should be near-deterministic so the same answer doesn't swing
- * between, say, 68 and 81 across runs. We also default to the cheaper model
- * because the analyzer runs on every substantive turn; both are overridable
- * via env so quality/cost can be tuned without a code change.
+ * between, say, 68 and 81 across runs. The model is the cheaper one because
+ * the analyzer runs on every substantive turn (why that one: models.ts); the
+ * temperature applies on every generation that accepts one.
  */
-const ANALYZER_MODEL = process.env.ANALYZER_MODEL ?? "gpt-4o-mini";
 const ANALYZER_TEMPERATURE = 0.1;
 const ANALYZER_MAX_TOKENS = 900;
 /** Second attempt when the first is cut off. See the retry in `analyzeResponse`. */

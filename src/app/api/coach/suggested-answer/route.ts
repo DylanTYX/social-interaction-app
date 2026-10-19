@@ -7,10 +7,10 @@ import { UsageCollector } from "@/lib/api/token-usage";
 import { getCoachAnswer, saveCoachAnswer } from "@/lib/db/coach-answers";
 import {
   COACH_MAX_TOKENS,
-  COACH_MODEL,
   CoachRequestError,
   requestCoaching,
 } from "@/lib/coach-prompt";
+import { COACH_MODEL } from "@/lib/models";
 import { isRoundType } from "@/lib/interview-rounds";
 import { isAnswerMode } from "@/lib/coach-contract";
 import { badRequest, handleRouteError, unauthorized } from "@/lib/api/errors";

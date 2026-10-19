@@ -28,20 +28,41 @@ export interface ModelPrice {
   cachedInput: number;
   /** Embedding models have no completion side; 0 is correct there, not unknown. */
   output: number;
+  /**
+   * GPT-5.6 and later bill tokens written to the prompt cache at 1.25x the
+   * input rate (OpenAI's prompt-caching guide). Absent on earlier models, which
+   * have no write charge.
+   */
+  cacheWrite?: number;
 }
 
 /**
- * Checked against https://developers.openai.com/api/docs/pricing on 2026-09-04.
+ * The smallest prompt that is cached at all on GPT-5.6 and later. Below it
+ * nothing is written, so nothing is billed at the write rate.
+ */
+export const CACHE_MIN_PROMPT_TOKENS = 1024;
+
+/**
+ * Checked against https://developers.openai.com/api/docs/pricing on 2026-10-19.
  * Note the cached-input ratio differs by family: 50% off on GPT-4o-family,
- * 90% off on GPT-5-family — which is part of why gpt-5-mini beats gpt-4o-mini
- * on cached-heavy traffic despite the higher list price.
+ * 90% off on GPT-5-family and later — which is part of why gpt-5-mini beats
+ * gpt-4o-mini on cached-heavy traffic despite the higher list price.
+ *
+ * The gpt-5.6-* and gpt-6-* rows are the replacements OpenAI named for the
+ * retiring defaults (see `MODEL_RETIREMENTS` in models.ts) and the cheaper
+ * alternatives this project would rather move to; they are priced here so a
+ * harness run on a candidate reports its cost instead of "unpriced".
  *
  * **Re-check before quoting these in a report or a viva.** If a rate has moved,
  * fix it here — every consumer reads this one table.
  */
-export const PRICING_CHECKED_ON = "2026-09-04";
+export const PRICING_CHECKED_ON = "2026-10-19";
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
+  "gpt-6-sol": { input: 2, cachedInput: 0.2, output: 10, cacheWrite: 2.5 },
+  "gpt-6-luna": { input: 0.1, cachedInput: 0.01, output: 0.5, cacheWrite: 0.125 },
+  "gpt-5.6-terra": { input: 2, cachedInput: 0.2, output: 12, cacheWrite: 2.5 },
+  "gpt-5.6-luna": { input: 0.2, cachedInput: 0.02, output: 1.2, cacheWrite: 0.25 },
   "gpt-5": { input: 1.25, cachedInput: 0.125, output: 10 },
   "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2 },
   "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },
@@ -75,7 +96,19 @@ export function costOf(record: UsageRecord): CostBreakdown | null {
   const cached = Math.min(record.cachedTokens, record.promptTokens);
   const uncached = record.promptTokens - cached;
 
-  const uncachedInputUsd = (uncached / 1_000_000) * price.input;
+  // On GPT-5.6 and later the first request of a prefix does not just miss the
+  // cache, it writes to it, at a premium. The usage table stores cached tokens
+  // but not written ones, so this is a rule rather than a count: in a prompt
+  // long enough to be cached, everything that was not read from the cache was
+  // written to it, give or take the final partial block (measured on both
+  // gpt-5.6-luna and gpt-6-luna on 2026-10-19: 2,296 of 2,299 prompt tokens
+  // written on the first call, 2,296 read and none written on the second).
+  const uncachedRate =
+    price.cacheWrite !== undefined &&
+    record.promptTokens >= CACHE_MIN_PROMPT_TOKENS
+      ? price.cacheWrite
+      : price.input;
+  const uncachedInputUsd = (uncached / 1_000_000) * uncachedRate;
   const cachedInputUsd = (cached / 1_000_000) * price.cachedInput;
   const outputUsd = (record.completionTokens / 1_000_000) * price.output;
 

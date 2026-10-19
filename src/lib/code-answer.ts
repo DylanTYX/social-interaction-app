@@ -18,6 +18,20 @@ export type CodeLanguage = (typeof CODE_LANGUAGES)[number]["id"];
 
 export const DEFAULT_CODE_LANGUAGE: CodeLanguage = "python";
 
+/**
+ * How long one code answer may run, in either interview mode.
+ *
+ * Code answers used to share the prose limit — five minutes typed, three in a
+ * voice interview — and when it ran out the half-written function was sent.
+ * Five minutes is a sentence or two of prose; it is not enough to write, test
+ * by hand and tidy a solution, which in a real interview takes most of the
+ * round. Twenty minutes is most of a 25-minute technical round, the type's own
+ * default length, and the clock is a ceiling rather than a pace: running out
+ * sends the code with a note, and the interviewer asks where it got to
+ * (`CODE_TIME_UP_NOTE`).
+ */
+export const CODE_ANSWER_TIME_LIMIT_SECONDS = 20 * 60;
+
 export function isCodeLanguage(value: string): value is CodeLanguage {
   return CODE_LANGUAGES.some((l) => l.id === value);
 }

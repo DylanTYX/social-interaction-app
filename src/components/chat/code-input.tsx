@@ -1,6 +1,6 @@
 "use client";
 
-import { NO_RESPONSE_MESSAGE } from "@/lib/chat-contract";
+import { CODE_TIME_UP_NOTE, NO_RESPONSE_MESSAGE } from "@/lib/chat-contract";
 import { useCallback, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  CODE_ANSWER_TIME_LIMIT_SECONDS,
   CODE_LANGUAGES,
   describeCode,
   formatCodeAnswer,
@@ -56,15 +57,16 @@ export function CodeInput({
   disabled,
   language,
   onLanguageChange,
-  timeLimitSeconds = 300,
+  timeLimitSeconds = CODE_ANSWER_TIME_LIMIT_SECONDS,
   timeoutFallbackMessage = NO_RESPONSE_MESSAGE,
 }: {
   onSend: (message: string) => void;
   disabled?: boolean;
   /**
-   * The same limit prose answers get. Without this, switching to the editor
-   * would quietly hand the candidate an untimed answer — the toggle is a
-   * choice of *how* to answer, not of whether the clock runs.
+   * Timed, so switching to the editor never hands the candidate an untimed
+   * answer — but on the code clock (`CODE_ANSWER_TIME_LIMIT_SECONDS`), not the
+   * prose one. Writing a solution takes far longer than saying a sentence, and
+   * on the prose clock the function was sent half-written.
    */
   timeLimitSeconds?: number;
   timeoutFallbackMessage?: string;
@@ -103,10 +105,11 @@ export function CodeInput({
       if (disabled) return false;
       // Half-written code is still an answer, and a partial solution tells the
       // report more than the fallback string does. Fall back only when the
-      // editor is genuinely empty.
+      // editor is genuinely empty. The note marks it unfinished, so the
+      // interviewer asks where it got to instead of reviewing it as done.
       onSend(
         code.trim()
-          ? formatCodeAnswer(code, language, note)
+          ? `${formatCodeAnswer(code, language, note)}\n\n${CODE_TIME_UP_NOTE}`
           : timeoutFallbackMessage,
       );
       setCode("");

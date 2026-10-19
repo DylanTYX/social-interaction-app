@@ -64,15 +64,21 @@ import {
   useInterviewSessionBootstrap,
 } from "@/hooks/use-interview-session-bootstrap";
 import {
-  extractSpeakableSentences,
+  extractSpeakableOutsideCode,
   getSpeechService,
   STOP_LISTENING_TIMEOUT_MS,
 } from "@/lib/speech-service";
 import { resolveVoiceForPersona } from "@/lib/persona-voice";
 import { useSpeechAnswer } from "@/hooks/use-speech-answer";
 import { CodeInput } from "@/components/chat/code-input";
+import { ProblemCard } from "@/components/chat/problem-card";
+import { latestProblemStatement } from "@/lib/problem-statement";
 import { ChoiceChip } from "@/components/ui/choice-chip";
-import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
+import {
+  CODE_ANSWER_TIME_LIMIT_SECONDS,
+  DEFAULT_CODE_LANGUAGE,
+  type CodeLanguage,
+} from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { readJson, apiErrorFrom } from "@/lib/api/fetch-json";
 import { consumeChatStream } from "@/lib/chat-stream";
@@ -192,6 +198,13 @@ function VoiceSimulateInner() {
   });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  // The problem the interviewer last set, pinned above the editor while code
+  // is being written — by then the message that set it has usually scrolled
+  // away under the follow-ups.
+  const currentProblem = useMemo(
+    () => latestProblemStatement(messages),
+    [messages],
+  );
   const [error, setError] = useState<string | null>(null);
   /**
    * Set while the opening greeting is being fetched again after a failure.
@@ -594,9 +607,13 @@ function VoiceSimulateInner() {
 
     const speechService = speechServiceRef.current;
     // `flush: true` because the whole message is already in hand — there is no
-    // partial tail to carry, unlike the streaming path.
-    const { sentences } = extractSpeakableSentences(message, { flush: true });
-    const utterances = sentences.length > 0 ? sentences : [message.trim()];
+    // partial tail to carry, unlike the streaming path. Fenced code is left
+    // out: it is on screen, and read aloud it is brackets and commas.
+    const { sentences: utterances } = extractSpeakableOutsideCode(message, {
+      flush: true,
+    });
+    // A message that is nothing but a written problem has nothing to say.
+    if (utterances.length === 0) return true;
 
     playbackFailedRef.current = false;
     setAudioIssue(null);
@@ -1062,7 +1079,7 @@ function VoiceSimulateInner() {
 
       const enqueueSentences = (flush: boolean) => {
         if (!ttsEnabled) return;
-        const { sentences, rest } = extractSpeakableSentences(ttsBuffer, {
+        const { sentences, rest } = extractSpeakableOutsideCode(ttsBuffer, {
           flush,
           /**
            * Nothing is held back before the first word is out.
@@ -1666,15 +1683,23 @@ function VoiceSimulateInner() {
             )}
 
             {isWritingCode ? (
-              <CodeInput
-                key={`code-${messages.length}`}
-                language={codeLanguage}
-                onLanguageChange={setCodeLanguage}
-                onSend={(answer) => void handleSendCode(answer)}
-                disabled={isSending || turn.stage === "report"}
-                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-                timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
-              />
+              <div className="space-y-3">
+                {currentProblem && (
+                  <ProblemCard
+                    problem={currentProblem}
+                    className="max-h-48 overflow-y-auto"
+                  />
+                )}
+                <CodeInput
+                  key={`code-${messages.length}`}
+                  language={codeLanguage}
+                  onLanguageChange={setCodeLanguage}
+                  onSend={(answer) => void handleSendCode(answer)}
+                  disabled={isSending || turn.stage === "report"}
+                  timeLimitSeconds={CODE_ANSWER_TIME_LIMIT_SECONDS}
+                  timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
+                />
+              </div>
             ) : (
               <VoiceInput
                 isRecording={speech.isRecording}

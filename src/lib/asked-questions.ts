@@ -1,3 +1,6 @@
+import { splitProblemStatement } from "@/lib/problem-statement";
+import { inlineValue } from "@/lib/untrusted-content";
+
 /**
  * The questions already put to the candidate, listed for the interviewer.
  *
@@ -31,13 +34,26 @@ const MAX_QUESTION_CHARS = 160;
  * imperative prompts ("Walk me through your approach.") which carry no `?`.
  */
 export function extractQuestion(message: string): string | null {
+  // A coding problem is the question, and it sits in a fence after a spoken
+  // line such as "take a minute to read it" — which is what the last-sentence
+  // rule below would otherwise record as "already asked". The statement's
+  // first line names the problem, so that is what stops it being set twice.
+  const { problem } = splitProblemStatement(message);
+  const problemLine = problem
+    ?.split("\n")
+    .map((line) => line.trim())
+    .find(Boolean);
+  if (problemLine) return inlineValue(problemLine, MAX_QUESTION_CHARS);
+
   const trimmed = message.trim();
   if (!trimmed) return null;
 
   const questions = trimmed.match(/[^.!?]*\?/g);
   const candidate = questions?.at(-1)?.trim() || trimmed;
 
-  return candidate.replace(/\s+/g, " ").slice(0, MAX_QUESTION_CHARS);
+  // One line, capped, markers defused: this lands in system prompts, and the
+  // message it came from is a row a signed-in user can write directly.
+  return inlineValue(candidate, MAX_QUESTION_CHARS);
 }
 
 /**

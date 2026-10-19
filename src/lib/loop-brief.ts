@@ -1,5 +1,6 @@
 import type { AnalysisResult } from "@/lib/response-analyzer";
 import type { RoundFamily } from "@/lib/round-types";
+import { inlineValue } from "@/lib/untrusted-content";
 
 /**
  * A short handover note from the rounds already completed.
@@ -57,7 +58,22 @@ const MAX_CARRIED_QUESTIONS = 4;
  */
 export const LOOP_BRIEF_TRANSCRIPT_WINDOW = 12;
 
-/** Most-repeated entries first — a theme raised three times outranks one raised once. */
+/**
+ * The length of one strength or gap as it reaches the brief — the same ceiling
+ * `sanitizeNotes` puts on a fresh note.
+ */
+const MAX_THEME_CHARS = 200;
+
+/**
+ * Most-repeated entries first — a theme raised three times outranks one raised once.
+ *
+ * Every entry is cleaned again here, not trusted from the row. The analyzer
+ * sanitises its notes before they are stored, but a signed-in user can write
+ * their own analysis rows directly, and this text lands in a later round's
+ * system prompt. So each entry is one line, capped, with the untrusted-block
+ * markers defused — whatever the row says, it reaches the brief as a short
+ * note and never as a new line of instructions.
+ */
 export function collectTopThemes(
   analyses: Array<Pick<AnalysisResult, "strengths" | "gaps">>,
   key: "strengths" | "gaps",
@@ -69,8 +85,9 @@ export function collectTopThemes(
     const items = analysis?.[key];
     if (!Array.isArray(items)) continue;
     for (const item of items) {
-      if (typeof item !== "string" || !item.trim()) continue;
-      const text = item.trim();
+      if (typeof item !== "string") continue;
+      const text = inlineValue(item, MAX_THEME_CHARS);
+      if (!text) continue;
       counts.set(text, (counts.get(text) ?? 0) + 1);
     }
   }

@@ -8,12 +8,16 @@ was also the only one with no rubric worth the name and no evaluation at all.
 `docs/EVALUATION.md` is about the analyzer. This is about the coach. They are
 not the same pipeline and the difference matters more than it looks.
 
-> **Status: rubric measured, coaching quality not yet measured.**
-> The deterministic half of `npm run eval:coach` has been run and committed —
-> rubric coverage went from **20/29 criteria to 29/29**, and prompt
-> differentiation from **4 of 6 round types to 6 of 6**. The `--live` half,
-> which is the half that measures whether the coaching actually helps, **has not
-> been run.** See [What has not been measured](#what-has-not-been-measured).
+> **Status: rubric measured; coaching measured once, on the analyzer's own
+> scale; no human has read the output as evidence.**
+> The deterministic half of `npm run eval:coach` is committed — rubric coverage
+> went from **19/28 criteria to 28/28**, and prompt differentiation from **4 of
+> 6 round types to 6 of 6**. The `--live` half ran for the first time on 19
+> October 2026: rewrites raised the analyzer's score by **+11.6 points** (95%
+> interval +6.1 to +17.2, 18.9 times the scorer's own noise), most for weak
+> answers and not at all for strong ones. They also run longer, and a human
+> reading is still outstanding. See [Results](#results) and
+> [What has not been measured](#what-has-not-been-measured).
 
 ---
 
@@ -24,8 +28,8 @@ not the same pipeline and the difference matters more than it looks.
 The drills page never calls `analyzeResponse`. It produces no 0-100 score, it
 involves no persona, and it writes nothing to `turn_analyses`. So the anchoring
 work that `docs/EVALUATION.md` is built around — commit `e50e2e4`, the five
-explicit score bands, the 88.9% band accuracy — **has no effect on drills
-whatsoever.** If any part of the report implies drills are "graded", that is
+explicit score bands and the band accuracy they produced — **has no effect on
+drills whatsoever.** If any part of the report implies drills are "graded", that is
 wrong. Drills give you coaching; the interview gives you a score.
 
 The two only meet in one place, and it is new: `npm run eval:coach` uses the
@@ -44,8 +48,8 @@ first appears.
 | Route             | `src/app/api/coach/suggested-answer/route.ts`                                                                                          |
 | Prompt            | `src/lib/coach-prompt.ts`                                                                                                              |
 | Rubric data       | `src/lib/coach-rubric.ts`                                                                                                              |
-| Model             | `gpt-5-mini` at `low` reasoning effort, overridable with `COACH_MODEL` (why: [TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where") |
-| Temperature       | **0.5** — applies only if `COACH_MODEL` is set to a GPT-4-family model; GPT-5 rejects the parameter                                    |
+| Model             | `gpt-5.6-luna` at `low` reasoning effort, overridable with `COACH_MODEL` (why: [TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where"; it replaced `gpt-5-mini`, which retires 2026-12-11) |
+| Temperature       | **0.5** — applies on a GPT-4-family model, or on gpt-5.6-\*/gpt-6-\* with reasoning off; the original GPT-5 models reject the parameter |
 | Output cap        | 1000 visible tokens (`max_completion_tokens` gains reasoning headroom on GPT-5-family)                                                 |
 | Structured output | `response_format: { type: "json_object" }`                                                                                             |
 | Cache key         | `prompt_cache_key: coach:${roundType}:${answerMode}`                                                                                   |
@@ -283,7 +287,7 @@ What it reports, and what each row can do to the conclusion:
 | Rubric recovery (`--recovery`)       | Does coaching differ by round type?                | ~1/6, chance             |
 | Contract conformance                 | Completeness, tip counts, repairs, truncation      | any                      |
 
-The sign test is **exact**, not normal-approximated, because n is 18 — the
+The sign test is **exact**, not normal-approximated, because n is 22 — the
 approximation would be quoted to three decimal places it has not earned. The
 bootstrap CI is **seeded**, so a committed artifact reproduces; an unseeded
 interval is a number a reader cannot check.
@@ -317,13 +321,74 @@ fixture can be passed by a coach that simply copies numbers across.
 
 ### Cost
 
-Roughly 228 calls at `--live --runs=2`, about **$0.06 a run** at `gpt-4o-mini`
-rates — around 3× `npm run eval`, because the coach arm needs three analyzer
-calls for every coach call. The deterministic layer is free and is the default.
+Roughly 228 calls at `--live --runs=2`, about **$0.05 a run** on the shipped
+models ($0.045 measured; $0.069 with `gpt-5-mini` as the coach) — around 1.7×
+`npm run eval`, because the coach arm needs three analyzer calls for every coach
+call. The deterministic layer is free and is the default.
 
 The `UsageCollector` is **deliberately never flushed**: these are synthetic
 fixtures, and writing them to `llm_usage` would contaminate the per-session
 figures `run-cost-report.ts` reads. Same choice `run-eval.ts` makes.
+
+
+### Results
+
+Run on 19 October 2026, 22 fixtures (the 18 scoring fixtures and the four
+added for fact retention), two original scores each. The deployed configuration
+changed three things at once — the coach, the scorer that measures uplift, and
+the judge that flags unsupported claims — so the table also gives the new coach
+measured with the *old* scorer and judge, which holds the instruments fixed and
+compares the coaches alone.
+Outputs: [`coach-eval-gpt-5-mini.txt`](artifacts/coach-eval-gpt-5-mini.txt),
+[`coach-eval-gpt-5.6-luna-old-instruments.txt`](artifacts/coach-eval-gpt-5.6-luna-old-instruments.txt),
+[`coach-eval-gpt-5.6-luna.txt`](artifacts/coach-eval-gpt-5.6-luna.txt).
+
+| | `gpt-5-mini` coach; `gpt-4o-mini` scorer and judge | `gpt-5.6-luna` coach; same scorer and judge | `gpt-5.6-luna` coach; `gpt-6-luna` scorer and judge (shipped) |
+| --- | --- | --- | --- |
+| **Uplift** (95% interval) | +9.7 (+4.7, +16.0) | +11.4 (+6.6, +16.2) | **+11.6** (+6.1, +17.2) |
+| Fixtures improved; sign test | 15 of 22; p = 0.0075 | 17 of 22; p = 0.0169 | 17 of 22; p = 0.0026 |
+| Cohen's d_z | 0.69 | 0.97 | 0.84 |
+| Scorer noise; uplift ÷ noise | ±1.25; 7.7× | ±1.16; 9.8× | ±0.61; 18.9× |
+| Uplift: weak / mediocre / strong | +20.3 / +3.0 / +1.7 | +22.9 / +6.3 / +0.9 | +21.1 / +11.5 / −0.6 |
+| Rewrites that moved up a band | 8 of 22 | 12 of 22 | 10 of 22 |
+| Suggested answer reaches "strong" | 17 of 22 | 14 of 22 | 21 of 22 |
+| Words added; corr(uplift, words) | +10; 0.49 | +29; 0.57 | +35; 0.63 |
+| Candidate quantities kept | 76.7% (23/30) | 73.3% (22/30) | 70.0% (21/30) |
+| Novel quantities per rewrite | 0.23 | **0.00** | 0.05 |
+| Rewrites with an unsupported claim (blind judge) | 45.5% | 50.0% | 77.3% |
+| Tips naming the analyzer's gaps (regex control) | 0.80 (0.34) | **1.00** (0.39) | 0.78 (0.08) |
+| Cost of the run | $0.069 | $0.047 | $0.045 |
+
+What it says, and what it does not:
+
+- **Coaching raises the analyzer's score, and by more than the scorer's own
+  noise,** on every configuration. The interval excludes zero in all three and
+  the sign test is below 0.02. The pattern the ceiling check predicted holds:
+  weak answers gain about 21 points and strong ones nothing, because a strong
+  answer starts in the eighties.
+- **The new coach is at least as good on the coach's own terms.** With the
+  instruments held fixed it adds 1.7 more points, invents no quantities where
+  the old one invented 0.23 a rewrite, and its tips cover every gap the analyzer
+  found. That met the migration criterion — uplift not below the old coach's —
+  and it is why `COACH_MODEL` moved.
+- **Its rewrites are longer,** 29 words against 10, and uplift correlates with
+  length at 0.57 against 0.49. This is the caveat the harness is built to show:
+  some of the uplift is the analyzer rewarding length, and no number here can
+  separate the two.
+- **The unsupported-claim rate is not comparable across judges.** It is 45.5%
+  and 50.0% with the old judge, near enough to call a tie, and 77.3% with the
+  new one, which reads rewrites more strictly. It is also high in absolute
+  terms: on any judge, about half of the rewrites contain something the judge
+  cannot trace to the candidate's own answer. The harness measures fabrication
+  by proxy and this is a reason to keep the no-fabrication clause under
+  scrutiny, not a measurement of how often a candidate would be misled.
+- **The scorer matters.** The same coach scores +11.4 and +11.6 on the two
+  scorers, but the suggested answer reaches "strong" in 14 of 22 fixtures on
+  one and 21 of 22 on the other, and the scorer's noise falls from 1.2 to 0.6
+  points. Absolute scores move with the scorer; the direction does not.
+
+One run of each configuration is a measurement, not a replication, and 22
+fixtures from one author is a small corpus.
 
 ---
 
@@ -339,10 +404,11 @@ human being. Same model family, same author, same prompt idiom.
 
 **2. Shared blind spot, and it is a documented one.**
 `docs/EVALUATION.md` records that this analyzer is lenient toward fluent,
-confident, wrong answers: `tech-weak-code` returned [50, 50, 55] and
-`design-weak` [55, 55, 55] against a `weak` ceiling of 45, with standard
-deviations of 2.9 and 0.0. A coach that makes an answer more fluent moves
-exactly the dimension the analyzer over-weights.
+confident, wrong answers: on `gpt-4o-mini`, `tech-weak-code` returned 50.4 and
+`design-weak` 55.0 against a `weak` ceiling of 45. On `gpt-6-luna` they return
+44.8 and 30.8, and every miss that remains is still too generous. A coach that
+makes an answer more fluent moves exactly the dimension the analyzer
+over-weights.
 
 That is why the word-count and correlation rows sit in the headline block rather
 than an appendix. **Read uplift next to them, never alone.**
@@ -358,14 +424,14 @@ points. Whether that direction is the right one is a question for people.
 
 ## What has not been measured
 
-- **The `--live` layer has not been run.** Everything in the Layer 2 section
-  describes what the harness computes, not results it has produced. No uplift
-  figure, no fabrication rate, no tip coverage number exists yet. Running it
-  costs about $0.06 and needs `OPENAI_API_KEY`; the output belongs in
-  `docs/artifacts/coach-eval.txt` alongside the deterministic run, and **if
-  uplift comes back at zero that number gets committed too.** A reported null
-  result is worth more than an unrun experiment — which is a mistake this
-  project has already made once and recorded, in `docs/EVALUATION.md`.
+- **The `--live` layer has been run once per configuration.** The results above
+  are single runs of two original scores per fixture. They are measurements,
+  not replications, and the committed outputs are the three files linked there.
+  Until 19 October 2026 the layer could not complete at all: every judge prompt
+  omitted the word "JSON", which OpenAI requires when a request asks for JSON
+  mode, so each fixture failed with a 400. A reported null result is worth more
+  than an unrun experiment, and a harness that has never finished a run is an
+  unrun experiment too.
 - **No human has read a single rewrite as evidence.** The blind pairwise A/B
   described in the plan for this work (`--sheet` / `--score`, mirroring
   `run-rater-sheet.ts`) is **not implemented**. It is the only non-circular

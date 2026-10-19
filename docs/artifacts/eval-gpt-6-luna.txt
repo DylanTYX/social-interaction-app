@@ -1,0 +1,53 @@
+
+> social-interaction-app@0.1.0 eval
+> DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-eval.ts --runs=5
+
+Scoring 18 fixtures x 5 runs = 90 analyzer calls on gpt-6-luna
+
+PASS  beh-strong-conflict    expected strong    got  87.6 (sd 0.9) [88, 88, 88, 86, 88]
+PASS  beh-weak-conflict      expected weak      got  35.0 (sd 0.0) [35, 35, 35, 35, 35]
+PASS  beh-mediocre-conflict  expected mediocre  got  56.0 (sd 2.2) [57, 52, 57, 57, 57]
+PASS  beh-strong-failure     expected strong    got  88.0 (sd 0.0) [88, 88, 88, 88, 88]
+PASS  beh-weak-failure       expected weak      got  28.8 (sd 2.7) [30, 30, 24, 30, 30]
+PASS  tech-strong-code       expected strong    got  94.0 (sd 1.4) [96, 94, 92, 94, 94]
+MIXED tech-weak-code         expected weak      got  44.8 (sd 2.9) [48, 48, 42, 43, 43]
+FAIL  tech-mediocre-code     expected mediocre  got  76.8 (sd 1.1) [76, 78, 76, 76, 78]
+PASS  design-strong          expected strong    got  68.4 (sd 0.9) [70, 68, 68, 68, 68]
+PASS  design-weak            expected weak      got  30.8 (sd 1.8) [30, 30, 30, 30, 34]
+PASS  design-mediocre        expected mediocre  got  43.4 (sd 2.9) [43, 40, 43, 48, 43]
+PASS  screen-strong          expected strong    got  79.6 (sd 2.2) [78, 82, 82, 78, 78]
+FAIL  screen-weak            expected weak      got  48.0 (sd 0.0) [48, 48, 48, 48, 48]
+PASS  cs-fundamentals-strong expected strong    got  79.2 (sd 2.7) [78, 84, 78, 78, 78]
+PASS  cs-fundamentals-weak   expected weak      got  39.0 (sd 0.0) [39, 39, 39, 39, 39]
+PASS  hr-strong              expected strong    got  87.2 (sd 1.8) [88, 88, 88, 88, 84]
+PASS  hr-mediocre            expected mediocre  got  70.4 (sd 0.9) [70, 72, 70, 70, 70]
+FAIL  hr-weak                expected weak      got  52.0 (sd 0.0) [52, 52, 52, 52, 52]
+
+--- summary ---
+Separation         43.7 points  (strong 83.4 vs weak 39.8)
+Band accuracy      81.1%
+Mean std dev       1.36 points
+Worst std dev      2.95 points
+Field completeness 100.0%
+Misses             17 scored too high, 0 too low
+
+Band accuracy by round type
+  screening        ##########..........  50%  (10 runs)
+  technical_swe    ###########.........  53%  (15 runs)
+  hr               #############.......  67%  (15 runs)
+  behavioral       #################### 100%  (25 runs)
+  system_design    #################### 100%  (15 runs)
+  cs_fundamentals  #################### 100%  (10 runs)
+
+Observed range per band
+  weak      expected   0-45   observed  24-52   (spread 28)
+  mediocre  expected  40-72   observed  40-78   (spread 38)
+  strong    expected  68-100  observed  68-96   (spread 28)
+
+Against a keyword-heuristic baseline (no API calls)
+  separation      analyzer 43.7  vs baseline 11.7  (3.7x)
+  band accuracy   analyzer 81.1%  vs baseline 55.6%
+
+Avg prompt tokens  801 per analyzer call
+Total tokens       72115 in / 40372 out
+Cost of this run   $0.0274

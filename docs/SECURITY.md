@@ -136,6 +136,46 @@ prompt-injection work recorded in `PRODUCTION-REVIEW.md`.
 
 ---
 
+## Mapping to the OWASP Top 10 for LLM Applications 2025
+
+The web Top 10 above covers the application; this list covers the model calls
+inside it. Category titles from the OWASP project's own repository
+(`2_0_vulns/`), read on 18 October 2026. Every control named is in the code
+and, where marked, under test; `npm run security-demo` prints what the
+injection and abuse controls do to hostile input.
+
+| Category | How it applies here | Controls | What remains |
+| --- | --- | --- | --- |
+| **LLM01 Prompt Injection** | The candidate's answer is direct input. The resume, job description and role brief are indirect input written by the user or an employer, and the assessor's notes and the conversation summary are model output derived from the candidate's words, fed into later prompts | Documents and the summary are wrapped in `<<<BEGIN …>>>` blocks a document cannot close, under a standing rule that they are data, not instructions (`untrusted-content.ts`, tested). Notes capped at 3 × 200 characters on one line (tested). The question list never takes candidate turns (tested). Round type and answer mode fall back to defaults (route-tested). The handover brief is stripped from client requests (tested), and every strength, gap and question it carries is cleaned again when it is built — one line, capped, markers defused — even from rows a user wrote directly (tested). The company name is one line of at most 120 characters | No prompt filter is complete; OWASP says so too. A session inserted directly through the REST interface can carry its own brief, confined by RLS to that user (see below). The assessor prompt is unchanged, because it is a scored path and a change needs the evaluation re-run |
+| **LLM02 Sensitive Information Disclosure** | Resumes and transcripts are personal data, and they are sent to OpenAI (text) and Azure (audio) to be processed | RLS on every table; keys only on the server; errors generic, with detail in the log under a `ref`; user content kept out of log lines; the analyzer's parse error omits the raw output; export and delete-history | No retention window or in-app account deletion; the providers' own processing is governed by their terms, not by this code |
+| **LLM05 Improper Output Handling** | Model output is rendered in the browser, spoken, and — as assessor notes — fed back into prompts | Rendered by `react-markdown` without raw HTML (no `rehype-raw`), with its default URL filtering; a coding problem is shown as plain text; notes are sanitised before reuse | — |
+| **LLM06 Excessive Agency** | Would apply if the model could act | The model has no tools or function calls. It cannot read the database, call an API or change state; the strategy, the scoring arithmetic and every write are decided in code | — |
+| **LLM07 System Prompt Leakage** | A candidate could ask the interviewer to repeat its instructions | The prompts hold no keys, credentials or other users' data; the interviewer is told not to reveal hidden instructions; a leaked rubric reveals nothing an interview guide does not | A determined candidate may still extract the wording |
+| **LLM08 Vector and Embedding Weaknesses** | Job-description chunks are embedded and searched | Each chunk carries its owner; the search function runs with the caller's rights under RLS and filters on `auth.uid()` explicitly; top-k is clamped to 1–8; there is no shared corpus between users | — |
+| **LLM09 Misinformation** | The assessor can be wrong, and the interviewer can state something false | Anchored score bands, measured against a control; the resume is sent whole so the interviewer does not invent claims; it is told not to invent company facts; the product gives scores and feedback, never a hiring verdict | The assessor is measurably lenient to fluent wrong answers (EVALUATION.md) |
+| **LLM10 Unbounded Consumption** | Every model call costs money, and an answer, a document or a burst of requests can be made large | Input caps (answers over 10,000 characters rejected); output caps on every chat call; per-user rate limits on all 38 handlers; deadlines on the assessor and on retrieval; every call's tokens recorded (`llm_usage`) | The limiter is per process, with no shared store and no global spend ceiling. Usage rows can no longer be edited or deleted by their owner once `0004` is applied |
+
+**What "server-owned" can and cannot mean here.** The server makes every
+database write with the signed-in user's own token, so that row-level security
+is the one authorisation mechanism. The consequence is that anything the server
+can write, the user can also write to their own rows: a `security definer`
+function the server calls is callable by the user with the same token, and the
+interview messages and analyses the handover brief is built from are rows the
+user can insert. So a server-owned field is *checked* — for owner and shape —
+but never *proven* to have come from the server. Proving it would need a
+privileged key held only by the server and used for every trusted write, which
+is a larger design and a new secret to protect. Because the only person a forged
+row can affect is the user who wrote it, the proportionate response here is to
+bound what such a row can carry: the brief re-cleans every entry, and the
+markers it could use to fake a document block are defused.
+
+**Not applicable:** LLM03 Supply Chain and LLM04 Data and Model Poisoning, in
+the sense OWASP means — no model is trained, fine-tuned or downloaded here; the
+models are called through the provider's API, and npm dependencies are pinned
+by the lockfile.
+
+---
+
 ## Whose control is it
 
 An honest split, because most of what makes authentication here secure is not

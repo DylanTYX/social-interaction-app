@@ -19,6 +19,7 @@ import {
   PACE_BANDS,
 } from "@/lib/speech-metrics";
 import type { BehavioralSignalType } from "@/lib/text-metrics";
+import { CODE_ANSWER_TIME_LIMIT_SECONDS } from "@/lib/code-answer";
 
 export const metadata = {
   title: "Tips & guides · ConvoTrainer",
@@ -43,13 +44,15 @@ export const metadata = {
  * Every number and rule is read from the code that applies it: the criteria
  * from `round-types.ts`, the readings and advice from `report-insights.ts`, the
  * pace, filler and pause thresholds from `speech-metrics.ts`, and the trend
- * minimum from `progress-insights.ts`. The answer time limits are constants in
- * the two interview screens; change them there, then here.
+ * minimum from `progress-insights.ts`. The spoken and typed answer limits are
+ * constants in the two interview screens — change them there, then here — and
+ * the code answer limit is read from `code-answer.ts`.
  */
 
 /** `RESPONSE_TIME_LIMIT_SECONDS` in `voice-session.tsx` and `chat/page.tsx`. */
 const VOICE_ANSWER_MINUTES = 3;
 const TEXT_ANSWER_MINUTES = 5;
+const CODE_ANSWER_MINUTES = CODE_ANSWER_TIME_LIMIT_SECONDS / 60;
 
 const PRACTICE_STEPS: {
   title: string;
@@ -252,7 +255,8 @@ export default function HelpPage() {
             </GuideRow>
             <GuideRow term="Time">
               Each answer gets {VOICE_ANSWER_MINUTES} minutes out loud, or{" "}
-              {TEXT_ANSWER_MINUTES} typed. Aim to finish well inside it.
+              {TEXT_ANSWER_MINUTES} typed, and a code answer gets{" "}
+              {CODE_ANSWER_MINUTES}. Aim to finish well inside it.
             </GuideRow>
             <GuideRow term="Cutting in">
               Tap the microphone while the interviewer is talking to answer

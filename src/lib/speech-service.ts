@@ -148,6 +148,60 @@ export function extractSpeakableSentences(
 }
 
 /**
+ * `extractSpeakableSentences`, but fenced code is never spoken.
+ *
+ * The interviewer may put code, example input or a whole problem statement in
+ * a fenced block, and synthesis read it out character by character — brackets,
+ * commas and all — which is noise rather than a question. Those blocks are on
+ * screen instead (`problem-statement.ts`), so here they are consumed silently.
+ *
+ * `rest` is still a suffix of `buffer`, which the voice screen relies on: it
+ * works out what has already been voiced from how much of the stream has been
+ * consumed. A block that has opened but not closed is held in `rest` until it
+ * does, and dropped unspoken at the end of the stream; a trailing backtick or
+ * two is held too, since it may be the start of a fence.
+ */
+export function extractSpeakableOutsideCode(
+  buffer: string,
+  options?: { flush?: boolean; minChars?: number },
+): { sentences: string[]; rest: string } {
+  const sentences: string[] = [];
+  const speak = (found: string[]) => {
+    for (const sentence of found) {
+      // Inline code still reaches here; the words are speakable, the marks not.
+      const clean = sentence.replace(/`/g, "").trim();
+      if (clean) sentences.push(clean);
+    }
+  };
+
+  let working = buffer;
+  while (true) {
+    const open = working.indexOf("```");
+    if (open === -1) break;
+
+    // Prose ahead of a fence is complete: the fence starts a new block.
+    speak(
+      extractSpeakableSentences(working.slice(0, open), {
+        flush: true,
+        minChars: options?.minChars,
+      }).sentences,
+    );
+
+    const close = working.indexOf("```", open + 3);
+    if (close === -1) {
+      return { sentences, rest: options?.flush ? "" : working.slice(open) };
+    }
+    working = working.slice(close + 3);
+  }
+
+  const heldTicks = options?.flush ? "" : (working.match(/`{1,2}$/)?.[0] ?? "");
+  const prose = heldTicks ? working.slice(0, -heldTicks.length) : working;
+  const result = extractSpeakableSentences(prose, options);
+  speak(result.sentences);
+  return { sentences, rest: result.rest + heldTicks };
+}
+
+/**
  * Append `addition` to `existing` while removing any text that already
  * appeared at the tail of `existing`. The Azure SDK occasionally emits the
  * same words once as part of an interim phrase and again as part of the next

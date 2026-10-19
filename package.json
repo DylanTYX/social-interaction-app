@@ -15,10 +15,12 @@
     "eval": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-eval.ts",
     "eval:persona": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-persona-eval.ts",
     "eval:coach": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-coach-eval.ts",
+    "eval:models": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-model-check.ts",
     "eval:raters": "tsx src/eval/run-rater-sheet.ts",
     "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts",
     "eval:voices": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-voice-audition.ts",
-    "seed:demo": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-demo-seed.ts"
+    "seed:demo": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-demo-seed.ts",
+    "security-demo": "tsx src/eval/run-security-demo.ts"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",

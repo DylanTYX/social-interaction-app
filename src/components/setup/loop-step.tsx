@@ -385,7 +385,7 @@ function RoundCard({
             htmlFor={ids.length}
             aside={
               <span className="text-xs text-slate-500 tabular-nums">
-                {describeRoundLength(round.durationMinutes)}
+                {describeRoundLength(round.durationMinutes, round.type)}
               </span>
             }
           >

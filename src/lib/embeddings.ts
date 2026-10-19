@@ -1,8 +1,8 @@
 import { missingOpenAIKey, openAIResponseError } from "@/lib/api/openai-errors";
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
+import { EMBEDDING_MODEL } from "@/lib/models";
 
 const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
-const EMBEDDING_MODEL = "text-embedding-3-small";
 
 export const EMBEDDING_DIMENSIONS = 1536;
 

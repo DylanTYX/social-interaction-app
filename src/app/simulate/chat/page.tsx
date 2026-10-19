@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -14,7 +14,13 @@ import {
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChoiceChip } from "@/components/ui/choice-chip";
 import { CodeInput } from "@/components/chat/code-input";
-import { DEFAULT_CODE_LANGUAGE, type CodeLanguage } from "@/lib/code-answer";
+import { ProblemCard } from "@/components/chat/problem-card";
+import { latestProblemStatement } from "@/lib/problem-statement";
+import {
+  CODE_ANSWER_TIME_LIMIT_SECONDS,
+  DEFAULT_CODE_LANGUAGE,
+  type CodeLanguage,
+} from "@/lib/code-answer";
 import { ROUND_TYPE_SPECS, supportsCodeEditor } from "@/lib/round-types";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { TurnErrorCard } from "@/components/chat/turn-error-card";
@@ -166,6 +172,13 @@ function ChatSimulateInner() {
   });
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  // The problem the interviewer last set, pinned above the editor while code
+  // is being written — by then the message that set it has usually scrolled
+  // away under the follow-ups.
+  const currentProblem = useMemo(
+    () => latestProblemStatement(messages),
+    [messages],
+  );
   const [messagesHydrated, setMessagesHydrated] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [userTurnKey, setUserTurnKey] = useState(0);
@@ -770,15 +783,23 @@ function ChatSimulateInner() {
               </div>
             )}
             {answerFormat === "code" ? (
-              <CodeInput
-                key={userTurnKey}
-                language={codeLanguage}
-                onLanguageChange={setCodeLanguage}
-                onSend={handleSend}
-                disabled={isSending || sessionComplete}
-                timeLimitSeconds={RESPONSE_TIME_LIMIT_SECONDS}
-                timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
-              />
+              <div className="space-y-3">
+                {currentProblem && (
+                  <ProblemCard
+                    problem={currentProblem}
+                    className="max-h-48 overflow-y-auto"
+                  />
+                )}
+                <CodeInput
+                  key={userTurnKey}
+                  language={codeLanguage}
+                  onLanguageChange={setCodeLanguage}
+                  onSend={handleSend}
+                  disabled={isSending || sessionComplete}
+                  timeLimitSeconds={CODE_ANSWER_TIME_LIMIT_SECONDS}
+                  timeoutFallbackMessage={NO_RESPONSE_MESSAGE}
+                />
+              </div>
             ) : (
               <ChatInput
                 key={userTurnKey}

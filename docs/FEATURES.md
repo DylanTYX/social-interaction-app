@@ -99,6 +99,18 @@ it cannot satisfy. Voice rounds get it too — they just open on discussion.
 Your language choice sticks for the whole round. Code is reviewed by the
 interviewer, **not executed** — nothing runs it or tests it.
 
+**The problem is on screen.** The interviewer writes the coding problem down — the
+task, inputs and outputs, constraints and an example — and shows it as a card,
+pinned above the editor while you write, so you never have to hold it in your
+head. In a voice interview the interviewer says only a line about it; code is
+never read aloud.
+
+**A code answer gets 20 minutes**, not the 3 or 5 a spoken or typed answer gets,
+and a technical round is planned at about five minutes a question, so a
+25-minute round expects five. If the time runs out, what you have written is
+sent and the interviewer asks you to walk through where you got to, as a real
+one would.
+
 **Interviewer** (loops only) — each round can have a different interviewer, so a
 loop feels like a real panel rather than the same person four times.
 
@@ -188,7 +200,8 @@ nothing launches, the step says why, and it offers a text interview instead.
   printed. A bubble says "Asked out loud", and one button in the header shows
   the transcript for anyone who needs it; it appears by itself if the audio
   fails or the interviewer's voice is off. Your own answers always show, and
-  the full transcript is in the report (DESIGN-DECISIONS §16).
+  the full transcript is in the report (DESIGN-DECISIONS §16). A coding
+  problem is the exception: it is always on screen (§18).
 - **Speak, then type the code.** A technical round in voice mode gives you both:
   talk through your approach, then switch to **Write code** for the part you
   cannot dictate. The microphone stops while the editor is open, so nothing is

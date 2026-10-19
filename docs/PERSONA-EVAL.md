@@ -271,7 +271,17 @@ instructions half-followed may be worth less than four followed exactly.
   design. Measuring a dial requires an answer that has cleared the fundamentals,
   which is itself a finding about when the dials apply.
 - **One model, `gpt-4o-mini`**, as interviewer and judge. A judge sharing the
-  generator's family may share its blind spots.
+  generator's family may share its blind spots. Worse, it was not the app's
+  interviewer: the app moved to `gpt-5-mini` on 4 September 2026 (`fc062c8`)
+  and this harness kept a default of its own, so the live run committed on 18
+  September measured the previous interviewer. The figures above are evidence
+  about the steering note's _position_ — what changed between 0/10 and 10/10
+  was where the note sat, on one model — not about the deployed model's
+  obedience. The harness now reads `INTERVIEWER_MODEL` from
+  `src/lib/models.ts` as the app does, and warns when judge and interviewer
+  share a generation. A run on the deployed interviewer, and on its
+  replacement, is pending: [TOKEN-COST.md](TOKEN-COST.md) §"Retirements and
+  the migration".
 - **No human raters.** Nothing establishes that any of this resembles a real
   interviewer.
 
@@ -283,6 +293,10 @@ instructions half-followed may be worth less than four followed exactly.
 npm run eval:persona                      # offline, free, byte-identical
 npm run eval:persona -- --live --runs=12  # ~$0.03, needs OPENAI_API_KEY
 npm run eval:persona -- --json            # machine-readable
+
+# The committed live run used the harness's old default. The default is now
+# the app's interviewer (gpt-5-mini); reproduce the committed run with:
+INTERVIEWER_MODEL=gpt-4o-mini npm run eval:persona -- --live --runs=12
 ```
 
 Artifacts: [`artifacts/persona-eval.txt`](artifacts/persona-eval.txt) and

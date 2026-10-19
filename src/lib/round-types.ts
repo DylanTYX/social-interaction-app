@@ -186,10 +186,13 @@ export const ROUND_TYPE_SPECS: Record<InterviewRoundType, RoundTypeSpec> = {
     rubric:
       "Problem framing, approach, correctness, complexity, communication, edge cases, code quality",
     family: "technical",
+    // The statement goes in a ```problem fence because it is shown on screen
+    // and never read aloud (`problem-statement.ts`); what is said around it is
+    // the short line a real interviewer says while pasting the problem in.
     opening:
-      "State the coding problem you want them to solve, concretely and in full, then invite them to think out loud before writing any code.",
+      "Set the coding problem you want them to solve, concretely and in full. Write the whole statement — the task, the input and output, any constraints, and one worked example — inside a fenced block tagged problem, because it is shown on screen rather than read out. Outside the block say only one or two short sentences: that the problem is on screen, and that you would like them to think out loud before writing any code.",
     continuationOpening:
-      "State the coding problem you want them to solve, concretely and in full, then invite them to think out loud before writing any code. Say plainly that this round is hands-on, since the earlier ones were conversation.",
+      "Set the coding problem you want them to solve, concretely and in full. Write the whole statement — the task, the input and output, any constraints, and one worked example — inside a fenced block tagged problem, because it is shown on screen rather than read out. Outside the block say only one or two short sentences: that this round is hands-on, since the earlier ones were conversation, that the problem is on screen, and that you would like them to think out loud before writing any code.",
     playbookId: "technical-framing",
     tags: ["technical", "framing", "vague"],
     // The only type that gets an editor. Its rubric asks for correctness,

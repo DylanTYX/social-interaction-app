@@ -11,6 +11,7 @@ import {
 } from "@/lib/interview-rounds";
 import type { UsageCollector, OpenAIUsage } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
+import { COACH_MODEL } from "@/lib/models";
 
 /**
  * The coach call, as a pure module.
@@ -28,18 +29,6 @@ import { completionParams } from "@/lib/model-params";
  * is what all three existing harnesses already do. This module must therefore
  * never import `@/eval` or `@/lib/pricing`, since the route imports it.
  */
-
-/**
- * `gpt-5-mini` at `low` reasoning effort. The coach's output — the suggested
- * answer and the rewrite — is read verbatim by the user, so answer quality is
- * the product here, and nobody is waiting on a live microphone: drills
- * feedback renders when it renders. `low` (not `minimal`) buys a planning pass
- * over the rubric for ~a second of latency; the JSON contract and the
- * `finish_reason: "length"` guard below already police the failure modes.
- * Compare against gpt-4o-mini with `COACH_MODEL=gpt-4o-mini npm run
- * eval:coach -- --live` — the judge is model-independent.
- */
-export const COACH_MODEL = process.env.COACH_MODEL ?? "gpt-5-mini";
 
 /**
  * Higher than the analyzer's 0.1, deliberately.

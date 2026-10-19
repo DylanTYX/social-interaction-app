@@ -94,7 +94,7 @@ Model overrides (`INTERVIEWER_MODEL`, `ANALYZER_MODEL`, …) are documented in
 
 ### 3. Set up the database
 
-In the Supabase dashboard → **SQL Editor**, run the three files in
+In the Supabase dashboard → **SQL Editor**, run the four files in
 `supabase/migrations/` **in order**:
 
 | File | Creates |
@@ -102,8 +102,9 @@ In the Supabase dashboard → **SQL Editor**, run the three files in
 | `0001_schema.sql` | extensions, tables, constraints, indexes, triggers |
 | `0002_security.sql` | row-level security and table privileges |
 | `0003_functions.sql` | the functions the app calls — the atomic turn append, session updates, usage recording, retrieval |
+| `0004_usage_rows_read_only.sql` | revokes update and delete on usage rows, so they are written once and never edited |
 
-> All three are needed. `src/lib/db/sessions.ts` calls `append_interview_turn` on
+> The first three are needed; the fourth is a security tightening the app does not depend on. `src/lib/db/sessions.ts` calls `append_interview_turn` on
 > every interview turn, so without `0003` the app builds and deploys cleanly, then
 > fails on the first message. How these replaced eighteen incremental migrations
 > is in `docs/DATA-MODEL.md` → Migrations.

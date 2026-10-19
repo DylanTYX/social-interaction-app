@@ -6,6 +6,8 @@ import remarkGfm from "remark-gfm";
 import { Loader2, Mic, Volume2 } from "lucide-react";
 
 import { PANEL_LABEL } from "@/components/dashboard/page-header";
+import { ProblemCard } from "@/components/chat/problem-card";
+import { splitProblemStatement } from "@/lib/problem-statement";
 import { TILE_ACCENT, tileColorForKey } from "@/lib/tile-colors";
 import { cn } from "@/lib/utils";
 import { initialsFromName } from "@/lib/format";
@@ -172,6 +174,11 @@ export const ChatMessage = memo(function ChatMessage({
   onShowTranscript,
 }: ChatMessageProps) {
   const isUser = role === "user";
+  // A coding problem is written down even when the rest of the message is
+  // withheld: it is read and worked from, not listened to.
+  const { spoken, problem } = isUser
+    ? { spoken: content, problem: null }
+    : splitProblemStatement(content);
 
   const displayName = isUser ? "You" : personaName;
   const initials = isUser ? "You" : initialsFromName(personaName);
@@ -230,22 +237,25 @@ export const ChatMessage = memo(function ChatMessage({
           )}
         >
           {spokenOnly ? (
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
-              <Volume2
-                className="h-4 w-4 shrink-0 text-slate-400"
-                aria-hidden
-              />
-              <span>Asked out loud.</span>
-              {onShowTranscript && (
-                <button
-                  type="button"
-                  onClick={onShowTranscript}
-                  className="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-primary-muted focus-visible:outline-none"
-                >
-                  Show transcript
-                </button>
-              )}
-            </p>
+            <div className="space-y-3">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+                <Volume2
+                  className="h-4 w-4 shrink-0 text-slate-400"
+                  aria-hidden
+                />
+                <span>Asked out loud.</span>
+                {onShowTranscript && (
+                  <button
+                    type="button"
+                    onClick={onShowTranscript}
+                    className="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-primary-muted focus-visible:outline-none"
+                  >
+                    Show transcript
+                  </button>
+                )}
+              </p>
+              {problem !== null && <ProblemCard problem={problem} />}
+            </div>
           ) : isUser ? (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">
               {content}
@@ -256,8 +266,9 @@ export const ChatMessage = memo(function ChatMessage({
                 remarkPlugins={[remarkGfm, remarkBreaks]}
                 components={markdownComponents}
               >
-                {content || " "}
+                {spoken || " "}
               </ReactMarkdown>
+              {problem !== null && <ProblemCard problem={problem} />}
               {/* Sits where "Show transcript" was, so opening and closing one
                   question happen in the same place rather than one in the
                   bubble and the other in the page header. */}

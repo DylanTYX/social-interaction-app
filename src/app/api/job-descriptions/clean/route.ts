@@ -10,12 +10,12 @@ import { enforceRateLimit, RATE_LIMITS } from "@/lib/api/rate-limit";
 import { parseBoundedString } from "@/lib/api/query";
 import { MAX_JOB_DESCRIPTION_CHARS } from "@/lib/api/input-limits";
 import { completionParams } from "@/lib/model-params";
+import { JD_CLEAN_MODEL } from "@/lib/models";
 
 export const runtime = "nodejs";
 // Calls a model; do not inherit a short platform default. See `api/chat/route.ts`.
 export const maxDuration = 60;
 
-const MODEL = process.env.JD_CLEAN_MODEL ?? "gpt-4o-mini";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
@@ -114,10 +114,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: JD_CLEAN_MODEL,
         // Extraction, not composition: the task is to copy the right lines
         // through, and any creativity here shows up as invented requirements.
-        ...completionParams(MODEL, {
+        ...completionParams(JD_CLEAN_MODEL, {
           temperature: 0,
           maxTokens: CLEAN_MAX_TOKENS,
         }),
@@ -148,7 +148,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     };
 
     const usage = new UsageCollector();
-    usage.record("jd-clean", MODEL, data.usage);
+    usage.record("jd-clean", JD_CLEAN_MODEL, data.usage);
     await usage.flush(supabase);
 
     // Truncation matters more here than in most places: a cut-off result looks

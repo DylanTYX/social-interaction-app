@@ -30,10 +30,10 @@
 
 import {
   buildCoachSystemPrompt,
-  COACH_MODEL,
   requestCoaching,
   type CoachCallResult,
 } from "@/lib/coach-prompt";
+import { COACH_MODEL, JUDGE_MODEL, judgeWarning } from "@/lib/models";
 import { analyzeResponse } from "@/lib/response-analyzer";
 import { scoreAnswerHeuristically } from "@/lib/answer-heuristics";
 import {
@@ -63,7 +63,6 @@ import {
 import { isTechnicalRound, rubricCriteria } from "@/lib/round-types";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "gpt-4o-mini";
 
 // ---------------------------------------------------------------------------
 // Deterministic layer — no API calls, byte-identical on every run
@@ -329,7 +328,10 @@ const FABRICATION_JUDGE = [
   "Rephrasing, tightening and restructuring are NOT unsupported claims.",
   "Naming something the candidate should have measured is NOT an unsupported claim,",
   "as long as no value is asserted for it.",
-  'Return ONLY {"unsupportedClaims": string[], "count": number}.',
+  // The literal word "JSON" is required: these requests set response_format
+  // json_object, which OpenAI rejects with a 400 unless some message asks for
+  // JSON in so many words. Without it every fixture failed at the judge.
+  'Reply with JSON only: {"unsupportedClaims": string[], "count": number}.',
 ].join("\n");
 
 const TIP_MATCH_JUDGE = [
@@ -337,14 +339,14 @@ const TIP_MATCH_JUDGE = [
   "For each set independently, count how many of the listed gaps that set addresses.",
   "A gap is addressed if a tip would plausibly lead the candidate to fix it.",
   "Judge the sets independently. They come from different sources and either may be better.",
-  'Return ONLY {"aCovered": number, "bCovered": number, "totalGaps": number}.',
+  'Reply with JSON only: {"aCovered": number, "bCovered": number, "totalGaps": number}.',
 ].join("\n");
 
 const RUBRIC_RECOVERY_JUDGE = [
   "You are given coaching feedback on an interview answer.",
   "Decide which ONE kind of interview round the coaching was written for.",
-  "Options: screening, behavioral, hr, technical_swe, system_design, case.",
-  'Return ONLY {"roundType": string, "confidence": number}.',
+  "Options: screening, behavioral, hr, technical_swe, system_design, cs_fundamentals.",
+  'Reply with JSON only: {"roundType": string, "confidence": number}.',
 ].join("\n");
 
 interface FixtureOutcome {
@@ -810,6 +812,8 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  const warning = judgeWarning(COACH_MODEL, "coach");
+  if (warning) console.warn(warning);
 
   const all: AnyFixture[] = [...FIXTURES, ...COACH_FIXTURES];
   const fixtures = only

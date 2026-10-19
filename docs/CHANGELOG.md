@@ -14,6 +14,109 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-10-19 (models)
+
+### Both default models have retirement dates, and the persona harness had been measuring the wrong one
+
+**Documents:** `TOKEN-COST.md` (price table re-checked; a third request
+contract; new §"Retirements and the migration"), `DESIGN-DECISIONS.md` (§7),
+`EVALUATION.md`, `PERSONA-EVAL.md` (§6 and §7), `COACHING.md`,
+`DEPLOYMENT.md`, `.env.local.example`.
+
+OpenAI's deprecations page retires the `gpt-5-mini` snapshot on 11 December
+2026 (named replacement `gpt-5.6-terra`) and `gpt-4o-mini` on 14 January 2027
+(named replacement `gpt-6-luna`). The project's candidates differ from the
+named ones where price does: `gpt-5.6-luna` for the interviewer and coach,
+because terra costs eight times gpt-5-mini's input rate; `gpt-6-luna` for
+the rest. No default has moved — the harnesses are the gate, and the key in
+`.env.local` was rejected (401) on every call this day, so no run has
+happened yet.
+
+Found while preparing those runs: the persona harness carried its own
+`gpt-4o-mini` default for the interviewer, so the live run committed on 18
+September (`3e1aa38`) measured a model the app had stopped using on 4
+September (`fc062c8`). Its steering-note figures stand as evidence about the
+note's position; they are not evidence about the deployed interviewer. The
+defaults now live in `src/lib/models.ts` and both harnesses read them; a live
+run warns when the judge shares a generation with the model it rates.
+`model-params.ts` builds the request for the gpt-5.6/gpt-6 contract (`none`
+in place of `minimal`; sampling parameters at `none` only), `pricing.ts`
+prices the candidates (checked 2026-10-19), and `npm run eval` now exits
+non-zero when an analyzer call fails instead of printing PASS beside a NaN.
+
+**Sources:** OpenAI, _Deprecations_, _Pricing_, _Latest model_ (the GPT-6
+migration guide) and the model pages for gpt-6-luna, gpt-5.6-luna and
+gpt-5-mini, all read online on 19 October 2026.
+
+## 2026-10-18 (security, part 2)
+
+### Usage rows are read-only, and the handover brief is bounded
+
+**Documents:** `SECURITY.md` (LLM01 and LLM10 rows; new note on what
+"server-owned" can mean), `DATA-MODEL.md`, `DEPLOYMENT.md`, `README.md` (a
+fourth migration file).
+
+`0004_usage_rows_read_only.sql` revokes `update` and `delete` on `llm_usage`
+from signed-in and anonymous users. 0002 had revoked only `insert`, and
+Supabase's default privileges grant the rest, so a user could edit or delete
+their own usage rows through the REST interface — harmless to anyone else, but
+the cost report is measured from those rows. Checked against a local Postgres
+(PGlite): before the file, the owner could update and delete a row; after it,
+both are refused, `record_llm_usage` still inserts, the usage page still reads,
+and deleting a session still nulls the row's `session_id`.
+
+The handover brief's strengths, gaps and earlier questions are now cleaned when
+the brief is built — one line, capped, markers defused — so a row a user writes
+directly cannot carry a block of instructions into the next round. Proving such
+a row came from the server would need a privileged server key, which this
+change does not add; `SECURITY.md` says why.
+
+**Sources:** none added.
+
+## 2026-10-18 (security)
+
+### Marked documents, bounded retrieval, and the OWASP LLM mapping
+
+**Documents:** `SECURITY.md` (new section mapping the OWASP Top 10 for LLM
+Applications 2025), `TOKEN-COST.md` (re-measured prefix).
+
+The resume, the job description (whole or as excerpts), the role brief and the
+conversation summary now reach the interviewer inside labelled
+`<<<BEGIN …>>>` blocks that a document cannot close, under a standing rule that
+they are material, not instructions — OWASP LLM01's "segregate and identify
+external content". The employer's name is kept to one line of 120 characters.
+The two library list reads now have a rate limit, so all 38 handlers do. Job-
+description retrieval has a 3-second deadline (`RETRIEVAL_DEADLINE_MS`), and a
+failed or late retrieval, or a failed resume read, now continues without that
+context instead of failing the turn. `npm run security-demo` prints what these
+controls do to hostile input.
+
+**Sources:** OWASP GenAI Security Project, *OWASP Top 10 for LLM Applications
+2025*, read from the project's repository on 18 October 2026.
+
+## 2026-10-18
+
+### Coding answers get their own clock, and the problem is written down
+
+**Documents:** `DESIGN-DECISIONS.md` (new §18, and an exception noted under
+§16), `FEATURES.md` (code editor and voice sections), `DESIGN.md` (live
+interview), the Tips & guides page.
+
+Three thresholds moved. A code answer's limit is now 20 minutes in both
+interview modes; it used to share the prose limit, 5 minutes typed and 3 in
+voice, and sent the half-written function when it ran out. A Technical SWE
+round is now planned at 5 minutes an exchange instead of 2, so a 25-minute
+round expects 5 questions rather than 13. When the code clock runs out, the
+answer is sent with a "[Time ran out — this is the code so far.]" note and the
+interviewer is told to ask where the candidate got to.
+
+One behaviour reversed for one case. A voice interview withholds the
+interviewer's words (§16), but a coding problem is now always on screen: the
+interviewer writes the statement in a `problem` fence, it is shown as a card
+and pinned above the editor, and fenced code is never spoken.
+
+**Sources:** none added.
+
 ## 2026-09-28
 
 ### The hero demo holds its height

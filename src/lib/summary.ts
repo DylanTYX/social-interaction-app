@@ -19,8 +19,7 @@
 import { missingOpenAIKey, openAIResponseError } from "@/lib/api/openai-errors";
 import type { OpenAIUsage, UsageCollector } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
-
-const SUMMARY_MODEL = process.env.SUMMARY_MODEL ?? "gpt-4o-mini";
+import { SUMMARY_MODEL } from "@/lib/models";
 
 /**
  * Output cap for the summary.

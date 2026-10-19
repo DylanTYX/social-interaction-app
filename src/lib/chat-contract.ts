@@ -24,6 +24,22 @@ import type {
 export const NO_RESPONSE_MESSAGE =
   "[No response submitted before time expired.]";
 
+/**
+ * Appended to a code answer that was sent because its clock ran out.
+ *
+ * The code itself is still the answer — a partial solution tells the report
+ * more than nothing — but without a marker the interviewer read it as finished
+ * work and moved on, so the candidate never got the moment every real coding
+ * interview has: "we're at time, walk me through where you got to". The server
+ * recognises this line and steers that reply (`isTimedOutCodeAnswer`).
+ */
+export const CODE_TIME_UP_NOTE = "[Time ran out — this is the code so far.]";
+
+/** Whether an answer is a code answer the timer sent unfinished. */
+export function isTimedOutCodeAnswer(message: string): boolean {
+  return message.trimEnd().endsWith(CODE_TIME_UP_NOTE);
+}
+
 export interface ChatTurnResponse {
   aiMessage: string;
   turnCount: number;

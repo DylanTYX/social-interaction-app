@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendUniqueTranscript,
+  extractSpeakableOutsideCode,
   extractSpeakableSentences,
 } from "@/lib/speech-service";
 import { paceToRatePercent } from "@/lib/speech-voices";
@@ -144,6 +145,71 @@ describe("extractSpeakableSentences", () => {
     const { sentences } = extractSpeakableSentences(greeting, { flush: true });
 
     expect(sentences).toEqual([greeting]);
+  });
+});
+
+describe("extractSpeakableOutsideCode", () => {
+  const reply =
+    "The problem is on screen. Take a minute to read it.\n\n```problem\nTwo sum\nnums = [2, 7, 11, 15], target = 9\n```\n\nThink out loud as you go.";
+
+  it("never speaks a fenced block", () => {
+    const { sentences, rest } = extractSpeakableOutsideCode(reply, {
+      flush: true,
+    });
+
+    expect(sentences.join(" ")).not.toMatch(/nums|Two sum|```/);
+    expect(sentences).toEqual([
+      "The problem is on screen.",
+      "Take a minute to read it.",
+      "Think out loud as you go.",
+    ]);
+    expect(rest).toBe("");
+  });
+
+  it("speaks the same words when the reply arrives a token at a time", () => {
+    // The streaming path: fed in small pieces, consumed tail carried over.
+    let buffer = "";
+    const spoken: string[] = [];
+    for (let i = 0; i < reply.length; i += 7) {
+      buffer += reply.slice(i, i + 7);
+      const { sentences, rest } = extractSpeakableOutsideCode(buffer, {
+        minChars: 0,
+      });
+      spoken.push(...sentences);
+      // `rest` must stay a suffix of what was fed: the voice screen works out
+      // what has already been voiced from how much has been consumed.
+      expect(buffer.endsWith(rest)).toBe(true);
+      buffer = rest;
+    }
+    spoken.push(
+      ...extractSpeakableOutsideCode(buffer, { flush: true }).sentences,
+    );
+
+    expect(spoken.join(" ")).not.toMatch(/nums|Two sum|`/);
+    expect(spoken.join(" ")).toContain("Think out loud as you go.");
+  });
+
+  it("holds an unfinished block, and drops it at the end of the stream", () => {
+    const open = "Here it is.\n\n```problem\nTwo sum";
+    const streaming = extractSpeakableOutsideCode(open);
+    expect(streaming.sentences).toEqual(["Here it is."]);
+    expect(streaming.rest).toBe("```problem\nTwo sum");
+
+    expect(extractSpeakableOutsideCode(open, { flush: true }).sentences).toEqual(
+      ["Here it is."],
+    );
+  });
+
+  it("holds a trailing backtick that may open a fence", () => {
+    const { rest } = extractSpeakableOutsideCode("Read this. `");
+    expect(rest.endsWith("`")).toBe(true);
+  });
+
+  it("speaks inline code as words", () => {
+    expect(
+      extractSpeakableOutsideCode("Use a `HashMap` here.", { flush: true })
+        .sentences,
+    ).toEqual(["Use a HashMap here."]);
   });
 });
 

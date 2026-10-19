@@ -1,0 +1,21 @@
+-- ConvoTrainer database, part 4: usage rows are written once and never edited.
+--
+-- Run after 0003_functions.sql. Safe to run more than once: revoking a
+-- privilege that is already absent does nothing.
+--
+-- 0002 revoked *inserting* usage rows, so they come only from
+-- `record_llm_usage`. It left update and delete alone, and on Supabase the
+-- default privileges grant both on every table in `public` — so with the owner
+-- policy being `for all`, a signed-in user could edit or delete their own rows
+-- from devtools through PostgREST. That reaches no one else's data, but the
+-- cost report and the Settings usage page are measured from these rows, and
+-- any per-user spending limit built on them later would be one `delete` away
+-- from being bypassed.
+--
+-- Nothing in the application updates or deletes a usage row with the user's
+-- session: rows are inserted by `record_llm_usage` and read back by
+-- `/api/me/usage`. When a session is deleted, `llm_usage.session_id` is still
+-- set to null by its foreign key, because referential actions run with the
+-- table owner's privileges, not the caller's.
+
+revoke update, delete on table llm_usage from authenticated, anon;

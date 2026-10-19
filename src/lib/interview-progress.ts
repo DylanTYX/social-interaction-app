@@ -1,4 +1,8 @@
-import type { InterviewRoundConfig } from "@/lib/interview-rounds";
+import type {
+  InterviewRoundConfig,
+  InterviewRoundType,
+} from "@/lib/interview-rounds";
+import { supportsCodeEditor } from "@/lib/round-types";
 
 /**
  * How long an interview runs.
@@ -21,6 +25,23 @@ import type { InterviewRoundConfig } from "@/lib/interview-rounds";
  */
 const MINUTES_PER_TURN = 2;
 
+/**
+ * Minutes per exchange in a round that writes code.
+ *
+ * At two minutes a 25-minute technical round expected about twelve answers,
+ * but one of them is the solution itself, which can take most of the round —
+ * so the progress header promised questions the round never had time to reach.
+ * Five minutes gives the default round five exchanges, which is the shape the
+ * technical ladder already walks: framing, approach, the code, its complexity,
+ * its edge cases.
+ */
+const CODING_MINUTES_PER_TURN = 5;
+
+/** The pace a round type is planned at. */
+export function minutesPerTurn(type?: InterviewRoundType): number {
+  return supportsCodeEditor(type) ? CODING_MINUTES_PER_TURN : MINUTES_PER_TURN;
+}
+
 /** Below this an interview cannot say anything useful; above it, fatigue wins. */
 const MIN_TURNS = 4;
 const MAX_TURNS = 20;
@@ -28,19 +49,25 @@ const MAX_TURNS = 20;
 /** Used when a session has no round configured (legacy rows). */
 export const DEFAULT_TARGET_TURNS = 8;
 
-export function targetTurnsForDuration(durationMinutes: number): number {
+export function targetTurnsForDuration(
+  durationMinutes: number,
+  type?: InterviewRoundType,
+): number {
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
     return DEFAULT_TARGET_TURNS;
   }
-  const raw = Math.round(durationMinutes / MINUTES_PER_TURN);
+  const raw = Math.round(durationMinutes / minutesPerTurn(type));
   return Math.min(MAX_TURNS, Math.max(MIN_TURNS, raw));
 }
 
 export function targetTurnsForRound(
-  round: Pick<InterviewRoundConfig, "durationMinutes"> | undefined,
+  round:
+    | (Pick<InterviewRoundConfig, "durationMinutes"> &
+        Partial<Pick<InterviewRoundConfig, "type">>)
+    | undefined,
 ): number {
   return round
-    ? targetTurnsForDuration(round.durationMinutes)
+    ? targetTurnsForDuration(round.durationMinutes, round.type)
     : DEFAULT_TARGET_TURNS;
 }
 
@@ -60,8 +87,11 @@ export function isInterviewComplete(
 }
 
 /** "20 min · ~10 questions" — shows what the duration setting actually buys. */
-export function describeRoundLength(durationMinutes: number): string {
-  const turns = targetTurnsForDuration(durationMinutes);
+export function describeRoundLength(
+  durationMinutes: number,
+  type?: InterviewRoundType,
+): string {
+  const turns = targetTurnsForDuration(durationMinutes, type);
   return `${durationMinutes} min · ~${turns} questions`;
 }
 

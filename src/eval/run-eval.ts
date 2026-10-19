@@ -30,6 +30,7 @@ import { analyzeResponse, type AnalysisResult } from "@/lib/response-analyzer";
 import { BAND_RANGES, FIXTURES, type EvalFixture } from "@/eval/fixtures";
 import { scoreAnswerHeuristically } from "@/lib/answer-heuristics";
 import { UsageCollector } from "@/lib/api/token-usage";
+import { ANALYZER_MODEL, retirementNotice } from "@/lib/models";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 
 interface RunResult {
@@ -151,8 +152,11 @@ async function main() {
     console.log(
       `Scoring ${fixtures.length} fixtures x ${runs} runs = ${
         fixtures.length * runs
-      } analyzer calls\n`,
+      } analyzer calls on ${ANALYZER_MODEL}`,
     );
+    const notice = retirementNotice(ANALYZER_MODEL);
+    if (notice) console.log(`note: ${notice}`);
+    console.log("");
   }
 
   const results: RunResult[] = [];
@@ -168,8 +172,16 @@ async function main() {
       const avg = mean(result.scores);
       const sd = stdDev(result.scores);
       const hits = result.scores.filter((s) => inBand(s, fixture)).length;
+      // Zero scores in band out of zero scores is not a pass: with a rejected
+      // key, every fixture used to print PASS beside a NaN mean.
       const mark =
-        hits === result.scores.length ? "PASS" : hits === 0 ? "FAIL" : "MIXED";
+        result.scores.length === 0
+          ? "ERROR"
+          : hits === result.scores.length
+            ? "PASS"
+            : hits === 0
+              ? "FAIL"
+              : "MIXED";
       console.log(
         `${mark.padEnd(5)} ${fixture.id.padEnd(22)} ` +
           `expected ${fixture.band.padEnd(9)} ` +
@@ -300,6 +312,7 @@ async function main() {
   const baselineSeparation = baselineStrong - baselineWeak;
 
   const summary = {
+    model: ANALYZER_MODEL,
     fixtures: fixtures.length,
     runsPerFixture: runs,
     totalRuns,
@@ -331,6 +344,10 @@ async function main() {
       };
     })(),
   };
+
+  // An analyzer call that failed is a run that proves nothing about the
+  // analyzer, so it must not leave behind an exit code that says otherwise.
+  if (summary.errors.length) process.exitCode = 1;
 
   if (json) {
     console.log(

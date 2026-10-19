@@ -60,10 +60,9 @@ import {
 } from "./persona-experiment";
 import { UsageCollector } from "@/lib/api/token-usage";
 import { completionParams } from "@/lib/model-params";
+import { INTERVIEWER_MODEL, JUDGE_MODEL, judgeWarning } from "@/lib/models";
 import { formatUsd, summariseCost } from "@/lib/pricing";
 
-const MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-4o-mini";
-const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "gpt-4o-mini";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 /**
@@ -333,11 +332,11 @@ async function generateFollowup(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: INTERVIEWER_MODEL,
       // The app's own interviewer settings, so this measures the deployed
       // behaviour rather than a quieter version of it (chat/route.ts sends
       // the same temperature / effort / cap).
-      ...completionParams(MODEL, {
+      ...completionParams(INTERVIEWER_MODEL, {
         temperature: 0.7,
         maxTokens: 320,
         reasoningEffort: "minimal",
@@ -364,7 +363,7 @@ async function generateFollowup(
     choices?: { message?: { content?: string } }[];
     usage?: Parameters<UsageCollector["record"]>[2];
   };
-  usage.record("interviewer", MODEL, data.usage);
+  usage.record("interviewer", INTERVIEWER_MODEL, data.usage);
   return data.choices?.[0]?.message?.content?.trim() ?? "";
 }
 
@@ -690,7 +689,9 @@ const ARTIFACT_DIR = "docs/artifacts";
 const LIVE_JSON = `${ARTIFACT_DIR}/persona-eval-live.json`;
 
 /** Capture stdout *and* still print it, for a reporter that runs for ages. */
-function captureTee<T>(run: () => T): { value: T; text: string } {
+async function captureTee<T>(
+  run: () => Promise<T>,
+): Promise<{ value: T; text: string }> {
   const lines: string[] = [];
   const original = console.log;
   console.log = (...args: unknown[]) => {
@@ -698,7 +699,11 @@ function captureTee<T>(run: () => T): { value: T; text: string } {
     original(...args);
   };
   try {
-    return { value: run(), text: `${lines.join("\n")}\n` };
+    // Awaited *before* console.log is restored. It used to return as soon as
+    // the async report had started, so the text artifact held only the lines
+    // printed before the first await — 238 bytes of a 5.7 KB report.
+    const value = await run();
+    return { value, text: `${lines.join("\n")}\n` };
   } finally {
     console.log = original;
   }
@@ -734,6 +739,8 @@ async function main() {
         process.exitCode = 1;
         return;
       }
+      const warning = judgeWarning(INTERVIEWER_MODEL, "interviewer");
+      if (warning) console.warn(warning);
       // Progress must reach the terminal — this arm runs for half an hour and
       // a silent one cannot be told from a stalled one. So the report is
       // printed *and* captured: `capture` tees to the real console rather than
@@ -798,6 +805,8 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  const warning = judgeWarning(INTERVIEWER_MODEL, "interviewer");
+  if (warning) console.warn(warning);
 
   const empirical = presets
     ? await empiricalReport(runs, apiKey, json)

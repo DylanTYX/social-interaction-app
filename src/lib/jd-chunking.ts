@@ -35,7 +35,11 @@ export function chunkJobDescription(rawText: string): JobDescriptionChunk[] {
       const sentenceBreak = text.lastIndexOf(". ", hardEnd);
       const softBreak = Math.max(paragraphBreak, sentenceBreak);
 
-      if (softBreak > cursor + MIN_CHARS_PER_CHUNK) {
+      // The next chunk starts OVERLAP_CHARS before this one ends, so a break
+      // any closer to the cursor than that would never move it forward.
+      const minSoftBreak =
+        cursor + Math.max(MIN_CHARS_PER_CHUNK, OVERLAP_CHARS);
+      if (softBreak > minSoftBreak) {
         end = softBreak + (softBreak === sentenceBreak ? 1 : 0);
       }
     }

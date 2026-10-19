@@ -126,10 +126,58 @@ describe("summariseCost", () => {
   });
 });
 
+describe("cache writes on GPT-5.6 and later", () => {
+  it("bills uncached input at the write rate once the prompt is cacheable", () => {
+    // 2,299 prompt tokens, none read from the cache: the first call of a prefix.
+    const cost = costOf(
+      record({
+        model: "gpt-6-luna",
+        promptTokens: 2_299,
+        completionTokens: 5,
+      }),
+    );
+    // 2,299 at the write rate (0.125/1M), not the 0.10 list rate.
+    expect(cost?.uncachedInputUsd).toBeCloseTo((2_299 / 1_000_000) * 0.125, 10);
+  });
+
+  it("charges the read rate for what was read, and the write rate for the rest", () => {
+    const cost = costOf(
+      record({
+        model: "gpt-5.6-luna",
+        promptTokens: 3_000,
+        cachedTokens: 2_300,
+      }),
+    );
+    expect(cost?.cachedInputUsd).toBeCloseTo((2_300 / 1_000_000) * 0.02, 10);
+    expect(cost?.uncachedInputUsd).toBeCloseTo((700 / 1_000_000) * 0.25, 10);
+  });
+
+  it("charges the plain rate below the caching minimum, where nothing is written", () => {
+    const cost = costOf(
+      record({ model: "gpt-6-luna", promptTokens: 900, completionTokens: 0 }),
+    );
+    expect(cost?.uncachedInputUsd).toBeCloseTo((900 / 1_000_000) * 0.1, 10);
+  });
+
+  it("leaves earlier models alone: they have no write charge", () => {
+    const cost = costOf(
+      record({ model: "gpt-5-mini", promptTokens: 2_299 }),
+    );
+    expect(cost?.uncachedInputUsd).toBeCloseTo((2_299 / 1_000_000) * 0.25, 10);
+  });
+
+  it("counts the premium against caching when nothing is ever read back", () => {
+    const first = record({ model: "gpt-6-luna", promptTokens: 2_299 });
+    expect(costOf(first)!.totalUsd).toBeGreaterThan(
+      costWithoutCaching(first)!,
+    );
+  });
+});
+
 describe("the price table", () => {
   it("prices every model the app can actually call", () => {
-    // Defaults from chat/route.ts, response-analyzer.ts, summary.ts,
-    // coach/suggested-answer/route.ts, resume-profile.ts and embeddings.ts.
+    // The defaults themselves are checked against this table in models.test.ts;
+    // these two are the ones with no env override at all.
     for (const model of ["gpt-4o-mini", "text-embedding-3-small"]) {
       expect(MODEL_PRICING[model], `no price for ${model}`).toBeTruthy();
     }

@@ -7,11 +7,15 @@ the report, the competency coverage — is built on sand.
 
 This document is how that claim gets checked rather than asserted.
 
-> **Status: analyzer measured, human validation outstanding.**
-> The scoring run has been collected — 88.9% band accuracy and 41.0 separation
-> at `e50e2e4`, against 55.6% and 13.0 for a keyword baseline. What has _not_
-> been collected is the inter-rater pass, so every accuracy figure below still
-> means "agreement with one person". See
+> **Status: analyzer measured on its current model, human validation
+> outstanding.** Re-run on 19 October 2026 on `gpt-6-luna`, which replaced
+> `gpt-4o-mini`: 81.1% band accuracy and 43.7 separation, against 55.6% and
+> 11.7 for a keyword baseline (five runs of each of 18 fixtures). The earlier
+> 88.9% and 41.0 were measured in August on `gpt-4o-mini`, before two fixtures
+> were replaced and a language-signals block entered the prompt; they are kept
+> below as history, and the same tree re-measured on `gpt-4o-mini` gave 81.1%
+> and 36.6. What has _not_ been collected is the inter-rater pass, so every
+> accuracy figure below still means "agreement with one person". See
 > [the inter-rater pass](#the-inter-rater-pass).
 
 ---
@@ -89,7 +93,7 @@ the product consumes it.
 | technical_swe | 3        |
 | system_design | 3        |
 | screening     | 2        |
-| case          | 2        |
+| cs_fundamentals | 2      |
 | hr            | 3        |
 
 Each fixture carries a `rationale` explaining why it belongs in its band. That
@@ -108,16 +112,26 @@ npm run eval -- --json        # machine-readable
 npm run eval -- --only=hr     # filter by id substring or round type
 ```
 
-Cost is `fixtures × runs` analyzer calls: 18 × 5 = 90 calls, a few cents at
-`gpt-4o-mini` pricing. It needs `OPENAI_API_KEY` in `.env.local`.
+Cost is `fixtures × runs` analyzer calls: 18 × 5 = 90 calls, about three cents
+(a run cost $0.027 on `gpt-6-luna` and $0.030 on `gpt-4o-mini`). It needs
+`OPENAI_API_KEY` in `.env.local`, and `npm run eval:models` checks that the key
+and the configured models are accepted before any billed run.
 
 Capture the output. `npm run eval` prints to stdout and writes nothing itself,
 so a run that is not redirected leaves no evidence behind — which is how the
 harness ended up built and never recorded.
 
+The run names the analyzer model in its first line, prints a notice if that
+model has an announced retirement date, and exits non-zero when any call
+failed. It did not always: with a rejected key, every fixture used to print
+PASS (0 of 0 scores in band) beside a NaN mean, and the process exited 0.
+
 ```bash
-# Human-readable, alongside the persona artifact
-npm run eval -- --runs=5 | tee docs/artifacts/eval-results.txt
+# Human-readable; name the file after the model it measured
+npm run eval -- --runs=5 | tee docs/artifacts/eval-gpt-6-luna.txt
+
+# The same tree on another model, for a comparison
+ANALYZER_MODEL=gpt-4o-mini npm run eval -- --runs=5 | tee docs/artifacts/eval-gpt-4o-mini.txt
 
 # Machine-readable, for tables in the report
 npm run eval -- --runs=5 --json > docs/artifacts/eval-results.json
@@ -184,7 +198,8 @@ two are easy to confuse:
 middle band is wide (40-72), so a scorer that clusters everything near 60
 collects hits it has not earned. The keyword heuristic does precisely that: it
 lands **55.6%** of fixtures in the right band while pulling strong and weak
-apart by only **13 points**, against the analyzer's **41.0**.
+apart by only **11.7 points** (13.0 in August, before two fixtures changed),
+against the analyzer's **43.7**.
 
 The reason this ordering was adopted is worth keeping, because it was not
 obvious at the time. On the pre-anchoring run the analyzer scored **63.0%**
@@ -203,8 +218,9 @@ State these rather than let a reader find them:
   than about 11 points is inside the noise.
 - **The labels are one person's judgement and have not been validated.** Band
   accuracy therefore measures _agreement with the author_, not accuracy. This is
-  no longer only a caveat — it is the open question behind the two remaining
-  failures, and `npm run eval:raters` prints the sheet that settles it. Until
+  no longer only a caveat — it is the open question behind the remaining
+  misses, every one of which is lenient, and `npm run eval:raters` prints the
+  sheet that settles it. Until
   that has been run with real markers, every accuracy figure here means
   "agreement with one person".
 - **It tests the analyzer only.** Not the interviewer's questions, not persona
@@ -215,10 +231,87 @@ State these rather than let a reader find them:
   COACHING.md says why at length.
 - **The answers, the labels and the rubric all come from the same author**, so
   this measures internal consistency more than external validity.
+- **The figures belong to one model.** The same tree scored 88.9% in August,
+  81.1% on `gpt-4o-mini` in October and 81.1% on `gpt-6-luna`, with different
+  misses each time; a model change is therefore not a deployment detail but a
+  new measurement, and `npm run eval:models` followed by `npm run eval` is the
+  procedure for it.
 
 ## Results
 
+### Model migration, October 2026: `gpt-4o-mini` to `gpt-6-luna`
+
+OpenAI retires `gpt-4o-mini` on 14 January 2027. The assessor moved to
+`gpt-6-luna` on 19 October 2026, after this comparison: the same tree, the same
+18 fixtures, five runs of each, one run per model
+([`eval-gpt-4o-mini.txt`](artifacts/eval-gpt-4o-mini.txt),
+[`eval-gpt-6-luna.txt`](artifacts/eval-gpt-6-luna.txt)). The pass criteria were
+written down first, in [TOKEN-COST.md](TOKEN-COST.md): band accuracy and
+separation at or above the old model, mean standard deviation no more than 0.5
+worse, field completeness unchanged, and the two fluent-but-wrong fixtures no
+more lenient.
+
+| Metric                      | `gpt-4o-mini` | `gpt-6-luna`  | Criterion          |
+| --------------------------- | ------------- | ------------- | ------------------ |
+| Band accuracy               | 81.1% (73/90) | 81.1% (73/90) | not lower — met    |
+| **Separation**              | 36.6          | **43.7**      | not narrower — met |
+| Strong mean / weak mean     | 76.5 / 39.8   | 83.4 / 39.8   |                    |
+| Mean std dev across runs    | 2.01          | **1.36**      | within +0.5 — met  |
+| Worst std dev               | 8.37          | 2.95          |                    |
+| Field completeness          | 100%          | 100%          | unchanged — met    |
+| Separation vs keyword       | 3.1×          | 3.7×          |                    |
+| `tech-weak-code` (fluent, wrong) | 50.4, 0/5 in band | 44.8, 3/5 in band | no more lenient — met |
+| `design-weak` (fluent, shallow)  | 55.0, 0/5 in band | 30.8, 5/5 in band | no more lenient — met |
+| Cost of a 90-call run       | $0.0295       | $0.0274       |                    |
+
+It passes, and the reading is more mixed than the table. **Equal accuracy hides
+different misses.** Each model puts 73 of 90 runs in band, but not the same 73:
+
+| Fixture                  | Band     | `gpt-4o-mini` mean (in band) | `gpt-6-luna` mean (in band) |
+| ------------------------ | -------- | ---------------------------- | --------------------------- |
+| `beh-strong-conflict` | strong | 87.8 (5/5) | 87.6 (5/5) |
+| `beh-weak-conflict` | weak | 26.0 (5/5) | 35.0 (5/5) |
+| `beh-mediocre-conflict` | mediocre | 65.6 (5/5) | 56.0 (5/5) |
+| `beh-strong-failure` | strong | 69.6 (5/5) | 88.0 (5/5) |
+| `beh-weak-failure` | weak | 15.0 (5/5) | 28.8 (5/5) |
+| `tech-strong-code` | strong | 86.6 (5/5) | 94.0 (5/5) |
+| `tech-weak-code` | weak | 50.4 (0/5) | 44.8 (3/5) |
+| `tech-mediocre-code` | mediocre | 63.0 (5/5) | 76.8 (0/5) |
+| `design-strong` | strong | 75.8 (5/5) | 68.4 (5/5) |
+| `design-weak` | weak | 55.0 (0/5) | 30.8 (5/5) |
+| `design-mediocre` | mediocre | 65.0 (5/5) | 43.4 (5/5) |
+| `screen-strong` | strong | 70.0 (5/5) | 79.6 (5/5) |
+| `screen-weak` | weak | 41.0 (5/5) | 48.0 (0/5) |
+| `cs-fundamentals-strong` | strong | 77.4 (5/5) | 79.2 (5/5) |
+| `cs-fundamentals-weak` | weak | 51.4 (0/5) | 39.0 (5/5) |
+| `hr-strong` | strong | 68.0 (3/5) | 87.2 (5/5) |
+| `hr-mediocre` | mediocre | 64.0 (5/5) | 70.4 (5/5) |
+| `hr-weak` | weak | 40.0 (5/5) | 52.0 (0/5) |
+
+`gpt-6-luna` fixes the three misses that `gpt-4o-mini` made on weak answers it
+was not confused about (`design-weak`, `cs-fundamentals-weak`, and the unstable
+`hr-strong`, which swung between 55 and 75) and mostly fixes the fluent wrong
+code answer. It also introduces three of its own: `screen-weak` at 48 and
+`hr-weak` at 52, weak answers placed just above the band's ceiling of 45, and
+`tech-mediocre-code` at 76.8 against a ceiling of 72. **Every one of its 17
+missed runs is too high and none is too low**, against 15 high and 2 low for the
+old model: the new scorer is the more lenient of the two on the answers it gets
+wrong, and a human marker should look at `screen-weak` and `hr-weak` before the
+ceiling of 45 is taken as settled. On what the harness is for, telling a strong
+answer from a weak one, it is clearly better: wider separation, much steadier
+repeats (the old model's worst case was an 8.4-point swing on one fixture), and
+a better result on the weakness this document has always named. Five runs of 18
+fixtures is still a small sample, and one fixture flipping moves accuracy by
+5.6 points, so equal accuracy is a tie and not a result.
+
+Why the new model can keep the repeatability claim: it takes a temperature when
+its reasoning is off, and the app calls it that way (`model-params.ts`). Many of
+its fixtures repeat to the digit (a standard deviation of 0.0), which is what
+the temperature of 0.1 was meant to buy.
+
 ### Before / after: anchoring the score scale
+
+*Measured in August 2026 on `gpt-4o-mini`, on the fixture set of that date (with two `case` fixtures since replaced by CS fundamentals), before the language-signals block entered the prompt. Kept as the record of what anchoring changed; the current figures are above.*
 
 The measured change, and the reason the harness exists.
 
@@ -295,12 +388,32 @@ argument for deprioritising this experiment, not for claiming it was done.
 
 ### Per-round-type accuracy
 
-Worth breaking out, because the round types are not equally easy. HR and
-screening are judged on motivation and fit, which is softer than correctness and
-complexity — expect lower agreement there, and say so rather than hiding it in
-an average.
+Worth breaking out, because the round types are not equally easy.
 
-Measured at `e50e2e4`, 3 runs per fixture:
+Measured on 19 October 2026, `gpt-6-luna`, 5 runs per fixture:
+
+| Round type      | Fixtures | Runs | Band accuracy | Mean std dev  |
+| --------------- | -------- | ---- | ------------- | ------------- |
+| behavioral      | 5        | 25   | 100%          | 1.16 |
+| system_design   | 3        | 15   | 100%          | 1.87 |
+| cs_fundamentals | 2        | 10   | 100%          | 1.35 |
+| hr              | 3        | 15   | 67%           | 0.90 |
+| technical_swe   | 3        | 15   | 53%           | 1.80 |
+| screening       | 2        | 10   | 50%           | 1.10 |
+
+On `gpt-4o-mini`, the same tree: behavioral 100%, screening 100%, hr 87%,
+technical_swe 67%, system_design 67%, cs_fundamentals 50%.
+
+The pattern moved with the model. In August the two technical types were the
+only ones that missed, which contradicted the expectation that the softer rounds
+would be harder; on `gpt-6-luna` the expectation comes back for HR and
+screening, where the misses are weak answers scored 3 to 7 points over the band
+ceiling, while the design and CS-fundamentals rounds, the fluent-and-wrong
+cases, are now perfect. Each round type has two or three fixtures, so a single
+fixture moves a type by 20 to 50 points; treat these rows as pointers to
+fixtures worth reading, not as measurements of the round types.
+
+August 2026, `gpt-4o-mini`, 3 runs per fixture (the earlier fixture set):
 
 | Round type    | Fixtures | Band accuracy | Mean std dev |
 | ------------- | -------- | ------------- | ------------ |
@@ -310,13 +423,6 @@ Measured at `e50e2e4`, 3 runs per fixture:
 | hr            | 3        | 100%          | 2.30         |
 | technical_swe | 3        | 67%           | 1.80         |
 | system_design | 3        | 67%           | 0.50         |
-
-The prediction above was wrong, and in an interesting direction. HR and
-screening were expected to score _worst_, because motivation and fit are softer
-to judge than correctness — instead they are perfect, and the two technical
-round types are the only ones that miss. Both misses are a single fixture, and
-both are the leniency case described above: a fluent wrong answer is harder for
-this analyzer than a vague soft one, which is the opposite of the intuition.
 
 ---
 
@@ -339,3 +445,10 @@ An evaluator will find these anyway; better to name them.
   [`UAT.md`](UAT.md) is for.
 - **Nothing here has been validated against live traffic.** See
   [`TOKEN-COST.md`](TOKEN-COST.md) for the same caveat on the cost figures.
+- **Every figure above was measured on `gpt-4o-mini`, which retires on
+  14 January 2027.** The candidate successor is `gpt-6-luna`; the analyzer
+  moves only if a run on it matches or beats a fresh baseline run from the
+  same tree, and both runs were still pending on 19 October 2026 because the
+  project's key was being rejected. The order of the runs and what counts as
+  passing are in [`TOKEN-COST.md`](TOKEN-COST.md) §"Retirements and the
+  migration".

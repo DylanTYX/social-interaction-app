@@ -5,6 +5,7 @@ import {
   DEFAULT_TARGET_TURNS,
   describeRoundLength,
   isInterviewComplete,
+  minutesPerTurn,
   targetTurnsForDuration,
   targetTurnsForRound,
 } from "@/lib/interview-progress";
@@ -36,6 +37,22 @@ describe("targetTurnsForDuration", () => {
 
   it("reads the duration off a round", () => {
     expect(targetTurnsForRound({ durationMinutes: 40 })).toBe(20);
+  });
+
+  it("plans a coding round at five minutes an exchange", () => {
+    // One answer in a coding round is the solution itself, so the two-minute
+    // pace promised a 25-minute round twelve questions it never reached.
+    expect(minutesPerTurn("technical_swe")).toBe(5);
+    expect(minutesPerTurn("system_design")).toBe(2);
+    expect(minutesPerTurn(undefined)).toBe(2);
+    expect(
+      targetTurnsForRound({ durationMinutes: 25, type: "technical_swe" }),
+    ).toBe(5);
+    expect(
+      targetTurnsForRound({ durationMinutes: 25, type: "behavioral" }),
+    ).toBe(13);
+    // Still clamped: a short coding round keeps enough turns to say something.
+    expect(targetTurnsForDuration(10, "technical_swe")).toBe(4);
   });
 });
 

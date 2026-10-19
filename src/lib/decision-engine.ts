@@ -307,6 +307,14 @@ interface SignalProbe {
  * One probe per turn: a barrage of "you said X, you said Y" in one steering
  * block reads as an accusation list, not an interview.
  */
+/*
+ * Every sentence below tells the interviewer to quote the phrase back, because
+ * that is what makes a probe fair: the candidate can see which of their own
+ * words earned the question. Only the first sentence used to say so, and the
+ * other six depended on the model doing it unprompted. gpt-5-mini did, 50 times
+ * in 51; its replacement, gpt-5.6-luna, never did — it asked the right
+ * question without naming the phrase — until the instruction was written down.
+ */
 const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
   [
     "OWNERSHIP_AMBIGUOUS",
@@ -321,7 +329,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "CHALLENGE_OWNERSHIP",
       reason: (m) =>
-        `The candidate said "${m}" without naming a decider — ask what their role in that decision was.`,
+        `The candidate said "${m}" without naming a decider — quote it back and ask what their role in that decision was.`,
     },
   ],
   [
@@ -329,7 +337,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "PROBE_ACTION",
       reason: (m) =>
-        `The candidate claimed "${m}" — a claim to verify, not reward: ask what leading it involved and which decisions were theirs.`,
+        `The candidate claimed "${m}" — a claim to verify, not reward: quote it back and ask what leading it involved and which decisions were theirs.`,
     },
   ],
   [
@@ -337,7 +345,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "CHALLENGE_OWNERSHIP",
       reason: (m) =>
-        `The candidate said "${m}" — ask what part of the situation was within their control.`,
+        `The candidate said "${m}" — quote it back and ask what part of the situation was within their control.`,
     },
   ],
   [
@@ -345,7 +353,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "EXPLORE_RESULT",
       reason: (m) =>
-        `The candidate claimed "${m}" with no number anywhere — ask how they measured it.`,
+        `The candidate claimed "${m}" with no number anywhere — quote it back and ask how they measured it.`,
     },
   ],
   [
@@ -353,7 +361,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "DRILL_SPECIFICITY",
       reason: (m) =>
-        `The candidate said "${m}" with no mechanism or measurement — ask what the bottleneck was and how they determined it.`,
+        `The candidate said "${m}" with no mechanism or measurement — quote it back and ask what the bottleneck was and how they determined it.`,
     },
   ],
   [
@@ -361,7 +369,7 @@ const SIGNAL_PROBES: [BehavioralSignalType, SignalProbe][] = [
     {
       strategy: "PROBE_ACTION",
       reason: (m) =>
-        `The candidate said "${m}" — ask what concretely changed in how they work afterwards.`,
+        `The candidate said "${m}" — quote it back and ask what concretely changed in how they work afterwards.`,
     },
   ],
 ];

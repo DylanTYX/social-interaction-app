@@ -18,8 +18,11 @@ In [Supabase Dashboard](https://supabase.com/dashboard) → your project → **S
 1. `supabase/migrations/0001_schema.sql` — tables, constraints, indexes, triggers
 2. `supabase/migrations/0002_security.sql` — row-level security and table privileges
 3. `supabase/migrations/0003_functions.sql` — the functions the app calls
+4. `supabase/migrations/0004_usage_rows_read_only.sql` — stops a signed-in user editing or deleting their own usage rows
 
-That is the whole database, and all three are needed. Without `0003` the app
+That is the whole database. The first three are needed for the app to run; the
+fourth is a security tightening the app does not depend on, so it can be applied
+before or after a deploy. Without `0003` the app
 deploys cleanly, then fails the moment anyone sends a message: every interview
 turn goes through `append_interview_turn`. Each file is safe to run twice.
 
@@ -95,7 +98,9 @@ Add these for **Production** (and **Preview** if family will test preview URLs):
 
 Optional model overrides (leave unset unless you want to change models):
 
-- `INTERVIEWER_MODEL`, `INTERVIEWER_OPENING_MODEL`, `ANALYZER_MODEL`, `COACH_MODEL`
+- `INTERVIEWER_MODEL`, `COACH_MODEL`, `ANALYZER_MODEL`, `SUMMARY_MODEL`,
+  `JD_CLEAN_MODEL` — the defaults, and the dates on which two of them retire,
+  are in `src/lib/models.ts`
 
 **Tip:** Copy values from your local `.env.local` — never commit that file.
 
