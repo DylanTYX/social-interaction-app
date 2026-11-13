@@ -84,7 +84,7 @@ these versions. Nothing needs installing by hand.
 | `microsoft-cognitiveservices-speech-sdk` | 1.51.0 | Azure speech recognition and synthesis in the browser | https://learn.microsoft.com/azure/ai-services/speech-service/ |
 | `@uiw/react-codemirror` | 4.25.11 | Code editor for technical rounds | https://uiwjs.github.io/react-codemirror/ |
 | `@codemirror/lang-java`, `-javascript`, `-python`, `-sql` | 6.0.2, 6.2.5, 6.2.1, 6.10.0 | Syntax highlighting in the editor | https://codemirror.net |
-| `@radix-ui/react-*` (dialog, dropdown-menu, label, progress, select, slot, switch, tooltip) | 1.1–2.3 | Accessible UI primitives | https://www.radix-ui.com/primitives |
+| `@radix-ui/react-dialog`, `-dropdown-menu`, `-label`, `-progress`, `-select`, `-slot`, `-switch`, `-tooltip` | 1.1.23, 2.1.24, 2.1.15, 1.1.16, 2.3.7, 1.3.3, 1.3.7, 1.2.16 | Accessible UI primitives (dialogs, menus, form controls, tooltips) | https://www.radix-ui.com/primitives |
 | `tailwind-merge`, `clsx`, `class-variance-authority` | 3.6.0, 2.1.1, 0.7.1 | Composing CSS class names | https://github.com/dcastil/tailwind-merge |
 | `lucide-react` | 0.556.0 | Icons | https://lucide.dev |
 | `sonner` | 2.0.8 | Toast notifications | https://sonner.emilkowal.ski |
@@ -103,7 +103,8 @@ these versions. Nothing needs installing by hand.
 | `jsdom` | 30.0.1 | Browser environment for component tests |
 | `tsx` | 4.23.13 | Runs the TypeScript scripts in `src/eval` |
 | `dotenv` | 17.4.2 | Loads `.env.local` for those scripts |
-| `@types/node`, `@types/react`, `@types/react-dom` | 20.19, 19.2, 19.2 | Type definitions |
+| `@types/node`, `@types/react`, `@types/react-dom` | 20.19.43, 19.2.18, 19.2.7 | Type definitions |
+| `baseline-browser-mapping` | 2.11.21 | Browser-support data for the build tooling; keeps its "data is out of date" warning quiet |
 
 Fonts (Geist, Geist Mono, Bricolage Grotesque) are fetched from Google Fonts by
 Next.js at build time; nothing to install.
@@ -160,7 +161,7 @@ npm ci
    - the **Project URL**
    - the **anon** key, or the newer **publishable** key (`sb_publishable_…`)
    - optionally the **service_role** key, needed only by the operator scripts in
-     section 5.6. Keep it secret: it bypasses all row-level security.
+     section 5.7. Keep it secret: it bypasses all row-level security.
 
 ### Step 4 — Create an OpenAI API key
 
@@ -284,7 +285,7 @@ production. The template `.env.local.example` lists them with comments.
 ### 3.3 Optional model overrides
 
 Leave these unset to use the defaults in section 1.3. After changing one, run
-`npm run eval:models`, then the relevant harness in section 5.6.
+`npm run eval:models`, then the relevant harness in section 5.7.
 
 | Variable | Default |
 |---|---|
@@ -346,11 +347,21 @@ Leave these unset to use the defaults in section 1.3. After changing one, run
 ├── .github/workflows/ci.yml    Continuous integration
 ├── .env.local.example          Template for the environment file
 ├── package.json                Scripts and dependencies
+├── package-lock.json           Exact installed versions (used by `npm ci`)
 ├── next.config.ts              Next.js configuration and security headers
 ├── eslint.config.mjs           Lint rules, including the one that keeps src/eval out of the app
 ├── vitest.config.mts           Test configuration
+├── postcss.config.mjs          Tailwind CSS build step
+├── components.json             Settings for the shared UI components in src/components/ui
+├── README.md                   Project overview
+├── DEVELOPMENT-PACKAGE.md      This document
 └── tsconfig.json               TypeScript configuration; `@/` means `src/`
 ```
+
+Some code comments cite design notes in `docs/` (for example `docs/PERSONA-EVAL.md`).
+Those notes record why decisions were made and how results were measured. They
+are not part of this package and nothing needs them; each comment explains
+itself without them.
 
 ### 4.1 API routes (`src/app/api/`)
 
@@ -361,8 +372,8 @@ Leave these unset to use the defaults in section 1.3. After changing one, run
 | `sessions`, `sessions/[id]`, `…/report`, `…/resume`, `…/next-round`, `…/activity`, `sessions/bulk`, `sessions/tags` | Create, read, update and delete interview sessions; the report; resuming; moving to the next round of a loop |
 | `loops/[loopId]` | Multi-round loop overview |
 | `personas`, `personas/[id]`, `personas/reset` | Interviewer persona library |
-| `job-descriptions`, `…/[id]`, `…/clean` | Job descriptions: upload, chunk and embed, tidy-up |
-| `resumes`, `resumes/[id]` | Resumes |
+| `job-descriptions`, `…/[id]`, `…/[id]/usage`, `…/clean` | Job descriptions: upload, chunk and embed, tidy-up, and which sessions used one |
+| `resumes`, `resumes/[id]`, `resumes/[id]/usage` | Resumes, and which sessions used one |
 | `speech-token` | Exchanges the Azure key for a short-lived browser token |
 | `analytics/rubric`, `me/sessions`, `me/usage`, `me/export` | Analytics, token usage and cost, data export |
 | `client-errors` | Records browser errors |
@@ -449,13 +460,28 @@ Every table belongs to one user, enforced by row-level security.
 | `appendTurn`, `listMessages`, `listTurnAnalyses` | `sessions.ts` | Saving and reading turns and their scores |
 | `listPersonas`, `planPresetMaintenance` | `personas.ts` | Persona library, including seeding and updating the built-in presets |
 
-### 5.6 Scripts (`package.json`)
+### 5.6 Setup, reports and analytics (`src/lib/`)
+
+| Function | File | What it does |
+|---|---|---|
+| `createDefaultInterviewSetup`, `saveInterviewSetup` | `interview-setup.ts` | The setup wizard's starting state, and keeping it in the browser so a refresh does not lose it |
+| `resolveScenarioForLaunch` | `scenarios.ts` | The scenario a session starts from: a preset, or the role the candidate described in their own words |
+| `createLoopFromTemplate`, `suggestLoopFromJobDescription` | `interview-rounds.ts` | Multi-round loops: from a template, or suggested from a job description's keywords |
+| `roundTypeSpec`, `rubricCriteria` | `round-types.ts` | What each round type (behavioural, technical, system design, …) covers and is scored on |
+| `buildInterviewMetrics` | `interview-metrics.ts` | Running figures for an interview: answers, follow-ups, average scores, trend and the most common gap |
+| `starWeakestPart`, `technicalWeakestArea` | `report-insights.ts` | The one-line explanation under each score card on the report |
+| `personaSignature`, `summariseMoves` | `interviewer-behaviour.ts` | "How they interview" on persona cards, and what the interviewer actually did, on the report |
+| `compareRecent`, `summariseAnswers` | `progress-insights.ts` | Progress over time on the analytics page |
+| `getQuestionsForCategory` | `question-bank/index.ts` | Questions for Quick Drills |
+| `summariseUsage` | `usage-summary.ts` | A user's token use and estimated cost, for the usage card on the dashboard |
+
+### 5.7 Scripts (`package.json`)
 
 | Command | Cost | What it does |
 |---|---|---|
 | `npm run dev` / `build` / `start` | — | Develop, build, serve |
 | `npm run dev:https` | — | Development server over HTTPS, for voice mode from another device |
-| `npm test` / `npm run lint` | free | Unit tests / lint |
+| `npm test` / `npm run test:watch` / `npm run lint` | free | Unit tests once / re-run on save / lint |
 | `npm run eval:models` | ≈ USD 0.001 | Checks every model call is accepted |
 | `npm run eval -- --runs=5` | ≈ USD 0.03 | Scoring accuracy on 18 labelled answers |
 | `npm run eval:persona` | free; `-- --live` ≈ USD 0.17 | Do the persona dials change the questions? |
@@ -516,5 +542,7 @@ Every table belongs to one user, enforced by row-level security.
 | "The interviewer is unavailable right now" | OpenAI key missing, wrong (401) or out of credit (429 insufficient_quota). `npm run eval:models` says which |
 | Sending the first message fails; resumed sessions are blank | Migration `0003_functions.sql` was not run |
 | Voice mode never hears you | Microphone permission denied; the page is plain HTTP on another device (use `npm run dev:https`); or `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` missing or mismatched |
+| Every request fails after a week or more of not using the project | Supabase pauses free projects after about a week without activity. Open the project in the Supabase dashboard and choose **Restore** |
+| Registration says an email could not be sent, or no confirmation email arrives | Supabase's built-in email sender allows only a few emails per hour. Switch off "Confirm email" for local testing (Step 3, item 3) |
 | `npm run dev` fails on start, or `npm test` shows "markAsUncloneable is not a function" | Node too old; run `node -v` and switch to 22.22.2 or later |
 

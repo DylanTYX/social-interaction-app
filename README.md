@@ -76,7 +76,7 @@ with language selection. Answers are reviewed by the interviewer, not executed.
 ### 1. Install
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 2. Configure environment

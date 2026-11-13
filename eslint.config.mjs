@@ -43,7 +43,7 @@ const eslintConfig = defineConfig([
             {
               group: ["@/lib/pricing", "@/lib/usage-summary"],
               message:
-                "The OpenAI rate card is operator data, not product data. Importing it here would ship it to the browser. Price on the server and send the finished figure: `GET /api/me/usage` does exactly that, and is the one place allowed to import these. See docs/DEMO.md, 'Who can see what'.",
+                "The OpenAI rate card is operator data, not product data. Importing it here would ship it to the browser. Price on the server and send the finished figure: `GET /api/me/usage` does exactly that, and is the one place allowed to import these.",
             },
             {
               group: ["@/lib/test-support", "@/lib/test-support/*"],
