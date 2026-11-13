@@ -1,0 +1,7 @@
+# Left out of the submission zip (`git archive`). They stay in the repository.
+# Design records and evaluation write-ups: nothing reads them to build, run or test.
+.gitattributes export-ignore
+docs/*.md export-ignore
+docs/artifacts/* export-ignore
+# Read by src/lib/persona-voice.test.ts, so it must ship.
+docs/artifacts/azure-voices-southeastasia.json -export-ignore

@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local HTTPS certificates from `npm run dev:https`
+/certificates
+
 # debug
 npm-debug.log*
 yarn-debug.log*

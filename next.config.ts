@@ -19,11 +19,17 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), geolocation=(), browsing-topics=(), microphone=(self)",
   },
-  // Only meaningful over HTTPS; ignored by browsers on plain-HTTP localhost.
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
+  // Production only. Sent from `npm run dev:https`, it would make the browser
+  // remember to force HTTPS on localhost for two years, breaking plain
+  // `npm run dev` on that machine.
+  ...(process.env.NODE_ENV === "production"
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+      ]
+    : []),
 ];
 
 /**
@@ -41,15 +47,10 @@ const securityHeaders = [
  *
  *   NEXT_DEV_ORIGINS=192.168.1.42,10.0.0.5 npm run dev
  */
-const allowedDevOrigins = [
-  "10.66.83.168",
-  "172.20.3.189",
-  "192.168.0.3",
-  "10.91.26.229",
-  ...(process.env.NEXT_DEV_ORIGINS?.split(",")
+const allowedDevOrigins =
+  process.env.NEXT_DEV_ORIGINS?.split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean) ?? []),
-];
+    .filter(Boolean) ?? [];
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,

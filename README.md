@@ -48,8 +48,7 @@ brief so each interviewer knows what the previous one found: how the candidate
 scored, what came across well, what is still unproven, and — between rounds of
 the same kind — which questions have already been put to them, so two technical
 interviewers do not spend the day on the same problem. Later rounds also stop
-asking for a background an earlier interviewer already took. See
-`docs/INTERVIEWER.md`.
+asking for a background an earlier interviewer already took.
 
 **Competency coverage.** Questions are model-generated, so nothing guarantees a
 session explores a spread of topics. A 12-competency taxonomy is embedded and
@@ -69,7 +68,7 @@ with language selection. Answers are reviewed by the interviewer, not executed.
 
 ### Prerequisites
 
-- **Node.js ≥ 20.9** (required by Next 16)
+- **Node.js ≥ 22.22.2** (Next 16 needs 20.9; the jsdom component tests need 22.22.2)
 - A Supabase project
 - An OpenAI API key
 - Optional: Azure Speech key + region, for voice mode
@@ -111,14 +110,18 @@ In the Supabase dashboard → **SQL Editor**, run the four files in
 
 > The first three are needed; the fourth is a security tightening the app does not depend on. `src/lib/db/sessions.ts` calls `append_interview_turn` on
 > every interview turn, so without `0003` the app builds and deploys cleanly, then
-> fails on the first message. How these replaced eighteen incremental migrations
-> is in `docs/DATA-MODEL.md` → Migrations.
+> fails on the first message.
 
 ### 4. Run
 
 ```bash
 npm run dev
 ```
+
+Voice mode needs a secure page before the browser will allow the microphone.
+`http://localhost:3000` counts as secure, so this is enough on the same machine.
+To use voice from another device (a phone, or the laptop's network IP), run
+`npm run dev:https` instead and open the `https://` address it prints.
 
 ---
 
@@ -135,16 +138,16 @@ npm run dev
 | `npm run eval:coach` | **Coaching quality harness** — free and offline by default; `--live` makes billed calls |
 | `npm run eval:models` | **Preflight for a model change** — one tiny billed request per call site, shaped like the app's own; `-- --candidates` tests the migration targets in `src/lib/models.ts` |
 | `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
-| `npm run seed:demo` | **Seeds the demo account** — dry run by default; `-- --confirm` writes; needs `SUPABASE_SERVICE_ROLE_KEY`. Seeded, not measured: see docs/DEMO.md |
+| `npm run seed:demo` | **Seeds the demo account** — dry run by default; `-- --confirm` writes; needs `SUPABASE_SERVICE_ROLE_KEY`. Seeded, not measured |
 
-`npm test` currently runs more than 980 tests across 92 files, including route-handler tests that
+`npm test` currently runs more than 1,000 tests across 94 files, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
 and tests on every push and pull request (`.github/workflows/ci.yml`).
 
 The last four are **operator tooling, not product features**. They are not
 imported by any route, so Next bundles none of them, and a lint rule in
 `eslint.config.mjs` fails the build if anything under `src/app` or
-`src/components` tries. See `docs/DEMO.md` → "Who can see what".
+`src/components` tries.
 
 ### Persona differentiation and cost
 
@@ -180,8 +183,7 @@ as a control: rubric coverage went from **20/29 criteria to 29/29**, with
 `screening` and `hr` previously naming *none* of the criteria the analyzer
 scores them on. Its `--live` half measures whether the coach's rewrite scores
 higher than the candidate's own answer — using the analyzer as scorer, which is
-circular in two nameable ways that `docs/COACHING.md` sets out rather than
-hides.
+circular, so the uplift is a consistency check rather than proof.
 
 ### The evaluation harness
 
@@ -289,26 +291,7 @@ before scaling out.
 
 ## Documentation
 
-- `docs/DEMO.md` — **how the persona and cost mechanisms work, how to prove
-  them, and where the developer/end-user boundary sits**
-- `docs/README.md` — **the index: which document answers what**
-- `docs/REQUIREMENTS.md` — **the problem, the requirements, and what satisfies
-  each one**
-- `docs/DESIGN-DECISIONS.md` — **every significant choice, the alternative
-  rejected, and what it cost**
-- `docs/DATA-MODEL.md` — **nine tables, the RLS rule, and what personal data is
-  held**
-- `docs/TESTING.md` — **the five testing layers, and what is deliberately not
-  tested**
-- `docs/FEATURES.md` — **what the app does, written for the end user**
-- `docs/INTERVIEWER.md` — **what the interviewer knows before and during a
-  round, how it picks the next question, and how rounds hand over to each other**
-- `docs/TOKEN-COST.md` — **token cost and prompt-caching design, and how to
-  verify it**
-- `docs/EVALUATION.md` — **how the analyzer's scoring is validated, and the
-  limits of that validation**
-- `docs/COACHING.md` — **how the coach generates a response, the rubric behind
-  it, and how that is measured**
-- `docs/DEPLOYMENT.md` — Vercel + Supabase deployment runbook
-- `docs/UAT.md` — user-acceptance test plan and exit criteria
-- `docs/UAT-tester-handout.md` — participant script
+[DEVELOPMENT-PACKAGE.md](DEVELOPMENT-PACKAGE.md) covers setup, configuration and
+a guide to the code. The design records and evaluation write-ups are kept in
+`docs/` in the source repository; nothing needs them to build, run or test the
+app.

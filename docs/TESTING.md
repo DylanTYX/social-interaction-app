@@ -11,7 +11,6 @@ npm run eval      the analyzer, against a golden set    ← layer 4
 npm run eval:coach    the coach, against the analyzer   ← layer 4
 npm run eval:persona  do personas actually differ?      ← layer 4
 npm run eval:voices   which accents are real?            ← layer 4 (decided by ear)
-docs/UAT.md       do people understand it?              ← layer 5
 ```
 
 CI runs typecheck → lint → test → build on every push and pull request. It
@@ -103,15 +102,6 @@ Cost is reported by the harness itself, priced from `llm_usage`, and the
 `UsageCollector` is **never flushed** — fixture traffic must not contaminate the
 per-session figures the cost report reads.
 
-## Layer 5 — User acceptance testing
-
-[UAT.md](UAT.md) is the plan: a 15-minute smoke test, a 45-minute functional
-pass, a usability checklist, a bug template with severities, and exit criteria.
-[UAT-tester-handout.md](UAT-tester-handout.md) is the participant script.
-
-This is the only layer that can answer whether the app is _usable_. No amount of
-unit testing tells you the setup wizard's third step is confusing.
-
 ---
 
 ## What is deliberately not tested
@@ -124,9 +114,13 @@ correct and fail on the next run. The eval harnesses measure _properties_ of the
 output — score separation, uplift, rubric coverage — because those are stable
 where the wording is not.
 
+**No user testing.** No acceptance or usability sessions with real users were
+run, so whether a non-technical candidate finds the app usable (requirement N9)
+is unverified. No amount of unit testing answers that.
+
 **No end-to-end browser tests.** No Playwright, no Cypress. The paths worth
 driving end to end need a microphone, a live OpenAI key and a Supabase project,
-so they are covered by UAT with a human instead. This is a real gap, not a
+so no automated test covers them. This is a real gap, not an
 argued-away one: a regression in the setup wizard would be caught by a person,
 late, rather than by CI, early.
 

@@ -53,20 +53,20 @@ against a round-appropriate rubric, with a report and a coaching path.
 
 ## 3. Functional requirements
 
-Each row names where it is implemented and where it is checked. `UAT n` refers to
-a case ID in [UAT.md](UAT.md).
+Each row names where it is implemented and where it is checked. "Not tested"
+means no automated test covers it.
 
 ### Interview setup
 
 | #   | Requirement                                                                   | Implemented in                                     | Checked by                                        |
 | --- | ----------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
-| F1  | A user describes a role in free text and starts practising from it alone      | `simulate/setup`, `scenarios.ts`                   | `scenarios.test.ts`, UAT S6                       |
-| F2  | A job description can be pasted or uploaded as PDF, and grounds the questions | `api/job-descriptions`, `jd-chunking.ts`, `pdf.ts` | `jd-chunking.test.ts`, UAT I4-I5                  |
-| F3  | A resume can be pasted or uploaded, and the interviewer reads it whole        | `api/resumes`, `db/resume-prompt.ts`               | `resume-prompt.test.ts`, UAT I6-I8                |
-| F4  | Documents are saved to a reusable library, editable and deletable             | `dashboard/resumes`, `dashboard/job-descriptions`  | `route.test.ts` × 2, UAT I8b                      |
+| F1  | A user describes a role in free text and starts practising from it alone      | `simulate/setup`, `scenarios.ts`                   | `scenarios.test.ts`                       |
+| F2  | A job description can be pasted or uploaded as PDF, and grounds the questions | `api/job-descriptions`, `jd-chunking.ts`, `pdf.ts` | `jd-chunking.test.ts`                  |
+| F3  | A resume can be pasted or uploaded, and the interviewer reads it whole        | `api/resumes`, `db/resume-prompt.ts`               | `resume-prompt.test.ts`                |
+| F4  | Documents are saved to a reusable library, editable and deletable             | `dashboard/resumes`, `dashboard/job-descriptions`  | `route.test.ts` × 2                      |
 | F5  | The interviewer persona is configurable on five axes plus six dials, and each dial demonstrably changes the interview | `persona-engine.ts`, `persona-dials.ts`      | `persona-engine.test.ts`, `persona-dials.test.ts`, [PERSONA-EVAL.md](PERSONA-EVAL.md) |
 | F6  | One round, or many, composed by the user                                      | `interview-rounds.ts`                              | `interview-rounds.test.ts`, `round-types.test.ts` |
-| F7  | Each round in a loop can have a different interviewer                         | `next-round/route.ts`, `loop-step.tsx`             | UAT I9, V10                                       |
+| F7  | Each round in a loop can have a different interviewer                         | `next-round/route.ts`, `loop-step.tsx`             | Not tested                                       |
 
 ### The interview
 
@@ -79,34 +79,34 @@ a case ID in [UAT.md](UAT.md).
 | F12 | A later round does not re-ask for a background it was briefed on | `round-types.ts` `continuationOpening`, `opening-brief.ts` | `opening-brief.test.ts`                                            |
 | F13 | Each round opens on a question belonging to its type             | `round-types.ts` `opening`                                 | `opening-brief.test.ts`                                            |
 | F14 | Technical rounds accept typed code, in text **and** voice        | `code-answer.ts`, `code-input.tsx`, both interview screens | `code-answer.test.ts`                                              |
-| F15 | Voice mode transcribes speech and speaks replies                 | `speech-service.ts`, Azure Speech                          | `speech-service.test.ts`, UAT V1-V5                                |
-| F15a | An interviewer speaks English with the accent their nationality suggests | `persona-voice.ts`, `speech-voices.ts` | `persona-voice.test.ts`, `speech-queue.test.ts`, UAT V7-V10 |
-| F16 | A session survives a closed tab and can be resumed               | `sessions/[id]/resume`, `chat-recovery.ts`                 | UAT T7 only — **`chat-recovery.ts` has no unit test**              |
-| F17 | The candidate can stop early and still get a report              | `interview-session-state.ts`                               | UAT T6                                                             |
+| F15 | Voice mode transcribes speech and speaks replies                 | `speech-service.ts`, Azure Speech                          | `speech-service.test.ts`                                |
+| F15a | An interviewer speaks English with the accent their nationality suggests | `persona-voice.ts`, `speech-voices.ts` | `persona-voice.test.ts`, `speech-queue.test.ts` |
+| F16 | A session survives a closed tab and can be resumed               | `sessions/[id]/resume`, `chat-recovery.ts`                 | Not tested — **`chat-recovery.ts` has no unit test**              |
+| F17 | The candidate can stop early and still get a report              | `interview-session-state.ts`                               | Not tested                                                             |
 
 ### After the interview
 
 | #   | Requirement                                                           | Implemented in                              | Checked by                                |
 | --- | --------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
-| F18 | A report with an overall score, per-answer scores, strengths and gaps | `simulate/report/[id]`                      | UAT R1, R7                                |
+| F18 | A report with an overall score, per-answer scores, strengths and gaps | `simulate/report/[id]`                      | Not tested                                |
 | F19 | On-demand coaching: a suggested answer, a rewrite, targeted tips          | `api/coach/suggested-answer`                    | `route.test.ts`, **`npm run eval:coach`** |
 | F20 | Competency coverage — what the interview explored and what it did not | `competencies.ts`                           | `competencies.test.ts`                    |
-| F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R12                                   |
+| F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | Not tested                                   |
 | F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `progress-insights.ts`, `api/analytics/rubric`, `recommendations.ts` | `session-stats.test.ts`, `progress-insights.test.ts`, `api/analytics/rubric/route.test.ts` |
-| F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank/`, UAT L5                  |
+| F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank/`                  |
 | F24 | Drills answered by speaking or typing, coached as what they are      | `dashboard/drills`, `use-speech-answer.ts`  | `coach-prompt.test.ts`, `route.test.ts`   |
 | F25 | Drill topics scoped to Computer Science, with a rubric behind each   | `question-bank/categories.ts`, `coach-rubric.ts` | `question-bank.test.ts`, **`docs/DRILLS.md`** |
 | F26 | Evidence probing: weak wording ("involved", "we decided") detected, quoted back, and marked on evidence | `text-metrics.ts`, `decision-engine.ts`     | `text-metrics.test.ts`, `decision-engine.test.ts`, **`docs/INTERVIEWER.md`** |
 | F27 | Curveballs: seeded topic pivots and scenario twists, biased by persona dials, never by the rubric | `decision-engine.ts`, `persona-engine.ts`   | `decision-engine.test.ts`; [PERSONA-EVAL.md](PERSONA-EVAL.md) measures the rate at every dial setting |
-| F28 | A user can see their own token use and its estimated cost, by period and by what it bought | `api/me/usage`, `usage-summary.ts`, `dashboard/settings`, report header | `usage-summary.test.ts`, `api/me/usage/route.test.ts`, UAT A7 |
+| F28 | A user can see their own token use and its estimated cost, by period and by what it bought | `api/me/usage`, `usage-summary.ts`, `dashboard/settings`, report header | `usage-summary.test.ts`, `api/me/usage/route.test.ts` |
 
 ### Account and data
 
 | #   | Requirement                                          | Implemented in                         | Checked by                 |
 | --- | ---------------------------------------------------- | -------------------------------------- | -------------------------- |
 | F24 | Email/password auth; a user sees only their own data | Supabase auth + RLS on all nine tables | `route.test.ts` auth cases |
-| F25 | Export all data as JSON                              | `api/me/export`                        | UAT A3                     |
-| F26 | Delete interview history from settings; account rows cascade on auth deletion (no UI path) | `dashboard/settings`, FK cascade       | UAT A4                     |
+| F25 | Export all data as JSON                              | `api/me/export`                        | Not tested                     |
+| F26 | Delete interview history from settings; account rows cascade on auth deletion (no UI path) | `dashboard/settings`, FK cascade       | Not tested                     |
 
 ---
 
@@ -122,7 +122,7 @@ a case ID in [UAT.md](UAT.md).
 | N6  | **Secrets must not reach the browser**                                            | Azure keys server-side; browser gets a short-lived token. A lint rule bars `@/lib/pricing`, `@/lib/usage-summary` and `@/eval` from `src/app` and `src/components`, with one carve-out for route handlers, which never reach a bundle | `eslint.config.mjs`; CI runs lint                                  |
 | N7  | A turn must be atomic — no half-written turns                                     | `append_interview_turn` writes messages, analysis and session update in one transaction                                                     | Migration `0005`                                                   |
 | N8  | The interview must degrade rather than fail on a bad model response               | `jsonrepair` fallback, truncation detection with retry, neutral defaults                                                                    | `response-analyzer.ts`; field completeness measured at 100%        |
-| N9  | Usable on a laptop by a non-technical candidate                                   | Setup wizard, onboarding tour, command palette                                                                                              | [UAT.md](UAT.md) §5 usability checklist                            |
+| N9  | Usable on a laptop by a non-technical candidate                                   | Setup wizard, onboarding tour, command palette                                                                                              | Not tested                            |
 
 **N9 is the weakest of these** and the docs say so: the interview screen assumes
 a desktop browser, and on a phone the composer and coaching rail have no

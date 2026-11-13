@@ -452,5 +452,5 @@ points. Whether that direction is the right one is a question for people.
   deterministic prompt diff is exact; the empirical recovery figure is an
   illustration, not a sample.
 - **Nothing here measures whether a candidate who reads the coaching does
-  better next time.** That is what `docs/UAT.md` is for, and no offline harness
-  can answer it.
+  better next time.** Only a study with real candidates could answer that, and
+  none has been run.

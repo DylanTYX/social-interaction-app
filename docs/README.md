@@ -24,11 +24,10 @@ Fourteen documents. This is which one answers what, so nobody has to grep.
 
 |                                                                   |                                                                              |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [TESTING.md](TESTING.md)                                          | The five layers, and what is deliberately not tested                         |
+| [TESTING.md](TESTING.md)                                          | The four layers, and what is deliberately not tested                         |
 | [EVALUATION.md](EVALUATION.md)                                    | Is the **analyzer's score** trustworthy? Measured against a keyword baseline |
 | [PERSONA-EVAL.md](PERSONA-EVAL.md)                                | Do the **persona dials** change the interview, or are they decoration? Measured one dial at a time |
 | [COACHING.md](COACHING.md)                                        | How the **coach** generates a response, and how much of it is measured       |
-| [UAT.md](UAT.md) · [UAT-tester-handout.md](UAT-tester-handout.md) | Can people actually use it? Test plan and participant script                 |
 | [PRODUCTION-REVIEW.md](PRODUCTION-REVIEW.md)                      | What a hardening pass found, what was fixed, what was not, and why           |
 | [SECURITY.md](SECURITY.md)                                        | What an error message tells a stranger: the three defects, the OWASP mapping, and what each claim rests on |
 

@@ -170,7 +170,7 @@ If step 3–4 fail: almost always **Supabase redirect URLs** or missing env vars
 
 ## Cost reminder (Hobby)
 
-| Service       | Typical UAT cost                                        |
+| Service       | Typical cost                                            |
 | ------------- | ------------------------------------------------------- |
 | Vercel Hobby  | $0                                                      |
 | Supabase Free | $0 within limits                                        |
@@ -202,4 +202,3 @@ CLI is optional; the GitHub dashboard flow above is enough.
 - [ ] Production deploy green
 - [ ] Supabase Site URL + Redirect URLs updated
 - [ ] Smoke test: register → dashboard → one text interview → report
-- [ ] UAT handout updated with live URL (`docs/UAT-tester-handout.md`)

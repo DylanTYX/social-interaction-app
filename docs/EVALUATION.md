@@ -441,8 +441,8 @@ An evaluator will find these anyway; better to name them.
   people band the fixtures independently and report Cohen's kappa first.
 - **This measures the analyzer, not the interview.** Whether the _questions_ are
   good, whether the adaptation helps a candidate improve, and whether the app
-  teaches anything are separate questions — that is what
-  [`UAT.md`](UAT.md) is for.
+  teaches anything are separate questions, which only testing with real
+  candidates could answer; none has been run.
 - **Nothing here has been validated against live traffic.** See
   [`TOKEN-COST.md`](TOKEN-COST.md) for the same caveat on the cost figures.
 - **Every figure is one model, on one tree, on one day.** The analyzer moved

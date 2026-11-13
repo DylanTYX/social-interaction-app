@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22.22.2"
   },
   "scripts": {
     "dev": "next dev",
+    "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -20,8 +21,7 @@
     "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts",
     "eval:voices": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-voice-audition.ts",
     "seed:demo": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-demo-seed.ts",
-    "security-demo": "tsx src/eval/run-security-demo.ts",
-    "uat-summary": "tsx src/eval/run-uat-summary.ts"
+    "security-demo": "tsx src/eval/run-security-demo.ts"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",

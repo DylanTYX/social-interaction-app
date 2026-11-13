@@ -14,6 +14,27 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-11-14 (UAT removed; HTTPS for local voice testing)
+
+**UAT removed.** No acceptance test sessions were run, so the plan, the tester
+handout, the three result logs, the practice logs and `npm run uat-summary`
+(with its code and tests) are deleted. Every document that named a UAT case as
+the check for a requirement now says what is true: `REQUIREMENTS.md` marks those
+rows "Not tested"; `TESTING.md` drops layer 5 and lists the absence of user
+testing among the named gaps; `COACHING.md` and `EVALUATION.md` no longer point
+to a test that did not happen. Entries below that describe building the UAT
+material are left as the record of what was planned.
+
+**HTTPS dev server.** `npm run dev:https` serves the app over HTTPS with a local
+certificate, because browsers block the microphone on plain HTTP from any
+address other than `localhost`. HSTS is now sent in production only, so a
+local HTTPS run cannot pin `localhost` to HTTPS. The dev-origin allow-list no
+longer hard-codes network addresses; it is read from `NEXT_DEV_ORIGINS`.
+
+**Node 22.** jsdom 30 needs Node 22.22.2 or later; on Node 20 the three
+browser-component test files crashed on load. `engines`, CI and the setup
+instructions now say Node 22.
+
 ## 2026-10-21 (personas)
 
 ### The personas are made distinct: warmth reaches the private note, stops meaning praise, and the presets are spread out

@@ -387,7 +387,7 @@ instructions half-followed may be worth less than four followed exactly.
   is why `src/lib/models.ts` now holds one constant that both read and every
   run prints the model it used.
 - **The run was made on an uncommitted tree.** The files that differ from the
-  commit are documents, the UAT summary tooling and a formatting change; none is
+  commit are documents, a reporting script since removed, and a formatting change; none is
   on the interviewer's request path, and the interviewer's own code is identical
   to the commit. The deterministic artifact says so in its stamp and asks to be
   regenerated from a clean tree before it is quoted.

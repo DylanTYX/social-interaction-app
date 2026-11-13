@@ -15,7 +15,6 @@ a clean machine. It is organised as requested:
 5. [Major functions](#5-major-functions)
 6. [Key points to take note of](#6-key-points-to-take-note-of)
 7. [Troubleshooting](#7-troubleshooting)
-8. [Further documentation](#8-further-documentation)
 
 Expect about an hour for a first setup, most of it creating the three cloud
 accounts.
@@ -28,14 +27,15 @@ accounts.
 
 | Tool | Version used | Required | Where to get it | Purpose |
 |---|---|---|---|---|
-| Node.js | 20.20.2 (any **20.9 or later**) | Yes | https://nodejs.org | Runs the app, the tests and the scripts |
-| npm | 10.8.2 (ships with Node) | Yes | https://docs.npmjs.com | Installs the packages |
-| nvm (optional) | any | No | https://github.com/nvm-sh/nvm (macOS/Linux), https://github.com/coreybutler/nvm-windows (Windows) | Switches Node versions; the easiest way to get Node 20 |
+| Node.js | 22.23.1 (any **22.22.2 or later**) | Yes | https://nodejs.org | Runs the app, the tests and the scripts |
+| npm | 10.9.8 (ships with Node) | Yes | https://docs.npmjs.com | Installs the packages |
+| nvm (optional) | any | No | https://github.com/nvm-sh/nvm (macOS/Linux), https://github.com/coreybutler/nvm-windows (Windows) | Switches Node versions; the easiest way to get Node 22 |
 | Git | any recent | Only to clone | https://git-scm.com | Version control |
 | Google Chrome or Microsoft Edge | current | For voice mode | https://www.google.com/chrome | Voice interviews need microphone access; tested in Chrome |
 | A code editor | any | No | e.g. https://code.visualstudio.com | — |
 
-Node 18 does **not** work: Next.js 16 refuses to start below 20.9.
+Use Node 22. Next.js 16 refuses to start below 20.9, and the browser-component
+tests (jsdom 30) crash below 22.22.2, so Node 20 runs the app but fails `npm test`.
 
 ### 1.2 Cloud services
 
@@ -112,14 +112,14 @@ Next.js at build time; nothing to install.
 
 ## 2. Installation procedure
 
-### Step 1 — Install Node.js 20
+### Step 1 — Install Node.js 22
 
 With nvm:
 
 ```bash
-nvm install 20
-nvm use 20
-node -v    # must print v20.9.0 or later
+nvm install 22
+nvm use 22
+node -v    # must print v22.22.2 or later
 ```
 
 Or download the LTS installer from https://nodejs.org.
@@ -221,8 +221,22 @@ Open http://localhost:3000, register an account, and check that:
 4. **End interview** opens a report with a score.
 
 For voice mode, choose **Voice interview** and allow microphone access when the
-browser asks. `localhost` counts as a secure origin, so no HTTPS is needed
-locally.
+browser asks. Browsers only allow the microphone on a secure page. `localhost`
+counts as secure, so plain `npm run dev` is enough on the same machine.
+
+To test voice from another device, such as a phone on the same Wi-Fi, run:
+
+```bash
+npm run dev:https
+```
+
+Next.js creates a local certificate on first run (in `certificates/`, which git
+ignores) and may ask for your password to trust it. Open the `https://` address
+it prints. Other devices do not trust that certificate, so the browser shows a
+warning first; continue past it. If Next.js blocks the device's requests, add
+its address to `NEXT_DEV_ORIGINS` (section 3.4). For Supabase sign-in from that
+address, add it to **Redirect URLs** as in Step 3, item 4, for example
+`https://192.168.1.42:3000/**`.
 
 ### Step 9 — Run the checks
 
@@ -243,8 +257,7 @@ npm start          # serves the production build on http://localhost:3000
 
 To put it online, import the repository into Vercel, add the same environment
 variables under **Project → Settings → Environment Variables**, deploy, and add
-the Vercel URL to Supabase's Site URL and Redirect URLs. The full walk-through,
-including the traps that look like app bugs, is in `docs/DEPLOYMENT.md`.
+the Vercel URL to Supabase's Site URL and Redirect URLs.
 
 ---
 
@@ -289,6 +302,7 @@ Leave these unset to use the defaults in section 1.3. After changing one, run
 | `STEER_DEADLINE_MS` | 4000 | How long a turn waits for the assessor before writing the next question |
 | `RETRIEVAL_DEADLINE_MS` | 3000 | How long a turn waits for job-description search |
 | `PERSIST_DEADLINE_MS` | 3000 | How long it waits for a late score after the reply, so it can still be saved |
+| `NEXT_DEV_ORIGINS` | none | Extra addresses allowed to use the dev server, comma-separated, e.g. `192.168.1.42`. Needed when opening `npm run dev` from another device |
 
 ### 3.5 Operator scripts only
 
@@ -327,8 +341,8 @@ Leave these unset to use the defaults in section 1.3. After changing one, run
 │   │                           into the app)
 │   └── proxy.ts                Runs on every request to refresh the Supabase session
 ├── supabase/migrations/        Database schema, security and functions (run in order)
-├── docs/                       Design documents and evaluation records (section 8)
-│   └── artifacts/              Saved outputs of the evaluation runs
+├── docs/artifacts/             Azure voice catalogue read by the tests; the evaluation
+│                               scripts write their results here
 ├── .github/workflows/ci.yml    Continuous integration
 ├── .env.local.example          Template for the environment file
 ├── package.json                Scripts and dependencies
@@ -440,24 +454,24 @@ Every table belongs to one user, enforced by row-level security.
 | Command | Cost | What it does |
 |---|---|---|
 | `npm run dev` / `build` / `start` | — | Develop, build, serve |
+| `npm run dev:https` | — | Development server over HTTPS, for voice mode from another device |
 | `npm test` / `npm run lint` | free | Unit tests / lint |
 | `npm run eval:models` | ≈ USD 0.001 | Checks every model call is accepted |
-| `npm run eval -- --runs=5` | ≈ USD 0.03 | Scoring accuracy on 18 labelled answers (`docs/EVALUATION.md`) |
-| `npm run eval:persona` | free; `-- --live` ≈ USD 0.17 | Do the persona dials change the questions? (`docs/PERSONA-EVAL.md`) |
-| `npm run eval:coach` | free; `-- --live` ≈ USD 0.05 | Does coaching improve answers? (`docs/COACHING.md`) |
+| `npm run eval -- --runs=5` | ≈ USD 0.03 | Scoring accuracy on 18 labelled answers |
+| `npm run eval:persona` | free; `-- --live` ≈ USD 0.17 | Do the persona dials change the questions? |
+| `npm run eval:coach` | free; `-- --live` ≈ USD 0.05 | Does coaching improve answers? |
 | `npm run eval:raters` | free | Blind marking sheet for human raters |
 | `npm run security-demo` | free | Shows the prompt-injection controls working |
 | `npm run cost-report` | free | Prices the usage recorded in the database (needs the service-role key) |
 | `npm run seed:demo` | free | Creates a demo account with example sessions (needs the service-role key) |
 | `npm run eval:voices` | Azure only | Auditions accent voices |
-| `npm run uat-summary` | free | Summarises the user acceptance test logs |
 
 ---
 
 ## 6. Key points to take note of
 
-1. **Use Node 20.9 or later.** Node 18 fails, and so do the three browser-based
-   component tests.
+1. **Use Node 22.22.2 or later.** Next.js will not start on Node 18, and on
+   Node 20 three browser-component test files crash.
 2. **OpenAI calls cost money.** The account needs credit. `npm test` makes no
    calls; the `eval` scripts do, and print their cost.
 3. **Run all four migrations, in order,** on a new Supabase project. A missing
@@ -470,21 +484,24 @@ Every table belongs to one user, enforced by row-level security.
 6. **Do not change the embedding model** without re-embedding: every stored
    job-description chunk was produced by `text-embedding-3-small`.
 7. **The private note must stay last** in the interviewer's messages. It was
-   ignored when it sat earlier (`docs/DESIGN-DECISIONS.md` §17).
+   ignored when it sat earlier.
 8. **Scores are persona-blind.** The assessor never receives the persona, so a
    strict interviewer asks harder questions but grades on the same rubric.
 9. **Prompt caching** needs a stable prefix of at least 1,024 tokens. Keep
    per-turn content out of the stable part of the prompt or every turn pays full
-   price (`docs/TOKEN-COST.md`).
+   price.
 10. **Built-in personas are copied into each account** on first use. Editing
     `PRESET_PERSONAS` changes new accounts, and existing ones only through
     `planPresetMaintenance`.
 11. **The rate limiter is in memory,** so limits are per server instance.
 12. **`src/eval` is operator tooling.** A lint rule fails the build if the app
     imports it.
-13. **Saved evaluation outputs** in `docs/artifacts/` are stamped with the commit
-    they came from. Regenerate them from a clean working tree before quoting.
-14. **Voice mode** needs Chrome or Edge and microphone permission. Accented
+13. **Evaluation outputs** are written to `docs/artifacts/`, stamped with the
+    commit they came from. Run them from a clean working tree so the stamp is
+    meaningful.
+14. **Voice mode** needs Chrome or Edge, microphone permission and a secure page:
+    `localhost` or HTTPS. Over plain HTTP from another device the browser blocks
+    the microphone; use `npm run dev:https`. Accented
     voices exist only for nationalities whose voice passed an audition; others
     speak neutral English.
 
@@ -498,28 +515,6 @@ Every table belongs to one user, enforced by row-level security.
 | Registration works but you are sent back to login | Supabase **Redirect URLs** do not include `http://localhost:3000/**`, or "Confirm email" is on and the email has not been confirmed |
 | "The interviewer is unavailable right now" | OpenAI key missing, wrong (401) or out of credit (429 insufficient_quota). `npm run eval:models` says which |
 | Sending the first message fails; resumed sessions are blank | Migration `0003_functions.sql` was not run |
-| Voice mode never hears you | Microphone permission denied, or `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` missing or mismatched |
-| `npm run dev` fails on start | Node below 20.9; run `node -v` |
+| Voice mode never hears you | Microphone permission denied; the page is plain HTTP on another device (use `npm run dev:https`); or `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` missing or mismatched |
+| `npm run dev` fails on start, or `npm test` shows "markAsUncloneable is not a function" | Node too old; run `node -v` and switch to 22.22.2 or later |
 
-More cases are in `docs/DEPLOYMENT.md` → Troubleshooting.
-
----
-
-## 8. Further documentation
-
-The `docs/` folder records why the system is built the way it is, and how each
-claim was measured. Start with `docs/README.md`, which indexes them. The most
-useful for a developer:
-
-| Document | Read it for |
-|---|---|
-| `docs/FEATURES.md` | Everything the app does, screen by screen |
-| `docs/DESIGN-DECISIONS.md` | The reasons behind the main design choices |
-| `docs/DATA-MODEL.md` | Tables, functions and migrations in detail |
-| `docs/INTERVIEWER.md` | Personas, dials and the decision engine |
-| `docs/TOKEN-COST.md` | Model choices, prompt caching and cost |
-| `docs/SECURITY.md` | Authentication, row-level security, prompt-injection controls |
-| `docs/TESTING.md` | What the tests cover |
-| `docs/EVALUATION.md`, `docs/PERSONA-EVAL.md`, `docs/COACHING.md` | The three evaluation harnesses and their results |
-| `docs/DEPLOYMENT.md` | Deploying to Vercel |
-| `docs/UAT.md` | The user acceptance test plan |

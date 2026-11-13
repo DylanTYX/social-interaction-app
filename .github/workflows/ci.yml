@@ -25,8 +25,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Next 16 requires >= 20.9.
-          node-version: "20.9"
+          # Next 16 needs >= 20.9; jsdom 30 (component tests) needs >= 22.22.2.
+          node-version: "22"
           cache: npm
 
       - name: Install
