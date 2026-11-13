@@ -1,5 +1,10 @@
 # ConvoTrainer
 
+> **Setting this project up from scratch?** Start with
+> [DEVELOPMENT-PACKAGE.md](DEVELOPMENT-PACKAGE.md): every tool and service with
+> versions, the installation steps, every environment variable, and a guide to
+> the code.
+
 An AI interview-practice application. You describe the role you're preparing
 for, shape an interviewer persona, and run a text or voice interview against a
 model that adapts its questions to how you actually answer. Every answer is
@@ -21,7 +26,7 @@ actually in play — STAR elements on behavioural rounds, problem framing /
 correctness / complexity on technical ones.
 
 **Six round types, one or many.** Screening, behavioural, technical SWE, system
-design, case, and HR — each with its own rubric, interviewer playbook and
+design, CS fundamentals, and HR — each with its own rubric, interviewer playbook and
 scoring path. Run a single targeted round, or compose a full loop. Round length
 is configurable and actually drives how long the interview runs.
 
