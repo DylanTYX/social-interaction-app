@@ -247,6 +247,29 @@ describe("SSML: accent, content language, and the voice-name attribute", () => {
     );
   });
 
+  it("wraps a warm interviewer's speech in the voice's style, pace included", async () => {
+    const speech = service();
+    void speech.speakQueued("Thanks, take your time.", "en-US-AriaNeural", {
+      ratePercent: 0,
+      style: "friendly",
+    });
+    await flush();
+
+    // SSML at pace 5 too: the style alone is reason enough to send it.
+    const ssml = pendingSynthesis[0].text;
+    expect(ssml).toContain('xmlns:mstts="https://www.w3.org/2001/mstts"');
+    expect(ssml).toContain(
+      '<mstts:express-as style="friendly"><prosody rate="+0%" pitch="+0%">Thanks, take your time.</prosody></mstts:express-as>',
+    );
+  });
+
+  it("speaks plainly when no style is given", async () => {
+    const speech = service();
+    void speech.speakQueued("Next question.", "en-US-AriaNeural", { ratePercent: 10 });
+    await flush();
+    expect(pendingSynthesis[0].text).not.toContain("express-as");
+  });
+
   it("refuses a voice name that is not in the catalogue", async () => {
     // The voice name is interpolated into the SSML `<voice name="…">`
     // attribute, so a crafted value could close it and inject elements.

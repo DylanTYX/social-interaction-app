@@ -75,7 +75,7 @@ describe("two personas produce different instructions", () => {
     expect(a).toContain("high expectations");
     expect(b).not.toContain("high expectations");
     expect(a).toContain("Pushback: high");
-    expect(b).toContain("Pushback: light");
+    expect(b).toContain("Pushback: minimal");
   });
 });
 

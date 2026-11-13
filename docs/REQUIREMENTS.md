@@ -66,7 +66,7 @@ a case ID in [UAT.md](UAT.md).
 | F4  | Documents are saved to a reusable library, editable and deletable             | `dashboard/resumes`, `dashboard/job-descriptions`  | `route.test.ts` × 2, UAT I8b                      |
 | F5  | The interviewer persona is configurable on five axes plus six dials, and each dial demonstrably changes the interview | `persona-engine.ts`, `persona-dials.ts`      | `persona-engine.test.ts`, `persona-dials.test.ts`, [PERSONA-EVAL.md](PERSONA-EVAL.md) |
 | F6  | One round, or many, composed by the user                                      | `interview-rounds.ts`                              | `interview-rounds.test.ts`, `round-types.test.ts` |
-| F7  | Each round in a loop can have a different interviewer                         | `next-round/route.ts`, `loop-step.tsx`             | UAT T-loop                                        |
+| F7  | Each round in a loop can have a different interviewer                         | `next-round/route.ts`, `loop-step.tsx`             | UAT I9, V10                                       |
 
 ### The interview
 
@@ -81,19 +81,19 @@ a case ID in [UAT.md](UAT.md).
 | F14 | Technical rounds accept typed code, in text **and** voice        | `code-answer.ts`, `code-input.tsx`, both interview screens | `code-answer.test.ts`                                              |
 | F15 | Voice mode transcribes speech and speaks replies                 | `speech-service.ts`, Azure Speech                          | `speech-service.test.ts`, UAT V1-V5                                |
 | F15a | An interviewer speaks English with the accent their nationality suggests | `persona-voice.ts`, `speech-voices.ts` | `persona-voice.test.ts`, `speech-queue.test.ts`, UAT V7-V10 |
-| F16 | A session survives a closed tab and can be resumed               | `sessions/[id]/resume`, `chat-recovery.ts`                 | UAT T8 only — **`chat-recovery.ts` has no unit test**              |
-| F17 | The candidate can stop early and still get a report              | `interview-session-state.ts`                               | UAT T9                                                             |
+| F16 | A session survives a closed tab and can be resumed               | `sessions/[id]/resume`, `chat-recovery.ts`                 | UAT T7 only — **`chat-recovery.ts` has no unit test**              |
+| F17 | The candidate can stop early and still get a report              | `interview-session-state.ts`                               | UAT T6                                                             |
 
 ### After the interview
 
 | #   | Requirement                                                           | Implemented in                              | Checked by                                |
 | --- | --------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
-| F18 | A report with an overall score, per-answer scores, strengths and gaps | `simulate/report/[id]`                      | UAT R1-R5                                 |
+| F18 | A report with an overall score, per-answer scores, strengths and gaps | `simulate/report/[id]`                      | UAT R1, R7                                |
 | F19 | On-demand coaching: a suggested answer, a rewrite, targeted tips          | `api/coach/suggested-answer`                    | `route.test.ts`, **`npm run eval:coach`** |
 | F20 | Competency coverage — what the interview explored and what it did not | `competencies.ts`                           | `competencies.test.ts`                    |
-| F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R7                                    |
+| F21 | A combined report across the rounds of a loop                         | `api/loops/[loopId]`                        | UAT R12                                   |
 | F22 | Progress over time, and a suggestion for what to practise next        | `dashboard/analytics`, `progress-insights.ts`, `api/analytics/rubric`, `recommendations.ts` | `session-stats.test.ts`, `progress-insights.test.ts`, `api/analytics/rubric/route.test.ts` |
-| F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank/`, UAT D1-D3               |
+| F23 | Single-question drills without setting up a session                   | `dashboard/drills`                          | `question-bank/`, UAT L5                  |
 | F24 | Drills answered by speaking or typing, coached as what they are      | `dashboard/drills`, `use-speech-answer.ts`  | `coach-prompt.test.ts`, `route.test.ts`   |
 | F25 | Drill topics scoped to Computer Science, with a rubric behind each   | `question-bank/categories.ts`, `coach-rubric.ts` | `question-bank.test.ts`, **`docs/DRILLS.md`** |
 | F26 | Evidence probing: weak wording ("involved", "we decided") detected, quoted back, and marked on evidence | `text-metrics.ts`, `decision-engine.ts`     | `text-metrics.test.ts`, `decision-engine.test.ts`, **`docs/INTERVIEWER.md`** |

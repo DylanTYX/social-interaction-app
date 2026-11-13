@@ -14,39 +14,152 @@ be checked against the original before it is quoted in the report.
 
 ---
 
+## 2026-10-21 (personas)
+
+### The personas are made distinct: warmth reaches the private note, stops meaning praise, and the presets are spread out
+
+**Documents:** `DESIGN-DECISIONS.md` (new §19), `PERSONA-EVAL.md` (status and
+limitations: the live figures predate this), `INTERVIEWER.md` (warmth row; the
+presets), `FEATURES.md` (persona cards, the report, voice styles), `DEMO.md` and
+`presentation/SCRIPT.md` (the difficulty example is now 8/10 against 4/10, not
+7/10 against 5/10), `artifacts/persona-eval.txt` (regenerated offline).
+
+Users could not tell the personas apart, and the measurements agreed: warmth
+moved a blind judge's supportiveness rating by half a point out of ten. Three
+causes were fixed. Warmth and pushback lived only in the persona description at
+the top of the prompt, while the model follows the private note after the
+answer; both now reach the note. Three separate rules told every persona not to
+praise, which also stopped any persona from sounding friendly; they now forbid
+grading the answer and leave friendliness to warmth. And the six presets sat
+between 4 and 9 on most dials; every preset dial is now 2, 5 or 9. Existing
+accounts get the new presets on their next library load where the user never
+changed a dial.
+
+Two readouts were added so the difference can be seen: "How they interview" on
+persona cards and in the editor, and "How [name] interviewed you" on the report,
+counted from the move stored for each scored answer. For the four voices with a
+fitting Azure speaking style, a warm persona is voiced with it; each was checked
+for intelligibility with Azure's recogniser (0-3% word error with and without),
+and no cold style is used because "serious" appeared to flatten the Chinese
+accent.
+
+**Not yet measured.** The persona harness was not re-run, because the API key had
+no credit; until it is, the live figures in `PERSONA-EVAL.md` describe the previous
+prompt.
+
+**Sources:** Azure's live voice list for the configured region, read 21 October
+2026, for which voices offer which styles. No other sources added.
+
+## 2026-10-19 (UAT)
+
+### The acceptance test gets a results log, and every case its own ID
+
+**Documents:** `UAT.md` (version 1.1: new Section 6 on logging; IDs made
+unique; one case added, five removed), `UAT-testers.csv` and
+`UAT-case-log.csv` (new), `UAT-bug-log.csv` (Case and Workaround columns),
+`REQUIREMENTS.md` (UAT references), the interim report's Section 5.19.
+
+The plan had checkboxes but nowhere to put the results, and the report's
+blanks — testers, exit-criterion verdicts, SUS, U11 and U12 for students —
+would have been worked out by hand. They now come from three spreadsheets and
+`npm run uat-summary`, whose rules are fixed before any session: the latest run
+of a re-tested case counts, a developer's own runs count for the smoke gate
+only, and a partial SUS questionnaire has no score. With empty logs it reports
+every criterion as not yet measured rather than met.
+
+Twelve IDs were used twice, so a result logged as "R5" or "A3" was ambiguous:
+the session-management cases are now MS1–MS8, and the report cases R6–R11 are
+renumbered. Five rows of an old Settings table, left after its replacement,
+are gone, and R12 (the loop report) is added, because requirement F21 cited a
+UAT case that did not test it. The functional pass is therefore 83 cases, not
+87. Five other requirement rows cited cases that do not exist (T8, T9, T-loop,
+D1–D3 for drills) and now cite the ones that check them. The usability
+criterion now says what it always needed to: each of U1, U4, U6 and U7 must
+average 3.5, not their pooled mean. This was settled before any result existed.
+
+Practice logs with invented rows are in `docs/artifacts/uat-sample/`, every
+row marked `Synthetic`; `npm run uat-summary -- --sample` reads them and
+brackets its output with a SAMPLE DATA banner, as it does for any synthetic
+row it finds in the real logs.
+
+**Sources:** none added.
+
 ## 2026-10-19 (models)
 
-### Both default models have retirement dates, and the persona harness had been measuring the wrong one
+### Both default models were retired by OpenAI; the app moved off them, and every number that depended on them was re-measured
 
-**Documents:** `TOKEN-COST.md` (price table re-checked; a third request
-contract; new §"Retirements and the migration"), `DESIGN-DECISIONS.md` (§7),
-`EVALUATION.md`, `PERSONA-EVAL.md` (§6 and §7), `COACHING.md`,
-`DEPLOYMENT.md`, `.env.local.example`.
+**Documents:** `TOKEN-COST.md` (a new section on GPT-5.6 cache writes; the
+prefix re-measured; the model section rewritten as the record of the
+migration), `DESIGN-DECISIONS.md` (§7), `EVALUATION.md` (new §"Model
+migration", per-round table, status), `PERSONA-EVAL.md`, `COACHING.md` (first
+live results), `DEPLOYMENT.md`, `README.md`, `.env.local.example`,
+`presentation/SCRIPT.md` (slide 3 named a model that was never the only one).
 
-OpenAI's deprecations page retires the `gpt-5-mini` snapshot on 11 December
-2026 (named replacement `gpt-5.6-terra`) and `gpt-4o-mini` on 14 January 2027
-(named replacement `gpt-6-luna`). The project's candidates differ from the
-named ones where price does: `gpt-5.6-luna` for the interviewer and coach,
-because terra costs eight times gpt-5-mini's input rate; `gpt-6-luna` for
-the rest. No default has moved — the harnesses are the gate, and the key in
-`.env.local` was rejected (401) on every call this day, so no run has
-happened yet.
+OpenAI retires the `gpt-5-mini` snapshot on 11 December 2026 (named
+replacement `gpt-5.6-terra`) and `gpt-4o-mini` on 14 January 2027 (named
+replacement `gpt-6-luna`). The interviewer and coach moved to `gpt-5.6-luna`,
+not terra, which costs eight times the input rate; the analyzer, summary,
+tidy-up and evaluation judges moved to `gpt-6-luna`. Each move followed a
+harness run against a fresh run of the model it replaced, on the same tree:
 
-Found while preparing those runs: the persona harness carried its own
-`gpt-4o-mini` default for the interviewer, so the live run committed on 18
-September (`3e1aa38`) measured a model the app had stopped using on 4
-September (`fc062c8`). Its steering-note figures stand as evidence about the
-note's position; they are not evidence about the deployed interviewer. The
-defaults now live in `src/lib/models.ts` and both harnesses read them; a live
-run warns when the judge shares a generation with the model it rates.
-`model-params.ts` builds the request for the gpt-5.6/gpt-6 contract (`none`
-in place of `minimal`; sampling parameters at `none` only), `pricing.ts`
-prices the candidates (checked 2026-10-19), and `npm run eval` now exits
-non-zero when an analyzer call fails instead of printing PASS beside a NaN.
+- **Analyzer.** Same band accuracy (81.1%, 73 of 90 runs), wider separation
+  (43.7 against 36.6), steadier (mean spread 1.36 against 2.01), and the two
+  fluent-but-wrong fixtures better placed; all 17 of its misses are too high.
+  The old model's fresh score was 81.1%, **not the 88.9% on record**, which
+  dated from August, before two fixtures and the prompt changed.
+- **Interviewer.** All six pre-registered dial expectations held on both models
+  in the final runs, and every one of 153 topic pivots followed on both.
+  Follow-ups were a third shorter (24 words against 37), time to first word a
+  median 892 ms against 903 ms, and the run cost 30% less. **A regression the
+  harness caught:** only one of the seven evidence-probe sentences ever told the
+  interviewer to quote the candidate's words, and the old model had done it
+  unprompted (50 of 51); the new one did not (0 of 51), and its first run
+  missed one expectation (pace, by an interval edge). All seven now say so
+  (`decision-engine.ts`); the same cell quoted in 24 of 24, then 51 of 51 in the
+  full re-run. The first run is kept beside the final one. Because only the
+  probe arm changed between the two runs, the other 13 arms are a measure of
+  sampling noise: point estimates moved by up to 0.3.
+- **Coach.** The first live coach run the harness has ever completed. It
+  could not before: every judge prompt omitted the word "JSON" that JSON mode
+  requires, so each fixture failed with a 400 (fixed in `run-coach-eval.ts`).
+  The new coach lifts the analyzer's score by 11.4 points against 9.7 with the
+  scorer held fixed, invents no quantities, and writes longer rewrites.
+- **Summary and tidy-up** were spot-checked on both models against known facts
+  (no harness covers them).
 
-**Sources:** OpenAI, _Deprecations_, _Pricing_, _Latest model_ (the GPT-6
-migration guide) and the model pages for gpt-6-luna, gpt-5.6-luna and
-gpt-5-mini, all read online on 19 October 2026.
+Other changes made on the way:
+
+- `npm run eval:models` (new) sends one tiny request per call site, shaped
+  like the app's own, on the current models or, with `--candidates`, the
+  migration targets. About $0.001; it finds a refused request before a billed
+  harness does.
+- `src/lib/models.ts` is now the one place the defaults live, read by the app
+  and by both harnesses. The persona harness had kept a `gpt-4o-mini` default
+  of its own, so the live run committed on 18 September (`3e1aa38`) measured the
+  interviewer the app had stopped using on 4 September (`fc062c8`).
+- `model-params.ts` builds the request for GPT-5.6 and later: `none` in place of
+  `minimal`, a temperature accepted only at `none`.
+- `pricing.ts` carries the cache-write rate. On GPT-5.6 and later, tokens
+  written to the cache cost 1.25× the input rate; measured with two identical
+  2,299-token requests (2,296 written, then 2,296 read). The usage table does
+  not store writes, so the rule is: in a prompt of at least 1,024 tokens,
+  everything not read from the cache is priced at the write rate.
+- The constant prompt prefix was re-measured with the real tokenizer: about
+  **1,080 tokens, not 1,290**, at 4.8 characters to the token — above the
+  1,024-token caching floor for all six presets, but by 29 to 77 tokens.
+- `run-eval.ts` exits non-zero when a call fails, instead of printing PASS
+  beside a NaN. `run-persona-eval.ts` wrote only 238 bytes of its 5.7 KB text
+  artifact (the capture helper restored `console.log` before the async report
+  finished); fixed.
+- The committed coach artifact still said 29 criteria and a `case` round type;
+  it now says 28 of 28 and `cs_fundamentals`.
+
+**Sources:** OpenAI, _Deprecations_, _Pricing_, _Prompt caching_, _Latest model_
+(the GPT-6 migration guide), and the model pages for gpt-6-luna, gpt-5.6-luna
+and gpt-5-mini, all read online on 19 October 2026. The artifacts were generated
+from a working tree with uncommitted changes, as their stamps say; none of those
+files is on the interviewer's or analyzer's request path, and the deterministic
+ones should be regenerated from a clean tree before they are quoted.
 
 ## 2026-10-18 (security, part 2)
 

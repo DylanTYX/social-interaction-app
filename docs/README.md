@@ -38,7 +38,6 @@ Fourteen documents. This is which one answers what, so nobody has to grep.
 | ------------------------------------------------ | --------------------------------------------------------------------------- |
 | [DEPLOYMENT.md](DEPLOYMENT.md)                   | Vercel + Supabase runbook                                                   |
 | [DEMO.md](DEMO.md)                               | Demo runbook — what to show, in what order, and what to say when challenged |
-| [presentation/SCRIPT.md](presentation/SCRIPT.md) | The talk, slide by slide                                                    |
 
 ## Committed evidence
 
@@ -47,7 +46,7 @@ without re-running it:
 
 | File                           | From                             |
 | ------------------------------ | -------------------------------- |
-| `persona-eval.txt`             | `npm run eval:persona -- --live --runs=12` — the per-dial sweeps and experiment behind [PERSONA-EVAL.md](PERSONA-EVAL.md) |
+| `persona-eval.txt`             | `npm run eval:persona -- --live` (51 per cell) — the per-dial sweeps and experiment behind [PERSONA-EVAL.md](PERSONA-EVAL.md) |
 | `persona-eval-live.json`       | the same run's raw follow-ups and judge scores |
 | `persona-comparison.txt`       | `npm run eval:persona` at `0052081`, superseded by `persona-eval.txt` |
 | `coach-eval-deterministic.txt` | `npm run eval:coach`             |

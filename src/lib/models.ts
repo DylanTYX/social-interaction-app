@@ -29,12 +29,16 @@ import { modelFamily } from "@/lib/model-params";
  *
  * Moved on `npm run eval:persona -- --live --runs=51`, run for both models with
  * the same judge: every one of 153 topic pivots opened the subject it was told
- * to open, five of six dial expectations held (six of six on gpt-5-mini), and
- * the run cost 30% less. Time to first word was a median 892 ms against 903 ms.
- * The one miss is pace, which should do nothing and moved demandingness by
- * +0.6 (interval 0.0 to 1.1) — docs/PERSONA-EVAL.md §"Model migration".
+ * to open, all six dial expectations held (as on gpt-5-mini), its follow-ups
+ * were a third shorter and the run cost 30% less. Time to first word was a
+ * median 892 ms against 903 ms. The first run on this model also found a fault
+ * in the app rather than the model: six of the seven probe notes never told the
+ * interviewer to quote the candidate, and a model that follows instructions
+ * literally never did (0 of 51). They do now (51 of 51), see decision-engine.ts
+ * and docs/PERSONA-EVAL.md §"Model migration".
  */
-export const INTERVIEWER_MODEL = process.env.INTERVIEWER_MODEL ?? "gpt-5.6-luna";
+export const INTERVIEWER_MODEL =
+  process.env.INTERVIEWER_MODEL ?? "gpt-5.6-luna";
 
 /**
  * `gpt-5.6-luna` since 2026-10-19, replacing `gpt-5-mini` (its snapshot retires

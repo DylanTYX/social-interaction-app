@@ -15,6 +15,11 @@
  * had simply never been given a chance to act. See `docs/PERSONA-EVAL.md`.
  */
 
+import {
+  deliveryLines,
+  escalationLine,
+  type DeliveryDials,
+} from "@/lib/persona-delivery";
 import type {
   AnalysisResult,
   InterviewStrategy,
@@ -62,6 +67,11 @@ export function buildSteeringBlock(
   difficulty: number,
   escalate: boolean,
   slowDown: boolean,
+  /**
+   * The persona's warmth and pushback. Absent for an interviewer with no
+   * persona (the experiment's control), which then gets no delivery lines.
+   */
+  persona?: DeliveryDials,
 ): string {
   const pivoting = isPivot(strategy);
   // On a pivot the reason already names the destination ("A good target: …"),
@@ -84,7 +94,7 @@ export function buildSteeringBlock(
   // interviewer came to open every turn with a compliment.
   if (topStrength && !pivoting) {
     lines.push(
-      `- What held up: ${topStrength}. Do not praise it out loud; use it to decide how far to push.`,
+      `- What held up: ${topStrength}. Use it to decide how far to push; do not grade it out loud.`,
     );
   }
   if (topGap) {
@@ -92,12 +102,16 @@ export function buildSteeringBlock(
   }
   if (escalate) {
     lines.push(
-      "- The answer was weak or repeated; be firmer and push for specifics.",
+      persona
+        ? escalationLine(persona)
+        : "- The answer was weak or repeated; be firmer and push for specifics.",
     );
   } else if (slowDown) {
     lines.push(
-      "- The answer was strong; do not compliment it — go one level deeper on reasoning or tradeoffs.",
+      "- The answer was strong; go one level deeper on reasoning or tradeoffs, without grading it.",
     );
   }
+  // Last, so the persona's voice is the freshest thing the model reads.
+  if (persona) lines.push(...deliveryLines(persona, strategy));
   return lines.join("\n");
 }

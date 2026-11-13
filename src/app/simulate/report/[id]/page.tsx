@@ -80,6 +80,7 @@ import {
 } from "@/components/report/dimension-radar";
 import { TurnScore, toTurnFeedback } from "@/components/report/turn-score";
 import { CompetencyCoverageCard } from "@/components/report/competency-coverage-card";
+import { InterviewerCard } from "@/components/report/interviewer-card";
 import { CoachingResult } from "@/components/coach/coaching-result";
 import type { SuggestedAnswerResult } from "@/lib/coach-contract";
 import type { AnalysisResult } from "@/lib/response-analyzer";
@@ -132,6 +133,8 @@ interface TurnAnalysisRecord {
   turnIndex: number;
   overallScore: number | null;
   analysis: Record<string, unknown> | null;
+  /** The move the engine chose after this answer; read by the interviewer card. */
+  strategy?: string | null;
 }
 
 interface ReportPayload {
@@ -622,6 +625,14 @@ export default function SessionReportPage({
                 </Card>
               );
             })()}
+
+            <InterviewerCard
+              personaName={session.personaName}
+              personaConfig={session.personaConfig}
+              strategies={(data.turnAnalyses ?? []).map(
+                (entry) => entry.strategy ?? null,
+              )}
+            />
           </div>
         )}
       </ScoreReveal>

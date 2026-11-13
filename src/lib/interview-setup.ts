@@ -236,7 +236,19 @@ function normalizeJobDescriptionConfig(
 function normalizeSetup(
   setup: Partial<InterviewSetupState> | null | undefined,
 ): InterviewSetupState {
-  const baseConfig = PRESET_PERSONAS["sarah chen"];
+  // Sarah Chen's identity, with the dials the default interviewer has always
+  // had. They used to be read from her preset, so spreading the presets out
+  // (2026-10-21) would have silently changed the interviewer for everyone who
+  // never picks one; the default is a decision of its own and is pinned here.
+  const baseConfig = {
+    ...PRESET_PERSONAS["sarah chen"],
+    strictness: 8,
+    warmth: 6,
+    pace: 8,
+    pushback: 8,
+    probingDepth: 8,
+    unpredictability: 6,
+  } as const;
 
   const defaultSetup: InterviewSetupState = {
     scenarioValue: "custom",

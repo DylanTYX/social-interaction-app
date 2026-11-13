@@ -47,9 +47,9 @@ A single text turn makes up to four model calls:
 
 | Call            | Model                    | When                       | Cap               |
 | --------------- | ------------------------ | -------------------------- | ----------------- |
-| Interviewer     | `gpt-5-mini`             | Every turn                 | 320 output tokens |
-| Analyzer        | `gpt-4o-mini`            | Every scored turn          | 900 output tokens |
-| Summary refresh | `gpt-4o-mini`            | Every 4th message          | 400 output tokens |
+| Interviewer     | `gpt-5.6-luna`           | Every turn                 | 320 output tokens |
+| Analyzer        | `gpt-6-luna`             | Every scored turn          | 900 output tokens |
+| Summary refresh | `gpt-6-luna`             | Every 4th message          | 400 output tokens |
 | JD embedding    | `text-embedding-3-small` | Only on the retrieval path | —                 |
 
 (Why the interviewer and the analyzer are two different model families is
@@ -83,10 +83,16 @@ Two calls are deliberately skipped rather than optimised:
   the small-JD path is cheaper on _both_ counts.
 
 Rough per-turn total, uncached: **~3,530 input / ~400 output** without a job
-description, **~5,800 / ~400** with one. With the interviewer on `gpt-5-mini`
-and the analyzer on `gpt-4o-mini` that is roughly $0.0012–0.0019 a turn
-(it was $0.0007–0.0011 when everything ran on `gpt-4o-mini`), so a
-10-question round costs about two cents.
+description, **~5,800 / ~400** with one. These are character counts divided by
+four, which overstates this app's prompts by about a fifth: the instructions
+and personas measure 4.78 characters to the token (2026-10-19, below), so read
+every input figure in this document as an upper bound. On the shipped models
+(`gpt-5.6-luna`, `gpt-6-luna`) a steady-state turn costs roughly **$0.0012**
+without a job description — about $0.0008 for the interviewer, $0.0003 for the
+analyzer (measured: $0.00030 a call over 90 calls), $0.0001 for the summary
+amortised — against roughly $0.0015 on the models they replaced
+(`gpt-5-mini`, `gpt-4o-mini`; it was $0.0007–0.0011 when everything ran on
+`gpt-4o-mini`). A 10-question round costs about a cent and a quarter.
 
 That is small enough that the honest conclusion is: **cost was never the real
 problem here.** The reason to do this work is that an unmeasured system can't be
@@ -207,6 +213,48 @@ repeat requests to the same cache:
 The analyzer's key is deliberately _not_ per-session. Its scaffold depends only
 on the round type, so every user scoring a behavioural answer shares one prefix.
 
+On GPT-5.6 and later OpenAI routes caching automatically and says the key is no
+longer needed to optimise it. It is still sent, harmlessly, because every model
+here can be pointed back at an earlier one by environment variable.
+
+### What GPT-5.6 changed: writes cost extra
+
+The models the app moved to on 2026-10-19 bill the cache differently from the
+ones before them. From OpenAI's [prompt-caching guide](https://developers.openai.com/api/docs/guides/prompt-caching):
+the minimum cacheable prompt is 1,024 tokens, a cached prefix stays eligible for
+30 minutes after its last use, and **tokens written to the cache are billed at
+1.25× the uncached input rate**. Earlier models had no write charge.
+
+Measured on 2026-10-19 with two identical 2,299-token requests, 2.5 seconds apart:
+
+| Model          | Call 1: written / read | Call 2: written / read | Read at     |
+| -------------- | ---------------------- | ---------------------- | ----------- |
+| `gpt-5-mini`   | not reported / 0       | not reported / 2,176   | 0.025 $/M   |
+| `gpt-5.6-luna` | **2,296** / 0          | 0 / **2,296**          | 0.02 $/M    |
+| `gpt-6-luna`   | **2,296** / 0          | 0 / **2,296**          | 0.01 $/M    |
+
+(`prompt_tokens_details.cache_write_tokens` is the new field.) Three
+consequences, all small in dollars and all worth knowing:
+
+- **The first request of a prefix, and the first after 30 idle minutes, pays
+  the premium on all of it.** For an interviewer prefix that is about a
+  thousand tokens at 0.25 $/M instead of 0.20 — a few hundredths of a cent.
+- **Fresh transcript tokens are written too.** The probe wrote 2,296 of 2,299
+  tokens, so in a prompt long enough to be cached, nearly everything that was
+  not read from the cache was written to it. The effective rate for new input
+  on `gpt-5.6-luna` is therefore 0.25 $/M, the same as `gpt-5-mini`'s, and the
+  saving comes from the output rate and the cached rate, not from cheaper
+  fresh input.
+- **Prompts under 1,024 tokens are untouched.** The analyzer (about 800 tokens
+  a call) and the summary neither read nor write the cache, so `gpt-6-luna`'s
+  0.10 $/M applies in full.
+
+`llm_usage` stores cached tokens but not written ones, so `pricing.ts` applies
+this as a rule — in a prompt of at least 1,024 tokens, everything not read from
+the cache is priced at the write rate — instead of a count. It is within one
+partial block of the truth on the probe above, and it errs towards
+over-stating cost, which is the safer side to be wrong on.
+
 ---
 
 ## The honest caveat: caching may not fire at all
@@ -227,38 +275,48 @@ rest of this document:
 | Short scenario line | ~200 | ~50 |
 | **Total on a bare session** | | **~1,172** |
 
-That is **above the 1,024-token floor**, so on current numbers the interviewer's
-prefix caches on a bare session — the opposite of what this document said.
+**Re-measured 2026-10-18.** The static instructions grew to 2,178 characters
+(one line telling the interviewer that marked documents are material, not
+instructions: SECURITY.md, OWASP LLM01) and the persona description to an
+average of 2,723, which at four characters to the token gave about **1,290
+tokens** for a bare session.
 
-**Re-measured 2026-10-18.** The static instructions are now 2,178 characters
-(~545 tokens): one line was added telling the interviewer that marked documents
-are material, not instructions (SECURITY.md, OWASP LLM01). The persona
-description now averages 2,723 characters (~681 tokens), and the role brief sits
-inside a marked block, which adds about 45 characters. A bare session's prefix
-is therefore about **1,290 tokens**, further above the floor. Per-turn input
-rises by roughly 100 tokens, to about 3,630 without a job description and 5,900
-with one — about $0.00003 a turn, inside the rounding of the figures below.
+**Re-measured again on 2026-10-19, with the real tokenizer** — one request
+per piece to each of `gpt-5-mini`, `gpt-5.6-luna` and `gpt-6-luna`, subtracting
+the cost of an empty request. All three count identically.
 
-Two separate things moved, and only one of them was deliberate:
+| Part of the stable prefix | Characters | Tokens | Characters per token |
+| ------------------------- | ---------- | ------ | -------------------- |
+| Static interviewer instructions | 2,178 | 459 | 4.75 |
+| Persona description (one preset) | 2,663 | 557 | 4.78 |
+| **Bare session, each of the six presets, with a 200-character role brief in its marked block** | 5,059–5,236 | **1,053–1,101** | **4.8** |
 
-- **The persona description roughly doubled**, from ~325 to ~656 tokens, when
-  each dial gained a countable directive — an acceptance bar, a word budget, a
-  specifics floor, a challenge rung. That was a deliberate trade, made to stop
-  the sliders being decoration, and it is measured in
-  [PERSONA-EVAL.md](PERSONA-EVAL.md).
+So the four-characters-to-a-token rule overstated the prefix by about a fifth:
+a bare session is **about 1,080 tokens, not 1,290**. It is still above the
+1,024-token floor for every preset, but by only 29 to 77 tokens, so a shorter
+role brief, a persona with fewer traits, or no scenario at all can put a bare
+session under it. A resume or a job description, inlined whole, puts it far
+over. Treat "it caches" as the likely case, not a guarantee, and note that this
+is the one figure in the report that moved by re-measuring.
+
+Two separate things moved over the life of this section, and only one of them
+was deliberate:
+
+- **The persona description roughly doubled**, from ~325 to ~656 tokens at four
+  characters to the token (557 measured), when each dial gained a countable
+  directive — an acceptance bar, a word budget, a specifics floor, a challenge
+  rung. That was a deliberate trade, made to stop the sliders being decoration,
+  and it is measured in [PERSONA-EVAL.md](PERSONA-EVAL.md).
 - **The static instructions had already grown** from the 208 tokens recorded
   here to ~466, through edits that predate the persona work. Nobody re-measured
   at the time. That is the ordinary way a number in a document goes stale, and
   it is the reason this table gives characters as well as tokens: the next
   person can re-derive it instead of trusting it.
 
-The prefix is only just over the floor, so a persona with fewer traits or no
-scenario can still fall under it. Treat "it caches" as the likely case, not a
-guarantee.
-
-**The analyzer scaffold measures ~1,184 characters (~296 tokens)** before
-interpolation. It is nowhere near the floor and, on its own, **almost certainly
-never caches.**
+**The analyzer's whole prompt averages about 800 tokens** (measured: 802 per
+call across 90 scored answers on `gpt-4o-mini`, 801 on `gpt-6-luna`), scaffold
+and answer together. It is under the floor and **never caches**, which on
+`gpt-6-luna` also means it never pays the write premium.
 
 So the accurate claim is not "this app uses prompt caching." It is:
 
@@ -377,25 +435,28 @@ designed compression, not truncation, and carries no such risk.
 
 ## Which model runs where — and why
 
-Checked against the [OpenAI pricing page](https://developers.openai.com/api/docs/pricing)
-and the model pages on **2026-10-19**; the choice itself was made against
-the 2026-09-04 prices, which have not moved since. Prices are USD per million
-tokens as input / cached input / output. `src/lib/pricing.ts` carries the
-same table in code; if one moves, move both. The defaults themselves live in
-`src/lib/models.ts`, which the app and the harnesses both read.
+Decided in two steps. On 2026-09-04 the interviewer and coach moved from
+`gpt-4o-mini` to `gpt-5-mini`; on **2026-10-19** every call moved again, because
+OpenAI retires both of those models. Prices below are USD per million tokens as
+input / cached input / output, checked against the
+[pricing page](https://developers.openai.com/api/docs/pricing) and the model pages
+on 2026-10-19. `src/lib/pricing.ts` carries the same table in code; if one
+moves, move both. The defaults live in `src/lib/models.ts`, which the app and
+the harnesses both read.
 
-| Model           | $/M in | $/M cached | $/M out | Contract | Status                                                               |
-| --------------- | ------ | ---------- | ------- | -------- | -------------------------------------------------------------------- |
-| `gpt-5`         | 1.25   | 0.125      | 10.00   | gpt-5    | rejected                                                             |
-| `gpt-5-mini`    | 0.25   | 0.025      | 2.00    | gpt-5    | interviewer, coach — retires 2026-12-11                              |
-| `gpt-5-nano`    | 0.05   | 0.005      | 0.40    | gpt-5    | fallback for the compression jobs                                    |
-| `gpt-4o-mini`   | 0.15   | 0.075      | 0.60    | classic  | analyzer, summary, tidy-up, judges — retires 2027-01-14              |
-| `gpt-5.6-terra` | 2.00   | 0.20       | 12.00   | current  | the named replacement for gpt-5-mini; rejected on price              |
-| `gpt-5.6-luna`  | 0.20   | 0.02       | 1.20    | current  | candidate for the interviewer and coach                              |
-| `gpt-6-luna`    | 0.10   | 0.01       | 0.50    | current  | the named replacement for gpt-4o-mini; candidate for everything else |
+| Model           | $/M in | $/M cached | $/M out | $/M cache write | Status                                          |
+| --------------- | ------ | ---------- | ------- | --------------- | ----------------------------------------------- |
+| `gpt-5`         | 1.25   | 0.125      | 10.00   | —               | rejected                                        |
+| `gpt-5-mini`    | 0.25   | 0.025      | 2.00    | —               | **replaced**; snapshot retires 2026-12-11       |
+| `gpt-5-nano`    | 0.05   | 0.005      | 0.40    | —               | fallback for the compression jobs               |
+| `gpt-4o-mini`   | 0.15   | 0.075      | 0.60    | —               | **replaced**; retires 2027-01-14                |
+| `gpt-5.6-terra` | 2.00   | 0.20       | 12.00   | 2.50            | OpenAI's named replacement for gpt-5-mini; not used (price) |
+| `gpt-5.6-luna`  | 0.20   | 0.02       | 1.20    | 0.25            | **interviewer, coach**                          |
+| `gpt-6-luna`    | 0.10   | 0.01       | 0.50    | 0.125           | **analyzer, summary, tidy-up, eval judges**     |
 
-Three facts shape everything below, each verified against OpenAI's docs before
-any default changed:
+Four facts shape everything below, each verified against OpenAI's docs and then
+against the API (`npm run eval:models`, all seven call sites accepted on
+2026-10-19):
 
 1. **The generations have different request contracts.** Classic models
    (gpt-4o) take `temperature` and `max_tokens`. The original GPT-5 models
@@ -405,11 +466,10 @@ any default changed:
    is gone, `none` takes its place, and the sampling parameters are accepted
    at `none` only: "when reasoning effort is not `none`, remove `temperature`,
    `top_p` and `top_logprobs`" (the GPT-6 migration guide). Every model here
-   is env-overridable, so `src/lib/model-params.ts` builds the request body
-   per generation — which is also what makes the eval-gated paths below
-   runnable rather than instant 400s. The third contract is implemented from
-   the guide and has not yet been exercised by a run; §"Retirements and the
-   migration" says what a 400 on it would mean.
+   is env-overridable, so `src/lib/model-params.ts` builds the request body per
+   generation. The contract the guide describes held on the API: temperature
+   0.7 with effort `none` on `gpt-5.6-luna` and temperature 0.1 on `gpt-6-luna`
+   were accepted, and so was JSON mode on both, which the docs never state.
 2. **Reasoning tokens bill as output, inside the cap.** Above `minimal` (or
    `none`), the hidden reasoning pass consumes `max_completion_tokens`, so the
    helper adds headroom above the visible-output budget. With reasoning off it
@@ -419,73 +479,86 @@ any default changed:
    a rule before it was a check. Both live harnesses now print a warning when
    it is broken, because the committed persona run broke it by accident (see
    §"Eval judges").
+4. **GPT-5.6 and later charge 1.25× to write the cache** (§"What GPT-5.6
+   changed"), which moves the interviewer's saving from the input rate to the
+   output rate.
 
 ### The decision, per call site
 
-| Call            | Model                    | Effort    | Why this one                                    |
-| --------------- | ------------------------ | --------- | ----------------------------------------------- |
-| Interviewer     | **`gpt-5-mini`**         | `minimal` | The realism-critical call. Upgraded.            |
-| Coach           | **`gpt-5-mini`**         | `low`     | Output is read verbatim. Upgraded.              |
-| Analyzer        | `gpt-4o-mini`            | —         | Determinism + a committed eval baseline. Held.  |
-| Summary         | `gpt-4o-mini`            | —         | Compression; quality ceiling irrelevant. Held.  |
-| JD tidy-up      | `gpt-4o-mini`            | —         | Extraction at temperature 0. Held.              |
-| Eval judges     | `gpt-4o-mini`            | —         | Must stay independent of what they judge. Held. |
-| Embeddings      | `text-embedding-3-small` | —         | No GPT-5 equivalent exists. Held.               |
-| Voice (STT/TTS) | Azure Speech             | —         | Not an OpenAI decision at all. Held.            |
+| Call            | Model                    | Effort           | Why this one                                                    |
+| --------------- | ------------------------ | ---------------- | --------------------------------------------------------------- |
+| Interviewer     | **`gpt-5.6-luna`**       | none (was `minimal`) | The realism-critical call. Passed the persona harness.      |
+| Coach           | **`gpt-5.6-luna`**       | `low`            | Output is read verbatim. Passed the coach harness.              |
+| Analyzer        | **`gpt-6-luna`**         | none             | Scores as well, steadier, same temperature. Passed `npm run eval`. |
+| Summary         | **`gpt-6-luna`**         | none             | Compression; kept more facts than the old model on a spot check. |
+| JD tidy-up      | **`gpt-6-luna`**         | none             | Extraction at temperature 0; removed all the boilerplate on a spot check. |
+| Eval judges     | **`gpt-6-luna`**         | none             | A different generation from the interviewer and coach.          |
+| Embeddings      | `text-embedding-3-small` | —                | Fixed: every stored vector depends on it.                       |
+| Voice (STT/TTS) | Azure Speech             | —                | Not an OpenAI decision at all.                                  |
 
-**Interviewer → `gpt-5-mini` at `minimal` effort.** This is the one call where
+**Interviewer → `gpt-5.6-luna` with reasoning off.** This is the one call where
 the model _is_ the product: persona fidelity, evidence-probe phrasing and
-steering-block compliance are what the realism requirement lives on, and
-instruction-following is exactly what the newer family is better at. The cost
-delta is real but small in context — at the 320-token cap a turn's output costs
-0.064¢ against 0.019¢ — and the **cached-input rate is actually cheaper than
-gpt-4o-mini's** (0.025 vs 0.075 $/M), which matters here specifically because
-the stable/volatile prompt split above was built to make interviewer input
-cache-heavy. `minimal` effort because this call streams into a live voice
-conversation: no hidden reasoning pass, so time-to-first-token stays at chat
-speed and Azure TTS starts speaking on schedule. What it costs us: GPT-5
-ignores `temperature`, so the 0.7 that varied the phrasing is inert on this
-family. Acceptable — question variety never came from sampling noise; it comes
-from the seeded decision engine (probes, curveballs, ladder), which is
-deterministic on purpose.
+steering-block compliance are what the realism requirement lives on, so it keeps
+a model with a reasoning setting, and calls it with none of it, because the call
+streams into a live voice conversation: no hidden reasoning pass, so
+time-to-first-token stays at chat speed and Azure TTS starts speaking on
+schedule. Measured on 2026-10-19, ten streamed replies each: a median **892 ms
+to the first word against 903 ms** on `gpt-5-mini`, whole reply about 1.1 s on
+both. The persona harness (51 follow-ups for each of 14 variants, the same
+judge for both models) found every one of 153 topic pivots opening the subject
+it was told to open on both interviewers, and the run cost **30% less**
+($0.174 against $0.249). One behaviour did not carry over, and it is the
+reason this section exists in this form: `gpt-5-mini` quoted the candidate's
+own words back in 50 of 51 evidence probes without being asked, and
+`gpt-5.6-luna` did so in none. Only one of the seven probe sentences had ever
+told the interviewer to quote; the rest relied on a habit of the old model.
+All seven now tell the interviewer to quote the phrase back, and the same cell
+then quoted in 24 of 24 follow-ups, and in 51 of 51 in the full re-run, which
+also held all six dial expectations ([PERSONA-EVAL.md](PERSONA-EVAL.md) §5). A
+model change can break an instruction that was never written down, and only a
+harness that counts the behaviour will notice. What the move costs:
+the interviewer's saving comes from the output rate (1.20 against 2.00 $/M) and
+the cached-input rate, since fresh input is written at 0.25 $/M, the old model's
+price.
 
-**Coach → `gpt-5-mini` at `low` effort.** The suggested answer and the rewrite
+**Coach → `gpt-5.6-luna` at `low` effort.** The suggested answer and the rewrite
 are read verbatim by the user — this output _is_ the pedagogy, and it is the
 easiest place in the app to notice a better model. Nobody is holding a live
 microphone open for it, so `low` buys a planning pass over the rubric for
-about a second of extra latency. The `finish_reason: "length"` guard and the
-JSON contract already police the failure modes, and the reasoning headroom
-keeps the visible 1,000-token budget intact. To compare families:
-`COACH_MODEL=gpt-4o-mini npm run eval:coach -- --live` — the judge is a
-separate model either way.
+about a second of extra latency. On the first live run of the coach harness
+(22 fixtures, the same scorer and judge for both coaches) it raised the
+analyzer's score by 11.4 points against 9.7, invented no quantities where
+`gpt-5-mini` invented 0.23 a rewrite, and its tips covered every gap the
+analyzer found (1.00 against 0.80) — at the price of longer rewrites (+29
+words against +10). Full table: [COACHING.md](COACHING.md) §"Results".
 
-**Analyzer → stays `gpt-4o-mini`, deliberately.** Two reasons, both about
-evidence rather than cost. First, determinism: scoring runs at temperature
-0.1 so the same answer scores the same twice, and the original GPT-5 models
-have no temperature to set. (gpt-6-luna does, at effort `none` — which is
-what makes it a credible successor rather than a different kind of scorer.)
-Second, the committed baseline: the 41.0 separation figure and the band
-accuracy in `npm run eval` were measured on gpt-4o-mini; swapping the scorer
-invalidates the eval history and every number quoted in the report. The
-upgrade path exists and is safe to run — `ANALYZER_MODEL=gpt-6-luna npm run
-eval` — but the model changes only if that run matches or beats the committed
-baseline, and the report's numbers get re-measured with it. A model swap here
-is an eval result, not a default.
+**Analyzer → `gpt-6-luna`.** The old reasoning for holding the analyzer on an
+older model was that scoring needs a temperature, so the same answer scores the
+same twice, and that every number in the report was measured on it. `gpt-6-luna`
+takes the temperature when its reasoning is off, and the numbers were
+re-measured rather than assumed: on the same tree and fixtures, five runs each,
+`gpt-4o-mini` placed 81.1% of answers in band and `gpt-6-luna` the same 81.1%;
+separation widened from 36.6 to 43.7 points; the mean run-to-run spread fell from
+2.01 to 1.36 points; and the two fluent-but-wrong answers the harness exists to
+catch improved (`tech-weak-code` 50.4 to 44.8, `design-weak` 55.0 to 30.8). It
+is not strictly better: all 17 of its misses are too high, and three weak or
+mediocre answers now land just over a band boundary. Details in
+[EVALUATION.md](EVALUATION.md) §"Model migration".
 
-**Summary and JD tidy-up → stay `gpt-4o-mini`.** Both are compression jobs
-with a correctness floor, not a quality ceiling: the summary compresses a
-transcript nobody reads directly, the tidy-up strips boilerplate at
-temperature 0 and shows its work for the user to accept or undo. A better
-model has nowhere to show up. `gpt-5-nano` would halve their (already small)
-cost and is the candidate if these ever need trimming — it is priced in
-`pricing.ts` — but swapping models to save fractions of a cent per session,
-against re-validating two prompts, is not a trade worth making today.
+**Summary and JD tidy-up → `gpt-6-luna`.** Both are compression jobs with a
+correctness floor, not a quality ceiling, so they move with the analyzer. No
+harness covers them, so each was spot-checked on both models against known
+facts: the summary kept all seven checkable details of a ten-message exchange
+where `gpt-4o-mini` dropped a colleague's name, and the tidy-up removed all
+seven boilerplate items and kept all seven requirement lines where
+`gpt-4o-mini` left a benefit line in. `gpt-5-nano` would be cheaper still and
+remains the documented candidate if either ever needs trimming.
 
-**Eval judges → stay `gpt-4o-mini`, permanently on one principle.** The
-persona-eval and coach-eval judges must not share a family with the models
-they judge, or improvements read as a model grading its own homework. Now that
-the interviewer and coach are GPT-5, judge independence _requires_ the judge
-stay off GPT-5.
+**Eval judges → `gpt-6-luna`, on one principle.** The persona-eval and
+coach-eval judges must not share a generation with the models they judge, or
+improvements read as a model grading its own homework. The interviewer and coach
+are on `gpt-5.6-luna` (generation five), so the judge is on `gpt-6-luna`
+(generation six).
 
 The principle survived; the practice did not, once. The persona harness
 carried its own `gpt-4o-mini` default for the interviewer, so the live run
@@ -494,9 +567,7 @@ gpt-4o-mini — two weeks after the app's interviewer had moved to gpt-5-mini
 (`fc062c8`), under a comment saying the harness measured the deployed
 behaviour. Its figures describe the previous interviewer. Both harnesses now
 read the app's constants from `src/lib/models.ts` and warn when judge and
-judged share a generation. When gpt-4o-mini retires, the judges move to
-whichever generation the interviewer and coach are _not_ on: gpt-6-luna if
-they land on gpt-5.6-luna.
+judged share a generation.
 
 **Voice stays Azure Speech end-to-end.** STT and TTS are not model-shopping
 decisions here: the accent system (per-nationality voice selection, the
@@ -508,14 +579,23 @@ accented, persona-matched TTS.
 
 ### What one session costs after the switch
 
-Re-running the §"What one turn costs" arithmetic with the same token counts
-(~2,600 in / ~320 out per interviewer turn, no JD): the interviewer's share of
-a 20-turn session goes from about 0.9¢ to about **2.0¢ uncached** — and less
-than that in practice, because the cached-input discount is 90% where it used
-to be 50%. The analyzer, still on gpt-4o-mini, is unchanged. A practice
-session remains comfortably under a nickel; the cost report
-(`npm run cost:report`) prices both families from the same table, so the
-claim is checkable against `llm_usage` rather than against this paragraph.
+The interviewer's turn, at ~2,600 input / ~320 output tokens and no job
+description, with a ~1,100-token prefix read from the cache after the first turn
+(an upper bound, since the 2,600 is at four characters to the token):
+
+| Turn                      | `gpt-5-mini` | `gpt-5.6-luna` | Change |
+| ------------------------- | ------------ | -------------- | ------ |
+| First of a session or after 30 idle minutes (nothing cached) | $0.00129 | $0.00103 | −20% |
+| Steady state (prefix cached) | $0.00104 | $0.00078 | −25% |
+
+Add the analyzer ($0.00033 to $0.00030 a call, measured) and the summary
+(about $0.00026 to $0.00019 a refresh, estimated) and a steady-state scored turn
+falls from about $0.0015 to about $0.0012. A 20-turn session is roughly 2.4¢,
+down from 3.0¢, and the persona harness's whole 714-follow-up, 714-judgement
+run cost 17¢. The cost report (`npm run cost-report`) prices every model from
+the same table, so these are checkable against `llm_usage` rather than against
+this paragraph — which, like the rest of this document, has still not been
+checked against live traffic.
 
 ### What was considered and rejected
 
@@ -524,7 +604,7 @@ claim is checkable against `llm_usage` rather than against this paragraph.
   gains in this app came from the persona/decision-engine work, not raw model
   size; nothing in the eval history says the big model moves those numbers.
 - **`gpt-5-nano` everywhere** — cheapest possible wiring, but the two
-  upgraded call sites are the two where output quality is user-visible, and
+  user-facing call sites are the two where output quality is visible, and
   nano is the family's floor, not its midpoint. Nano remains the documented
   candidate for the two compression jobs.
 - **Routing between models per turn** (a cheap classifier deciding when a
@@ -537,76 +617,62 @@ claim is checkable against `llm_usage` rather than against this paragraph.
   sides.
 - **`gpt-5.6-terra` as the interviewer** (OpenAI's named replacement for
   gpt-5-mini) — 2.00 / 12.00 against 0.25 / 2.00 per million: eight times the
-  input rate and six times the output rate for the same 320-token turn. It is
-  the arm to run only if gpt-5.6-luna fails the persona harness.
+  input rate and six times the output rate for the same 320-token turn. It was
+  the fallback had `gpt-5.6-luna` failed the persona harness; it did not.
 - **`gpt-5.4-mini`** — three times gpt-5-mini on every rate, and already
   superseded by the 5.6 line.
 
-### Retirements and the migration
+### The migration, 2026-10-19
 
-OpenAI's [deprecations page](https://developers.openai.com/api/docs/deprecations),
-read on 2026-10-19, retires both defaults. Each alias has one dated snapshot,
-which is what the page lists; the alias goes with it.
+OpenAI's [deprecations page](https://developers.openai.com/api/docs/deprecations)
+retired both defaults. Each alias has one dated snapshot, which is what the page
+lists; the alias goes with it.
 
-| Default       | Announced  | Shuts down | Named replacement | Candidate here | Why not the named one                                                       |
+| Default       | Announced  | Shuts down | Named replacement | Used here      | Why not the named one                                                       |
 | ------------- | ---------- | ---------- | ----------------- | -------------- | --------------------------------------------------------------------------- |
 | `gpt-5-mini`  | 2026-06-11 | 2026-12-11 | `gpt-5.6-terra`   | `gpt-5.6-luna` | terra is 8× the input and 6× the output rate; luna is cheaper than gpt-5-mini on every rate |
-| `gpt-4o-mini` | 2026-10-14 | 2027-01-14 | `gpt-6-luna`      | `gpt-6-luna`   | — cheaper on every rate, and takes a temperature at effort `none`           |
+| `gpt-4o-mini` | 2026-10-14 | 2027-01-14 | `gpt-6-luna`      | `gpt-6-luna`   | — the named replacement                                                     |
 
 `src/lib/models.ts` records the same dates in `MODEL_RETIREMENTS`, and
 `npm run eval` prints a notice when the analyzer under test has one.
 
-**The rule.** A default moves only on a passing harness run on the candidate,
-compared with a fresh run on the model it replaces — both from the same tree,
-because the committed figures in `docs/EVALUATION.md` (August 2026) predate
-the fixture swap in `7f47f14` and the signals block in `46898de`. Nothing
-moves on the strength of a model page.
+**The rule that was followed.** A default moves only on a passing harness run on
+the candidate, compared with a fresh run on the model it replaces — both from
+the same tree. Nothing moves on the strength of a model page.
 
-**The order, and what "passing" means.**
+**What was done, in order, and what each step found.**
 
-1. Rotate the key. On 2026-10-19 every call in `npm run eval` returned 401;
-   the harness now exits non-zero when that happens instead of printing PASS.
-2. Analyzer baseline, on the current model:
-   `npm run eval -- --runs=5 > docs/artifacts/eval-gpt-4o-mini.txt`.
-3. Analyzer candidate:
-   `ANALYZER_MODEL=gpt-6-luna npm run eval -- --runs=5 > docs/artifacts/eval-gpt-6-luna.txt`.
-   Passing: band accuracy and separation at or above the baseline run, mean
-   standard deviation no more than 0.5 points worse, field completeness
-   unchanged, and the two fluent-but-wrong fixtures (`tech-weak-code`,
-   `design-weak`) no more lenient. A 400 naming `temperature` would mean the
-   guide's reading of `none` is wrong for this model: drop the temperature
-   key from the `current` branch of `model-params.ts` and re-run; the spread
-   column then carries the repeatability claim on its own.
-4. Interviewer. First the baseline on the deployed model, which has never
-   been run (§"Eval judges"):
-   `JUDGE_MODEL=gpt-6-luna npm run eval:persona -- --live --runs=12 --artifacts`.
-   Then the candidate: the same with `INTERVIEWER_MODEL=gpt-5.6-luna`.
-   Passing: every pivot in the steering-note count opens the named subject,
-   and the three dials that moved the judge (unpredictability, probing depth,
-   pushback) still move it in the same direction with an interval that
-   excludes zero. If luna fails, `gpt-5.6-terra` is the next arm, at the
-   price above.
-5. Coach: `COACH_MODEL=gpt-5.6-luna JUDGE_MODEL=gpt-6-luna npm run eval:coach -- --live`.
-   Passing: 28 of 28 criteria named and the uplift column not below the
-   committed run.
-6. Flip the defaults in `models.ts` and move the judges to the other
-   generation; re-measure the cached prefix (§"Prompt caching"), since a new
-   generation may tokenise differently; re-run `npm run cost-report`; then
-   update the report's Table 3.5 and Chapter 6, and the figures in this file.
+1. **Preflight** — `npm run eval:models` (new): one tiny request per call site,
+   shaped like the app's own, on the current models and then the candidates. All
+   seven accepted both. It exists because the quality harnesses are slow and
+   billed, and a 400 on the request format is cheap to find first.
+2. **Analyzer** — `npm run eval -- --runs=5` on each model
+   ([`eval-gpt-4o-mini.txt`](artifacts/eval-gpt-4o-mini.txt),
+   [`eval-gpt-6-luna.txt`](artifacts/eval-gpt-6-luna.txt)). The fresh baseline
+   was the surprise: the old model scored **81.1%, not the committed 88.9%**,
+   because two fixtures and the prompt had changed since August. The candidate
+   passed every criterion (accuracy not lower, separation not narrower, spread
+   within +0.5, completeness unchanged, the two fluent-but-wrong fixtures no
+   more lenient).
+3. **Interviewer** — `npm run eval:persona -- --live --runs=51`, once per model,
+   `gpt-6-luna` as judge for both
+   ([`persona-eval-live-gpt-5-mini.txt`](artifacts/persona-eval-live-gpt-5-mini.txt),
+   [`persona-eval-live-gpt-5.6-luna.txt`](artifacts/persona-eval-live-gpt-5.6-luna.txt)).
+   The first candidate run showed the quoting regression above; the earlier
+   output is kept as
+   [`…-before-quote-fix`](artifacts/persona-eval-live-gpt-5.6-luna-before-quote-fix.txt)
+   and the run after the fix is the one that counts.
+4. **Coach** — `npm run eval:coach -- --live --runs=2`, the first complete live
+   run the harness has had. It had never completed: every judge prompt omitted
+   the word "JSON" that JSON mode requires, so each fixture failed with a 400.
+5. **Flip, then re-measure.** Defaults changed in `models.ts`; the cached prefix
+   was re-measured with the real tokenizer (§"The honest caveat"); the price
+   table gained the cache-write rate.
 
-**What it should cost, projected.** With the token counts of §"What one
-session costs after the switch" (~2,600 in / ~320 out per interviewer turn),
-gpt-5.6-luna comes to 0.20 + 1.20 where gpt-5-mini came to 0.25 + 2.00, so
-the interviewer's share of a session falls by about 30%; gpt-6-luna against
-gpt-4o-mini is 0.10 + 0.50 against 0.15 + 0.60, so the analyzer's share falls
-by a quarter to a third depending on how input-heavy the turn is. The
-migration is a cost reduction — unless the persona harness sends the
-interviewer to terra.
-
-**Status (2026-10-19).** The code is ready: the `current` contract, the
-prices, the registry, the notices and the judge warning are in. No run has
-happened, because the key is rejected. The defaults are unchanged, and both
-models still answer until their dates.
+For the next retirement the procedure is the same, in the same order:
+`npm run eval:models -- --candidates` first, then the harness for each call site
+being moved, then the flip. `candidateModels()` reads `MODEL_RETIREMENTS`, so
+add the new announcement there.
 
 ---
 

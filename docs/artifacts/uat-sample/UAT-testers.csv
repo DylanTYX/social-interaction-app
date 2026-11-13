@@ -1,0 +1,7 @@
+Tester,Group,Script,Date,Device,Browser,Task demo,Task account,Task interview,Task history,Task job description,U1,U2,U3,U4,U5,U6,U7,U8,U9,U10,U11,U12,SUS1,SUS2,SUS3,SUS4,SUS5,SUS6,SUS7,SUS8,SUS9,SUS10,Comments,Synthetic
+D01,developer,A,2026-10-20,desktop,Chrome,,,,,,,,,,,,,,,,,,,,,,,,,,,,Smoke pass before inviting testers,TRUE
+P01,student,F,2026-10-21,desktop,Chrome,yes,yes,yes,yes,yes,5,4,5,4,just right,4,5,4,4,4,5,4,4,2,5,1,4,2,5,2,4,2,Liked that it chased the vague bit of an answer; wanted the score explained,TRUE
+P02,student,F,2026-10-21,desktop,Safari,yes,yes,yes,yes,no,4,4,4,3,too long,4,4,3,3,4,4,4,4,2,4,2,4,3,4,2,3,2,Setup felt long; unsure what 'focus' meant on the Rounds step,TRUE
+P03,friends-family,C,2026-10-22,desktop,Chrome,yes,yes,yes,no,yes,4,5,4,3,just right,4,4,4,4,4,4,3,4,1,4,2,4,2,5,1,4,2,Could not find the finished session afterwards without help,TRUE
+P04,friends-family,D,2026-10-22,desktop,Chrome,yes,yes,no,yes,yes,3,4,4,3,too long,3,4,3,3,3,3,3,3,3,3,2,3,3,4,3,3,3,Voice cut them off mid-thought; finished the interview with help,TRUE
+P05,student,E,2026-10-23,mobile,Safari,yes,yes,yes,yes,,4,4,5,4,just right,4,5,4,4,5,5,5,5,2,4,1,4,2,5,1,4,2,Fine on a phone apart from the dashboard sliding sideways,TRUE

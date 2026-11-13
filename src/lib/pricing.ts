@@ -43,7 +43,7 @@ export interface ModelPrice {
 export const CACHE_MIN_PROMPT_TOKENS = 1024;
 
 /**
- * Checked against https://developers.openai.com/api/docs/pricing on 2026-10-19.
+ * Checked against https://developers.openai.com/api/docs/pricing on 2026-10-20.
  * Note the cached-input ratio differs by family: 50% off on GPT-4o-family,
  * 90% off on GPT-5-family and later — which is part of why gpt-5-mini beats
  * gpt-4o-mini on cached-heavy traffic despite the higher list price.
@@ -56,7 +56,7 @@ export const CACHE_MIN_PROMPT_TOKENS = 1024;
  * **Re-check before quoting these in a report or a viva.** If a rate has moved,
  * fix it here — every consumer reads this one table.
  */
-export const PRICING_CHECKED_ON = "2026-10-19";
+export const PRICING_CHECKED_ON = "2026-10-20";
 
 export const MODEL_PRICING: Record<string, ModelPrice> = {
   "gpt-6-sol": { input: 2, cachedInput: 0.2, output: 10, cacheWrite: 2.5 },
@@ -67,6 +67,9 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   "gpt-5-mini": { input: 0.25, cachedInput: 0.025, output: 2 },
   "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },
   "gpt-4o-mini": { input: 0.15, cachedInput: 0.075, output: 0.6 },
+  // Evaluation only: the neutral judge for the three-way model comparison,
+  // from a family none of the candidates belongs to (docs/MODEL-COMPARISON.md).
+  "gpt-4.1": { input: 2, cachedInput: 0.5, output: 8 },
   "gpt-4o": { input: 2.5, cachedInput: 1.25, output: 10 },
   "text-embedding-3-small": { input: 0.02, cachedInput: 0.02, output: 0 },
   "text-embedding-3-large": { input: 0.13, cachedInput: 0.13, output: 0 },

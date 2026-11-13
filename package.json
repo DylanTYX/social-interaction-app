@@ -20,7 +20,8 @@
     "cost-report": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-cost-report.ts",
     "eval:voices": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-voice-audition.ts",
     "seed:demo": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config src/eval/run-demo-seed.ts",
-    "security-demo": "tsx src/eval/run-security-demo.ts"
+    "security-demo": "tsx src/eval/run-security-demo.ts",
+    "uat-summary": "tsx src/eval/run-uat-summary.ts"
   },
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",

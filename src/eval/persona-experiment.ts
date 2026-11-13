@@ -343,6 +343,7 @@ export function steeringFor(
       estimateFollowupDifficulty(SOLID, context),
       decision.shouldEscalate,
       decision.shouldSlowDown,
+      { warmth: persona.warmth, pushback: persona.pushback ?? 5 },
     ),
   };
 }

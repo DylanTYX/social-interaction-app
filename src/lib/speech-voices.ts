@@ -58,6 +58,52 @@ export function paceToRatePercent(pace: number | undefined): number {
 }
 
 /**
+ * The speaking style a warm interviewer uses, for the voices that have one.
+ *
+ * Azure lets some voices speak "friendly" or "empathetic" through SSML's
+ * `mstts:express-as`. Only 16 of this catalogue's voices offer any style at
+ * all (live voice list, 2026-10-21), and most of those offer only "cheerful",
+ * which reads as excitable, not warm. These four are the ones with a style that
+ * fits a warm interviewer. A voice not listed speaks exactly as before, so the
+ * warmth dial is heard in the words for every voice and in the tone only for
+ * these.
+ *
+ * Each was synthesised with and without its style and run through Azure's
+ * en-US recogniser on the accent audition's sentence: none lost
+ * intelligibility (0-3% word error either way). Xiaoxiao uses "gentle" rather
+ * than "friendly" because "friendly" dropped a word where "gentle" kept the
+ * accented "free projects" the accent audition chose her for.
+ *
+ * Deliberately absent: any style for a *cold* interviewer. "serious" on the
+ * two Chinese voices came back recognised as unaccented "three projects",
+ * which suggests the style flattens the accent the persona exists to carry,
+ * and "unfriendly" is hostility, not formality. Low warmth stays in the words.
+ *
+ * The style is chosen once from the persona, so every sentence of an
+ * interview is spoken the same way; it never changes mid-interview.
+ */
+const WARM_VOICE_STYLES: Readonly<Record<string, string>> = {
+  "en-US-AriaNeural": "friendly",
+  "en-US-GuyNeural": "friendly",
+  "en-IN-NeerjaNeural": "empathetic",
+  "zh-CN-XiaoxiaoNeural": "gentle",
+};
+
+/** Warm reads from the dial's own label (8 and above), as the note does. */
+const WARM_FROM = 8;
+
+/** The SSML style for this voice and warmth, or null to speak plainly. */
+export function voiceStyleFor(
+  voiceUri: string | null | undefined,
+  warmth: number | undefined,
+): string | null {
+  if (!voiceUri || !Number.isFinite(warmth) || (warmth as number) < WARM_FROM) {
+    return null;
+  }
+  return WARM_VOICE_STYLES[voiceUri] ?? null;
+}
+
+/**
  * The voice used when nothing else resolves: unknown nationality, an accent
  * that has not been auditioned, accents switched off, or a stale voice URI
  * read back out of an old session's `launch_meta`.

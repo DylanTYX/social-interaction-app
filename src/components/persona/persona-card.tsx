@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { PERSONA_DIALS } from "@/components/persona/dial-field";
+import { PersonaSignature } from "@/components/persona/persona-signature";
 import { QUESTIONING_STYLE_META } from "@/lib/persona-engine";
 import type { PersonaLibraryEntry } from "@/lib/persona-library";
 import {
@@ -156,6 +157,10 @@ export function PersonaCard({
             </span>
           </div>
         </div>
+
+        {/* What to listen for, above the traits: the bars below say how far
+            each dial is set, this says what that will sound like. */}
+        <PersonaSignature config={config} />
 
         {(config.personalityTraits.length > 0 ||
           config.boundaries.length > 0) && (

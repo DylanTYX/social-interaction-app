@@ -235,13 +235,23 @@ they would "describe a product that does not exist".
 ## 7. One model per call site, chosen per call site — with overrides
 
 **Decision.** Each model call has its own default, set by what its output is
-for: `gpt-5-mini` where the output is the product (the interviewer's turns,
-the coach's suggested answers), `gpt-4o-mini` where determinism or an eval
-baseline matters more than ceiling (analyzer, summary, JD tidy-up, judges).
-Every one is overridable by environment variable, and
-[`model-params.ts`](../src/lib/model-params.ts) builds the request per family
-so an override can cross families without a 400. The full per-site reasoning,
-with prices, lives in [TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where".
+for. Since 19 October 2026: `gpt-5.6-luna` where the output is the product (the
+interviewer's turns, the coach's suggested answers), and `gpt-6-luna` where a
+score, a compression or a measurement is wanted (analyzer, summary, JD tidy-up,
+the evaluation judges). Every one is overridable by environment variable, and
+[`model-params.ts`](../src/lib/model-params.ts) builds the request per generation
+so an override can cross generations without a 400. All defaults live in
+[`models.ts`](../src/lib/models.ts), which the app and the evaluation harnesses
+both read. The per-site reasoning, with prices and measurements, is in
+[TOKEN-COST.md](TOKEN-COST.md) §"Which model runs where".
+
+**Why two models rather than one.** Two reasons, one practical and one
+principled. OpenAI named a different replacement for each retiring model
+(`gpt-5.6-terra` for `gpt-5-mini`, `gpt-6-luna` for `gpt-4o-mini`), and the
+cheaper of the two small models served each job. And an evaluation judge must
+not share a generation with the model it rates, so the judge needed to sit on a
+different generation from the interviewer and coach in any case; putting the
+analyzer on the judge's generation costs nothing.
 
 **The rule that survived from the earlier version of this decision**: never
 two models _within_ one conversation. The opening turn once ran on `gpt-4o`
@@ -250,23 +260,25 @@ opening turn never warmed the cache the rest of the session used. Different
 models across _different_ call sites keep separate caches anyway, so that
 cost does not apply there.
 
-**What it costs.** The analyzer's known failure — leniency toward fluent,
-confident, wrong answers — might not survive a stronger model. That is
-untested, and it is named as untested in [EVALUATION.md](EVALUATION.md); the
-gated path is `ANALYZER_MODEL=gpt-6-luna npm run eval` against the committed
-baseline.
+**The rule that governs a change: a default moves on a harness run, not on a
+model page.** The analyzer on `npm run eval`, the interviewer on
+`npm run eval:persona -- --live`, the coach on `npm run eval:coach -- --live`,
+each compared with a fresh run of the model it replaces on the same tree; and
+`npm run eval:models` first, to find a refused request cheaply. The first time
+this was done it earned its keep three times: the fresh baseline of the old
+analyzer was **81.1%, not the 88.9% on record**; the replacement interviewer
+stopped quoting the candidate's words in evidence probes, because only one of
+seven probe sentences had ever asked it to and the old model had done it from
+habit; and the coach harness turned out never to have completed a live run,
+every judge prompt lacking the word "JSON" that JSON mode requires.
 
-**19 October 2026.** OpenAI retired both defaults: the `gpt-5-mini` snapshot
-on 11 December 2026 and `gpt-4o-mini` on 14 January 2027. The decision does
-not change; the gate does the work. Two things did change. The defaults now
-live in one file, [`models.ts`](../src/lib/models.ts), which the harnesses
-read too — the persona harness had kept a `gpt-4o-mini` default of its own
-after the app moved, so its committed live run measured a model the app no
-longer used. And `model-params.ts` learned the third request contract
-(gpt-5.6-\*, gpt-6-\*: `none` in place of `minimal`, sampling parameters at
-`none` only). The candidates, the order of the runs and what counts as
-passing are in [TOKEN-COST.md](TOKEN-COST.md) §"Retirements and the
-migration".
+**What it costs.** The migration is a cost reduction (about 20% per scored turn)
+and the analyzer is no worse by the harness's own criteria, but it is not
+better in every respect: its misses are all too generous, and three answers that
+the old model placed correctly now land just over a band boundary
+([EVALUATION.md](EVALUATION.md) §"Model migration"). The figures in the report
+belong to the models they were measured on, which is why they were re-measured
+on 19 October 2026 rather than carried over.
 
 ---
 
@@ -602,6 +614,67 @@ have, which ends the answer.
 editor is open, so the code and the spoken reasoning are sent together, and a
 "share progress" action that gets a hint without ending the answer. Each
 touches the speech pipeline or the turn model, not a constant.
+
+## 19. Warmth is friendliness, not praise, and the persona speaks where it is heard
+
+**Decision.** Four changes, made together on 2026-10-21 because users said they
+could not tell the personas apart.
+
+1. **The private note carries the persona's voice.** After the strategy and the
+   focus, the note now ends with a delivery line chosen by warmth (warm, even, or
+   formal) and, when pushback is 7 or more, the challenge rung the persona
+   description already states. A weak answer is pressed *kindly* by a warm
+   interviewer and *bluntly*, saying what is missing, by a cold or sceptical one.
+2. **Warmth no longer means praise.** Three rules told every persona to sound
+   neutral: the standing "no praise; at most say 'Okay'", warmth's own "no praise,
+   no assessment" allowance, and the note's "do not praise it out loud". They are
+   rewritten so the ban is on *grading the answer*, which stays forbidden for every
+   persona, and not on *being friendly to the person*, which is what warmth is.
+3. **The presets are spread out.** Every preset dial is now 2, 5 or 9, and each
+   preset has at least two at an end. Accounts that already hold the old presets
+   are updated on their next library load, but only where the user never changed
+   a dial (`PREVIOUS_PRESET_DIALS` in `db/personas.ts`).
+4. **The difference is said in words.** Persona cards and the editor list "How
+   they interview" from the dials furthest from the middle; the report counts what
+   the interviewer actually did, from the move stored for every scored answer.
+
+A fifth, smaller one: for the four voices that have a fitting speaking style, a
+warm persona (8 and above) is voiced with it.
+
+**Why.** The live experiment measured it before anyone said it: moving warmth from
+2 to 9 shifted a blind judge's supportiveness rating by half a point out of ten,
+and pushback moved demandingness by 0.8, while the two dials that act through the
+note moved theirs by 2 and 4.3 ([PERSONA-EVAL.md](PERSONA-EVAL.md) §4). That is
+§17 again: what the model follows is the note after the answer, and warmth and
+pushback lived only in the description ahead of the transcript. The presets made it
+worse. All six had strictness between 6 and 9 and most dials between 4 and 9, so two
+presets differed by a few steps of dials whose whole range barely registered.
+
+**What it risks.** Every added directive can contradict another; §16 of
+PERSONA-EVAL.md records the three times that happened. So the challenge line is
+only added on moves that stay on the answer just given, never on a curveball or a
+clarifying question, and low pushback is deliberately *not* repeated in the note,
+because "take their account at face value" there would overrule a weakness-driven
+move such as drilling for specifics. Whether the dials are now distinct is a
+measurement, not a claim: the persona harness and a blind "which persona asked
+this?" test have to be run again, and neither has been, because the API key had no
+credit when this shipped.
+
+**The voice styles, and why there are so few.** Only 16 of the catalogue's 52
+voices offer any Azure speaking style, and most of those offer only "cheerful",
+which is excitable rather than warm. Four have a fitting one: the two American
+voices ("friendly"), the Indian female ("empathetic") and the Chinese female
+("gentle"). Each was synthesised with and without its style on the accent
+audition's sentence and scored by Azure's en-US recogniser: 0-3% word error either
+way. No cold style is used: "serious" on the Chinese voices came back as an
+unaccented "three projects" where the plain voice says "free projects", which
+suggests it flattens the accent the persona is chosen for. The style is chosen once
+per interview from the persona, so the voice never changes mid-interview.
+
+**What was considered instead.** Fewer dial steps (1-5, or low/medium/high). It
+would make every selectable setting one the experiment measures, but it does not by
+itself make two settings sound different; the directives above do that. It stays
+open until the re-run says how far apart the settings now are.
 
 ## Decisions still open
 

@@ -128,10 +128,11 @@ npm run dev
 | `npm run eval` | **Scoring validation harness — makes live OpenAI calls** |
 | `npm run eval:persona` | **Persona differentiation harness** — free and offline by default; `--live` makes billed calls |
 | `npm run eval:coach` | **Coaching quality harness** — free and offline by default; `--live` makes billed calls |
+| `npm run eval:models` | **Preflight for a model change** — one tiny billed request per call site, shaped like the app's own; `-- --candidates` tests the migration targets in `src/lib/models.ts` |
 | `npm run cost-report` | **Reads `llm_usage` and prices it** — needs `SUPABASE_SERVICE_ROLE_KEY` |
 | `npm run seed:demo` | **Seeds the demo account** — dry run by default; `-- --confirm` writes; needs `SUPABASE_SERVICE_ROLE_KEY`. Seeded, not measured: see docs/DEMO.md |
 
-`npm test` currently runs 426 tests, including route-handler tests that
+`npm test` currently runs more than 980 tests across 92 files, including route-handler tests that
 cover auth, input bounds and the prompt trust boundary. CI runs typecheck, lint
 and tests on every push and pull request (`.github/workflows/ci.yml`).
 

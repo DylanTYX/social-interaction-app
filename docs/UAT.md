@@ -1,6 +1,6 @@
 # ConvoTrainer — User Acceptance Testing (UAT)
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Audience:** Friends & family testers (non-technical OK)  
 **Goal:** Confirm features work, find bugs, and judge whether the app is easy and pleasant to use.
 
@@ -13,7 +13,7 @@
 | Item             | What to do                                                                                                             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | App URL          | Use your deployed URL **or** `http://localhost:3000` if testing locally                                                |
-| Backend          | Supabase project running; the three files in `supabase/migrations` applied in order (`0001_schema`, `0002_security`, `0003_functions`) |
+| Backend          | Supabase project running; the four files in `supabase/migrations` applied in order (`0001_schema`, `0002_security`, `0003_functions`, `0004_usage_rows_read_only`) |
 | AI               | OpenAI (or configured provider) API keys set in server env                                                             |
 | Voice (optional) | Azure Speech credentials if testing voice interviews                                                                   |
 | Test accounts    | Create **2–3 separate accounts** (e.g. `tester1@…`, `tester2@…`) so testers don’t overwrite each other’s data          |
@@ -35,7 +35,7 @@
 
 ### 1.4 Bug reporting
 
-Use the template in **Section 6** (copy into Notes, WhatsApp, or a shared doc).  
+Testers can send bugs with the template in **Section 6.6** (copy into Notes, WhatsApp, or a shared doc); you copy each one into `UAT-bug-log.csv` (Section 6.3).  
 **Severity:** Blocker = can’t continue · Major = feature broken · Minor = annoying but workaround exists · Cosmetic = visual/text only.
 
 ---
@@ -171,12 +171,13 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | R3  | Predict before reveal | Open a report you have not opened before | Scores hidden until you predict or skip; after Reveal, the overall card shows the gap; reopening goes straight to scores | ☐     |       |
 | R4  | Print / PDF        | **⋯ → Download PDF** (browser print)          | Print preview readable; chrome hidden                           | ☐     |       |
 | R5  | Duration           | Start a text session, answer once, switch to another tab for 3 min, come back, answer, **End session** | Report duration leaves out the 3 minutes away | ☐     |       |
-| R5  | Next round         | If multi-round configured                     | Starts next round without error                                 | ☐     |       |
-| R6  | Per-answer scores  | Scroll the transcript                         | Each of your answers shows its own score plus strengths/gaps    | ☐     |       |
-| R7  | Difficulty context | Read under the overall score                  | Names the interviewer's difficulty band and what it means       | ☐     |       |
-| R8  | Practise again     | Click **Practise again**                      | Wizard opens pre-filled with the same brief, persona, JD and resume | ☐     |       |
-| R9  | Config survives    | After R8, finish a session, reopen the wizard | Job description and resume are still attached                       | ☐     |       |
-| R6  | Broken link        | Visit `/simulate/report/fake-id`              | Friendly error, not blank page                                  | ☐     |       |
+| R6  | Next round         | If multi-round configured                     | Starts next round without error                                 | ☐     |       |
+| R7  | Per-answer scores  | Scroll the transcript                         | Each of your answers shows its own score plus strengths/gaps    | ☐     |       |
+| R8  | Difficulty context | Read under the overall score                  | Names the interviewer's difficulty band and what it means       | ☐     |       |
+| R9  | Practise again     | Click **Practise again**                      | Wizard opens pre-filled with the same brief, persona, JD and resume | ☐     |       |
+| R10 | Config survives    | After R9, finish a session, reopen the wizard | Job description and resume are still attached                       | ☐     |       |
+| R11 | Broken link        | Visit `/simulate/report/fake-id`              | Friendly error, not blank page                                  | ☐     |       |
+| R12 | Loop report        | After two rounds of a loop, open a round's report → **View the loop report** | Each round's score in order, the change across the loop, and recurring strengths and gaps | ☐     |       |
 
 ### 4.7 Libraries & drills
 
@@ -199,14 +200,14 @@ one listener, in `docs/artifacts/voice-audition.md`.
 
 | ID  | Test                  | Steps                                                                                   | Expected                                                                                      | Pass? | Notes |
 | --- | --------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----- | ----- |
-| M1  | Rename from report    | Click the report title, type a new name, press Enter; then clear it and press Enter     | New name shows on the report, sessions list and dashboard; clearing restores the generated title | ☐     |       |
-| M2  | Tags                  | From a session's row menu → Edit tags, add two (try "acme" then "Acme"); remove one | Duplicate in a different case is ignored; tags show on the sessions row and in the tag filter | ☐     |       |
-| M3  | Pin                   | Pin an older session from its row menu                                                  | It moves to the top of the list with a pin icon                                               | ☐     |       |
-| M4  | Archive               | Archive a completed session; open the Archived tab; unarchive it                          | Hidden from Active, visible under Archived; dashboard stats unchanged                         | ☐     |       |
-| M5  | Sort and filter       | Sort by highest score, then filter to voice sessions only                                 | Order and results match; Clear filters resets everything                                      | ☐     |       |
-| M6  | Bulk actions          | Tick three sessions; add a tag, pin them, then archive them                 | All three change; a toast reports how many were updated                                       | ☐     |       |
-| M7  | Compare               | Tick exactly two sessions and choose Compare                                             | Side-by-side scores with the change between them; links open each report                     | ☐     |       |
-| M8  | Notes                 | Write takeaways at the end of a report, save, reload                                   | Notes persist; Save is disabled until the text changes                                        | ☐     |       |
+| MS1 | Rename from report    | Click the report title, type a new name, press Enter; then clear it and press Enter     | New name shows on the report, sessions list and dashboard; clearing restores the generated title | ☐     |       |
+| MS2 | Tags                  | From a session's row menu → Edit tags, add two (try "acme" then "Acme"); remove one | Duplicate in a different case is ignored; tags show on the sessions row and in the tag filter | ☐     |       |
+| MS3 | Pin                   | Pin an older session from its row menu                                                  | It moves to the top of the list with a pin icon                                               | ☐     |       |
+| MS4 | Archive               | Archive a completed session; open the Archived tab; unarchive it                          | Hidden from Active, visible under Archived; dashboard stats unchanged                         | ☐     |       |
+| MS5 | Sort and filter       | Sort by highest score, then filter to voice sessions only                                 | Order and results match; Clear filters resets everything                                      | ☐     |       |
+| MS6 | Bulk actions          | Tick three sessions; add a tag, pin them, then archive them                 | All three change; a toast reports how many were updated                                       | ☐     |       |
+| MS7 | Compare               | Tick exactly two sessions and choose Compare                                             | Side-by-side scores with the change between them; links open each report                     | ☐     |       |
+| MS8 | Notes                 | Write takeaways at the end of a report, save, reload                                   | Notes persist; Save is disabled until the text changes                                        | ☐     |       |
 
 ### 4.8 Settings & account
 
@@ -220,13 +221,6 @@ one listener, in `docs/artifacts/voice-audition.md`.
 | A6  | Section links      | ⌘K → **Export or delete your data**                                         | Settings opens scrolled to Your data                                                      | ☐     |       |
 | A7  | Usage              | Practise a round, then open Settings → Usage                                | Tokens and an estimated cost for the period, split by what they bought; the report for that session shows its own token line | ☐     |       |
 
---- | -------------- | ------------------------------------------------- | ---------------------------------------- | ----- | ----- |
-| A1  | Profile tab    | Update display fields if available                | Saves without error                      | ☐     |       |
-| A2  | Defaults       | Change default mode / streaming / coaching → save | Next setup pre-filled                    | ☐     |       |
-| A3  | Voice settings | Adjust voice options if shown                     | Persists                                 | ☐     |       |
-| A4  | Data export    | Export data if button exists                      | File downloads or clear message          | ☐     |       |
-| A5  | Logout         | Log out                                           | Cannot access `/dashboard` without login | ☐     |       |
-
 ---
 
 ## 5. Usability checklist (all testers)
@@ -239,26 +233,143 @@ Rate each **1–5** (1 = poor, 5 = excellent). Add one sentence why if ≤3.
 | U2  | I knew what to click to try the product without signing up.                    |       |         |
 | U3  | Signing up / signing in was straightforward.                                   |       |         |
 | U4  | The dashboard told me what to do next.                                         |       |         |
-| U5  | The interview setup wizard felt too long / just right / too short.             |       |         |
+| U5  | The interview setup wizard felt too long / just right / too short. _(Answer with one of the three, not a number.)_ |       |         |
 | U6  | During the interview, I always knew how to send my answer and end the session. |       |         |
 | U7  | The feedback/report helped me understand how to improve.                       |       |         |
 | U8  | Error messages (if any) made sense and told me how to fix the problem.         |       |         |
 | U9  | The app felt fast enough (no long unexplained waits).                          |       |         |
 | U10 | I would recommend this to someone preparing for interviews.                    |       |         |
+| U11 | The follow-up questions responded to what I actually said.                     |       |         |
+| U12 | Practising this way was more useful than practising from a list of questions.  |       |         |
+
+U11 and U12 test the project's central claim — that adapting to the answer is
+what existing practice lacks — so ask them of every tester who completed an
+interview, and report the students preparing for interviews separately.
+
+**System Usability Scale (all testers).** Rate each from 1 (strongly disagree)
+to 5 (strongly agree). Score: for odd items subtract 1; for even items subtract
+the rating from 5; add the ten results and multiply by 2.5, giving 0–100
+(Brooke, 1996). Read the score against Bangor, Kortum and Miller (2008).
+
+| #     | Statement                                                                                  | Rating |
+| ----- | ------------------------------------------------------------------------------------------ | ------ |
+| SUS1  | I think that I would like to use this system frequently.                                   |        |
+| SUS2  | I found the system unnecessarily complex.                                                  |        |
+| SUS3  | I thought the system was easy to use.                                                      |        |
+| SUS4  | I think that I would need the support of a technical person to be able to use this system. |        |
+| SUS5  | I found the various functions in this system were well integrated.                         |        |
+| SUS6  | I thought there was too much inconsistency in this system.                                 |        |
+| SUS7  | I would imagine that most people would learn to use this system very quickly.              |        |
+| SUS8  | I found the system very cumbersome to use.                                                 |        |
+| SUS9  | I felt very confident using the system.                                                    |        |
+| SUS10 | I needed to learn a lot of things before I could get going with this system.               |        |
 
 **Task success (yes/no):**
 
-| Task                                   | Completed without help? |
-| -------------------------------------- | ----------------------- |
-| Try landing demo question              | ☐                       |
-| Create account                         | ☐                       |
-| Complete one text interview end-to-end | ☐                       |
-| Find past session in history           | ☐                       |
-| Upload or paste a job description      | ☐                       |
+| Task                                   | Column in `UAT-testers.csv` | Completed without help? |
+| -------------------------------------- | --------------------------- | ----------------------- |
+| Try landing demo question              | Task demo                   | ☐                       |
+| Create account                         | Task account                | ☐                       |
+| Complete one text interview end-to-end | Task interview              | ☐                       |
+| Find past session in history           | Task history                | ☐                       |
+| Upload or paste a job description      | Task job description        | ☐                       |
 
 ---
 
-## 6. Bug report template
+## 6. Logging the results
+
+Three spreadsheets sit beside this plan. Open them in Excel, Numbers or Google
+Sheets, keep the header row exactly as it is, and save or download them as CSV
+under the same name.
+
+| File               | One row per | Filled in                                               |
+| ------------------ | ----------- | ------------------------------------------------------- |
+| `UAT-testers.csv`  | tester      | At the end of their session, from their questionnaire   |
+| `UAT-case-log.csv` | case run    | As each case is run, by you                             |
+| `UAT-bug-log.csv`  | bug         | When a case fails or a tester reports a problem         |
+
+**Codes, not names.** Give each tester a code — P01, P02 … — and use it in all
+three files; you are D01. The logs live in the repository, so if you want to
+remember who P03 was, keep that list somewhere private.
+
+### 6.1 `UAT-testers.csv`
+
+| Column                               | Values                                                                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| Tester                               | P01, P02 …; D01 for yourself                                                                              |
+| Group                                | `student` (preparing for interviews), `friends-family`, or `developer` (you: counted for the smoke gate only) |
+| Script                               | Their Section 7 session, A–F                                                                              |
+| Date                                 | YYYY-MM-DD                                                                                                |
+| Device, Browser                      | Their main setup: `desktop`, `mobile` or `tablet`; Chrome, Safari …                                       |
+| Task demo … Task job description     | The five task checks in Section 5: `yes` (without help), `no`, or blank if not attempted                  |
+| U1–U12                               | 1–5; U5 is `too long`, `just right` or `too short`                                                        |
+| SUS1–SUS10                           | 1–5. Leave a cell blank rather than guess: a tester missing any item has no SUS score                     |
+| Comments                             | The debrief answers, in a sentence or two                                                                 |
+
+### 6.2 `UAT-case-log.csv`
+
+| Column          | Values                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| Date            | YYYY-MM-DD                                                                               |
+| Tester          | The tester's code                                                                        |
+| Case            | The ID from Sections 3–4, exactly as written: S1, T4, V5b, MS3                           |
+| Device, Browser | Only when different from the tester's row — Session E on a phone, say                    |
+| Result          | `pass`, `fail`, `blocked` (could not get that far) or `skip` (not run)                   |
+| Bug             | The bug's ID, whenever the result is `fail` or `blocked`                                 |
+| Notes           | What happened, in the tester's words where you can                                       |
+
+Record what the tester saw, not what you expected them to see. When you fix a
+bug and run the case again, **add a new row** with the later date; never
+overwrite the failure. A case is judged on its latest run, and the old row is
+the history the report's "what changed because of it" is written from.
+
+### 6.3 `UAT-bug-log.csv`
+
+One row per bug, numbered UAT-001 upward. Severity is Blocker, Major, Minor or
+Cosmetic (Section 1.4); Case is the case that found it, if any; Status is
+`Open`, `Fixed` or `Won't fix`; Workaround is required for any Major left open
+(Section 8).
+
+### 6.4 From the logs to the report
+
+```
+npm run uat-summary
+```
+
+prints the method line (how many testers, in which groups, on which dates,
+devices and browsers), each exit criterion with its result and verdict (report
+Table 5.15), and the other measures (Table 5.16), followed by any row it could
+not count. Clear every warning before quoting a number. The rules it applies
+were set before any session was run:
+
+- The testers counted are `student` and `friends-family`. Your own runs count
+  towards the smoke gate only.
+- The smoke gate needs the latest run of every S case to pass on a desktop, in
+  Chrome and in Safari.
+- A functional case passes when its latest run on every device and browser it
+  was tried on passed. A case nobody ran, or only skipped, is "not run", and how
+  many were not run is reported alongside.
+- The usability criterion is met only when **each** of U1, U4, U6 and U7
+  averages at least 3.5, not their pooled average.
+- "Bugs found" counts every bug; the exit criteria count open ones. A bug with
+  no status is open.
+- SUS is scored per tester (Brooke, 1996), and only from all ten items.
+- U11, U12 and SUS are also given for the students alone.
+
+### 6.5 Practice data
+
+`docs/artifacts/uat-sample/` holds the same three files filled with **invented**
+results: five testers and you, a failure fixed and re-run (I8), an open Major
+with a workaround (V6), skipped cases, a phone-only session, and one criterion
+that fails (U4). Open them beside the real ones to see how a row is filled, and
+run `npm run uat-summary -- --sample` to see what the summary does with them.
+
+**They are not participants and must never be reported.** Every row carries
+`Synthetic` = `TRUE`, and any row so marked makes the summary print a SAMPLE
+DATA banner at its start and end — so a row copied into the real logs gives
+itself away. The real templates have no `Synthetic` column; do not add one.
+
+### 6.6 Bug report template (for testers)
 
 ```
 Bug ID: UAT-___
@@ -289,11 +400,12 @@ Severity: Blocker / Major / Minor / Cosmetic
 
 | Session | Who                | Focus                                        | Duration |
 | ------- | ------------------ | -------------------------------------------- | -------- |
-| A       | You (solo)         | Section 3 smoke + fix blockers               | 30 min   |
-| B       | Girlfriend         | Section 3 + Usability U1–U10                 | 30 min   |
+| A       | You (solo, D01)    | Section 3 smoke + fix blockers               | 30 min   |
+| B       | Girlfriend         | Section 3 + Usability U1–U12 + SUS           | 30 min   |
 | C       | Family member 1    | Section 4.1–4.4 (landing + text interview)   | 45 min   |
 | D       | Family member 2    | Section 4.5 voice + 4.7 libraries (optional) | 45 min   |
 | E       | Anyone mobile-only | D7 + S2 + S3 + shortened S6–S8               | 20 min   |
+| F       | Students preparing for interviews (at least two) | Section 3 + 4.3–4.4 + U1–U12 + SUS | 45 min |
 
 **Debrief questions (5 min after each session):**
 
@@ -308,10 +420,10 @@ Severity: Blocker / Major / Minor / Cosmetic
 
 UAT is **passed** when:
 
-- [ ] All **Section 3** smoke tests pass on desktop Chrome/Safari
+- [ ] All **Section 3** smoke tests pass on desktop Chrome **and** desktop Safari
 - [ ] No **Blocker** bugs open
 - [ ] ≤ 3 **Major** bugs open, each with a workaround documented
-- [ ] Average usability score **≥ 3.5** on U1, U4, U6, U7 (Section 5)
+- [ ] **Each** of U1, U4, U6 and U7 averages **≥ 3.5** (Section 5)
 - [ ] At least **2 non-developer testers** complete one full text interview without facilitator help
 
 ---

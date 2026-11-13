@@ -43,10 +43,13 @@ describe("buildSteeringBlock", () => {
     expect(build()).toContain("never read out");
   });
 
-  it("names the strength but forbids praising it", () => {
+  it("names the strength but forbids grading it", () => {
     const block = build();
     expect(block).toContain("named the stakeholders");
-    expect(block).toContain("Do not praise it out loud");
+    expect(block).toContain("do not grade it out loud");
+    // "Praise" is gone from the note on purpose: it read as a ban on being
+    // friendly, which is warmth's job, not a ban on judging the answer.
+    expect(block).not.toMatch(/praise/i);
   });
 
   it("presses on escalate and deepens on slow-down, never both", () => {

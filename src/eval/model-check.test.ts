@@ -29,7 +29,10 @@ describe("candidateModels", () => {
   });
 
   it("does not move a model that has no announced retirement", () => {
-    const next = candidateModels({ ...currentModels(), analyzer: "gpt-6-luna" });
+    const next = candidateModels({
+      ...currentModels(),
+      analyzer: "gpt-6-luna",
+    });
     expect(next.analyzer).toBe("gpt-6-luna");
   });
 });
@@ -93,7 +96,12 @@ describe("buildChecks", () => {
     const jsonSites = Object.values(sites)
       .filter((c) => c.expectsJson)
       .map((c) => c.site);
-    expect(jsonSites).toEqual(["coach", "assessor", "jd tidy-up", "eval judge"]);
+    expect(jsonSites).toEqual([
+      "coach",
+      "assessor",
+      "jd tidy-up",
+      "eval judge",
+    ]);
     for (const site of jsonSites) {
       expect(sites[site].body).toMatchObject({
         response_format: { type: "json_object" },

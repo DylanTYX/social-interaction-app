@@ -85,9 +85,54 @@ export const RETIRED_PRESETS: Readonly<Record<string, string>> = {
   "Yuki Tanaka": "aisyah rahman",
 };
 
+/**
+ * The dials and traits each preset shipped with before 2026-10-21, when they
+ * were spread out so they could be told apart (see `PRESET_PERSONAS`).
+ *
+ * A preset row that still carries exactly these values was never edited, so
+ * it is moved to the new values; one whose dials differ was tuned by its owner
+ * and is left alone. Matching on all six dials, not one, is what makes "never
+ * edited" a safe inference.
+ */
+export const PREVIOUS_PRESET_DIALS: Readonly<
+  Record<
+    string,
+    { dials: readonly [number, number, number, number, number, number]; traits?: readonly string[] }
+  >
+> = {
+  // strictness, warmth, pace, pushback, probingDepth, unpredictability
+  "Sarah Chen": {
+    dials: [8, 6, 8, 8, 8, 6],
+    traits: ["analytical", "ambitious", "impatient with vagueness"],
+  },
+  "Marcus Johnson": {
+    dials: [7, 7, 5, 6, 6, 5],
+    traits: ["strategic thinker", "relationship-focused", "pragmatic"],
+  },
+  "Aisyah Rahman": { dials: [9, 4, 4, 9, 9, 6] },
+  "Priya Sharma": { dials: [7, 8, 4, 5, 7, 4] },
+  "Lars Petersen": { dials: [8, 5, 7, 8, 7, 8] },
+  "Isabella Rodriguez": { dials: [6, 9, 6, 4, 4, 3] },
+};
+
+const DIAL_ORDER = [
+  "strictness",
+  "warmth",
+  "pace",
+  "pushback",
+  "probingDepth",
+  "unpredictability",
+] as const;
+
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, i) => value === b[i]);
+}
+
 export interface PresetMaintenance {
   /** Retired preset rows rewritten as their replacement, keeping the row id. */
   replace: Array<{ id: string; name: string; config: PersonaConfig }>;
+  /** Unedited preset rows moved to the current dials (and traits, if unedited). */
+  refreshDials: Array<{ id: string; config: PersonaConfig }>;
   /** Retired preset rows whose replacement is already in the library. */
   remove: string[];
   /** Shipped preset rows saved before presets carried a voice gender. */
@@ -108,7 +153,12 @@ export interface PresetMaintenance {
 export function planPresetMaintenance(
   existing: readonly PersonaRecord[],
 ): PresetMaintenance {
-  const plan: PresetMaintenance = { replace: [], remove: [], backfillVoice: [] };
+  const plan: PresetMaintenance = {
+    replace: [],
+    refreshDials: [],
+    remove: [],
+    backfillVoice: [],
+  };
   const presetNames = new Set(
     existing.filter((row) => row.kind === "preset").map((row) => row.name),
   );
@@ -137,12 +187,38 @@ export function planPresetMaintenance(
     }
 
     const shipped = shippedByName.get(row.name);
-    if (shipped?.voiceGender && row.config.voiceGender === undefined) {
-      plan.backfillVoice.push({
-        id: row.id,
-        config: { ...row.config, voiceGender: shipped.voiceGender },
-      });
+    let config = row.config;
+    let refreshed = false;
+    const previous = PREVIOUS_PRESET_DIALS[row.name];
+    if (
+      shipped &&
+      previous &&
+      DIAL_ORDER.every((dial, i) => (row.config[dial] ?? 5) === previous.dials[i])
+    ) {
+      config = {
+        ...config,
+        strictness: shipped.strictness,
+        warmth: shipped.warmth,
+        pace: shipped.pace,
+        pushback: shipped.pushback,
+        probingDepth: shipped.probingDepth,
+        unpredictability: shipped.unpredictability,
+      };
+      if (previous.traits && sameList(row.config.personalityTraits, previous.traits)) {
+        config.personalityTraits = [...shipped.personalityTraits];
+      }
+      refreshed = true;
     }
+    if (shipped?.voiceGender && config.voiceGender === undefined) {
+      config = { ...config, voiceGender: shipped.voiceGender };
+      // One write per row: a row needing both fixes is a dial refresh that
+      // also gains a voice, not two updates racing each other.
+      if (!refreshed) {
+        plan.backfillVoice.push({ id: row.id, config });
+        continue;
+      }
+    }
+    if (refreshed) plan.refreshDials.push({ id: row.id, config });
   }
 
   return plan;
@@ -155,6 +231,7 @@ async function maintainPresets(
   const plan = planPresetMaintenance(existing);
   if (
     plan.replace.length === 0 &&
+    plan.refreshDials.length === 0 &&
     plan.remove.length === 0 &&
     plan.backfillVoice.length === 0
   ) {
@@ -173,7 +250,7 @@ async function maintainPresets(
       const { error } = await supabase.from("personas").delete().eq("id", id);
       if (error) throw error;
     }
-    for (const row of plan.backfillVoice) {
+    for (const row of [...plan.refreshDials, ...plan.backfillVoice]) {
       const { error } = await supabase
         .from("personas")
         .update({ config: row.config })

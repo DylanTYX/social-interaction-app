@@ -308,7 +308,7 @@ function buildStandardsProfile(strictness: number, warmth: number): string {
   const warmthDirective =
     allowance === 0
       ? "Do not acknowledge, thank or soften. Put the question directly."
-      : `Before the question you may spend at most ${allowance} words acknowledging that they answered — no praise, no assessment.`;
+      : `Before the question you may spend up to ${allowance} word${allowance === 1 ? "" : "s"} on the person rather than the answer: thank them, put them at ease or tell them there is no rush. Never say whether the answer was good.`;
 
   const reAsks = reAskAllowance(strictness);
   return [
@@ -422,7 +422,7 @@ function buildPushbackProfile(pushback: Pushback): string {
  * become distinct — without claiming a granularity one question can't carry.
  * Every rung is one question, because the standing rules forbid stacking them.
  */
-const PUSHBACK_DIRECTIVES = [
+export const PUSHBACK_DIRECTIVES = [
   "Take their account at face value this turn; do not contest a claim.",
   "Question a claim only where the answer is plainly inconsistent with itself.",
   "Build your question around one claim of theirs you are not yet convinced by.",
@@ -577,6 +577,16 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
  * are written characters, so choosing their voice is part of writing them. It
  * used to be absent on all six, and an absent preference takes the locale's
  * first voice — which made Marcus Johnson and Lars Petersen speak as women.
+ *
+ * Every dial sits on 2, 5 or 9, and each preset has at least two at an end.
+ * They used to cluster between 4 and 9 — strictness was 6 to 9 on all six — so
+ * two presets differed by a few steps of dials whose whole 2-to-9 range moves a
+ * blind judge's rating by half a point to four points (docs/PERSONA-EVAL.md).
+ * Users said they could not tell them apart, and the arithmetic agreed. 2, 5
+ * and 9 are also the three settings the live experiment measures, so every
+ * preset is built only from settings that have been tested. Accounts seeded
+ * before this keep their copies until `PREVIOUS_PRESET_DIALS` in
+ * `db/personas.ts` updates any the user has not edited.
  */
 export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   "sarah chen": {
@@ -586,15 +596,15 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     industry: "Big Tech",
     seniority: "Senior Product Manager",
     communicationStyle: "direct",
-    strictness: 8,
-    warmth: 6,
-    pace: 8,
-    pushback: 8,
-    probingDepth: 8,
-    unpredictability: 6,
+    strictness: 5,
+    warmth: 5,
+    pace: 2,
+    pushback: 5,
+    probingDepth: 9,
+    unpredictability: 2,
     questioningStyle: "deep_dive",
     yearsExperience: 12,
-    personalityTraits: ["analytical", "ambitious", "impatient with vagueness"],
+    personalityTraits: ["analytical", "thorough", "impatient with vagueness"],
     boundaries: [
       "hand-wavy explanations",
       "lack of data",
@@ -614,19 +624,15 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     industry: "Finance",
     seniority: "VP of Operations",
     communicationStyle: "diplomatic",
-    strictness: 7,
-    warmth: 7,
-    pace: 5,
-    pushback: 6,
-    probingDepth: 6,
+    strictness: 2,
+    warmth: 5,
+    pace: 9,
+    pushback: 2,
+    probingDepth: 2,
     unpredictability: 5,
     questioningStyle: "conversational",
     yearsExperience: 18,
-    personalityTraits: [
-      "strategic thinker",
-      "relationship-focused",
-      "pragmatic",
-    ],
+    personalityTraits: ["big-picture", "relationship-focused", "pragmatic"],
     boundaries: [
       "ignored stakeholders",
       "ignored risk management",
@@ -642,10 +648,9 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
   // Was Yuki Tanaka, Japanese. Japanese has no voice that speaks accented
   // English — every one auditioned rebuilt the words out of Japanese sounds —
   // so a Japanese preset could only ever speak neutral English. Replaced rather
-  // than deleted, with every dial, trait and role unchanged: this is the strict
-  // half of the demo's contrasting pair, and the numbers quoted from it
-  // (7/10 against Isabella's 5/10) depend only on those. Existing libraries are
-  // migrated by `RETIRED_PRESETS` in `db/personas.ts`.
+  // than deleted, with every trait and role unchanged: this is the strict half
+  // of the demo's contrasting pair. Existing libraries are migrated by
+  // `RETIRED_PRESETS` in `db/personas.ts`.
   "aisyah rahman": {
     name: "Aisyah Rahman",
     nationality: "Singaporean",
@@ -654,11 +659,11 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     seniority: "Plant Director",
     communicationStyle: "analytical",
     strictness: 9,
-    warmth: 4,
-    pace: 4,
+    warmth: 2,
+    pace: 5,
     pushback: 9,
     probingDepth: 9,
-    unpredictability: 6,
+    unpredictability: 5,
     questioningStyle: "bar_raiser",
     yearsExperience: 20,
     personalityTraits: ["perfectionistic", "detail-oriented", "methodical"],
@@ -677,12 +682,12 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     industry: "Consulting",
     seniority: "Managing Partner",
     communicationStyle: "collaborative",
-    strictness: 7,
-    warmth: 8,
-    pace: 4,
+    strictness: 9,
+    warmth: 9,
+    pace: 5,
     pushback: 5,
-    probingDepth: 7,
-    unpredictability: 4,
+    probingDepth: 5,
+    unpredictability: 2,
     questioningStyle: "socratic",
     yearsExperience: 16,
     personalityTraits: ["mentor-oriented", "empathetic", "growth-focused"],
@@ -705,12 +710,12 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     industry: "Renewable Energy",
     seniority: "CTO",
     communicationStyle: "direct",
-    strictness: 8,
-    warmth: 5,
-    pace: 7,
-    pushback: 8,
-    probingDepth: 7,
-    unpredictability: 8,
+    strictness: 5,
+    warmth: 2,
+    pace: 9,
+    pushback: 9,
+    probingDepth: 2,
+    unpredictability: 9,
     questioningStyle: "stress",
     yearsExperience: 14,
     personalityTraits: ["systems-thinking", "candid", "no-nonsense"],
@@ -733,12 +738,12 @@ export const PRESET_PERSONAS: Record<string, PersonaConfig> = {
     industry: "Marketing",
     seniority: "Chief Marketing Officer",
     communicationStyle: "diplomatic",
-    strictness: 6,
+    strictness: 2,
     warmth: 9,
-    pace: 6,
-    pushback: 4,
-    probingDepth: 4,
-    unpredictability: 3,
+    pace: 2,
+    pushback: 2,
+    probingDepth: 5,
+    unpredictability: 2,
     questioningStyle: "supportive",
     yearsExperience: 13,
     personalityTraits: ["creative", "persuasive", "people-focused"],

@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DialField, PERSONA_DIALS } from "@/components/persona/dial-field";
+import { PersonaSignature } from "@/components/persona/persona-signature";
 import {
   COMMUNICATION_STYLE_META,
   COMMUNICATION_STYLES,
@@ -239,6 +240,12 @@ export function PersonaConfigEditor({
             />
           ))}
         </div>
+        {/* Updates as the dials move, so the effect of a setting is read in
+            words before the interview rather than discovered during it. */}
+        <PersonaSignature
+          config={value}
+          className="rounded-lg border border-slate-100 bg-slate-50 p-3"
+        />
       </FieldSection>
 
       <FieldSection title="Character">

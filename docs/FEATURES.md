@@ -353,8 +353,14 @@ are filled — the same rule the server enforces), **Random persona** rolls one
 to edit from, and each card's menu offers **Edit**, **Duplicate** and
 **Delete**. The editor is sectioned — Identity, How they interview, Dials,
 Character — and its six dials are the same sliders the setup wizard uses. Each
-card shows the questioning style, the voice the accent resolves to, and all
-six dials, so a card says what an interviewer *is* rather than half of it.
+card shows the questioning style, the voice the accent resolves to, all six
+dials, and **How they interview**: the two or three things this interviewer
+will do that a typical one will not, such as "Challenges your claims and asks
+for the evidence", taken from the dials furthest from the middle. The editor
+shows the same list and updates it as the dials move. After a round, the report
+adds **How [name] interviewed you**: what the interviewer actually chose to do,
+counted from the moves the engine stored ("Pushed for specifics 3 times,
+changed topic twice").
 
 ### One library, two ways in
 
@@ -445,6 +451,12 @@ Worth knowing up front:
 - **English only.** Interviewers speak English whatever their nationality. The
   *accent* varies — an Indian persona speaks with an Indian accent — but the
   language never does.
+- **A warm interviewer sounds warmer on only four voices.** Warmth always
+  changes what the interviewer says. It also changes *how it sounds* only for
+  the American, Indian female and Chinese female voices, the four with a
+  speaking style that fits; every other voice, and every cold interviewer,
+  speaks as before. The style is fixed for the whole interview and keeps the
+  accent ([DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) §19).
 - **Japanese and Vietnamese have no accent, and were dropped from the random
   persona generator.** Azure has real English voices for fourteen locales, and
   those work. The rest need a native-locale voice reading English, auditioned

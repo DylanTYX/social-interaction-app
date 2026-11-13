@@ -520,6 +520,10 @@ async function empiricalReport(runs: number, apiKey: string, json: boolean) {
     `\n  cost of this run       ${formatUsd(summary.costUsd)} (${summary.promptTokens} in / ${summary.completionTokens} out)`,
   );
   if (errors.length) {
+    // A run with failed calls measured fewer samples than it claims, so it must
+    // not exit 0: on 20 Oct 2026 four runs whose credit ran out mid-way lost
+    // about 40% of their follow-ups and still reported success.
+    process.exitCode = 1;
     console.log(`\n  ${errors.length} errors:`);
     for (const error of errors.slice(0, 5)) console.log(`    ${error}`);
   }
@@ -655,6 +659,10 @@ async function dialExperimentReport(runs: number, apiKey: string, json: boolean)
     `\n  cost of this run       ${formatUsd(report.costUsd)} (${report.promptTokens} in / ${report.completionTokens} out)`,
   );
   if (report.errors.length) {
+    // A run with failed calls measured fewer samples than it claims, so it must
+    // not exit 0: on 20 Oct 2026 four runs whose credit ran out mid-way lost
+    // about 40% of their follow-ups and still reported success.
+    process.exitCode = 1;
     console.log(`\n  ${report.errors.length} errors:`);
     for (const error of report.errors.slice(0, 5)) console.log(`    ${error}`);
   }

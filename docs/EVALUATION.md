@@ -445,10 +445,11 @@ An evaluator will find these anyway; better to name them.
   [`UAT.md`](UAT.md) is for.
 - **Nothing here has been validated against live traffic.** See
   [`TOKEN-COST.md`](TOKEN-COST.md) for the same caveat on the cost figures.
-- **Every figure above was measured on `gpt-4o-mini`, which retires on
-  14 January 2027.** The candidate successor is `gpt-6-luna`; the analyzer
-  moves only if a run on it matches or beats a fresh baseline run from the
-  same tree, and both runs were still pending on 19 October 2026 because the
-  project's key was being rejected. The order of the runs and what counts as
-  passing are in [`TOKEN-COST.md`](TOKEN-COST.md) §"Retirements and the
-  migration".
+- **Every figure is one model, on one tree, on one day.** The analyzer moved
+  from `gpt-4o-mini` (retiring 14 January 2027) to `gpt-6-luna` on 19 October
+  2026, after a run on each from the same tree (§"Model migration"). The same
+  `gpt-4o-mini` scored 81.1% that day and not the 88.9% committed in August,
+  because two fixtures and the prompt had changed since, so an old number is a
+  claim about an old configuration. The next model change needs the same pair
+  of runs; the order and the pass criteria are in
+  [`TOKEN-COST.md`](TOKEN-COST.md) §"Retirements and the migration".

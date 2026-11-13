@@ -1,0 +1,6 @@
+Bug ID,Date,Tester,Case,Device,URL,Severity,Summary,Steps,Expected,Actual,Status,Workaround,Synthetic
+UAT-001,2026-10-20,D01,S2,MacBook / Safari,/,Minor,Demo heading hidden under the header in Safari,1. Open / in Safari 2. Click See it in action,Heading visible below the header,Heading scrolled under the header,Fixed,,TRUE
+UAT-002,2026-10-21,P02,I8,MacBook / Safari,/simulate/setup,Minor,Scanned-PDF error does not suggest pasting the text,"1. Setup, Brief step 2. Upload an image-only PDF resume",Clear error that suggests pasting,Error with no next step,Fixed,,TRUE
+UAT-003,2026-10-22,P03,D4,Laptop / Chrome,/dashboard,Cosmetic,Tour outline clipped on one sidebar item,1. Tips & guides 2. Take the tour 3. Go to the Library step,Full outline around the item,Right edge of the outline cut off,Open,,TRUE
+UAT-004,2026-10-22,P04,V6,Laptop / Chrome,/simulate/voice,Major,A pause of about three seconds submitted a voice answer,"1. Voice interview 2. Answer, pause ~3 s mid-sentence",Countdown resets when speaking resumes,Answer submitted at the pause,Open,"Switch the round to text, or keep talking through the pause",TRUE
+UAT-005,2026-10-23,P05,D7,iPhone SE / Safari,/dashboard,Minor,Dashboard scrolls sideways on a narrow phone,1. Open /dashboard on a 375 px wide phone,No horizontal scrolling,Page slides sideways by a few pixels,Open,,TRUE

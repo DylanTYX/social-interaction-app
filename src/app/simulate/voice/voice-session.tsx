@@ -1,7 +1,7 @@
 "use client";
 
 import type { DeliveryMetrics } from "@/lib/speech-metrics";
-import { paceToRatePercent } from "@/lib/speech-voices";
+import { paceToRatePercent, voiceStyleFor } from "@/lib/speech-voices";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -626,6 +626,9 @@ function VoiceSimulateInner() {
         utterances.map((sentence) =>
           speechService.speakQueued(sentence, resolvedVoiceUri, {
             ratePercent: paceToRatePercent(activePersonaConfig.pace),
+            style:
+              voiceStyleFor(resolvedVoiceUri, activePersonaConfig.warmth) ??
+              undefined,
           }),
         ),
       );
@@ -1062,6 +1065,10 @@ function VoiceSimulateInner() {
       const ttsEnabled = Boolean(voiceConfigRef.current?.ttsEnabled);
       const prosody = {
         ratePercent: paceToRatePercent(activePersonaConfig.pace),
+        // Fixed per persona, so the greeting and every reply share one tone.
+        style:
+          voiceStyleFor(resolvedVoiceUri, activePersonaConfig.warmth) ??
+          undefined,
       };
       // Cleared per turn; the onPlaybackError bridge and the per-sentence
       // synthesis .catch below both set it, so by the time playback drains

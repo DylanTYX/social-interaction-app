@@ -768,6 +768,10 @@ async function liveReport(
   );
 
   if (errors.length) {
+    // A run with failed calls measured fewer samples than it claims, so it must
+    // not exit 0: on 20 Oct 2026 a run whose credit ran out mid-way printed
+    // "n/a" for every figure and still reported success.
+    process.exitCode = 1;
     console.log(`\n  ${errors.length} errors:`);
     for (const error of errors.slice(0, 5)) console.log(`    ${error}`);
   }

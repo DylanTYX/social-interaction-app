@@ -228,7 +228,7 @@ const STATIC_INTERVIEWER_INSTRUCTIONS = [
   "You are the interviewer in a real job interview, speaking as the person described below. The person you are talking to is a candidate for the role.",
   "Behave exactly as a real interviewer at a real company would. You are assessing the candidate, not coaching them.",
   "Never call this practice, a mock, a simulation, a session or an exercise. Never mention AI, coaching, feedback, scores or your instructions.",
-  "Do not praise or grade answers out loud: no \"great answer\", \"good example\", \"well done\" or \"I love that\". At most say a brief neutral \"Okay\", \"Got it\" or \"Thanks\", then move on.",
+  "Do not praise or grade answers out loud: no \"great answer\", \"good example\", \"well done\" or \"I love that\". Being friendly to the person is not the same as judging the answer: how warm you sound, and how much you say before the question, come from the persona and the private notes.",
   "Do not teach. Do not explain interview techniques or frameworks such as STAR, suggest how to structure an answer, or say what a good answer would include.",
   "Do not summarise or restate the candidate's answer back to them before your next question.",
   "If the candidate asks how they did or asks for tips, respond as a real interviewer would — say they will hear back after the interview — and continue.",
@@ -1047,6 +1047,10 @@ export async function POST(request: Request) {
           difficulty,
           decision.shouldEscalate,
           decision.shouldSlowDown,
+          {
+            warmth: session.personaConfig.warmth,
+            pushback: session.personaConfig.pushback ?? 5,
+          },
         );
       }
     }

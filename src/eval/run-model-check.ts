@@ -32,8 +32,8 @@ interface Outcome {
 async function errorMessage(response: Response): Promise<string> {
   const text = await response.text().catch(() => "");
   try {
-    const message = (JSON.parse(text) as { error?: { message?: string } })
-      .error?.message;
+    const message = (JSON.parse(text) as { error?: { message?: string } }).error
+      ?.message;
     if (message) return message.replace(/\s+/g, " ").slice(0, 160);
   } catch {
     // not JSON; fall through to the raw text

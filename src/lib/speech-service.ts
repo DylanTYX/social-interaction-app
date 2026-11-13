@@ -47,6 +47,11 @@ export interface ProsodyOptions {
   ratePercent?: number;
   /** Pitch delta as a percentage. */
   pitchPercent?: number;
+  /**
+   * An Azure speaking style (`mstts:express-as`), from `voiceStyleFor`. Only
+   * ever one the voice supports; absent means speak plainly.
+   */
+  style?: string;
 }
 
 function escapeXml(text: string): string {
@@ -85,11 +90,14 @@ function buildProsodySsml(
   const rate = signedPercent(prosody.ratePercent ?? 0);
   const pitch = signedPercent(prosody.pitchPercent ?? 0);
   const lang = escapeXml(ssmlLangForVoice(voice.locale));
-  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}"><voice name="${escapeXml(
+  const spoken = `<prosody rate="${rate}" pitch="${pitch}">${escapeXml(text)}</prosody>`;
+  // The style wraps the prosody, so pace and warmth apply together.
+  const body = prosody.style
+    ? `<mstts:express-as style="${escapeXml(prosody.style)}">${spoken}</mstts:express-as>`
+    : spoken;
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${lang}"><voice name="${escapeXml(
     voice.uri,
-  )}"><prosody rate="${rate}" pitch="${pitch}">${escapeXml(
-    text,
-  )}</prosody></voice></speak>`;
+  )}">${body}</voice></speak>`;
 }
 
 /** How long `stopListening` waits for the SDK before moving on. */
@@ -792,9 +800,12 @@ export class SpeechService {
       ratePercent:
         (item.prosody?.ratePercent ?? 0) + (playback.voice.ratePercent ?? 0),
       pitchPercent: item.prosody?.pitchPercent ?? 0,
+      style: item.prosody?.style,
     };
     const useSsml =
-      (prosody.ratePercent ?? 0) !== 0 || (prosody.pitchPercent ?? 0) !== 0;
+      (prosody.ratePercent ?? 0) !== 0 ||
+      (prosody.pitchPercent ?? 0) !== 0 ||
+      Boolean(prosody.style);
     const ssml = useSsml
       ? buildProsodySsml(trimmed, playback.voice, prosody)
       : null;

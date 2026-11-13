@@ -168,7 +168,10 @@ export function buildChecks(models: SiteModels): CheckRequest[] {
       body: {
         model: models.summary,
         messages: SAY_OK,
-        ...completionParams(models.summary, { temperature: 0.2, maxTokens: 24 }),
+        ...completionParams(models.summary, {
+          temperature: 0.2,
+          maxTokens: 24,
+        }),
         prompt_cache_key: "model-check:summary",
       },
     },

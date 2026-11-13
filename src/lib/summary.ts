@@ -10,7 +10,8 @@
  *   - We keep the **last 6 messages verbatim** in the LLM prompt.
  *   - Anything older is folded into a running summary.
  *   - The summary is regenerated from scratch (cheap) every `SUMMARY_REFRESH_EVERY`
- *     turns, using gpt-4o-mini, given the existing summary + new messages.
+ *     turns, using SUMMARY_MODEL (src/lib/models.ts), given the existing
+ *     summary + new messages.
  *
  * The summary call uses a smaller model so it's roughly an order of magnitude
  * cheaper per turn than the main reply.

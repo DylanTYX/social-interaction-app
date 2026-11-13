@@ -134,7 +134,7 @@ personas" works at all — only orthogonal parameters compose.
 
 | Candidate | Verdict | Rationale |
 |---|---|---|
-| Warmth | **SHIP** (existed) | Supportive archetype (HackerRank). Consumed: confidence arithmetic, slow-down gate, and an acknowledgement allowance in words (0 at 1, 11 at 10). |
+| Warmth | **SHIP** (existed) | Supportive archetype (HackerRank). Consumed: confidence arithmetic, slow-down gate, an allowance of friendly words to the person (0 at 1, 11 at 10), a delivery line in the private note (warm, even or formal), how a weak answer is pressed (kindly or bluntly), and, for the four voices that have one, a warm speaking style. Warmth is friendliness to the person, never praise of the answer ([DESIGN-DECISIONS.md](DESIGN-DECISIONS.md) §19). |
 | Strictness | **SHIP** (existed) | High-bar archetype (Amazon Bar Raiser). Consumed: confidence, difficulty, a specifics floor, a re-ask allowance, and an acceptance bar stated on the analyzer's own scale (45/100 at 1, 90/100 at 10). |
 | Pace | **SHIP** (existed) | Attribute table. Consumed: TTS rate (voice), pacing prose, and a per-question word budget (57 words at 1, 30 at 10) — the one directive that reaches a *typed* interview. |
 | Skepticism | **SHIP** as `pushback` | Same lever; storage name kept for saved personas. Consumed: curveball twist/pivot weighting, five challenge rungs, and a budget of unsupported claims allowed to pass (5 at 1, **0** at 10). |
@@ -193,9 +193,14 @@ the hidden engine itself (ladder + rubric + persona-blind analyzer);
 expert / generalist** is round type + JD retrieval (Layers 1–2); **hinting**
 is the deferred hint ladder.
 
-The six preset personas carry styles that summarise the dials they already had
-— Aisyah Rahman (strictness 9, pushback 9) was always a bar raiser; the field
-just names it.
+The six preset personas carry styles that summarise their dials — Aisyah
+Rahman (strictness 9, pushback 9) is the bar raiser. Since 2026-10-21 every
+preset dial is 2, 5 or 9, and each preset has at least two at an end, so the six
+are told apart by what they do rather than by a step or two of the same dials:
+Isabella supportive and lenient, Priya warm but demanding, Sarah patient and
+deep-probing, Marcus fast and broad, Aisyah sceptical and exacting, Lars cold,
+fast and full of curveballs. The persona card and the report say so in words
+([FEATURES.md](FEATURES.md), Personas).
 
 ## 7. Measured, not asserted
 
@@ -208,14 +213,18 @@ The headlines:
   their 10 settings**; probing depth produces 9, because depths 6 and 7 select
   the same probe tier. Offline, free, byte-identical, and pinned by tests that
   run in CI — `npm run eval:persona`.
-- **In live generation, only warmth is established.** 12 follow-ups per cell,
-  rated by a judge never told the persona: warmth 2→9 raises supportiveness
-  **+0.8** (95% CI [0.3, 1.3]), and pace correctly shows **no** effect anywhere,
-  which was predicted before the run because its lever is the speech rate.
-  Those two are the only results that **reproduced** — run twice at the same
-  commit the experiment returned 2 of 6 and 3 of 6 pre-registered effects, and
-  disagreed on the other four dials. Twelve samples per cell is too few, and the
-  report says so rather than quoting the better run.
+- **In live generation, all six pre-registered expectations held** on the
+  interviewer the app ships (`gpt-5.6-luna`). 51 follow-ups per cell, rated by a
+  judge never told the persona and from a different model generation: moving a
+  dial from 2 to 9 raises topic shift **+4.3** (unpredictability), adaptivity
+  **+2.0** (probing depth), demandingness **+1.4** (strictness) and **+0.8**
+  (pushback), and supportiveness **+0.5** (warmth), each with an interval clear
+  of zero. Pace, predicted before the run to do nothing because its lever is the
+  speech rate, moved no axis by more than +0.4, with an interval that spans
+  zero. Every one of 153 topic pivots opened the subject it was told to open.
+  The dials also move axes they were not built for (pushback acts on adaptivity
+  more than on demandingness), and identical requests gave point estimates up
+  to 0.3 apart, so the small effects should be read as intervals.
 - **Adjacent steps are not proven distinguishable.** The experiment tests 2, 5
   and 9. It says nothing about 8 versus 9, and the report does not claim it.
 - **Eight of the nine questioning strategies are used** across a ladder of
@@ -240,7 +249,10 @@ Two further faults, also found by running it rather than reading it: the
 `--live` arm had never executed at all — it requests a JSON response format that OpenAI
 rejects unless a message contains the word "json", so every judge call returned
 400 — and the steering block was cancelling its own topic pivots two lines
-below itself. Both are fixed; both are written up in PERSONA-EVAL.md.
+below itself. Both are fixed; both are written up in PERSONA-EVAL.md, along with
+one more found on the October 2026 model migration: six of the seven probe notes
+never told the interviewer to quote the candidate, and the previous models had
+been doing it anyway.
 
 ## 8. Deferred, with dependencies
 

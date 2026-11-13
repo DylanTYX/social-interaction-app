@@ -52,7 +52,7 @@ PersonaConfig { strictness, warmth, pace, pushback, communicationStyle }
             Pure arithmetic. Reproduces exactly, every time, offline.
 ```
 
-**This is the thing to lead with.** "Aisyah 7/10, Isabella 5/10 on an identical
+**This is the thing to lead with.** "Aisyah 8/10, Isabella 4/10 on an identical
 answer" is not a sample from a stochastic model — it is a computation. Your
 examiner can read `estimateFollowupDifficulty`, do the arithmetic by hand, and
 get the same number. That is a far stronger position than "look, the questions
@@ -208,12 +208,12 @@ npm run eval:persona
 
 No API calls, no network, byte-identical every run. Safe on stage.
 
-It prints, for **Aisyah Rahman** (analytical, strictness 9 / warmth 4 / pace 4 /
-pushback 9) against **Isabella Rodriguez** (diplomatic, 6 / 9 / 6 / 4):
+It prints, for **Aisyah Rahman** (analytical, strictness 9 / warmth 2 / pace 5 /
+pushback 9) against **Isabella Rodriguez** (diplomatic, 2 / 9 / 2 / 2):
 
 - the exact instruction lines that differ between the two system prompts
-- the follow-up difficulty each produces **on the same candidate answer** — 7/10
-  vs 5/10
+- the follow-up difficulty each produces **on the same candidate answer** — 8/10
+  vs 4/10 (7 vs 5 before the presets were spread out on 2026-10-21)
 - the difficulty curve as strictness sweeps 1→10
 - the **move distribution by questioning style** — 40 seeded turns of a
   merely-fine answer: supportive mostly acknowledges, stress twists the

@@ -99,8 +99,10 @@ Add these for **Production** (and **Preview** if family will test preview URLs):
 Optional model overrides (leave unset unless you want to change models):
 
 - `INTERVIEWER_MODEL`, `COACH_MODEL`, `ANALYZER_MODEL`, `SUMMARY_MODEL`,
-  `JD_CLEAN_MODEL` — the defaults, and the dates on which two of them retire,
-  are in `src/lib/models.ts`
+  `JD_CLEAN_MODEL` — the defaults (`gpt-5.6-luna` for the interviewer and coach,
+  `gpt-6-luna` for the rest) and the retirement dates of the models they
+  replaced are in `src/lib/models.ts`. Run `npm run eval:models` after changing
+  one; it needs `OPENAI_API_KEY` and costs about a tenth of a cent.
 
 **Tip:** Copy values from your local `.env.local` — never commit that file.
 
