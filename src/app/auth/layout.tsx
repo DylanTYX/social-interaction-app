@@ -17,7 +17,6 @@ import { ArrowLeft } from "lucide-react";
  *
  * Right: the form, on white, with no card around it. A single form on an
  * otherwise empty pane does not need a border to say it is one thing.
- * See docs/DESIGN.md.
  */
 export default function AuthLayout({
   children,

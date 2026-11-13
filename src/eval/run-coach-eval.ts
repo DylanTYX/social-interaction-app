@@ -1,5 +1,5 @@
 /**
- * Coaching quality harness. Full method and limitations: `docs/COACHING.md`.
+ * Coaching quality harness.
  *
  *   npm run eval:coach                    # deterministic only, free, offline
  *   npm run eval:coach -- --live          # + coach and analyzer calls
@@ -20,7 +20,7 @@
  *
  * **The judge is not independent.** It scores against the same rubric string
  * the coach is instructed with, and shares the leniency toward fluent-but-wrong
- * answers that `docs/EVALUATION.md` records. That is why the word-count and
+ * answers that the scoring evaluation found. That is why the word-count and
  * correlation rows sit in the headline: read uplift beside them, never alone.
  *
  * `--live` costs money and needs OPENAI_API_KEY. The `UsageCollector` is

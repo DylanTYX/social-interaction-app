@@ -6,7 +6,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Display face for headings and large numbers only; see docs/DESIGN.md. */
+  /* Display face for headings and large numbers only. */
   --font-display: var(--font-bricolage);
   /* The brand's dark: headline numbers and the closing band. Not a text colour. */
   --color-navy: var(--navy);

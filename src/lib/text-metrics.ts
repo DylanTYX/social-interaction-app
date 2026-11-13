@@ -138,7 +138,7 @@ export function analyzeText(raw: string): TextMetrics {
  * unestablished. "Involved in" is not "in charge of"; "we decided" names no
  * decider; "significantly faster" carries no number.
  *
- * Three rules govern everything below (see docs/INTERVIEWER.md):
+ * Three rules govern everything below:
  *
  *   1. Signals trigger PROBING, never deductions. "I led" is a claim to
  *      verify, not a phrase to reward, and "we" is clarified, not penalised.

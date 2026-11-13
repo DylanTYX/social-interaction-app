@@ -307,8 +307,6 @@ function VoiceSimulateInner() {
    * way to practise at all; and when playback fails the app tells them the
    * question is on screen, which has to be true. So it is a switch, and a
    * failure flips it on. The whole transcript is in the report afterwards.
-   *
-   * See docs/DESIGN-DECISIONS.md §16.
    */
   const [transcriptShown, setTranscriptShown] = useState(false);
   /**

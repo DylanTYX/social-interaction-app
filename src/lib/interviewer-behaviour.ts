@@ -3,7 +3,7 @@
  * interview they just had.
  *
  * Users could not tell the personas apart, and part of that was a measurement
- * problem (the dials' effects were small, docs/PERSONA-EVAL.md) and part a
+ * problem (the dials' effects were small) and part a
  * presentation one: six bars and six numbers do not tell anyone what to listen
  * for. Two readouts fix the second half. Before a round, `personaSignature`
  * names the two or three things this interviewer will do that a typical one

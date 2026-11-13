@@ -1,6 +1,6 @@
 /**
  * The persona's voice in the private note. Warmth and pushback were the two
- * dials a blind judge could barely see (docs/PERSONA-EVAL.md), because they
+ * dials a blind judge could barely see, because they
  * only reached the part of the prompt the model reads least; these tests pin
  * what now reaches the part it follows.
  */

@@ -11,7 +11,7 @@
  * That line is what keeps this compatible with `NATIONALITY_IS_BACKGROUND` and
  * requirement E1, which forbid nationality from driving interviewer *behaviour*
  * — how direct, formal, deferential or demanding they are. Those come from the
- * dials, and still do. See `docs/DESIGN-DECISIONS.md` §5. The proof is negative
+ * dials, and still do. The proof is negative
  * and mechanical: `persona-engine.ts` does not import this module, and a test
  * asserts two personas differing only in nationality still produce prompts
  * differing by exactly the demonym.

@@ -2,7 +2,7 @@
  * How the interviewer says its next question, written into the private note.
  *
  * Warmth and pushback were the two weakest dials in the live experiment
- * (+0.5 and +0.8 on a ten-point scale, `docs/PERSONA-EVAL.md`), and they were
+ * (+0.5 and +0.8 on a ten-point scale), and they were
  * weak for a reason that had already been found once: they lived only in the
  * persona description at the top of the prompt, while the model follows the
  * private note that sits after the candidate's answer. Moving that note took

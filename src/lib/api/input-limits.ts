@@ -9,7 +9,7 @@
  * These are **abuse and bug ceilings, not style guidance.** Each is set far
  * above anything a real candidate produces, so hitting one means a runaway
  * client loop or a deliberate attempt to run up the bill, and a 400 is the
- * right answer. Sizing rationale is in `docs/TOKEN-COST.md`.
+ * right answer.
  */
 
 /**

@@ -207,8 +207,8 @@ export const ACCENT_VOICES: readonly AccentVoice[] = [
   // not. Brazilian failed that pass and was re-auditioned across every voice
   // in its locale on 2026-09-11, which is where the `m()` row comes from.
   // Japanese and Vietnamese were removed outright. Rejected rows stay here on
-  // purpose. Method and clips:
-  // `docs/artifacts/voice-audition.md`, `voice-audition-explore.md`.
+  // purpose. The audition is
+  // `npm run eval:voices`.
   // ---------------------------------------------------------------------
   a("Xiaoxiao — Chinese", "zh-CN-XiaoxiaoNeural", "zh-CN", "female", "3%"),
   a("Yunxi — Chinese", "zh-CN-YunxiNeural", "zh-CN", "male", "3%"),

@@ -15,7 +15,7 @@ interface Action {
  * inside a card — the library pages render it inside their "Saved" card, and
  * a card inside a card is two borders saying the same thing. The icon tile it
  * used to lead with went for the same reason every icon tile went: it carried
- * no information the title did not. See docs/DESIGN.md.
+ * no information the title did not.
  */
 export function EmptyStateCard({
   title,

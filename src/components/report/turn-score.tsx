@@ -88,7 +88,6 @@ export function toTurnFeedback(
  * Two bands, not a gradient — a 2-point difference should not change the
  * colour. Green means a strong answer; amber means one that needs attention.
  * There is no red band: red is for errors, and a weak answer is not an error.
- * See docs/DESIGN.md.
  */
 function scoreTone(score: number): "success" | "warning" {
   return score >= 75 ? "success" : "warning";

@@ -66,7 +66,7 @@ describe("decideSilence", () => {
 describe("a pause to think", () => {
   /**
    * The thing this threshold exists to protect. Mid-answer thinking pauses are
-   * reported to the candidate but never scored (docs/DESIGN-DECISIONS.md §15),
+   * reported to the candidate but never scored,
    * so the interaction must not end a turn on one either. Three seconds used to
    * submit; it now warns and keeps listening.
    */

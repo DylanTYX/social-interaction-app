@@ -310,7 +310,7 @@ function buildPromptLayers(input: {
       : []),
     // Stable for the whole session, so it lives in the cacheable prefix rather
     // than the volatile layer. It is also what pushes a session's prefix past
-    // the 1,024-token caching floor at all — see docs/TOKEN-COST.md.
+    // the 1,024-token caching floor at all.
     //
     // This label used to sit above a model-written summary of the resume rather
     // than the resume, so "their actual background" and "never invent experience

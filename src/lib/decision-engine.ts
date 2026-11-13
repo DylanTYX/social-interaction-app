@@ -20,9 +20,8 @@ export interface DecisionContext {
    */
   pushback?: number;
   /**
-   * Curveball frequency (1-10). The dial behind pointer 2 of
-   * docs/INTERVIEWER.md — the professor's "element of surprise", backed by his
-   * requirement verbatim. 1 disables curveballs outright.
+   * Curveball frequency (1-10): the professor's "element of surprise"
+   * requirement. 1 disables curveballs outright.
    */
   unpredictability?: number;
   /**
@@ -45,7 +44,7 @@ export interface DecisionContext {
   /**
    * How aggressively evidence-gap signals convert into probes (1-10).
    *
-   * The dial behind pointer 1 of docs/INTERVIEWER.md: at 1 only the
+   * At 1 only the
    * highest-priority gaps get probed, at 10 everything does. Backed by the
    * probing-depth attribute, Amazon's "Dive Deep", and the arXiv 2608.10412
    * finding that default LLM interviewers issue deepening probes on only 4.9%
@@ -429,7 +428,7 @@ function chooseEvidenceProbe(
 }
 
 /* ------------------------------------------------------------------------- *
- * Curveballs — pointer 2 of docs/INTERVIEWER.md.
+ * Curveballs.
  * ------------------------------------------------------------------------- */
 
 /**

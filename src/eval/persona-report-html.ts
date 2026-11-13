@@ -10,8 +10,7 @@
  * So the page leads with the verdict, states each dial's effect as a quantity a
  * person recognises ("accepts an answer scoring 45/100 → 90/100" rather than
  * "10 distinct outcomes"), and puts one plain sentence above every chart saying
- * how to read it. The detail stays in `PERSONA-EVAL.md`; this is the part that
- * has to survive being glanced at.
+ * how to read it. This is the part that has to survive being glanced at.
  *
  * **Generated, never hand-written**, from the same objects the JSON artifact is
  * serialised from. Self-contained — no scripts, no fonts, no network — so it
@@ -376,8 +375,7 @@ export function renderHtml(
         ? `${escape(empirical.model)} interviewing, ${escape(empirical.judgeModel)} judging; this run cost $${empirical.costUsd.toFixed(3)}. `
         : ""
     }Probe-rate baseline ${escape(deterministic.probeBaseline)}.
-    Method, limitations and what this does <em>not</em> prove:
-    <code>docs/PERSONA-EVAL.md</code>. Regenerate with
+    Regenerate with
     <code>npm run eval:persona -- --artifacts</code>.
   </footer>
 </main>`;

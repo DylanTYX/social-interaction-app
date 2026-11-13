@@ -39,7 +39,7 @@ import { WEB_FRONTEND_QUESTIONS } from "./questions/web-frontend";
  *   - **The interview simulation** — *not used at all.* Questions there are
  *     written by the model, grounded in retrieval over the candidate's job
  *     description and steered by the previous turn. A drill is fixed on
- *     purpose; an interview is adaptive on purpose. See `docs/DRILLS.md`.
+ *     purpose; an interview is adaptive on purpose.
  */
 export const DRILL_QUESTIONS: DrillQuestion[] = [
   ...BEHAVIOURAL_QUESTIONS,

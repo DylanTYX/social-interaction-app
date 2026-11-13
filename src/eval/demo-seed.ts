@@ -6,8 +6,8 @@
  * delivery needs spoken answers. Building that live takes hours of interviews
  * and real API spend. This builds about five weeks of practice instead.
  *
- * **This is seeded data, and it must be presented as such.** docs/DEMO.md sets
- * the rules: say out loud that the account is seeded, never quote a number from
+ * **This is seeded data, and it must be presented as such.** The rules:
+ * say out loud that the account is seeded, never quote a number from
  * it as an evaluation result, and run one live interview on the account so the
  * system itself is shown working.
  *

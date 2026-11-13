@@ -1,5 +1,5 @@
 /**
- * The dial sweeps are the evidence behind `docs/PERSONA-EVAL.md`, and a report
+ * The dial sweeps are the evidence behind the persona evaluation, and a report
  * that quietly stops matching the code is worse than no report. These tests
  * pin the claims the document makes in prose: which dials resolve ten steps,
  * which collapse, and which never reach the prompt at all.
@@ -46,7 +46,7 @@ describe("dial sweeps", () => {
 
 describe("how far each dial resolves", () => {
   /**
-   * These numbers are the headline of `docs/PERSONA-EVAL.md`, and they moved
+   * These numbers are the headline of the persona evaluation, and they moved
    * once already: every band dial used to resolve four or five of its ten
    * steps, because a three-band adjective cannot express ten settings. The
    * countable directives — a word budget, a specifics floor, a re-ask

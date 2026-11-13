@@ -7,7 +7,7 @@
  *
  * Every accuracy number the main harness reports is really *agreement with one
  * person* — the author wrote the answers, assigned the bands, and wrote the
- * rubric they are judged against. `docs/EVALUATION.md` has always listed that as
+ * rubric they are judged against. The scoring evaluation has always listed that as
  * a limitation. This is the thing that removes it.
  *
  * It matters now rather than in principle. At `e50e2e4` the analyzer scores
@@ -132,7 +132,7 @@ function mean(values: number[]): number {
  * Raw agreement flatters a three-class problem — two raters who both call
  * everything "mediocre" agree 100% of the time and have measured nothing.
  * Kappa subtracts the agreement their individual habits would produce by
- * chance, which is the number `docs/EVALUATION.md` says a stronger design would
+ * chance, which is the number a stronger design would
  * report.
  */
 function cohensKappa(a: QualityBand[], b: QualityBand[]): number {

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The frame every app page shares: one container, one header, and a section
- * heading for the groups below it. See docs/DESIGN.md, "App screens".
+ * heading for the groups below it.
  *
  * The header used to take an eyebrow and a coloured icon tile. Both went. The
  * tile spent a round colour on a page (Analytics was orange, Sessions indigo,

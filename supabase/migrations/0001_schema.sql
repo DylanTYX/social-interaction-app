@@ -14,8 +14,7 @@
 -- so what only existed to move an older database forward is gone: duplicate-row
 -- clean-ups, JSONB backfills, a vector index that was later replaced, superseded
 -- function signatures, and privileges granted in one file and revoked in a later
--- one. A database that has already run the eighteen needs only the two steps
--- in docs/DATA-MODEL.md → Migrations.
+-- one.
 --
 -- Every statement is guarded (`if not exists`, `drop … if exists`, `create or
 -- replace`), so running a file twice is harmless.

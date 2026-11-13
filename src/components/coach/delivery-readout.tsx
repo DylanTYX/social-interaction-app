@@ -57,7 +57,7 @@ type Measure = {
  * footnote. It is now four measures in the hairline grid the live coaching rail
  * uses, each a large navy number with a caption. A mark appears only where the
  * number carries a judgement the code actually makes; pauses and speaking time
- * are facts, so they have none. See docs/DESIGN.md.
+ * are facts, so they have none.
  */
 export function DeliveryReadout({ metrics }: { metrics: DeliveryMetrics }) {
   const pace = metrics.paceLabel ? PACE[metrics.paceLabel] : null;

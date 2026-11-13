@@ -51,7 +51,7 @@ import {
 /**
  * Interviewer step of the setup wizard: pick a saved persona, or shape one.
  *
- * The contract with `/dashboard/personas` (docs/FEATURES.md): the wizard
+ * The contract with `/dashboard/personas`: the wizard
  * *chooses* and, optionally, *tweaks* for this session; the library *manages*.
  * So the card, the editor, the copy and the sort order are the library's —
  * shared components, not lookalikes — while delete and restore-presets live

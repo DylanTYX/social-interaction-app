@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 /*
  * The landing page. Product-led: every section is one idea and one proof, and
  * the proof is a mock of the real interface with real content. Colour follows
- * the rules in docs/DESIGN.md — blue for actions, round colours only where a
+ * the design rules — blue for actions, round colours only where a
  * round is named, green and amber only where a mark means something.
  */
 

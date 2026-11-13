@@ -52,7 +52,6 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
  *
  * The face is not: every card title is set in the display face, the same as
  * page and section headings, so a heading reads as a heading on every screen.
- * See docs/DESIGN.md.
  */
 function CardTitle({
   className,

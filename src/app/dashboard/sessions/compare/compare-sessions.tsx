@@ -92,7 +92,7 @@ function Delta({ from, to, unit, higherIsBetter = true }: { from: number | null;
   if (diff === 0) return <span className="text-slate-500">no change</span>;
   const good = higherIsBetter ? diff > 0 : diff < 0;
   // Better is green and worse is amber: a regression needs attention, it is
-  // not an error. Red is kept for errors. See docs/DESIGN.md.
+  // not an error. Red is kept for errors.
   return (
     <span className={cn("font-semibold tabular-nums", good ? "text-success-emphasis" : "text-warning-emphasis")}>
       {diff > 0 ? "+" : ""}

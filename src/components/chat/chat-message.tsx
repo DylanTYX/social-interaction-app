@@ -200,7 +200,7 @@ export const ChatMessage = memo(function ChatMessage({
           `InitialsAvatar` does it on the personas page, in the session list and
           in the picker — so Sarah Chen is the same colour in the transcript as
           everywhere else. The candidate is blue: that is the app speaking as
-          you, matching your message bubbles. See docs/DESIGN.md. */}
+          you, matching your message bubbles. */}
       <div
         className={cn(
           "h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-display text-xs font-semibold text-white",

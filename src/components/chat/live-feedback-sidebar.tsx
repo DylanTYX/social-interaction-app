@@ -261,7 +261,7 @@ const TONE_MARK: Record<CoachingItem["tone"], string> = {
  * is one bordered panel: a hairline grid of measures, each drawn in blue like
  * every chart in the app, and one hairline-divided list of notes. The only
  * colour is the mark beside a note, and it means something: green is good,
- * amber needs attention. See docs/DESIGN.md.
+ * amber needs attention.
  */
 export function LiveFeedbackSidebar({
   metrics,

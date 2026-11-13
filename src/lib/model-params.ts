@@ -24,8 +24,8 @@
  * of it the model is able to honour.
  *
  * The `current` contract is taken from the migration guide; no call in this
- * project has run against a model of that generation yet. The harness runs in
- * docs/TOKEN-COST.md §"Retirements and the migration" are where it is confirmed.
+ * project has run against a model of that generation yet. The evaluation
+ * harnesses are where it is confirmed.
  */
 
 export type ReasoningEffort = "minimal" | "low" | "medium" | "high";

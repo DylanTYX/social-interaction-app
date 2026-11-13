@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
  *     should fail here, not fall back in production.
  *
  * The fourth is the ethical boundary: nationality selects a voice and nothing
- * else. `docs/DESIGN-DECISIONS.md` §5.
+ * else.
  */
 
 import { readFileSync } from "node:fs";
@@ -398,7 +398,7 @@ describe("ssmlLangForVoice", () => {
 
 describe("the accent is acoustic only", () => {
   it("keeps nationality out of the interviewer's prompt", () => {
-    // Belt and braces on the boundary in DESIGN-DECISIONS §5, placed in the
+    // Belt and braces on the nationality boundary, placed in the
     // module most likely to tempt someone into "just mention the accent".
     // The real guarantee is structural: persona-engine.ts does not import
     // persona-voice.ts, and persona-engine.test.ts pins the demonym claim.

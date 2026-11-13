@@ -14,8 +14,7 @@ import type { InterviewRoundType } from "@/lib/interview-rounds";
  * seventeen knowledge areas, the interview topics Amazon and Microsoft publish,
  * and role-specific prep sources — roughly sixty candidate domains — then
  * keeping a domain only where (a) a rubric describes a good answer to it and
- * (b) a CS student plausibly interviews for it. `docs/DRILLS.md` carries the
- * full audit, including what was excluded and why.
+ * (b) a CS student plausibly interviews for it.
  */
 
 export type DrillCategory =

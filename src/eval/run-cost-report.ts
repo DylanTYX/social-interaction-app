@@ -6,7 +6,7 @@
  *   npm run cost-report -- --session=<id>
  *   npm run cost-report -- --json
  *
- * `docs/TOKEN-COST.md` has carried this warning since it was written:
+ * The cost estimates have carried this warning since they were written:
  *
  *   > The estimates have not been validated against live traffic — the Supabase
  *   > project has been unreachable throughout this work, so the `llm_usage`
@@ -132,7 +132,7 @@ async function main() {
   const overall = summariseCost(records);
 
   // Per call site, so the question "what does each component cost" has an
-  // answer. This is the grouping docs/TOKEN-COST.md asks for in its SQL.
+  // answer.
   const bySite = new Map<LlmCallSite, UsageRecord[]>();
   for (const record of records) {
     const list = bySite.get(record.callSite) ?? [];
@@ -226,7 +226,7 @@ async function main() {
 
   if (overall.cachedTokens === 0) {
     // Not a bug, and worth saying out loud rather than leaving as a zero the
-    // reader has to interpret. docs/TOKEN-COST.md predicts exactly this.
+    // reader has to interpret.
     console.log(
       [
         "",

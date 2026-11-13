@@ -19,7 +19,7 @@
  *   - A re-run replaces the account's sessions and its seeded resume. Anything
  *     else you added on it, such as a job description, is left alone.
  *
- * The history is seeded, not measured. See `demo-seed.ts` and docs/DEMO.md.
+ * The history is seeded, not measured. See `demo-seed.ts`.
  */
 
 import { randomBytes, randomUUID } from "node:crypto";

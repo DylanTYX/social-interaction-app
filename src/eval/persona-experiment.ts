@@ -57,7 +57,7 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
  * one low-priority hedge ("I learned to…"), which only a high probing depth
  * catches, so depths 2 and 5 leave the curveball roll free for unpredictability
  * and pushback while depth 9 takes the probe. Verified against the real engine,
- * not assumed — see `docs/PERSONA-EVAL.md` §"Why the answer is a good one".
+ * not assumed.
  */
 export const HELD_CONSTANT = {
   scenario:

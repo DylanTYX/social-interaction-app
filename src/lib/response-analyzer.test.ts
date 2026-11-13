@@ -64,11 +64,11 @@ describe("sanitizeNotes", () => {
  * The claim is that nobody scores better by choosing a kinder interviewer:
  * `analyzeResponse` has no persona parameter, so it cannot know which one
  * asked. A signature is evidence only until someone adds an argument, and
- * `REQUIREMENTS.md` N2 cited exactly that signature. This makes the invariant
+ * The requirements cited exactly that signature. This makes the invariant
  * executable — it fails the moment persona text reaches the analyzer, by any
  * route, including a persona-flavoured question being passed through.
  *
- * `docs/PERSONA-EVAL.md` reports the other half: the persona does change the
+ * The persona evaluation reports the other half: the persona does change the
  * *questions*, which is why the difficulty band is shown next to a score.
  */
 describe("analyzeResponse is persona-blind", () => {

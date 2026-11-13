@@ -90,7 +90,7 @@ describe("DRILL_QUESTIONS", () => {
   it("asks every question as something you could say out loud", () => {
     // The bank is answered by speaking. A prompt that says "implement" or
     // "write the function" cannot be, and there is deliberately no code editor
-    // on the drills page — see docs/DRILLS.md.
+    // on the drills page.
     for (const question of DRILL_QUESTIONS) {
       expect(question.prompt, question.id).not.toMatch(
         /\b(implement|write the (function|code)|code up)\b/i,

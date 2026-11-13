@@ -308,8 +308,8 @@ Include at least one genuine strength when present. Keep strengths and gaps bala
    * scaffold is the cached prefix keyed by round type. Uniform for every
    * persona — this is marking, and marking is persona-blind.
    *
-   * The instruction encodes the evidence-not-claims rule from
-   * docs/INTERVIEWER.md: diffuse wording is a cap only while unevidenced, and
+   * The instruction encodes the evidence-not-claims rule:
+   * diffuse wording is a cap only while unevidenced, and
    * ownership verbs alone are claims, not evidence.
    */
   const signalBlock = (() => {

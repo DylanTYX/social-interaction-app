@@ -12,7 +12,7 @@
  * but not this, so it was measuring the prose and calling the result "the
  * interview" — and probingDepth and unpredictability, which appear in *no*
  * prompt text and act only through this block, came out looking inert when they
- * had simply never been given a chance to act. See `docs/PERSONA-EVAL.md`.
+ * had simply never been given a chance to act.
  */
 
 import {
@@ -51,8 +51,8 @@ export const STRATEGY_LABEL: Partial<Record<InterviewStrategy, string>> = {
  * instructions and one abstract one, the model followed the concrete ones and
  * never pivoted — measured, not guessed: unpredictability 9 moved the blind
  * judge's topic-shift rating by 0.0 points while pushback 9, whose move is a
- * twist *within* the topic and so conflicts with nothing, moved it by 2.2
- * (`docs/PERSONA-EVAL.md`). The dial was not weak; its instruction was being
+ * twist *within* the topic and so conflicts with nothing, moved it by 2.2.
+ * The dial was not weak; its instruction was being
  * cancelled two lines below.
  */
 function isPivot(strategy: InterviewStrategy): boolean {

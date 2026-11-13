@@ -15,7 +15,7 @@ interface StatCounterProps {
  * what's left here is the "first time it scrolls into view" part.
  *
  * The number is set in the display face in navy, the same treatment as every
- * large figure on the landing page; see docs/DESIGN.md.
+ * large figure on the landing page.
  */
 export function StatCounter({ value, label }: StatCounterProps) {
   const ref = useRef<HTMLDivElement | null>(null);

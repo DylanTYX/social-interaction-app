@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * is the same colour on the personas page, in a session row, in the picker and
  * in a transcript, and you can pick her out of a grid without reading. It is a
  * solid circle with white initials, which is what tells a person apart from a
- * round's tinted chip in the same hue. See docs/DESIGN.md, "Colour".
+ * round's tinted chip in the same hue.
  *
  * `tone="you"` is for the signed-in user's own avatar: navy, the brand's dark,
  * rather than a hue. You are not one of the interviewers.

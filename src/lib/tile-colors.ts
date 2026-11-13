@@ -13,8 +13,7 @@
  * which kind of thing you are looking at; the hue says which one.
  *
  * These are for identity and nothing else. A page, a feature, a chart series or
- * a status does not get one; those are blue, slate, or a semantic colour. See
- * docs/DESIGN.md.
+ * a status does not get one; those are blue, slate, or a semantic colour.
  */
 
 export type TileColor =

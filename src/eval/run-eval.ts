@@ -336,7 +336,7 @@ async function main() {
         totalUsd: c.totalUsd,
         promptTokens: c.promptTokens,
         completionTokens: c.completionTokens,
-        // The number docs/EVALUATION.md wants for its unfilled before/after
+        // The number wanted for the before/after
         // table on moving counting out of the LLM (~296 -> ~245 scaffold
         // tokens): measured average prompt size per analyzer call.
         avgPromptTokensPerCall: totalRuns ? c.promptTokens / totalRuns : 0,

@@ -3,8 +3,7 @@
  * so what it does and does not say is load-bearing in two directions: it must
  * carry the decision, and it must not leak the evaluation.
  *
- * It had no test while it lived inside the chat route. See
- * `docs/PERSONA-EVAL.md` for what it is measured to change.
+ * It had no test while it lived inside the chat route.
  */
 
 import { describe, expect, it } from "vitest";

@@ -14,7 +14,7 @@ export type Unpredictability = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 /**
  * Session-level questioning archetype — Layer 3 of the four-layer interviewer
- * (docs/INTERVIEWER.md). Each style is one prompt paragraph (how the
+ * design. Each style is one prompt paragraph (how the
  * interviewer sounds) plus a move-weight profile in the decision engine (which
  * follow-up moves it favours). Six ship; the other research archetypes map
  * elsewhere — systematic is the engine itself, coaching is the drills coach,
@@ -337,7 +337,7 @@ export function followupsBeforeMoving(probingDepth: number): number {
  * consumer was `probeTierLimit` in the decision engine, which decides whether a
  * hedged phrase is worth quoting back; the interviewer itself was never told
  * that it was supposed to be a deep prober or a shallow one. That is a thin
- * place for what `INTERVIEWER.md` calls the control knob for the failure mode
+ * place for the control knob for the failure mode
  * this whole design exists to beat — default LLM interviewers deepen on 4.9% of
  * turns — so the dial now says so in words as well as deciding in code.
  *
@@ -551,7 +551,7 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
     // demonym, which is stereotyping regardless of intent, and would make the
     // interviewer's behaviour depend on a variable the app cannot measure or
     // justify. Behaviour comes from the dials below, which are explicit,
-    // controllable and testable. See docs/DEMO.md.
+    // controllable and testable.
     NATIONALITY_IS_BACKGROUND,
     communicationProfile,
     styleExpression,
@@ -581,7 +581,7 @@ export function generatePersonaPrompt(config: PersonaConfig): string {
  * Every dial sits on 2, 5 or 9, and each preset has at least two at an end.
  * They used to cluster between 4 and 9 — strictness was 6 to 9 on all six — so
  * two presets differed by a few steps of dials whose whole 2-to-9 range moves a
- * blind judge's rating by half a point to four points (docs/PERSONA-EVAL.md).
+ * blind judge's rating by half a point to four points.
  * Users said they could not tell them apart, and the arithmetic agreed. 2, 5
  * and 9 are also the three settings the live experiment measures, so every
  * preset is built only from settings that have been tested. Accounts seeded

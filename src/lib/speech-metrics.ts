@@ -35,8 +35,7 @@ export interface DeliveryMetrics {
  * Reported, never scored: the analyzer takes the answer's text and nothing
  * else, and this number carries no good/bad mark anywhere it is shown. That is
  * deliberate — a pause is where the thinking happens, and the literature on
- * spontaneous speech treats it as planning rather than as a fault. See
- * docs/DESIGN-DECISIONS.md §15.
+ * spontaneous speech treats it as planning rather than as a fault.
  *
  * It was 1.5 s, which is roughly an ordinary between-sentence breath, so
  * "long pauses: 6" reported a normal way of talking as an event. 2.5 s is long

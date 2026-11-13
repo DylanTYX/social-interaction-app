@@ -10,8 +10,7 @@
  * the deployed behaviour. A harness now reads the same constant the app does;
  * an override has to be spelled out, and every run prints the model it used.
  *
- * The long form of each choice, with prices: docs/TOKEN-COST.md §"Which model
- * runs where". How a request body is built for a given model: model-params.ts.
+ * How a request body is built for a given model: model-params.ts.
  */
 
 import { modelFamily } from "@/lib/model-params";
@@ -34,8 +33,7 @@ import { modelFamily } from "@/lib/model-params";
  * median 892 ms against 903 ms. The first run on this model also found a fault
  * in the app rather than the model: six of the seven probe notes never told the
  * interviewer to quote the candidate, and a model that follows instructions
- * literally never did (0 of 51). They do now (51 of 51), see decision-engine.ts
- * and docs/PERSONA-EVAL.md §"Model migration".
+ * literally never did (0 of 51). They do now (51 of 51), see decision-engine.ts.
  */
 export const INTERVIEWER_MODEL =
   process.env.INTERVIEWER_MODEL ?? "gpt-5.6-luna";
@@ -50,7 +48,7 @@ export const INTERVIEWER_MODEL =
  * against 9.7, invented no quantities (0.00 per rewrite against 0.23) and
  * covered every gap its tips were meant to name (1.00 against 0.80). It writes
  * longer rewrites (+29 words against +10), which is the caveat the harness
- * exists to show — docs/COACHING.md §"Results".
+ * exists to show.
  */
 export const COACH_MODEL = process.env.COACH_MODEL ?? "gpt-5.6-luna";
 
@@ -63,7 +61,7 @@ export const COACH_MODEL = process.env.COACH_MODEL ?? "gpt-5.6-luna";
  * replaced the old model only after `npm run eval -- --runs=5`, run on the same
  * tree for both, gave it the same band accuracy (81.1%), a wider strong-to-weak
  * separation (43.7 points against 36.6) and steadier scores (mean standard
- * deviation 1.36 against 2.01) — docs/EVALUATION.md §"Model migration".
+ * deviation 1.36 against 2.01).
  */
 export const ANALYZER_MODEL = process.env.ANALYZER_MODEL ?? "gpt-6-luna";
 
@@ -124,7 +122,6 @@ export interface ModelRetirement {
  * A default moves off a retiring model only on a passing harness run — the
  * assessor on `npm run eval`, the interviewer on `npm run eval:persona -- --live`,
  * the coach on `npm run eval:coach -- --live` — against the committed baseline.
- * The runbook is docs/TOKEN-COST.md §"Retirements and the migration".
  */
 export const MODEL_RETIREMENTS: Record<string, ModelRetirement> = {
   "gpt-5-mini": {

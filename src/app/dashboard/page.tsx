@@ -59,7 +59,7 @@ import {
  *   4. Am I being consistent? → this week's goal, which lives nowhere else
  *
  * Every section has its heading outside its card, so the four read as one
- * system. See docs/DESIGN.md, "App screens".
+ * system.
  */
 export default function DashboardPage() {
   const { sessions, status, error, refresh } =

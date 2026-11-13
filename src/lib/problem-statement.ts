@@ -3,9 +3,8 @@
  *
  * A coding problem is read, not heard. Its inputs, constraints and example are
  * what the candidate works from for the next twenty minutes, and a voice
- * interview withholds the interviewer's words by default (DESIGN-DECISIONS
- * §16) — so the problem was spoken once, bracket by bracket, and then could not
- * be seen. Real phone screens do what this does instead: the interviewer talks,
+ * interview withholds the interviewer's words by default — so the
+ * problem was spoken once, bracket by bracket, and then could not be seen. Real phone screens do what this does instead: the interviewer talks,
  * and the problem is pasted into the shared editor.
  *
  * The interviewer is asked to put the statement in a fence tagged `problem`

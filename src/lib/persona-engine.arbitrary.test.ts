@@ -116,7 +116,7 @@ describe("a persona built from arbitrary dials", () => {
     // Probing depth tells the interviewer to stay on an answer. The decision
     // engine sometimes tells it to pivot away. Without this clause the two are
     // a flat contradiction, and the measured consequence was that the pivot
-    // never happened — see docs/PERSONA-EVAL.md.
+    // never happened.
     for (const probingDepth of VALUES) {
       const prompt = generatePersonaPrompt({ ...BASE, probingDepth });
       expect(prompt, `probingDepth ${probingDepth}`).toContain(

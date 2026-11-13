@@ -13,7 +13,7 @@ import type { PersonaConfig } from "@/lib/persona-engine";
  * What the interviewer actually did this round, beside what it was set to do.
  *
  * The persona's dials changed the questions by amounts a blind judge could
- * measure but a candidate could not always hear (docs/PERSONA-EVAL.md). The
+ * measure but a candidate could not always hear. The
  * engine already stores the move it chose after every scored answer, so the
  * report can say it plainly: "pushed for specifics 3 times, changed topic
  * twice". Two rounds with different interviewers then differ on the page, not

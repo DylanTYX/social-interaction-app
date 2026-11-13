@@ -10,8 +10,8 @@ import type { QualityBand } from "@/eval/fixtures";
  * fixtures should gain more than strong ones, because strong ones start in the
  * eighties), and the analyzer's behaviour on that exact text has already been
  * measured. A second full corpus would double the labelling burden and double
- * the "everything came from one author" criticism `docs/EVALUATION.md` already
- * concedes twice.
+ * the "everything came from one author" criticism the scoring
+ * evaluation already concedes.
  *
  * These four exist for the one property that set is structurally unable to
  * measure. Several of its weak fixtures — `beh-weak-conflict`, `screen-weak`,

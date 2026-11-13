@@ -8,7 +8,7 @@
  *
  * These are the *personality* bands, taken from the adjective the prompt uses,
  * and they are deliberately coarser than the behaviour. A dial resolves 7 to 10
- * of its ten steps (`docs/PERSONA-EVAL.md`), because countable directives sit
+ * of its ten steps, because countable directives sit
  * alongside the adjective — a word budget, a specifics floor, a challenge rung —
  * and those break at different points. So two values sharing a label do **not**
  * behave identically, and nothing here should say they do.

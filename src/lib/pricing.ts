@@ -5,7 +5,7 @@ import type { UsageRecord } from "@/lib/api/token-usage";
  *
  * `llm_usage` has counted tokens since migration `0007`, but nothing in the
  * codebase ever multiplied them by a rate — so every dollar figure in this
- * project existed only as prose arithmetic in `docs/TOKEN-COST.md`, unchecked
+ * project existed only as prose arithmetic in the documentation, unchecked
  * and uncheckable. This is the missing multiplication.
  *
  * Two deliberate properties, because a price table is the kind of constant that
@@ -68,7 +68,7 @@ export const MODEL_PRICING: Record<string, ModelPrice> = {
   "gpt-5-nano": { input: 0.05, cachedInput: 0.005, output: 0.4 },
   "gpt-4o-mini": { input: 0.15, cachedInput: 0.075, output: 0.6 },
   // Evaluation only: the neutral judge for the three-way model comparison,
-  // from a family none of the candidates belongs to (docs/MODEL-COMPARISON.md).
+  // from a family none of the candidates belongs to.
   "gpt-4.1": { input: 2, cachedInput: 0.5, output: 8 },
   "gpt-4o": { input: 2.5, cachedInput: 1.25, output: 10 },
   "text-embedding-3-small": { input: 0.02, cachedInput: 0.02, output: 0 },

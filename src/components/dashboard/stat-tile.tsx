@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
  * round colours. The number is the information; the tile was decoration.
  *
  * The value is set the way every large number in the app is: display face,
- * navy, tabular figures. See docs/DESIGN.md.
+ * navy, tabular figures.
  */
 export function StatTile({
   label,

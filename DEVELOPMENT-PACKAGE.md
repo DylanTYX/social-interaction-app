@@ -358,11 +358,6 @@ Leave these unset to use the defaults in section 1.3. After changing one, run
 └── tsconfig.json               TypeScript configuration; `@/` means `src/`
 ```
 
-Some code comments cite design notes in `docs/` (for example `docs/PERSONA-EVAL.md`).
-Those notes record why decisions were made and how results were measured. They
-are not part of this package and nothing needs them; each comment explains
-itself without them.
-
 ### 4.1 API routes (`src/app/api/`)
 
 | Route | Purpose |

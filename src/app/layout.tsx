@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 /**
  * The display face: headings and large numbers only. Geist stays the text
- * face everywhere. See docs/DESIGN.md.
+ * face everywhere.
  */
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
